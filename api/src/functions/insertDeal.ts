@@ -64,16 +64,16 @@ async function sendTestDealEmail(
 
     const accessToken = tokenResponse.data.access_token;
 
-    const checkoutUrl = process.env.DEAL_CHECKOUT_URL
-      ? `${process.env.DEAL_CHECKOUT_URL}?passcode=${passcode}`
-      : `https://example.com/checkout?passcode=${passcode}`;
+    const instructionsUrl = process.env.DEAL_INSTRUCTIONS_URL
+      ? `${process.env.DEAL_INSTRUCTIONS_URL}?passcode=${passcode}`
+      : `https://example.com/instructions?passcode=${passcode}`;
 
     const emailContent = {
       message: {
         subject: `Test: Deal captured for ${serviceDescription}`,
         body: {
           contentType: "HTML",
-          content: `<p>This is a preview of the email a client will receive when a deal is created.</p><p><a href="${checkoutUrl}">Enter the workflow</a> to get started.</p><p><strong>Service:</strong> ${serviceDescription}<br/><strong>Amount:</strong> ${amount}</p>`,
+          content: `<p>This is a preview of the email a client will receive when a deal is created.</p><p><a href="${instructionsUrl}">Enter the workflow</a> to get started.</p><p><strong>Service:</strong> ${serviceDescription}<br/><strong>Amount:</strong> ${amount}</p>`,
         },
         toRecipients: [
           {
@@ -173,12 +173,16 @@ const {
     const response = await axios.post(url, payload);
     if (response.status >= 200 && response.status < 300) {
       const result = typeof response.data === 'object' ? response.data : {};
+      const instructionsUrl = process.env.DEAL_INSTRUCTIONS_URL
+        ? `${process.env.DEAL_INSTRUCTIONS_URL}?deal=${result.dealId}&token=${passcode}`
+        : undefined;
       await sendTestDealEmail(context, serviceDescription, amount, passcode);
       return {
         status: 200,
         body: JSON.stringify({
           message: "Deal captured",
           passcode,
+          instructionsUrl,
           ...result,
         }),
         headers: { "Content-Type": "application/json" },

@@ -41,7 +41,7 @@ import { colours } from '../../app/styles/colours';
 import ToggleSwitch from '../../components/ToggleSwitch';
 import { hasAdminAccess } from '../../utils/matterNormalization';
 import { useTheme } from '../../app/functionality/ThemeContext';
-import { useNavigator } from '../../app/functionality/NavigatorContext';
+import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import UnclaimedEnquiries from './UnclaimedEnquiries';
 import { Pivot, PivotItem } from '@fluentui/react';
 import SegmentedControl from '../../components/filter/SegmentedControl';
@@ -175,9 +175,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
 
   const { isDarkMode } = useTheme();
-  const { setContent } = useNavigator();
+  const { setContent } = useNavigatorActions();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
   const [twoColumn, setTwoColumn] = useState<boolean>(false);
+  // Scope toggle (Mine vs All) for claimed enquiries
+  const [showMineOnly, setShowMineOnly] = useState<boolean>(true);
   // Removed pagination states
   // const [currentPage, setCurrentPage] = useState<number>(1);
   // const enquiriesPerPage = 12;
@@ -195,10 +197,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [showDataInspector, setShowDataInspector] = useState<boolean>(false);
   // Local dataset toggle (legacy vs new direct) analogous to Matters (only in localhost UI for now)
   const [useNewData, setUseNewData] = useState<boolean>(false);
+  // Admin-only: control visibility of Deal Capture (Scope & Quote Description + Amount)
+  const [showDealCapture, setShowDealCapture] = useState<boolean>(false);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  // Admin check (match Matters logic)
-  const userRole = userData?.[0]?.Role || '';
-  const userFullName = userData?.[0]?.FullName || '';
+  // Admin check (match Matters logic) – be robust to spaced keys and fallbacks
+  const userRec: any = (userData && userData[0]) ? userData[0] : {};
+  const userRole: string = (userRec.Role || userRec.role || '').toString();
+  const userFullName: string = (
+    userRec.FullName ||
+    userRec['Full Name'] ||
+    [userRec.First, userRec.Last].filter(Boolean).join(' ')
+  )?.toString() || '';
   const isAdmin = hasAdminAccess(userRole, userFullName);
   // Debug storage for raw payloads when inspecting
   const [debugRaw, setDebugRaw] = useState<{ legacy?: unknown; direct?: unknown }>({});
@@ -436,9 +445,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const handleSubTabChange = useCallback((item?: PivotItem) => {
     if (item) {
-      setActiveSubTab(item.props.itemKey as string);
+      const key = item.props.itemKey as string;
+      // Prevent switching to Calls or Emails if Pitch Builder is open
+      if (activeSubTab === 'Pitch' && (key === 'Calls' || key === 'Emails')) {
+        return;
+      }
+      setActiveSubTab(key);
     }
-  }, []);
+  }, [activeSubTab]);
 
   const handleSelectEnquiry = useCallback((enquiry: Enquiry) => {
     setSelectedEnquiry(enquiry);
@@ -555,14 +569,23 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
-      console.log('🎯 Filtering for CLAIMED (user email match)');
-      filtered = filtered.filter(enquiry => {
-        // Handle both old and new schema
-        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
-        const matches = effectiveUserEmail ? poc === effectiveUserEmail : false;
-        console.log(`  Enquiry ${enquiry.ID}: poc="${poc}" vs effectiveUserEmail="${effectiveUserEmail}" → ${matches}`);
-        return matches;
-      });
+      if (showMineOnly) {
+        console.log('🎯 Filtering for CLAIMED (Mine only)');
+        filtered = filtered.filter(enquiry => {
+          const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+          const matches = effectiveUserEmail ? poc === effectiveUserEmail : false;
+          console.log(`  Enquiry ${enquiry.ID}: poc="${poc}" vs effectiveUserEmail="${effectiveUserEmail}" → ${matches}`);
+          return matches;
+        });
+      } else {
+        console.log('🎯 Filtering for CLAIMED (All claimed)');
+        filtered = filtered.filter(enquiry => {
+          const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+          // Exclude unclaimed placeholder emails
+          const isUnclaimed = unclaimedEmails.includes(poc);
+          return poc && !isUnclaimed; // any real claimed enquiry
+        });
+      }
     } else if (activeState === 'Claimable') {
       filtered = filtered.filter(enquiry => {
         // Handle both old and new schema
@@ -634,6 +657,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     activeState,
     activeAreaFilter,
     searchTerm,
+    showMineOnly,
+    unclaimedEmails,
   ]);
 
   // Removed pagination logic
@@ -730,9 +755,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       flexDirection: 'row',
       gap: '8px',
       alignItems: 'center',
-      height: ACTION_BAR_HEIGHT,
+      height: '48px',
       position: 'sticky',
-      top: ACTION_BAR_HEIGHT,
+      top: '48px',
       zIndex: 999,
     });
   }
@@ -808,34 +833,15 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const renderDetailView = useCallback(
     (enquiry: Enquiry) => (
-      <Stack
-        tokens={{ childrenGap: 24 }}
-        styles={{
-          root: {
-            backgroundColor: isDarkMode
-              ? colours.dark.sectionBackground
-              : colours.light.sectionBackground,
-            boxShadow: isDarkMode
-              ? '0 8px 32px rgba(0, 0, 0, 0.3)'
-              : '0 8px 32px rgba(0, 0, 0, 0.1)',
-            padding: '32px',
-            borderRadius: '12px',
-            fontFamily: 'Raleway, sans-serif',
-          },
-        }}
-      >
+      <>
         {activeSubTab === 'Pitch' && (
-          <PitchBuilder enquiry={enquiry} userData={userData} />
+          <PitchBuilder enquiry={enquiry} userData={userData} showDealCapture={showDealCapture} />
         )}
-        {activeSubTab === 'Calls' && (
-          <EnquiryCalls enquiry={enquiry} />
-        )}
-        {activeSubTab === 'Emails' && (
-          <EnquiryEmails enquiry={enquiry} />
-        )}
-      </Stack>
+        {activeSubTab === 'Calls' && <EnquiryCalls enquiry={enquiry} />}
+        {activeSubTab === 'Emails' && <EnquiryEmails enquiry={enquiry} />}
+      </>
     ),
-    [isDarkMode, activeSubTab, userData]
+    [activeSubTab, userData, showDealCapture]
   );
 
   const enquiriesCountPerMember = useMemo(() => {
@@ -986,111 +992,147 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     });
   }
 
-  return (
-    <div className={containerStyle(isDarkMode)}>
-      {/* Action / Navigation Bar */}
-      <div
-        className={mergeStyles({
+  // Global Navigator: list vs detail
+  useEffect(() => {
+    // List mode: filter/search bar in Navigator (like Matters list state)
+    if (!selectedEnquiry) {
+      setContent(
+        <div style={{
+          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+          padding: '10px 24px 12px 24px',
+          boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.12)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          fontSize: 14,
+          fontFamily: 'Raleway, sans-serif',
+          flexWrap: 'wrap',
           position: 'sticky',
           top: 0,
           zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 16,
-          padding: '10px 24px 12px 24px',
-          background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-          boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.12)',
           borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)'
-        })}
-      >
-        {/* Left side: either back + pivot (detail view) OR filters (list view) */}
-        {selectedEnquiry ? (
-          <div className={detailNavStyle(isDarkMode)} style={{ position: 'static', padding: 0, boxShadow: 'none', top: undefined, height: 'auto' }}>
-            <IconButton
-              iconProps={{ iconName: 'ChevronLeft' }}
-              onClick={handleBackToList}
-              className={backButtonStyle}
-              title="Back"
-              ariaLabel="Back"
-            />
-            <Pivot selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
-              <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
-              <PivotItem headerText="Calls" itemKey="Calls" />
-              <PivotItem headerText="Emails" itemKey="Emails" />
-            </Pivot>
-          </div>
-        ) : (
-          <>
-            {/* Status filter (labels removed for cleaner look) */}
+        }}>
+          <SegmentedControl
+            id="enquiries-status-seg"
+            ariaLabel="Filter enquiries by status"
+            value={activeState === 'Claimable' ? 'Unclaimed' : activeState}
+            onChange={(k) => handleSetActiveState(k === 'Unclaimed' ? 'Claimable' : k)}
+            options={['Claimed','Unclaimed'].map(k => ({ key: k, label: k }))}
+          />
+          {userData && userData[0]?.AOW && userData[0].AOW.split(',').length > 1 && (
             <SegmentedControl
-              id="enquiries-status-seg"
-              ariaLabel="Filter enquiries by status"
-              value={activeState === 'Claimable' ? 'Unclaimed' : activeState}
-              onChange={(k) => handleSetActiveState(k === 'Unclaimed' ? 'Claimable' : k)}
-              options={[ 'Claimed', 'Unclaimed' ].map(k => ({ key: k, label: k }))}
+              id="enquiries-area-seg"
+              ariaLabel="Filter enquiries by area of work"
+              value={activeAreaFilter}
+              onChange={setActiveAreaFilter}
+              options={[{ key: 'All', label: 'All' }, ...userData[0].AOW.split(',').map(a => a.trim()).map(a => ({ key: a, label: a }))]}
             />
-            {/* Area filter (only if user has >1 area) */}
-            {userData && userData[0]?.AOW && userData[0].AOW.split(',').length > 1 && (
-              <SegmentedControl
-                id="enquiries-area-seg"
-                ariaLabel="Filter enquiries by area of work"
-                value={activeAreaFilter}
-                onChange={setActiveAreaFilter}
-                options={[{ key: 'All', label: 'All' }, ...userData[0].AOW.split(',').map(a => a.trim()).map(a => ({ key: a, label: a }))]}
+          )}
+          <div style={{ flex: 1 }} />
+          {(isAdmin || isLocalhost) && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '2px 10px 2px 6px', height: 40, borderRadius: 12,
+                background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
+                border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
+              }}
+              title="Admin Debugger (alex, luke, cass only)"
+            >
+              <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700', marginRight: 4 }}>Admin Only</span>
+              <IconButton
+                iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
+                title="Admin Debugger (alex, luke, cass only)"
+                ariaLabel="Admin Debugger (alex, luke, cass only)"
+                onClick={() => setShowDataInspector(v => !v)}
+                styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
+                data-tooltip="alex, luke, cass"
               />
-            )}
-            {/* Spacer */}
-            <div style={{ flex: 1 }} />
-            {/* Admin controls (debug + data toggle) for admin or localhost */}
-            {(isAdmin || isLocalhost) && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '2px 10px 2px 6px',
-                  height: 40,
-                  borderRadius: 12,
-                  background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
-                  border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: isDarkMode ? '#ffe9a3' : '#5d4700'
-                }}
-                title="Admin / debug controls"
-              >
-                <IconButton
-                  iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                  title="Debug API calls"
-                  ariaLabel="Open data inspector"
-                  onClick={() => setShowDataInspector(v => !v)}
-                  styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
-                />
-                <ToggleSwitch
-                  id="enquiries-new-data-toggle"
-                  checked={useNewData}
-                  onChange={setUseNewData}
-                  size="sm"
-                  onText="New"
-                  offText="Legacy"
-                  ariaLabel="Toggle dataset between legacy and new"
-                />
-                <ToggleSwitch
-                  id="enquiries-two-column-toggle"
-                  checked={twoColumn}
-                  onChange={setTwoColumn}
-                  size="sm"
-                  onText="2-col"
-                  offText="1-col"
-                  ariaLabel="Toggle two column layout"
-                />
-              </div>
-            )}
-          </>
-        )}
-      </div>
+              <ToggleSwitch id="enquiries-new-data-toggle" checked={useNewData} onChange={setUseNewData} size="sm" onText="New" offText="Legacy" ariaLabel="Toggle dataset between legacy and new" />
+              <ToggleSwitch id="enquiries-scope-toggle" checked={showMineOnly} onChange={setShowMineOnly} size="sm" onText="Mine" offText="All" ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries" />
+              <ToggleSwitch id="enquiries-two-column-toggle" checked={twoColumn} onChange={setTwoColumn} size="sm" onText="2-col" offText="1-col" ariaLabel="Toggle two column layout" />
+            </div>
+          )}
+        </div>
+      );
+    } else {
+      // Detail mode: 48px navigator with Back + tabs (and optional small admin pill at right)
+      setContent(
+        <div className={detailNavStyle(isDarkMode)}>
+          <IconButton
+            iconProps={{ iconName: 'ChevronLeft' }}
+            onClick={handleBackToList}
+            className={backButtonStyle}
+            title="Back"
+            ariaLabel="Back"
+          />
+          <Pivot className="navigatorPivot" selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
+            <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
+            <PivotItem
+              headerText="Calls"
+              itemKey="Calls"
+              headerButtonProps={activeSubTab === 'Pitch' ? { 'aria-disabled': true, style: { color: '#aaa', cursor: 'not-allowed' } } : {}}
+            />
+            <PivotItem
+              headerText="Emails"
+              itemKey="Emails"
+              headerButtonProps={activeSubTab === 'Pitch' ? { 'aria-disabled': true, style: { color: '#aaa', cursor: 'not-allowed' } } : {}}
+            />
+          </Pivot>
+          <div style={{ flex: 1 }} />
+          {(isAdmin || isLocalhost) && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '2px 10px 2px 6px', height: 40, borderRadius: 12,
+                background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
+                border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
+              }}
+              title="Admin / debug controls"
+            >
+              <IconButton
+                iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
+                title="Debug"
+                ariaLabel="Open data inspector"
+                onClick={() => setShowDataInspector(v => !v)}
+                styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
+              />
+              <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700' }}>Deal Capture</span>
+              <ToggleSwitch
+                id="deal-capture-toggle"
+                checked={showDealCapture}
+                onChange={setShowDealCapture}
+                size="sm"
+                onText="Show"
+                offText="Hide"
+                ariaLabel="Show or hide Deal Capture (Scope & Quote Description + Amount)"
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+    return () => setContent(null);
+  }, [
+    setContent,
+    isDarkMode,
+    selectedEnquiry,
+    activeState,
+    activeAreaFilter,
+    userData,
+    isAdmin,
+    isLocalhost,
+    useNewData,
+    showMineOnly,
+    twoColumn,
+    activeSubTab,
+  showDealCapture,
+    handleSubTabChange,
+    handleBackToList,
+  ]);
+
+  return (
+    <div className={containerStyle(isDarkMode)}>
 
   <section className="page-section">
         <Stack
@@ -1100,11 +1142,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               backgroundColor: isDarkMode 
                 ? colours.dark.sectionBackground 
                 : colours.light.sectionBackground,
-              padding: '16px',
+              // Remove extra chrome when viewing a single enquiry; PitchBuilder renders its own card
+              padding: selectedEnquiry ? '0' : '16px',
               borderRadius: 0,
-              boxShadow: isDarkMode
-                ? `0 4px 12px ${colours.dark.border}`
-                : `0 4px 12px ${colours.light.border}`,
+              boxShadow: selectedEnquiry
+                ? 'none'
+                : (isDarkMode
+                    ? `0 4px 12px ${colours.dark.border}`
+                    : `0 4px 12px ${colours.light.border}`),
               width: '100%',
               fontFamily: 'Raleway, sans-serif',
             },
@@ -1184,15 +1229,33 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               <>
                         {/* Connected List Items */}
                         <div
-                          className={mergeStyles({
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: "12px",
-                            padding: 0,
-                            margin: 0,
-                            backgroundColor: 'transparent',
-                          })}
+                          className={
+                            (() => {
+                              const base = mergeStyles({
+                                display: twoColumn ? 'grid' : 'flex',
+                                flexDirection: twoColumn ? undefined : 'column',
+                                gap: '12px',
+                                padding: 0,
+                                margin: 0,
+                                backgroundColor: 'transparent',
+                                gridTemplateColumns: twoColumn ? 'repeat(2, minmax(0, 1fr))' : undefined,
+                                width: '100%', // allow full width usage
+                                transition: 'grid-template-columns .25s ease',
+                              });
+                              return twoColumn ? `${base} two-col-grid` : base;
+                            })()
+                          }
+                          style={twoColumn ? { position: 'relative' } : undefined}
                         >
+                          {twoColumn && (() => {
+                            if (typeof document !== 'undefined' && !document.getElementById('enquiriesTwoColStyles')) {
+                              const el = document.createElement('style');
+                              el.id = 'enquiriesTwoColStyles';
+                              el.textContent = '@media (max-width: 860px){.two-col-grid{display:flex!important;flex-direction:column!important;}}';
+                              document.head.appendChild(el);
+                            }
+                            return null;
+                          })()}
                           {displayedItems.map((item, idx) => {
                             const isLast = idx === displayedItems.length - 1;
 
@@ -1217,8 +1280,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                               );
                             } else {
                               const pocLower = (item.Point_of_Contact || (item as any).poc || '').toLowerCase();
-                              const isUnclaimedNew = pocLower === 'team@helix-law.com' && (item as any).__sourceType === 'new';
-                              if (isUnclaimedNew) {
+                              const isUnclaimed = pocLower === 'team@helix-law.com';
+                              if (isUnclaimed) {
                                 return (
                                   <NewUnclaimedEnquiryCard
                                     key={item.ID}

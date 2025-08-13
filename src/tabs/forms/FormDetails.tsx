@@ -10,7 +10,7 @@ import {
   MessageBarType,
 } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
-import { FormItem, UserData, Matter } from '../../app/functionality/types';
+import { FormItem, UserData, NormalizedMatter } from '../../app/functionality/types';
 import { mergeStyles } from '@fluentui/react';
 import loaderIcon from '../../assets/grey helix mark.png';
 import BespokeForm from '../../CustomForms/BespokeForms';
@@ -29,7 +29,7 @@ interface FormDetailsProps {
   isOpen: boolean;
   isFinancial?: boolean;
   userData: UserData[] | null;
-  matters: Matter[]; // NEW: Added matters prop to receive the matter data
+  matters: NormalizedMatter[]; // NEW: Added matters prop to receive the matter data
   offsetTop?: number; // Offset to avoid overlapping navigator
 }
 

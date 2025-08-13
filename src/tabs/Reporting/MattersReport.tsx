@@ -36,7 +36,7 @@ import MattersCombinedMenu from '../matters/MattersCombinedMenu';
 import AreaCountCard from '../enquiries/AreaCountCard';
 import MatterTransactions from '../matters/MatterTransactions';
 import Documents from '../matters/documents/Documents';
-import { useNavigator } from '../../app/functionality/NavigatorContext';
+import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 
 
 // ----------------------------------------------
@@ -397,7 +397,7 @@ const MattersReport: React.FC<MattersReportProps> = ({
     transactions,
 }) => {
     const { isDarkMode } = useTheme();
-    const { setContent } = useNavigator();
+    const { setContent } = useNavigatorActions();
 
     const ACTION_BAR_HEIGHT = 48;
 

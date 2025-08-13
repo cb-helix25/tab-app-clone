@@ -266,8 +266,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
     overallChange = countChange.change >= 0;
   }
   
-  // Force red for Outstanding Client Balances (since any outstanding value is bad)
-  if (title === 'Outstanding Client Balances') {
+  // Force red for Outstanding balances (client or office)
+  if (title === 'Outstanding Client Balances' || title === 'Outstanding Office Balances') {
     overallChange = false;
   }
   
@@ -461,7 +461,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: title === 'Outstanding Client Balances' ? 1 : 0,
+            opacity: (title === 'Outstanding Client Balances' || title === 'Outstanding Office Balances') ? 1 : 0,
             transition: 'opacity 0.3s'
           }}
         >

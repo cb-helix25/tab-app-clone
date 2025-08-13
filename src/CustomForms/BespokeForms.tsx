@@ -17,7 +17,7 @@ import {
   sharedPrimaryButtonStyles,
   sharedDefaultButtonStyles,
 } from '../app/styles/ButtonStyles';
-import { Matter } from '../app/functionality/types';
+import { NormalizedMatter } from '../app/functionality/types';
 import '../app/styles/MultiSelect.css';
 
 export const INPUT_HEIGHT = 40;
@@ -210,7 +210,7 @@ export interface BespokeFormProps {
   isSubmitting?: boolean;
   style?: React.CSSProperties;
   children?: React.ReactNode;
-  matters: Matter[];
+  matters: NormalizedMatter[];
   onChange?: (values: { [key: string]: any }) => void;
   submitDisabled?: boolean;
   conflict?: boolean;
@@ -218,7 +218,7 @@ export interface BespokeFormProps {
 
 interface MatterReferenceDropdownProps {
   field: FormField;
-  matters: Matter[];
+  matters: NormalizedMatter[];
   handleInputChange: (fieldName: string, value: any) => void;
   isSubmitting: boolean;
   value: string;
@@ -231,16 +231,27 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
   isSubmitting,
   value,
 }) => {
-  const [filter, setFilter] = React.useState<string>('');
+  // Create clean options from matters data
+  const options = React.useMemo<IComboBoxOption[]>(() => {
+    if (!matters || matters.length === 0) {
+      return [];
+    }
 
-  const sortedOptions = React.useMemo<IComboBoxOption[]>(() => {
     return matters
-      .slice()
-      .sort((a, b) => new Date(b.OpenDate).getTime() - new Date(a.OpenDate).getTime())
-      .map((m) => ({
-        key: m.DisplayNumber,
-        text: m.DisplayNumber,
-      }));
+      .filter(m => m && (m.displayNumber || m.matterId))
+      .sort((a, b) => {
+        const dateA = new Date(a.openDate || '').getTime();
+        const dateB = new Date(b.openDate || '').getTime();
+        return dateB - dateA; // Most recent first
+      })
+      .map((m) => {
+        const displayNum = m.displayNumber || m.matterId || '';
+        const desc = m.description || '';
+        return {
+          key: displayNum,
+          text: desc ? `${displayNum} - ${desc}` : displayNum,
+        };
+      });
   }, [matters]);
 
   return (
@@ -249,45 +260,42 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
       <ComboBox
         placeholder="Select or enter Matter Reference"
         required={field.required}
-        options={sortedOptions}
-        allowFreeform
+        options={options}
+        allowFreeform={true}
         autoComplete="on"
-        selectedKey={value}
-        onInputValueChange={(val: string) => setFilter(val)}
-        onChange={(_, option, __, val) => {
-          const selectedValue = option ? option.key : val;
-          handleInputChange(field.name, selectedValue);
-          setFilter('');
-        }}
-        onResolveOptions={(): IComboBoxOption[] => {
-          if (!filter) return sortedOptions;
-          return sortedOptions.filter((opt) =>
-            opt.text.toLowerCase().includes(filter.toLowerCase())
-          );
+        selectedKey={value || undefined}
+        text={value || ''}
+        onChange={(_, option, __, inputValue) => {
+          const newValue = option ? option.key as string : inputValue || '';
+          handleInputChange(field.name, newValue);
         }}
         disabled={isSubmitting}
         styles={{
-          root: [dropdownStyle, { width: '100%' }],
+          root: { 
+            width: '100%',
+            height: `${INPUT_HEIGHT}px`,
+          },
           input: {
             height: `${INPUT_HEIGHT}px`,
             lineHeight: `${INPUT_HEIGHT}px`,
-            padding: '0 5px',
-            border: 'none',
+            padding: '0 12px',
+            border: `1px solid ${colours.highlight}`,
+            borderRadius: 0,
+            fontSize: '14px',
           },
           callout: {
-            maxHeight: 300,
-            overflowY: 'auto',
+            maxHeight: 280,
+            minWidth: 400,
             zIndex: 1100,
           },
           optionsContainer: {
-            maxHeight: 300,
-            overflowY: 'auto',
+            maxHeight: 280,
             selectors: {
               '.ms-ComboBox-option': {
-                height: '32px',
-                lineHeight: '32px',
-                paddingTop: '4px',
-                paddingBottom: '4px',
+                minHeight: '36px !important',
+                padding: '8px 12px !important',
+                fontSize: '14px !important',
+                lineHeight: '1.3 !important',
               },
             },
           },
@@ -523,6 +531,45 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                         border: `1px solid ${colours.highlight}`,
                         borderRadius: 0,
                         padding: '8px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    {field.helpText && (
+                      <span
+                        style={{
+                          color: colours.greyText,
+                          fontSize: '12px',
+                          marginTop: '4px',
+                          display: 'block',
+                        }}
+                      >
+                        {field.helpText}
+                      </span>
+                    )}
+                  </div>
+                );
+
+              case 'date':
+              case 'time':
+                return (
+                  <div key={index}>
+                    {questionBanner}
+                    <input
+                      type={field.type}
+                      required={field.required}
+                      value={formValues[field.name]?.toString() || ''}
+                      onChange={(e) => handleInputChange(field.name, e.target.value)}
+                      disabled={isSubmitting}
+                      step={field.step}
+                      min={field.min}
+                      max={field.max}
+                      placeholder={field.placeholder}
+                      style={{
+                        width: '100%',
+                        height: `${INPUT_HEIGHT}px`,
+                        border: `1px solid ${colours.highlight}`,
+                        borderRadius: 0,
+                        padding: '0 10px',
                         boxSizing: 'border-box',
                       }}
                     />

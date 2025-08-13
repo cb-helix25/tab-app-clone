@@ -17,14 +17,89 @@ export const leftoverPlaceholders = getLeftoverPlaceholders();
  * Converting them into <p> ensures consistent spacing.
  */
 export function convertDoubleBreaksToParagraphs(html: string): string {
-  const normalized = html
+  let normalized = html
 // invisible change
     .replace(/\r\n/g, '\n')
     .replace(/(<br \/>){2,}/g, '\n\n')
     .replace(/<\/div>\s*<br \/>/g, '</div>');
+    
+  // Convert numbered lists to proper HTML ordered lists
+  normalized = convertNumberedListsToHTML(normalized);
+  
   const paragraphs = normalized.split(/\n\s*\n/).filter(p => p.trim().length > 0);
-  const wrapped = paragraphs.map((paragraph) => `<p>${paragraph.trim()}</p>`);
+  const wrapped = paragraphs.map((paragraph) => {
+    const t = paragraph.trim();
+    // Keep block-level lists as-is to avoid invalid <p><ol> nesting in Outlook
+    if (/^<ol\b/i.test(t) && /<\/ol>\s*$/i.test(t)) return t;
+    return `<p>${t}</p>`;
+  });
   return wrapped.join('');
+}
+
+/**
+ * Convert plain text numbered lists to HTML ordered lists.
+ * Looks for patterns like "1. " and "2. " and converts them to proper <ol><li> structure.
+ */
+export function convertNumberedListsToHTML(text: string): string {
+  // Split into lines for processing
+  const lines = text.split('\n');
+  const result: string[] = [];
+  let inList = false;
+  let listItems: { n: number; content: string }[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+
+    // Match lines like: "1. Something" (number + dot + space)
+    const listItemMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
+
+    if (listItemMatch) {
+      const n = Number(listItemMatch[1]);
+      const itemContent = listItemMatch[2];
+      if (!inList) {
+        inList = true;
+        listItems = [];
+      }
+      listItems.push({ n, content: itemContent });
+    } else {
+      if (inList) {
+        // Emit an HTML list that is robust in Outlook by inlining the numbers and disabling default markers
+        const html =
+          `<ol class="hlx-numlist" style="list-style:none;padding-left:0;margin:16px 0;">` +
+          listItems
+            .map(({ n, content }) =>
+              `<li style="margin:0 0 12px 0;line-height:1.6;">` +
+              `<span style="display:inline-block;min-width:1.6em;color:#D65541;font-weight:700;">${n}.` +
+              `</span><span>${content}</span></li>`
+            )
+            .join('') +
+          `</ol>`;
+        result.push(html);
+        inList = false;
+        listItems = [];
+      }
+      // Add the non-list line (preserve empty lines)
+      result.push(trimmedLine ? line : '');
+    }
+  }
+
+  // Handle a list at EOF
+  if (inList && listItems.length > 0) {
+    const html =
+      `<ol class="hlx-numlist" style="list-style:none;padding-left:0;margin:16px 0;">` +
+      listItems
+        .map(({ n, content }) =>
+          `<li style="margin:0 0 12px 0;line-height:1.6;">` +
+          `<span style="display:inline-block;min-width:1.6em;color:#D65541;font-weight:700;">${n}.` +
+          `</span><span>${content}</span></li>`
+        )
+        .join('') +
+      `</ol>`;
+    result.push(html);
+  }
+
+  return result.join('\n');
 }
 
 /**
@@ -299,7 +374,7 @@ export function applyDynamicSubstitutions(
   enquiry: Enquiry,
   amount?: number | string,
   passcode?: string,
-  checkoutLink?: string
+  instructionsLink?: string
 ): string {
   const userInitials = userData?.[0]?.['Initials'] || 'XX';
   const enquiryID = enquiry?.ID || '0000';
@@ -322,10 +397,15 @@ export function applyDynamicSubstitutions(
         })()
       : '[Amount]';
 
-  const finalCheckoutLink = checkoutLink ||
-    (passcode
-      ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}`
-      : process.env.REACT_APP_CHECKOUT_URL || '#');
+  // Prefer provided instructionsLink. Otherwise, if we have passcode and enquiry ID, include both.
+  // Fallbacks maintain older behavior.
+  const baseUrl = process.env.REACT_APP_INSTRUCTIONS_URL || '#';
+  const finalInstructionsLink = instructionsLink
+    || (passcode && enquiry?.ID
+      ? `${baseUrl}?deal=${encodeURIComponent(String(enquiry.ID))}&token=${encodeURIComponent(String(passcode))}`
+      : passcode
+        ? `${baseUrl}?passcode=${encodeURIComponent(String(passcode))}`
+        : baseUrl);
 
   return text
     .replace(/\[FE\]/g, userInitials)
@@ -334,5 +414,9 @@ export function applyDynamicSubstitutions(
     .replace(/\[Rate\]/g, formattedRate)
     .replace(/\[Amount\]/g, formattedAmount)
     .replace(/\[Passcode\]/g, passcode || '[Passcode]')
-    .replace(/\[CheckoutLink\]/g, finalCheckoutLink);
+    // Render a human-friendly hyperlink instead of a raw URL
+    .replace(
+      /\[InstructLink\]/g,
+      `<a href="${finalInstructionsLink}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`
+    );
 }

@@ -41,8 +41,9 @@ import WfhImg from '../../assets/wfh.png';
 import OutImg from '../../assets/outv2.png';
 import '../../app/styles/VerticalLabelPanel.css';
 import { useTheme } from '../../app/functionality/ThemeContext';
-import { useNavigator } from '../../app/functionality/NavigatorContext';
+import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import '../../app/styles/MetricCard.css';
+import './EnhancedHome.css';
 import { dashboardTokens, cardTokens, cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
 import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
@@ -50,7 +51,7 @@ import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
 
-import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance, BoardroomBooking, SoundproofPodBooking, SpaceBooking, FutureBookingsResponse, InstructionData, Enquiry } from '../../app/functionality/types';
+import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance, BoardroomBooking, SoundproofPodBooking, SpaceBooking, FutureBookingsResponse, InstructionData, Enquiry, NormalizedMatter } from '../../app/functionality/types';
 
 import { Resource } from '../resources/Resources';
 
@@ -67,6 +68,7 @@ import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import { hasActiveMatterOpening } from '../../app/functionality/matterOpeningUtils';
 import { hasActivePitchBuilder } from '../../app/functionality/pitchBuilderUtils';
+import { normalizeMatterData } from '../../utils/matterNormalization';
 import localAttendance from '../../localData/localAttendance.json';
 import localAnnualLeave from '../../localData/localAnnualLeave.json';
 import localMatters from '../../localData/localMatters.json';
@@ -78,6 +80,11 @@ import localRecovered from '../../localData/localRecovered.json';
 import localPrevRecovered from '../../localData/localPrevRecovered.json';
 import localSnippetEdits from '../../localData/localSnippetEdits.json';
 import localV3Blocks from '../../localData/localV3Blocks.json';
+
+// Enhanced components
+import SectionCard from './SectionCard';
+import EnhancedMetricCard from './EnhancedMetricCard';
+import EnhancedCollapsibleSection from './EnhancedCollapsibleSection';
 
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
@@ -227,6 +234,7 @@ interface CollapsibleSectionProps {
   title: string;
   metrics: { title: string }[];
   children: React.ReactNode;
+  isDarkMode: boolean; // added for dynamic theming
 }
 
 interface MetricItem {
@@ -263,7 +271,7 @@ interface MatterBalance {
 // Collapsible Section
 //////////////////////
 
-const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics, children }) => {
+const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics, children, isDarkMode }) => {
   // Start expanded by default
   const [collapsed, setCollapsed] = useState(false);
   const toggleCollapse = () => setCollapsed(!collapsed);
@@ -288,20 +296,24 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
         overflow: 'hidden',
       }}
     >
-      <div
+      <button
         onClick={toggleCollapse}
+        aria-expanded={!collapsed}
+        aria-controls={`${title}-content`}
         style={{
-          backgroundColor: colours.darkBlue,
-          color: '#ffffff',
-          border: `1px solid ${colours.light.border}`,
-          padding: '6px 10px',
-          minHeight: '30px',
+          backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+          color: isDarkMode ? colours.dark.text : colours.light.text,
+          border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+          padding: '8px 12px',
+          minHeight: '38px',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           fontSize: '14px',
+          width: '100%',
           borderRadius: 0,
+          fontWeight: 600,
         }}
       >
         <span style={{ fontWeight: 600 }}>{title}</span>
@@ -315,11 +327,12 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
             }
           }}
         />
-      </div>
+      </button>
       <div
+        id={`${title}-content`}
         style={{
           padding: collapsed ? '6px 10px' : componentTokens.summaryPane.base.padding,
-          backgroundColor: colours.light.sectionBackground,
+          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
           boxShadow: componentTokens.summaryPane.base.boxShadow,
           borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
             .borderRadius,
@@ -446,10 +459,10 @@ const tableAnimationStyle = mergeStyles({
 
 const calculateAnimationDelay = (row: number, col: number) => (row + col) * 0.1;
 
-const versionStyle = mergeStyles({
+const versionStyle = (isDarkMode: boolean) => mergeStyles({
   textAlign: 'center',
   fontSize: '14px',
-  color: '#888',
+  color: isDarkMode ? colours.dark.text : colours.light.text,
   marginTop: '40px',
 });
 
@@ -478,20 +491,21 @@ const favouritesGridStyle = mergeStyles({
 
 const metricsGridThree = mergeStyles({
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
   gap: '16px',
   width: '100%',
-  '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(2, 1fr)' },
-  '@media (max-width: 600px)': { gridTemplateColumns: '1fr' },
+  margin: '16px 0',
+  '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' },
+  '@media (max-width: 600px)': { gridTemplateColumns: '1fr', gap: '12px' },
 });
 
 const metricsGridTwo = mergeStyles({
   display: 'grid',
-  gridTemplateColumns: 'repeat(2, 1fr)',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
   gap: '16px',
   width: '100%',
-  marginTop: '16px',
-  '@media (max-width: 600px)': { gridTemplateColumns: '1fr' },
+  margin: '16px 0',
+  '@media (max-width: 600px)': { gridTemplateColumns: '1fr', gap: '12px' },
 });
 
 const peopleGridStyle = mergeStyles({
@@ -732,8 +746,22 @@ const getMetricsAlias = (
   _initials: string | undefined,
   _clioId: string | number | undefined
 ) => {
-  // Always return Alex Cook for metrics, regardless of user
-  return { name: 'Alex Cook', clioId: 142961 };
+  const fullName = (_fullName || '').toLowerCase();
+  const initials = (_initials || '').toLowerCase();
+
+  // Map Lukasz/Luke (LZ) to Jonathan Waters
+  if (fullName.includes('lukasz') || fullName.includes('luke') || initials === 'lz') {
+    return { name: 'Jonathan Waters', clioId: 137557 };
+  }
+
+  // Normalize Samuel to Sam
+  if (fullName === 'samuel packwood') {
+    const clioIdNum = typeof _clioId === 'string' ? parseInt(_clioId, 10) : _clioId;
+    return { name: 'Sam Packwood', clioId: clioIdNum };
+  }
+
+  const clioIdNum = typeof _clioId === 'string' ? parseInt(_clioId, 10) : _clioId;
+  return { name: _fullName || '', clioId: clioIdNum };
 };
 
 //////////////////////
@@ -765,7 +793,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 
 const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false }) => {
   const { isDarkMode } = useTheme();
-  const { setContent } = useNavigator();
+  const { setContent } = useNavigatorActions();
   const inTeams = isInTeams();
   const useLocalData =
     process.env.REACT_APP_USE_LOCAL_DATA === 'true';
@@ -932,7 +960,44 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const [isLoadingPOID6Years, setIsLoadingPOID6Years] = useState<boolean>(false);
   const [poid6YearsError, setPoid6YearsError] = useState<string | null>(null);
 
-  const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
+  // Consider immediate actions 'ready' once attendance & annual leave calls complete;
+  // don't let auxiliary isActionsLoading flag (which may flicker) block UI rendering.
+  const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave;
+
+  // SAFETY: In rare error paths isActionsLoading might never be cleared; ensure it flips off
+  React.useEffect(() => {
+    if (isActionsLoading && !isLoadingAttendance && !isLoadingAnnualLeave) {
+      // Fallback clear
+      setIsActionsLoading(false);
+    }
+  }, [isActionsLoading, isLoadingAttendance, isLoadingAnnualLeave]);
+
+  // HARD TIMEOUT FAILSAFE (especially for local dev): clear loading after 5s max
+  React.useEffect(() => {
+    if (!isActionsLoading) return;
+    const timeout = setTimeout(() => {
+      if (isActionsLoading) {
+        /* eslint-disable no-console */
+        console.warn('[ImmediateActions] Hard timeout reached, forcing isActionsLoading = false');
+        /* eslint-enable no-console */
+        setIsActionsLoading(false);
+      }
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [isActionsLoading]);
+
+  // DEBUG: Log state transitions for diagnosing hanging immediate actions
+  React.useEffect(() => {
+    // Only log when something relevant changes
+    /* eslint-disable no-console */
+    console.log('[ImmediateActions] states', {
+      isLoadingAttendance,
+      isLoadingAnnualLeave,
+      isActionsLoading,
+      immediateActionsReady,
+    });
+    /* eslint-enable no-console */
+  }, [isLoadingAttendance, isLoadingAnnualLeave, isActionsLoading, immediateActionsReady]);
 
   // Show immediate actions overlay (and Dismiss button) only on the first
   // home load for the session when immediate actions exist 
@@ -1056,6 +1121,19 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     }
   }, [userData]);
 
+  // Clear cached time/fee metrics when switching users
+  useEffect(() => {
+    cachedWipClio = null;
+    cachedWipClioError = null;
+    cachedRecovered = null;
+    cachedRecoveredError = null;
+    cachedPrevRecovered = null;
+    cachedPrevRecoveredError = null;
+    setWipClioData(null);
+    setRecoveredData(null);
+    setPrevRecoveredData(null);
+  }, [userData]);
+
   const actionableSummaries = useMemo(
     () => getActionableInstructions(instructionData),
     [instructionData]
@@ -1065,6 +1143,15 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     () => actionableSummaries.map(s => s.id).sort().join(','),
     [actionableSummaries]
   );
+
+  // Convert legacy matters to normalized format for FormDetails
+  const normalizedMatters = useMemo<NormalizedMatter[]>(() => {
+    if (!allMatters) return [];
+    const userFullName = userData?.[0]?.FullName || '';
+    return allMatters.map(matter => 
+      normalizeMatterData(matter, userFullName, 'legacy_all')
+    );
+  }, [allMatters, userData]);
 
   const [reviewedInstructionIds, setReviewedInstructionIds] = useState<string>(() =>
     sessionStorage.getItem('reviewedInstructionIds') || ''
@@ -2110,15 +2197,27 @@ const officeAttendanceButtonText = currentUserConfirmed
     userData?.[0]?.["Clio ID"]
   );
 
-  const userResponsibleName = metricsName;
+  // IMPORTANT: For outstanding balances, use the actual current user's name
+  // (metricsName is an alias used for time/fees metrics demos and can skew ownership).
+  const userResponsibleName = (userData?.[0]?.FullName || userData?.[0]?.["Full Name"] || '').trim() || metricsName;
   
   const userMatterIDs = useMemo(() => {
     if (!allMatters || allMatters.length === 0) return [];
     return allMatters
-      .filter((matter) => 
+      .filter((matter) =>
         normalizeName(matter.ResponsibleSolicitor) === normalizeName(userResponsibleName)
       )
-      .map((matter) => Number(matter.UniqueID));
+      .map((matter) => {
+        // Support multiple ID field variants and ignore non-numeric values
+        const rawId =
+          (matter as any).UniqueID ||
+          (matter as any).MatterID ||
+          (matter as any).matterId ||
+          (matter as any).id;
+        const numericId = Number(rawId);
+        return isNaN(numericId) ? null : numericId;
+      })
+      .filter((id): id is number => id !== null);
   }, [allMatters, userResponsibleName]);
 
   const myOutstandingBalances = useMemo(() => {
@@ -2175,22 +2274,23 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   }));
   if (showOnlyMine && userMatterIDs.length > 0) {
     return allBalances.filter((balance) =>
-      balance.associated_matter_ids.some((id: number) => userMatterIDs.includes(id))
+  balance.associated_matter_ids.some((id: number | string) => userMatterIDs.includes(Number(id)))
     );
   }
   return allBalances;
 }, [outstandingBalancesData, showOnlyMine, userMatterIDs]);
 
     const outstandingTotal = useMemo(() => {
-      if (!outstandingBalancesData || !outstandingBalancesData.data || userMatterIDs.length === 0) {
-        return null; // Indicates data is not ready
+      if (!outstandingBalancesData || !outstandingBalancesData.data) {
+        return null; // Data not ready yet
       }
-      const matchingBalances = outstandingBalancesData.data.filter((balanceRecord: any) =>
-        balanceRecord.associated_matter_ids.some((id: any) => userMatterIDs.includes(Number(id)))
+      // Strictly sum only balances for the current user's matters
+      if (userMatterIDs.length === 0) return 0;
+      return myOutstandingBalances.reduce(
+        (sum: number, record: any) => sum + (Number(record.total_outstanding_balance) || 0),
+        0
       );
-      
-      return matchingBalances.reduce((sum: number, record: any) => sum + (record.total_outstanding_balance || 0), 0);      
-    }, [outstandingBalancesData, userMatterIDs]);
+    }, [outstandingBalancesData, userMatterIDs, myOutstandingBalances]);
 
     useEffect(() => {
       if (userMatterIDs.length && outstandingBalancesData) {
@@ -2252,13 +2352,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         }).length
       : 0;  
 
-      if (!wipClioData) {
+    if (!wipClioData) {
         return [
           { title: 'Time Today', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
           { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
-          { title: 'Outstanding Office Balances', isMoneyOnly: true, money: null },
+      // Use computed outstandingTotal even when WIP data hasn't loaded
+      { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0 },
           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
           { title: 'Enquiries This Month', isTimeMoney: false, count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
@@ -2398,7 +2499,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       {
         title: 'Outstanding Office Balances',
         isMoneyOnly: true,
-        money: outstandingTotal,
+        money: outstandingTotal ?? 0,
       },
       {
         title: 'Enquiries Today',
@@ -2911,6 +3012,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return actions;
   }, [currentUserConfirmed, userInitials]);
 
+
   // Use useLayoutEffect to avoid infinite loops and set content once per dependency change
   React.useLayoutEffect(() => {
     const content = (
@@ -2942,12 +3044,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       </>
     );
     setContent(content);
-    return () => setContent(null);
   }, [
     isDarkMode,
     normalQuickActions,
     currentUserConfirmed,
-    showFocusOverlay,
+  showFocusOverlay,
+  immediateActionsDismissedThisSession,
+  immediateActionsReady,
+  immediateActionsList,
   ]);
 
   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)
@@ -3020,8 +3124,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     } else if (status === 'out') {
       iconName = 'Airplane';
     }
-    // Use the grey colour from the colours file; if not highlighted, use colours.dark.grey (or colours.light.grey)
-    const iconColor = highlight ? '#fff' : (isDarkMode ? colours.dark.grey : colours.light.grey);
+    // Use proper text color for icons; if not highlighted, use main text color
+    const iconColor = highlight ? '#fff' : (isDarkMode ? colours.dark.text : colours.light.text);
     return (
       <Icon
         iconName={iconName}
@@ -3119,50 +3223,50 @@ const conversionRate = enquiriesMonthToDate
   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
 
   return (
-    <section className="page-section responsive-container">
-      {showFocusOverlay && (
-        <div
-          className={mergeStyles({
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            zIndex: 800,
-            pointerEvents: 'auto',
-            animation: `${fadeInKeyframes} 0.3s ease`,
-          })}
-        />
-      )}
-      <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
-
-      {/* Actions & Metrics Container */}
-      <div className={actionsMetricsContainerStyle}>
-
-        {/* Metrics Section */}
-        {/* Time Metrics Section */}
-        <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
+    <div className={`enhanced-dashboard ${isDarkMode ? 'dark-mode' : ''}`}>
+      <div className="dashboard-container">
+        {showFocusOverlay && (
+          <div
+            className={mergeStyles({
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'rgba(0,0,0,0.4)',
+              zIndex: 800,
+              pointerEvents: 'auto',
+              animation: `${fadeInKeyframes} 0.3s ease`,
+            })}
+          />
+        )}
+        
+        <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
+        <EnhancedCollapsibleSection 
+          title="Time Metrics" 
+          metrics={timeMetrics.map(m => ({ title: m.title, icon: 'Clock' }))}
+          isDarkMode={isDarkMode}
+          variant="default"
+        >
             <div className={metricsGridThree}>
               {timeMetrics.slice(0, 3).map((metric, index) => (
-                <MetricCard
+                <EnhancedMetricCard
                   key={metric.title}
                   title={metric.title}
-                  {...(metric.isMoneyOnly
-                    ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                    : metric.isTimeMoney
-                      ? {
-                        money: metric.money,
-                        hours: metric.hours,
-                        prevMoney: metric.prevMoney,
-                        prevHours: metric.prevHours,
-                        isTimeMoney: metric.isTimeMoney,
-                        showDial: metric.showDial,
-                        dialTarget: metric.dialTarget,
-                      }
-                      : { count: metric.count, prevCount: metric.prevCount })}
-                  isDarkMode={isDarkMode}
+                  value={metric.isMoneyOnly ? (metric.money || 0) : metric.isTimeMoney ? (metric.hours || 0) : (metric.count || 0)}
+                  secondaryValue={metric.isTimeMoney ? (metric.money || 0) : undefined}
+                  previousValue={metric.isMoneyOnly ? metric.prevMoney : metric.isTimeMoney ? metric.prevHours : metric.prevCount}
+                  prefix={metric.isMoneyOnly ? '£' : ''}
+                  suffix={metric.isTimeMoney ? 'h' : metric.isMoneyOnly ? '' : ''}
+                  secondaryPrefix={metric.isTimeMoney ? '£' : ''}
+                  secondarySuffix={''}
+                  showDial={metric.showDial}
+                  dialTarget={metric.dialTarget}
+                  icon={metric.title.includes('Time') ? 'Clock' : 'Money'}
                   animationDelay={index * 0.1}
+                  variant={index === 1 ? 'featured' : 'default'}
+                  accentColor={metric.title.includes('Time') ? colours.blue : colours.green}
+                  isTimeMoney={metric.isTimeMoney}
                 />
               ))}
             </div>
@@ -3176,152 +3280,115 @@ const conversionRate = enquiriesMonthToDate
                       onClick={() => setIsOutstandingPanelOpen(true)}
                       style={{ cursor: 'pointer' }}
                     >
-                      <MetricCard
+                      <EnhancedMetricCard
                         title={metric.title}
-                        {...(metric.isMoneyOnly
-                          ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                          : metric.isTimeMoney
-                            ? {
-                              money: metric.money,
-                              hours: metric.hours,
-                              prevMoney: metric.prevMoney,
-                              prevHours: metric.prevHours,
-                              isTimeMoney: metric.isTimeMoney,
-                              showDial: metric.showDial,
-                              dialTarget: metric.dialTarget,
-                            }
-                            : { count: metric.count, prevCount: metric.prevCount })}
-                        isDarkMode={isDarkMode}
-                        animationDelay={index * 0.1}
+                        value={metric.money || 0}
+                        previousValue={metric.prevMoney}
+                        prefix="£"
+                        icon="Money"
+                        animationDelay={(index + 3) * 0.1}
+                        variant="default"
+                        accentColor={colours.red}
                       />
                     </div>
                   );
                 }
                 return (
-
-                <MetricCard
-                  key={metric.title}
-                  title={metric.title}
-                  {...(metric.isMoneyOnly
-                    ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                    : metric.isTimeMoney
-                    ? {
-                        money: metric.money,
-                        hours: metric.hours,
-                        prevMoney: metric.prevMoney,
-                        prevHours: metric.prevHours,
-                        isTimeMoney: metric.isTimeMoney,
-                        showDial: metric.showDial,
-                        dialTarget: metric.dialTarget,
-                      }
-                    : { count: metric.count, prevCount: metric.prevCount })}
-                  isDarkMode={isDarkMode}
-                  animationDelay={index * 0.1}
-                />
-                );
-              })}
-
-          </div>
-        </CollapsibleSection>
-        {/* Conversion Metrics Section */}
-        <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
-              <div className={metricsGridThree}>
-                {enquiryMetrics.slice(0, 3).map((metric, index) => (
-                  <MetricCard
+                  <EnhancedMetricCard
                     key={metric.title}
                     title={metric.title}
-                    {...(metric.isMoneyOnly
-                      ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                      : metric.isTimeMoney
-                        ? {
-                          money: metric.money,
-                          hours: metric.hours,
-                          prevMoney: metric.prevMoney,
-                          prevHours: metric.prevHours,
-                          isTimeMoney: metric.isTimeMoney,
-                        }
-                        : { count: metric.count, prevCount: metric.prevCount })}
-                    isDarkMode={isDarkMode}
+                    value={metric.isMoneyOnly ? (metric.money || 0) : metric.isTimeMoney ? (metric.hours || 0) : (metric.count || 0)}
+                    secondaryValue={metric.isTimeMoney ? (metric.money || 0) : undefined}
+                    previousValue={metric.isMoneyOnly ? metric.prevMoney : metric.isTimeMoney ? metric.prevHours : metric.prevCount}
+                    prefix={metric.isMoneyOnly ? '£' : ''}
+                    suffix={metric.isTimeMoney ? 'h' : metric.isMoneyOnly ? '' : ''}
+                    secondaryPrefix={metric.isTimeMoney ? '£' : ''}
+                    secondarySuffix={''}
+                    showDial={metric.showDial}
+                    dialTarget={metric.dialTarget}
+                    icon={metric.title.includes('Time') ? 'Clock' : 'Money'}
+                    animationDelay={(index + 3) * 0.1}
+                    variant="default"
+                    accentColor={colours.darkBlue}
+                    isTimeMoney={metric.isTimeMoney}
+                  />
+                );
+              })}
+          </div>
+        </EnhancedCollapsibleSection>
+        
+        <EnhancedCollapsibleSection 
+          title="Conversion Metrics" 
+          metrics={enquiryMetrics.map(m => ({ title: m.title, icon: 'People' }))}
+          isDarkMode={isDarkMode}
+          variant="default"
+        >
+              <div className={metricsGridThree}>
+                {enquiryMetrics.slice(0, 3).map((metric, index) => (
+                  <EnhancedMetricCard
+                    key={metric.title}
+                    title={metric.title}
+                    value={metric.count || 0}
+                    previousValue={metric.prevCount}
+                    icon="People"
                     animationDelay={index * 0.1}
+                    variant={index === 1 ? 'featured' : 'default'}
+                    accentColor={index === 0 ? colours.green : index === 1 ? colours.blue : colours.highlight}
                   />
                 ))}
               </div>
 
-
               <div className={metricsGridTwo}>
-              {/* Matters Opened metric without dial (basic count) */}
-              <MetricCard
-                key={enquiryMetrics[3].title}
-                title={enquiryMetrics[3].title}
-                {...(enquiryMetrics[3].isMoneyOnly
-                  ? { money: enquiryMetrics[3].money, prevMoney: enquiryMetrics[3].prevMoney, isMoneyOnly: enquiryMetrics[3].isMoneyOnly }
-                  : enquiryMetrics[3].isTimeMoney
-                  ? {
-                      money: enquiryMetrics[3].money,
-                      hours: enquiryMetrics[3].hours,
-                      prevMoney: enquiryMetrics[3].prevMoney,
-                      prevHours: enquiryMetrics[3].prevHours,
-                      isTimeMoney: enquiryMetrics[3].isTimeMoney,
-                    }
-                  : { count: enquiryMetrics[3].count, prevCount: enquiryMetrics[3].prevCount })}
-                isDarkMode={isDarkMode}
-                animationDelay={0}
-                // No dial props passed so this card just shows the count
-              />
+                <EnhancedMetricCard
+                  title={enquiryMetrics[3]?.title || 'Matters Opened'}
+                  value={enquiryMetrics[3]?.count || 0}
+                  previousValue={enquiryMetrics[3]?.prevCount}
+                  icon="CheckMark"
+                  animationDelay={0}
+                  variant="default"
+                  accentColor={colours.green}
+                />
 
-              {/* Conversion Rate metric */}
-              <MetricCard
-                key="Conversion Rate"
-                title="Conversion Rate"
-                {...{
-                  count: conversionRate,
-                  prevCount: 0,
-                }}
-                isDarkMode={isDarkMode}
-                animationDelay={0.1}
-              />
-            </div>
-        </CollapsibleSection>
+                <EnhancedMetricCard
+                  title="Conversion Rate"
+                  value={conversionRate}
+                  suffix="%"
+                  showDial={true}
+                  dialTarget={100}
+                  // Replaced unregistered icon 'TrendingUp' with 'Ascending' (registered Fluent UI icon)
+                  icon="Ascending"
+                  animationDelay={0.1}
+                  variant="featured"
+                  accentColor={colours.highlight}
+                />
+              </div>
+        </EnhancedCollapsibleSection>
 
-      {/* Transactions Requiring Action */}
-      <ActionSection
-        transactions={transactions}
-        userInitials={userInitials}
-        isDarkMode={isDarkMode}
-        onTransactionClick={handleTransactionClick}
-        matters={allMatters || []}
-        updateTransaction={updateTransaction}
-        outstandingBalances={myOutstandingBalances} // pass the pre-filtered data
-      />
+      <SectionCard 
+        title="Transactions & Balances" 
+        id="transactions-section"
+        variant="default"
+        animationDelay={0.1}
+      >
+        <ActionSection
+          transactions={transactions}
+          userInitials={userInitials}
+          isDarkMode={isDarkMode}
+          onTransactionClick={handleTransactionClick}
+          matters={allMatters || []}
+          updateTransaction={updateTransaction}
+          outstandingBalances={myOutstandingBalances}
+        />
+      </SectionCard>
 
       {/* Favourites Section */}
       {(formsFavorites.length > 0 || resourcesFavorites.length > 0) && (
-        <div
-          className={mergeStyles({
-            backgroundColor: isDarkMode
-              ? colours.dark.sectionBackground
-              : colours.light.sectionBackground,
-            padding: '16px',
-            borderRadius: 0,
-            boxShadow: isDarkMode
-              ? `0 4px 12px ${colours.dark.border}`
-              : `0 4px 12px ${colours.light.border}`,
-            transition: 'background-color 0.3s, box-shadow 0.3s',
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-          })}
+        <SectionCard 
+          title="Favourites" 
+          id="favourites-section"
+          variant="default"
+          animationDelay={0.2}
         >
-          <Text
-            className={mergeStyles({
-              fontWeight: '700',
-              fontSize: '20px',
-              color: isDarkMode ? colours.dark.text : colours.light.text,
-            })}
-          >
-            Favourites
-          </Text>
           {formsFavorites.length > 0 && (
             <div>
               <div className={favouritesGridStyle}>
@@ -3390,25 +3457,31 @@ const conversionRate = enquiriesMonthToDate
               </div>
             </div>
           )}
-        </div>
+        </SectionCard>
       )}
 
-        <Attendance
-          ref={attendanceRef}
-          isDarkMode={isDarkMode}
-          isLoadingAttendance={isLoadingAttendance}
-          isLoadingAnnualLeave={isLoadingAnnualLeave}
-          attendanceError={attendanceError}
-          annualLeaveError={annualLeaveError}
-          attendanceRecords={transformedAttendanceRecords}
-          teamData={transformedTeamData}
-          annualLeaveRecords={annualLeaveRecords}
-          futureLeaveRecords={futureLeaveRecords}
-          userData={userData}
-          onAttendanceUpdated={handleAttendanceUpdated}
-        />
+      <SectionCard 
+        title="Attendance" 
+        id="attendance-section"
+        variant="default"
+        animationDelay={0.3}
+      >
+          <Attendance
+            ref={attendanceRef}
+            isDarkMode={isDarkMode}
+            isLoadingAttendance={isLoadingAttendance}
+            isLoadingAnnualLeave={isLoadingAnnualLeave}
+            attendanceError={attendanceError}
+            annualLeaveError={annualLeaveError}
+            attendanceRecords={transformedAttendanceRecords}
+            teamData={transformedTeamData}
+            annualLeaveRecords={annualLeaveRecords}
+            futureLeaveRecords={futureLeaveRecords}
+            userData={userData}
+            onAttendanceUpdated={handleAttendanceUpdated}
+          />
+      </SectionCard>
 
-      </div>
 
       {/* Contexts Panel */}
       <BespokePanel
@@ -3494,7 +3567,7 @@ const conversionRate = enquiriesMonthToDate
           link={selectedForm}
           isDarkMode={isDarkMode}
           userData={userData}
-          matters={allMatters || []}
+          matters={normalizedMatters}
           offsetTop={96}
         />
       )}
@@ -3507,26 +3580,13 @@ const conversionRate = enquiriesMonthToDate
         }} />
       )}
 
-      <div
-        className={mergeStyles({
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginTop: '40px',
-        })}
-      >
-        <Text className={versionStyle}>Version 1.1</Text>
-        <IconButton
-          iconProps={{ iconName: 'Info' }}
-          title="Show context details"
-          ariaLabel="Show context details"
-          styles={{ root: { marginLeft: 8 }, icon: { fontSize: '16px' } }}
-          onClick={() => setIsContextPanelOpen(true)}
-        />
+  {/* Removed version and info button per request */}
+
+        </Stack>
       </div>
 
-    </Stack>
-    </section>
+  {/* Removed floating action hint per request */}
+    </div>
   );
 };
 

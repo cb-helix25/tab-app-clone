@@ -11,10 +11,11 @@ Inputs
 - Submit path: ${input:submitPath:/api/submit}
 
 Instructions
-- Create a functional component in TypeScript using React 18 and Fluent UI v9.
-- Build controlled inputs for each field with basic validation.
-- Expose `onSubmit` prop; default to POST ${input:submitPath} with axios.
-- Include minimal Jest test scaffolding.
+- Create a functional component in TypeScript using React 18 and Fluent UI v9 (no any; strict types).
+- Build controlled inputs for each field with basic validation; surface errors inline.
+- Expose `onSubmit` prop; default to POST ${input:submitPath} with fetch (no axios unless justified).
+- Include minimal Jest + Testing Library tests (happy path + one validation edge case).
+- Keep diffs focused; co-locate test next to component.
 
 Output
 - File path suggestion under src/components/${input:name}.tsx

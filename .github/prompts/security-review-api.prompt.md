@@ -14,7 +14,7 @@ Inputs
 
 Process
 1) Inspect the handler and any helper imports in the same folder.
-2) Check for: input validation, CORS, secret handling, SQL parameterization, error handling, logging, and auth.
+2) Check for: input validation/narrowing, CORS + OPTIONS preflight, secret handling (no PII in logs), SQL parameterization, structured error handling (4xx vs 5xx), and auth.
 3) Produce findings with severity and specific file:line references.
 4) Propose minimal code changes, keeping public API stable.
 

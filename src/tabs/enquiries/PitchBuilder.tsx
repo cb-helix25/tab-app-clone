@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Stack,
@@ -22,6 +21,7 @@ import {
   IChoiceGroupOption,
   IPoint,
   Text,
+  TooltipHost,
 } from '@fluentui/react';
 import ModernMultiSelect from '../instructions/MatterOpening/ModernMultiSelect';
 import { Enquiry } from '../../app/functionality/types';
@@ -30,6 +30,7 @@ import ToggleSwitch from '../../components/ToggleSwitch';
 import { hasAdminAccess } from '../../utils/matterNormalization';
 import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
+import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import PracticeAreaPitch, { PracticeAreaPitchType } from '../../app/customisation/PracticeAreaPitch';
 import { TemplateBlock, TemplateOption } from '../../app/customisation/ProductionTemplateBlocks';
 import {
@@ -53,7 +54,7 @@ import {
 import ReactDOMServer from 'react-dom/server';
 import { PitchDebugPanel, useLocalFetchLogger } from './pitch-builder';
 import EmailSignature from './EmailSignature';
-import EmailPreview from './pitch-builder/EmailPreview';
+// EmailPreview panel deprecated in favour of inline preview
 import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
 
 import OperationStatusToast from './pitch-builder/OperationStatusToast';
@@ -86,14 +87,14 @@ function useDynamicTemplateBlocks(templateSet: TemplateSet) {
   const [blocks, setBlocks] = useState<TemplateBlock[]>(() => getTemplateBlocks(templateSet));
   useEffect(() => {
     let cancelled = false;
-    async function loadBlocks() {
-      const mod = await import('../../app/customisation/ProductionTemplateBlocks');
-      if (!cancelled) {
-        // If you export named blocks, adjust as needed
-        setBlocks(getTemplateBlocks(templateSet));
+      async function loadBlocks() {
+        const mod = await import('../../app/customisation/ProductionTemplateBlocks');
+        if (!cancelled) {
+          // If you export named blocks, adjust as needed
+          setBlocks(getTemplateBlocks(templateSet));
+        }
       }
-    }
-    loadBlocks();
+      loadBlocks();
     // HMR support
     // @ts-expect-error: HMR property only exists in dev
     if (import.meta && import.meta.hot) {
@@ -119,6 +120,7 @@ function useDynamicTemplateBlocks(templateSet: TemplateSet) {
 interface PitchBuilderProps {
   enquiry: Enquiry;
   userData: any;
+  showDealCapture?: boolean;
 }
 
 interface ApiCallLog {
@@ -549,17 +551,94 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
   document.head.appendChild(style);
 }
 
-const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDealCapture = false }) => {
+  // Local helper: reveals value + copy on hover; shows only icon by default
+  const RevealCopyField: React.FC<{ iconName: string; value: string; color: string; label: string }> = ({ iconName, value, color, label }) => {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = () => {
+      navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    };
+    // Subtle tinted background for the icon square
+    const iconTint = color === '#3690CE' ? 'rgba(54,144,206,0.15)' : 'rgba(102,102,102,0.15)';
+    return (
+      <span aria-label={label} title={label} style={{ display: 'inline-flex', alignItems: 'center', marginRight: 8 }}>
+        {/* Icon square (left) */}
+        <span
+          style={{
+            width: 28,
+            height: 28,
+            minWidth: 28,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: isDarkMode ? 'rgba(255,255,255,0.06)' : iconTint,
+            border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}`,
+            borderRight: 'none', // join with tray
+            borderRadius: '6px 0 0 6px',
+          }}
+        >
+          <Icon iconName={iconName} styles={{ root: { color, fontSize: 14 } }} />
+        </span>
+        {/* Value tray (right) */}
+    <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            color: isDarkMode ? colours.dark.text : '#24292f',
+            background: isDarkMode ? colours.dark.inputBackground : '#f6f8fa',
+            border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}`,
+            borderLeft: 'none', // join with icon square
+            borderRadius: '0 6px 6px 0',
+      height: 28,
+      padding: '0 8px',
+            fontSize: 13,
+      lineHeight: 1,
+            boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(0,0,0,0.04)',
+            userSelect: 'text',
+          }}
+        >
+          <span style={{ fontWeight: 500 }}>{value}</span>
+          <IconButton
+            iconProps={{ iconName: copied ? 'CheckMark' : 'Copy' }}
+            title={copied ? 'Copied!' : 'Copy'}
+            ariaLabel={copied ? 'Copied!' : 'Copy'}
+            onClick={handleCopy}
+            styles={{
+              root: {
+                borderRadius: 6,
+                height: 22,
+                width: 22,
+                minWidth: 22,
+                padding: 0,
+                background: 'transparent',
+              },
+              rootHovered: { background: isDarkMode ? 'rgba(255,255,255,0.06)' : '#e6f0fa' },
+              icon: { fontSize: 12, color: isDarkMode ? colours.dark.text : '#57606a' },
+            }}
+          />
+        </span>
+      </span>
+    );
+  };
   // Admin/debug controls state
   const [useNewData, setUseNewData] = useState<boolean>(false);
   const [showDataInspector, setShowDataInspector] = useState(false);
-  const userRole = userData?.[0]?.Role || '';
-  const userFullName = userData?.[0]?.FullName || '';
+  const userRec: any = (userData && userData[0]) ? userData[0] : {};
+  const userRole: string = (userRec.Role || userRec.role || '').toString();
+  const userFullName: string = (
+    userRec.FullName ||
+    userRec['Full Name'] ||
+    [userRec.First, userRec.Last].filter(Boolean).join(' ')
+  )?.toString() || '';
   const isAdmin = hasAdminAccess(userRole, userFullName);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   // Initial Notes state
   const [initialNotes, setInitialNotes] = useState<string>('');
   const { isDarkMode } = useTheme();
+  const { setContent } = useNavigatorActions();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
   const userEmailAddress = userData?.[0]?.Initials
     ? `${userData[0].Initials.toLowerCase()}@helix-law.com`
@@ -567,6 +646,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   // Local fetch logging
   const { apiCalls, clear: clearApiCalls } = useLocalFetchLogger(isLocalhost);
+  const [debugCollapsed, setDebugCollapsed] = useState<boolean>(true);
 
   // (Fetch interception now handled by useLocalFetchLogger hook)
 
@@ -628,17 +708,20 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setPinnedBlocks({});
     setEditedBlocks({});
     setOriginalBlockContent({});
-    loadBlocks().then((newBlocks) => {
-      const blocksToUse = (newBlocks || getTemplateBlocks(newSet)).filter(
-        b => !hiddenBlocks[b.title]
-      );
-      setBody(generateInitialBody(blocksToUse));
-      if (bodyEditorRef.current) {
-        bodyEditorRef.current.innerHTML = generateInitialBody(blocksToUse);
-      }
-      // v1 templates should no longer auto select any blocks
-      // autoInsertDefaultBlocks(blocksToUse, newSet);
-    });
+      loadBlocks().then((newBlocks) => {
+        const blocksToUse = (newBlocks || getTemplateBlocks(newSet)).filter(
+          b => !hiddenBlocks[b.title]
+        );
+        // Simplified composer: don’t auto-seed body from old templates.
+        if (!body || body.trim() === '') {
+          setBody('');
+          if (bodyEditorRef.current) {
+            bodyEditorRef.current.innerHTML = '';
+          }
+        }
+        // v1 templates should no longer auto select any blocks
+        // autoInsertDefaultBlocks(blocksToUse, newSet);
+      });
   }
 
   // Initial Scope options (formerly Service)
@@ -1121,6 +1204,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   useEffect(() => {
     const saved = localStorage.getItem('pitchBuilderState');
+  const shouldResume = localStorage.getItem('resumePitchBuilder') === 'true';
     let initialSet: TemplateSet = 'Database';
     if (saved) {
       try {
@@ -1159,7 +1243,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         if (state.hiddenBlocks) setHiddenBlocks(state.hiddenBlocks);
         if (state.blocks) setBlocks(state.blocks);
         if (state.savedSnippets) setSavedSnippets(state.savedSnippets);
-        if (state.body) setBody(state.body);
+  if (shouldResume && state.body) setBody(state.body);
       } catch (e) {
         console.error('Failed to parse saved pitch builder state', e);
         initialSet = 'Database';
@@ -1240,9 +1324,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   // State for extracted block selections and editable content
   const [sectionSelections, setSectionSelections] = useState<Record<string, string[]>>({});
   const [sectionContent, setSectionContent] = useState<Record<string, string>>({});
-  const [body, setBodyState] = useState<string>(() =>
-    generateInitialBody(blocks.filter(b => !hiddenBlocks[b.title]))
-  );
+  const [body, setBodyState] = useState<string>('');
   
   function setBody(newBody: string | ((prevBody: string) => string)) {
     const resolvedBody = typeof newBody === 'function' ? newBody(body) : newBody;
@@ -1354,10 +1436,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [isUndoRedoOperation, setIsUndoRedoOperation] = useState<boolean>(false);
   const [undoInitialized, setUndoInitialized] = useState<boolean>(false);
 
+  // Navigator is now owned by Enquiries detail view; remove PitchBuilder-specific Navigator bar to avoid duplication.
+
   // Initialize undo stack with initial body content (only once)
   useEffect(() => {
     if (!undoInitialized && body && body.trim()) {
-      // Ensure we have the current DOM content for initialization
       const currentContent = bodyEditorRef.current?.innerHTML || body;
       setUndoStack([currentContent]);
       setUndoInitialized(true);
@@ -1974,8 +2057,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode
-        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+      dealPasscode && dealId
+        ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
         : undefined
     );
     insertAtCursor(html);
@@ -2010,8 +2093,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           enquiry,
           amount,
           dealPasscode,
-          dealPasscode
-            ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+          dealPasscode && dealId
+            ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
             : undefined
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2052,8 +2135,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           enquiry,
           amount,
           dealPasscode,
-          dealPasscode
-            ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+          dealPasscode && dealId
+            ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
             : undefined
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2251,8 +2334,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode
-        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+      dealPasscode && dealId
+        ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
         : undefined
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2371,8 +2454,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode
-        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+      dealPasscode && dealId
+        ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
         : undefined
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2871,8 +2954,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     let rawHtml = removeHighlightSpans(body);
 
     // Apply dynamic substitutions such as amount just before sending
-    const checkoutLink = dealPasscode
-      ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+    const instructionsLink = dealPasscode && dealId
+      ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
       : undefined;
     rawHtml = applyDynamicSubstitutions(
       rawHtml,
@@ -2880,7 +2963,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       enquiry,
       amount,
       dealPasscode,
-      checkoutLink
+      instructionsLink
     );
 
     // Remove leftover placeholders
@@ -3307,7 +3390,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
               className={mergeStyles({
                 marginTop: '6px',
                 border: `1px solid ${colours.highlightBlue}`,
-                padding: '4px 6px',
+                padding: '6px 10px',
                 borderRadius: 0,
                 fontSize: '12px',
                 display: 'flex',
@@ -3345,7 +3428,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                   : colours.highlightNeutral
               }`
               : `1px dashed ${colours.highlightBlue}`,
-            padding: '6px 8px',
+            padding: isEdited ? '8px 10px' : '6px 8px',
             borderRadius: 0,
             fontSize: '13px',
           })}
@@ -3360,8 +3443,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                 enquiry,
                 amount,
                 dealPasscode,
-                dealPasscode
-                  ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+                dealPasscode && dealId
+                  ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
                   : undefined
               );
               return (
@@ -3386,8 +3469,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         enquiry,
         amount,
         dealPasscode,
-        dealPasscode
-          ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+        dealPasscode && dealId
+          ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
           : undefined
       );
       return (
@@ -3404,7 +3487,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                   : colours.highlightNeutral
               }`
               : `1px dashed ${colours.highlightBlue}`,
-            padding: '6px 8px',
+            padding: isEdited ? '8px 10px' : '6px 8px',
             borderRadius: 0,
             fontSize: '13px',
           })}
@@ -3770,7 +3853,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         enquiry,
         amount,
         dealPasscode,
-        dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+        dealPasscode && dealId ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}` : undefined
       );
       raw = cleanTemplateString(raw);
       const formatted = formatSectionContent(raw);
@@ -3875,8 +3958,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   return (
     <Stack className={containerStyle}>
-      {/* Client Info Header - Simplified, now with admin/debug controls inline */}
-      <div style={{ padding: '16px 20px', borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}` }}>
+  {/* Client Info Header - Simplified (admin controls moved to Navigator) */}
+  <div style={{ padding: '12px 20px', borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ display: 'flex', alignItems: 'center' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#3690CE" xmlns="http://www.w3.org/2000/svg">
@@ -3887,103 +3970,22 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           <div style={{ fontWeight: 600, fontSize: '1.1rem', color: '#24292f' }}>
             {enquiry.First_Name} {enquiry.Last_Name}
           </div>
-          {enquiry.Email && (
-            <span style={{ color: '#3690CE', fontSize: 13 }}>{enquiry.Email}</span>
-          )}
-          {enquiry.Phone_Number && (
-            <span style={{ color: '#666', fontSize: 13 }}>{enquiry.Phone_Number}</span>
-          )}
-          {enquiry.Area_of_Work && (
-            <span style={{ 
-              color: '#fff', 
-              backgroundColor: colours.darkBlue, 
-              padding: '2px 8px', 
-              borderRadius: 12, 
-              fontSize: 11, 
-              fontWeight: 600 
-            }}>
-              {enquiry.Area_of_Work}
-            </span>
-          )}
-          {isAdmin && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '2px 10px 2px 6px',
-                height: 40,
-                borderRadius: 12,
-                background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
-                border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-                fontSize: 11,
-                fontWeight: 600,
-                color: isDarkMode ? '#ffe9a3' : '#5d4700',
-                margin: '0 0 0 8px',
-                width: 'fit-content',
-                zIndex: 2,
-                position: 'relative'
-              }}
-              title="Admin / debug controls"
-            >
-              <IconButton
-                iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                title="Debug API calls"
-                ariaLabel="Open data inspector"
-                onClick={() => setShowDataInspector(v => !v)}
-                styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30, backgroundColor: showDataInspector ? '#ffe066' : undefined } }}
-              />
-              <button
-                style={{
-                  border: 'none',
-                  background: showDataInspector ? '#ffe066' : '#444',
-                  color: showDataInspector ? '#5d4700' : '#fff',
-                  borderRadius: 6,
-                  padding: '4px 10px',
-                  fontWeight: 600,
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  outline: showDataInspector ? '2px solid #e2c56a' : 'none',
-                  transition: 'background 0.2s, color 0.2s, outline 0.2s',
-                }}
-                onClick={() => setShowDataInspector(v => !v)}
-              >
-                Calls {apiCalls.length > 0 && (
-                  <span style={{ marginLeft: 4, color: '#b8860b', fontWeight: 700 }}>
-                    {apiCalls.length}
-                  </span>
-                )}
-              </button>
-              {/* Emails button removed as requested */}
-              <ToggleSwitch
-                id="pitchbuilder-new-data-toggle"
-                checked={useNewData}
-                onChange={setUseNewData}
-                size="sm"
-                onText="New"
-                offText="Legacy"
-                ariaLabel="Toggle dataset between legacy and new"
-              />
-              {showDataInspector && (
-                <div style={{ position: 'absolute', top: 44, left: 0, zIndex: 10 }}>
-                  <PitchDebugPanel
-                    calls={apiCalls}
-                    onClear={clearApiCalls}
-                    collapsed={false}
-                    onToggle={() => setShowDataInspector(false)}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+          <div style={{ flex: 1 }} />
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {enquiry.Email && (
+              <RevealCopyField iconName="Mail" value={enquiry.Email} color="#3690CE" label="Email" />
+            )}
+            {enquiry.Phone_Number && (
+              <RevealCopyField iconName="Phone" value={enquiry.Phone_Number} color="#666" label="Phone" />
+            )}
+          </div>
         </div>
       </div>
 
       <main className={bodyWrapperStyle}>
         {/* Content Sections - Streamlined */}
         {EXTRACTED_BLOCKS.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 8 }}>
             {EXTRACTED_BLOCKS.map(title => {
               const block = blocks.find(b => b.title === title);
               if (!block) return null;
@@ -4066,7 +4068,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         {/* Old InstructionCard removed: now using unified summary card above */}
 
         {/* Row: Combined Email Editor and Template Blocks */}
-        <EditorAndTemplateBlocks
+  <EditorAndTemplateBlocks
           isDarkMode={isDarkMode}
           body={body}
           setBody={setBodyForComponents}
@@ -4097,10 +4099,18 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           subject={subject}
           setSubject={setSubject}
           // Deal capture props
+          showDealCapture={showDealCapture}
           initialScopeDescription={initialScopeDescription}
           onScopeDescriptionChange={setInitialScopeDescription}
           amount={amount}
           onAmountChange={handleAmountChange}
+          // Inline preview props
+          userData={userData}
+          enquiry={enquiry}
+          passcode={dealPasscode}
+          handleDraftEmail={handleDraftEmail}
+          sendEmail={sendEmail}
+          isDraftConfirmed={isDraftConfirmed}
           // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
           // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
           // highlightBlock prop removed; not needed by EditorAndTemplateBlocks
@@ -4159,7 +4169,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                         enquiry,
                         amount,
                         dealPasscode,
-                        dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+                        dealPasscode && dealId ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}` : undefined
                       );
                       const isSelected = snippetOptionsLabel === option.key;
                       return (
@@ -4272,15 +4282,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             } } originalText={''} editedText={''}          />
         )}
 
-        {/* Action Buttons - Simplified */}
+        {/* Reset button preserved */}
         <Stack horizontal tokens={{ childrenGap: 16 }} styles={{ root: { marginTop: '24px', padding: '0 8px' } }}>
-          <PrimaryButton
-            text="Preview & Send"
-            onClick={togglePreview}
-            styles={sharedPrimaryButtonStyles}
-            ariaLabel="Preview Email"
-            iconProps={{ iconName: 'Preview' }}
-          />
           <DefaultButton
             text="Reset All"
             onClick={resetForm}
@@ -4290,35 +4293,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           />
         </Stack>
 
-        {/* Preview Panel */}
-        <EmailPreview
-          isPreviewOpen={isPreviewOpen}
-          onDismiss={togglePreview}
-          enquiry={enquiry}
-          subject={subject}
-          body={body}
-          templateBlocks={templateBlocks}
-          attachments={attachments}
-          followUp={followUp}
-          fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
-          userData={userData}
-          initialScopeDescription={initialScopeDescription}
-          clients={dealClients}
-          to={to}
-          cc={cc}
-          bcc={bcc}
-          autoInsertedBlocks={autoInsertedBlocks}
-          editedBlocks={editedBlocks}
-          amount={amount}
-          sendEmail={sendEmail}
-          handleDraftEmail={handleDraftEmail}
-          isSuccessVisible={isSuccessVisible}
-          isDraftConfirmed={isDraftConfirmed}
-          passcode={dealPasscode}
-        />
-
-        {/* Removed duplicate Preview and Reset buttons */}
-
         <OperationStatusToast
           visible={toast !== null}
           message={toast?.message || ''}
@@ -4326,6 +4300,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           loading={toast?.loading}
         />
       </main>
+
+      {showDataInspector && (
+        <PitchDebugPanel
+          calls={apiCalls}
+          onClear={clearApiCalls}
+          collapsed={debugCollapsed}
+          onToggle={() => setDebugCollapsed((v) => !v)}
+        />
+      )}
     </Stack>
   );
 

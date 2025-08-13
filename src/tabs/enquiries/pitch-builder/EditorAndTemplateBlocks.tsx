@@ -1,10 +1,783 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Stack, Text, Icon, Pivot, PivotItem, TextField } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 import SnippetEditPopover from './SnippetEditPopover';
 import { placeholderSuggestions } from '../../../app/customisation/InsertSuggestions';
 import { wrapInsertPlaceholders } from './emailUtils';
+import { SCENARIOS, SCENARIOS_VERSION } from './scenarios';
+import EmailSignature from '../EmailSignature';
+import { applyDynamicSubstitutions, convertDoubleBreaksToParagraphs } from './emailUtils';
+import markUrl from '../../../assets/dark blue mark.svg';
+
+
+
+
+// NOTE: renderWithPlaceholders was removed due to corruption and is not used in this component.
+// Escape HTML for safe injection
+function escapeHtml(str: string) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Build HTML string with placeholder spans
+function buildPlaceholderHTML(text: string) {
+  const regex = /\[([^\]]+)\]/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let html = '';
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      html += escapeHtml(text.slice(lastIndex, match.index));
+    }
+    const inner = escapeHtml(match[1]);
+  // Render placeholder without square brackets; blue pill, dashed border, subtle grey text, no bold
+  html += `<span style="display:inline;background:#e0f0ff;border:1px dashed #8bbbe8;padding:2px 6px;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${inner}</span>`;
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    html += escapeHtml(text.slice(lastIndex));
+  }
+  return html || '';
+}
+
+// Find placeholder tokens like [TOKEN] in a string (HTML or plain text)
+function findPlaceholders(input: string): string[] {
+  const matches = input.match(/\[([^\]]+)\]/g) || [];
+  // Return unique token names without brackets
+  const names = matches.map(m => m.slice(1, -1));
+  return Array.from(new Set(names));
+}
+
+// Highlight placeholders inside an HTML string (assumes HTML not escaped)
+function highlightPlaceholdersHtml(html: string): string {
+  return html.replace(/\[([^\]]+)\]/g, (_m, p1) => {
+    const inner = escapeHtml(p1);
+    // Unresolved tokens in preview: keep a red pill and remove brackets for clarity
+    return `<span style=\"display:inline;background:#ffe9e9;box-shadow:inset 0 0 0 1px #f1a4a4;padding:0 4px;margin:0;border:none;border-radius:3px;font-style:inherit;color:#a80000;font-weight:600\">${inner}</span>`;
+  });
+}
+
+// Convert lightweight HTML (including preview scaffolding) to plain text safe for Outlook
+function htmlToPlainText(input: string): string {
+  let s = input || '';
+  // Normalize line breaks for common tags
+  s = s.replace(/\r\n/g, '\n');
+  s = s.replace(/<br\s*\/?\s*>/gi, '\n');
+  s = s.replace(/<\/(p|div|li|h[1-6])\s*>/gi, '\n');
+  s = s.replace(/<li\b[^>]*>/gi, '• ');
+  // Remove all remaining tags
+  s = s.replace(/<[^>]+>/g, '');
+  // Decode common entities
+  s = s.replace(/&nbsp;/g, ' ')
+       .replace(/&amp;/g, '&')
+       .replace(/&lt;/g, '<')
+       .replace(/&gt;/g, '>')
+       .replace(/&quot;/g, '"')
+       .replace(/&#39;/g, "'");
+  // Collapse excessive blank lines
+  s = s.replace(/\n{3,}/g, '\n\n');
+  return s.trim();
+}
+
+// Remove visual divider lines like "— — —" or "- - -" (three or more dashes with spaces)
+function stripDashDividers(input: string): string {
+  if (!input) return input;
+  // Matches sequences of three or more em dashes or hyphens, with optional spaces between
+  return input.replace(/(?:\s*[—-]\s*){3,}/g, '');
+}
+
+// --- Auto-insert Rate and Role into [RATE] and [ROLE] placeholders in the body ---
+function useAutoInsertRateRole(
+  body: string,
+  setBody: (v: string) => void,
+  userData: any,
+  setExternalHighlights?: (ranges: { start: number; end: number }[]) => void
+) {
+  const lastAppliedKeyRef = useRef<string | null>(null);
+  const lastProcessedBodyRef = useRef<string>('');
+  
+  useEffect(() => {
+    if (!body || !userData) return;
+
+    // Only run if tokens are present to avoid unnecessary resets
+    const tokenRegex = /\[(RATE|ROLE)\]/i;
+    if (!tokenRegex.test(body)) {
+      // If no tokens, update the last processed body to prevent future re-runs
+      lastProcessedBodyRef.current = body;
+      return;
+    }
+
+    // Support userData being either a user object or an array of users (use first).
+    const u: any = Array.isArray(userData) ? (userData[0] ?? null) : userData;
+    if (!u) return;
+
+    const roleRaw = (u.Role ?? u.role ?? u.RoleName ?? u.roleName);
+    const rateRaw = (u.Rate ?? u.rate ?? u.HourlyRate ?? u.hourlyRate);
+
+    const roleStr = roleRaw == null ? '' : String(roleRaw).trim();
+    // Parse numeric/money rate robustly (supports number or string with £ and commas). 0 is valid.
+    const parseRate = (val: unknown): number | null => {
+      if (val == null) return null;
+      if (typeof val === 'number') {
+        return isFinite(val) ? val : null;
+      }
+      const cleaned = String(val).replace(/[^0-9.\-]/g, '').trim();
+      if (!cleaned) return null;
+      const n = Number(cleaned);
+      return isFinite(n) ? n : null;
+    };
+    const rateNumber = parseRate(rateRaw);
+    const formatRateGBP = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    if (!roleStr && rateNumber == null) return;
+
+    // Build a stable key to prevent reapplying for the same inputs
+    const key = `${roleStr}|${rateNumber ?? ''}|${body}`;
+    
+    // Skip if we've already processed this exact combination
+    if (lastAppliedKeyRef.current === key && lastProcessedBodyRef.current === body) {
+      return;
+    }
+
+    // Global replacement of [RATE] and [ROLE] wherever they appear.
+    // Compute new body and collect highlight ranges for inserted values.
+    const TOKEN_LEN = (t: 'RATE' | 'ROLE') => `[${t}]`.length;
+    let newBody = body;
+    const ranges: { start: number; end: number }[] = [];
+
+    // We replace in a single left-to-right pass to keep indices stable while we compute highlights.
+    const regex = /\[(RATE|ROLE)\]/gi;
+    let m: RegExpExecArray | null;
+    let shift = 0; // net length delta after prior replacements
+
+    while ((m = regex.exec(body)) !== null) {
+      const token = (m[1] as string).toUpperCase() as 'RATE' | 'ROLE';
+      const originalStart = m.index;
+      const start = originalStart + shift;
+      const end = start + TOKEN_LEN(token);
+
+      let replacement: string | null = null;
+      if (token === 'RATE' && rateNumber != null) {
+        replacement = formatRateGBP(rateNumber);
+      } else if (token === 'ROLE' && roleStr) {
+        replacement = roleStr;
+      }
+
+      if (replacement != null) {
+        newBody = newBody.slice(0, start) + replacement + newBody.slice(end);
+        // Record highlight for the inserted value
+        ranges.push({ start, end: start + replacement.length });
+        // Update shift for subsequent matches based on length delta
+        shift += replacement.length - TOKEN_LEN(token);
+      }
+    }
+
+    if (newBody !== body) {
+      lastAppliedKeyRef.current = key;
+      lastProcessedBodyRef.current = newBody;
+      setBody(newBody);
+      // Only emit highlights when we actually inserted something
+      if (ranges.length) setExternalHighlights?.(ranges);
+    } else {
+      // Even if content didn't change, update tracking refs to prevent re-runs
+      lastAppliedKeyRef.current = key;
+      lastProcessedBodyRef.current = body;
+      // Clear highlights if nothing was replaced to avoid ghost highlights
+      if (ranges.length === 0) {
+        setExternalHighlights?.([]);
+      }
+    }
+  }, [body, userData]); // Removed setBody and setExternalHighlights from deps to prevent loops
+}
+
+interface InlineEditableAreaProps {
+  value: string;
+  onChange: (v: string) => void;
+  edited: boolean;
+  minHeight?: number;
+  externalHighlights?: { start: number; end: number }[];
+  allReplacedRanges?: { start: number; end: number }[];
+}
+
+interface UndoRedoState {
+  history: string[];
+  currentIndex: number;
+}
+
+const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange, edited, minHeight = 48, externalHighlights, allReplacedRanges }) => {
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [showToolbar, setShowToolbar] = useState(false);
+  const [undoRedoState, setUndoRedoState] = useState<UndoRedoState>({
+    history: [value],
+    currentIndex: 0
+  });
+  // Flag to distinguish internal programmatic updates from external prop changes
+  const internalUpdateRef = useRef(false);
+  const previousValueRef = useRef(value);
+  const [highlightRanges, setHighlightRanges] = useState<{ start: number; end: number }[]>([]); // green edited ranges (currently at most 1 active)
+  const replacingPlaceholderRef = useRef<{ start: number; end: number } | null>(null); // original placeholder bounds
+  const activeReplacementRangeRef = useRef<{ start: number; end: number } | null>(null); // growing inserted content
+  // Local synced copies of external highlights so we can shift them as user types
+  const [syncedExternalRanges, setSyncedExternalRanges] = useState<{ start: number; end: number }[]>([]);
+  const [syncedPersistentRanges, setSyncedPersistentRanges] = useState<{ start: number; end: number }[]>([]);
+
+  // Keep local copies in sync with props when they change from outside (e.g., auto-inserts)
+  useEffect(() => {
+    // Sync by reference change only to keep dependency array stable across renders
+    setSyncedExternalRanges((externalHighlights || []).slice());
+  }, [externalHighlights]);
+  useEffect(() => {
+    // Sync by reference change only to keep dependency array stable across renders
+    setSyncedPersistentRanges((allReplacedRanges || []).slice());
+  }, [allReplacedRanges]);
+
+  // Sync external value changes (e.g. selecting a different template or auto-inserted placeholders)
+  useEffect(() => {
+    // Only reset undo/redo state and highlights if this is NOT an internal update (i.e., not from user typing or undo/redo)
+    if (!internalUpdateRef.current) {
+      setUndoRedoState({ history: [value], currentIndex: 0 });
+      setHighlightRanges([]);
+      activeReplacementRangeRef.current = null;
+      replacingPlaceholderRef.current = null;
+      previousValueRef.current = value;
+    }
+    // Always clear the internal update flag after effect
+    internalUpdateRef.current = false;
+  }, [value]);
+
+  // Note: Do not globally reset internalUpdateRef here to avoid race conditions with the [value] sync effect.
+
+  // Auto resize
+  useEffect(() => {
+    const ta = taRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    }
+  }, [value]);
+
+  // Add to undo history (debounced)
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  const addToHistory = (newValue: string) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setUndoRedoState(prev => {
+        const currentValue = prev.history[prev.currentIndex];
+        if (currentValue === newValue) return prev;
+
+        const newHistory = prev.history.slice(0, prev.currentIndex + 1);
+        newHistory.push(newValue);
+        
+        // Limit history size
+        if (newHistory.length > 50) {
+          newHistory.shift();
+          return {
+            history: newHistory,
+            currentIndex: newHistory.length - 1
+          };
+        }
+        
+        return {
+          history: newHistory,
+          currentIndex: newHistory.length - 1
+        };
+      });
+    }, 300); // Reduced debounce for more responsive undo
+  };
+
+  // Cleanup pending debounce on unmount to avoid late updates overriding current input
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Undo function
+  const handleUndo = () => {
+    setUndoRedoState(prev => {
+      if (prev.currentIndex > 0) {
+        const newIndex = prev.currentIndex - 1;
+        const newValue = prev.history[newIndex];
+  internalUpdateRef.current = true;
+        onChange(newValue);
+        return {
+          ...prev,
+          currentIndex: newIndex
+        };
+      }
+      return prev;
+    });
+  };
+
+  // Redo function
+  const handleRedo = () => {
+    setUndoRedoState(prev => {
+      if (prev.currentIndex < prev.history.length - 1) {
+        const newIndex = prev.currentIndex + 1;
+        const newValue = prev.history[newIndex];
+  internalUpdateRef.current = true;
+        onChange(newValue);
+        return {
+          ...prev,
+          currentIndex: newIndex
+        };
+      }
+      return prev;
+    });
+  };
+
+  // Utilities for robust range tracking
+  const mergeRanges = (ranges: { start: number; end: number }[]) => {
+    const sorted = ranges
+      .filter(r => r.end > r.start)
+      .sort((a, b) => a.start - b.start);
+    const out: { start: number; end: number }[] = [];
+    for (const r of sorted) {
+      const last = out[out.length - 1];
+      if (!last) { out.push({ ...r }); continue; }
+      if (r.start <= last.end) {
+        last.end = Math.max(last.end, r.end);
+      } else {
+        out.push({ ...r });
+      }
+    }
+    return out;
+  };
+
+  const handleContentChange = (newValue: string) => {
+    internalUpdateRef.current = true;
+    const oldValue = previousValueRef.current;
+    const oldLen = oldValue.length;
+    const newLen = newValue.length;
+
+    // Compute minimal diff window to locate edit region
+    let p = 0;
+    while (p < oldLen && p < newLen && oldValue[p] === newValue[p]) p++;
+    let s = 0;
+    while (
+      s < (oldLen - p) &&
+      s < (newLen - p) &&
+      oldValue[oldLen - 1 - s] === newValue[newLen - 1 - s]
+    ) s++;
+    const changeStart = p;
+    const oldChangeEnd = oldLen - s;
+    const newChangeEnd = newLen - s;
+    const removedLen = Math.max(0, oldChangeEnd - changeStart);
+    const insertedLen = Math.max(0, newChangeEnd - changeStart);
+    const delta = insertedLen - removedLen;
+    const ta = taRef.current;
+    const caretPos = ta ? ta.selectionStart : newChangeEnd; // caret after change
+
+    // Map a position from old text to new text
+    const mapPos = (pos: number) => {
+      if (pos <= changeStart) return pos;
+      if (pos >= oldChangeEnd) return pos + delta;
+      // Inside the changed window: clamp into the inserted segment
+      const offset = pos - changeStart;
+      return changeStart + Math.min(insertedLen, Math.max(0, offset));
+    };
+
+    // Shift existing highlights to follow their content
+    let updatedRanges = highlightRanges.map(r => ({ start: mapPos(r.start), end: mapPos(r.end) }));
+    let updatedExternal = syncedExternalRanges.map(r => ({ start: mapPos(r.start), end: mapPos(r.end) }));
+    let updatedPersistent = syncedPersistentRanges.map(r => ({ start: mapPos(r.start), end: mapPos(r.end) }));
+
+    // If we are replacing a placeholder selection, add a new sticky highlight for the inserted content
+    if (replacingPlaceholderRef.current) {
+      const rep = replacingPlaceholderRef.current;
+      // Only create if the edit intersects the placeholder bounds
+      if (!(oldChangeEnd <= rep.start || changeStart >= rep.end)) {
+        const newRange = { start: rep.start, end: rep.start + insertedLen };
+        activeReplacementRangeRef.current = { ...newRange };
+        updatedRanges.push(newRange);
+      }
+      replacingPlaceholderRef.current = null; // consumed
+    } else if (activeReplacementRangeRef.current && delta !== 0) {
+      // Keep growing active range when typing at or right after its end
+      const r = activeReplacementRangeRef.current;
+      const mapped = { start: mapPos(r.start), end: mapPos(r.end) };
+      let grow = false;
+      if (delta > 0 && removedLen === 0) {
+        // Pure insertion: extend if insertion starts at end of the active range
+        if (changeStart === mapped.end || caretPos === mapped.end + insertedLen) {
+          mapped.end += insertedLen;
+          grow = true;
+        }
+      }
+      activeReplacementRangeRef.current = { ...mapped };
+      updatedRanges = updatedRanges.map(x => (x.start === r.start && x.end === r.end) ? mapped : x);
+      if (!grow && delta !== 0) {
+        // If edit moved away, stop actively growing it
+        if (caretPos < mapped.start || caretPos > mapped.end) {
+          activeReplacementRangeRef.current = null;
+        }
+      }
+    } else if (delta > 0 && removedLen === 0) {
+      // No active range, but user inserted text: if insertion happens exactly at the end of any existing range, extend that range
+      const tryExtend = (arr: { start: number; end: number }[]) => {
+        for (let i = 0; i < arr.length; i++) {
+          const r = arr[i];
+          if (changeStart === r.end) {
+            arr[i] = { start: r.start, end: r.end + insertedLen };
+            // Make it active so further typing continues to grow this highlight
+            activeReplacementRangeRef.current = { ...arr[i] };
+            return true;
+          }
+        }
+        return false;
+      };
+      // Prefer extending internal ranges, then external, then persistent
+      if (!tryExtend(updatedRanges)) {
+        if (!tryExtend(updatedExternal)) {
+          tryExtend(updatedPersistent);
+        }
+      }
+    }
+
+    updatedRanges = mergeRanges(updatedRanges);
+    updatedExternal = mergeRanges(updatedExternal);
+    updatedPersistent = mergeRanges(updatedPersistent);
+    setHighlightRanges(updatedRanges);
+    setSyncedExternalRanges(updatedExternal);
+    setSyncedPersistentRanges(updatedPersistent);
+
+    onChange(newValue);
+    addToHistory(newValue);
+    previousValueRef.current = newValue;
+  };
+
+  // Select placeholder token at cursor to prep for replacement
+  const selectPlaceholderAtCursor = () => {
+    const ta = taRef.current;
+    if (!ta) return;
+    // Only act when there's no selection already
+    if (ta.selectionStart !== ta.selectionEnd) return;
+
+    const pos = ta.selectionStart;
+    const text = ta.value;
+    const regex = /\[[^\]]+\]/g;
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(text)) !== null) {
+      const start = m.index;
+      const end = start + m[0].length;
+      // Select only if strictly inside the token (avoid snapping when clicking exactly at boundaries)
+      if (pos > start && pos < end) {
+        ta.setSelectionRange(start, end);
+        replacingPlaceholderRef.current = { start, end };
+        activeReplacementRangeRef.current = null;
+        break;
+      }
+    }
+  };
+
+  // Handle keyboard shortcuts
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ctrl+Z: Undo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      handleUndo();
+      return;
+    }
+
+    // Ctrl+Y or Ctrl+Shift+Z: Redo
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      handleRedo();
+      return;
+    }
+
+    // Ctrl+Backspace: Clear all content
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Backspace') {
+      e.preventDefault();
+      const newValue = '';
+  internalUpdateRef.current = true;
+  onChange(newValue);
+      addToHistory(newValue);
+      return;
+    }
+    
+    // Alt+Backspace: Delete word backwards
+    if (e.altKey && e.key === 'Backspace') {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      
+      if (start !== end) {
+        // If there's a selection, just delete it
+        const newValue = value.slice(0, start) + value.slice(end);
+        handleContentChange(newValue);
+        setTimeout(() => {
+          if (textarea) {
+            textarea.setSelectionRange(start, start);
+          }
+        }, 0);
+        return;
+      }
+      
+      // Find word boundary backwards
+      let wordStart = start;
+      while (wordStart > 0 && /\w/.test(value[wordStart - 1])) {
+        wordStart--;
+      }
+      
+      // If we didn't find a word character, delete whitespace backwards
+      if (wordStart === start) {
+        while (wordStart > 0 && /\s/.test(value[wordStart - 1])) {
+          wordStart--;
+        }
+      }
+      
+      const newValue = value.slice(0, wordStart) + value.slice(start);
+      handleContentChange(newValue);
+      
+      setTimeout(() => {
+        if (textarea) {
+          textarea.setSelectionRange(wordStart, wordStart);
+        }
+      }, 0);
+      return;
+    }
+  };
+
+  return (
+    <div
+      ref={wrapperRef}
+      style={{
+        position: 'relative',
+        fontSize: 13,
+        lineHeight: 1.4,
+        border: 'none',
+        background: 'transparent',
+        borderRadius: 0,
+        padding: 0,
+        minHeight,
+        overflow: 'hidden'
+      }}
+      onMouseEnter={() => setShowToolbar(true)}
+      onMouseLeave={() => setShowToolbar(false)}
+    >
+      {/* Floating toolbar */}
+      {showToolbar && (
+        <div style={{
+          position: 'absolute',
+          top: -2,
+          right: 4,
+          zIndex: 10,
+          display: 'flex',
+          gap: 2,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          border: '1px solid #e1e5e9',
+          borderRadius: 4,
+          padding: '2px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          opacity: 1,
+          transition: 'opacity 0.2s ease'
+        }}>
+          <button
+            onClick={handleUndo}
+            disabled={undoRedoState.currentIndex <= 0}
+            style={{
+              padding: '4px 6px',
+              fontSize: 11,
+              backgroundColor: 'transparent',
+              color: undoRedoState.currentIndex <= 0 ? '#ccc' : '#666',
+              border: 'none',
+              borderRadius: 2,
+              cursor: undoRedoState.currentIndex <= 0 ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+            title="Undo (Ctrl+Z)"
+          >
+            <Icon iconName="Undo" styles={{ root: { fontSize: 12 } }} />
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={undoRedoState.currentIndex >= undoRedoState.history.length - 1}
+            style={{
+              padding: '4px 6px',
+              fontSize: 11,
+              backgroundColor: 'transparent',
+              color: undoRedoState.currentIndex >= undoRedoState.history.length - 1 ? '#ccc' : '#666',
+              border: 'none',
+              borderRadius: 2,
+              cursor: undoRedoState.currentIndex >= undoRedoState.history.length - 1 ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+            title="Redo (Ctrl+Y)"
+          >
+            <Icon iconName="Redo" styles={{ root: { fontSize: 12 } }} />
+          </button>
+          <div style={{
+            width: 1,
+            height: 16,
+            backgroundColor: '#e1e5e9',
+            margin: '0 2px'
+          }} />
+          <button
+            onClick={() => {
+              const newValue = '';
+              internalUpdateRef.current = true;
+              onChange(newValue);
+              addToHistory(newValue);
+            }}
+            style={{
+              padding: '4px 6px',
+              fontSize: 11,
+              backgroundColor: 'transparent',
+              color: '#666',
+              border: 'none',
+              borderRadius: 2,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+            title="Clear all (Ctrl+Backspace)"
+          >
+            <Icon iconName="Clear" styles={{ root: { fontSize: 12 } }} />
+          </button>
+        </div>
+      )}
+      
+      <pre
+        aria-hidden="true"
+        style={{
+          margin: 0,
+          padding: '4px 6px',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          font: 'inherit',
+          lineHeight: 1.4,
+          fontKerning: 'none',
+          fontVariantLigatures: 'none',
+          letterSpacing: 'normal',
+            
+          color: '#222',
+          pointerEvents: 'none',
+          visibility: 'visible'
+        }}
+        dangerouslySetInnerHTML={{ __html: (() => {
+          // Simple placeholder highlighting - only show complete [TOKEN] as blue
+          const placeholders: { start: number; end: number }[] = [];
+          const regex = /\[[^\]]+\]/g;
+          let match: RegExpExecArray | null;
+          while ((match = regex.exec(value)) !== null) {
+            placeholders.push({ start: match.index, end: match.index + match[0].length });
+          }
+          
+          const markers: { start: number; end: number; type: 'placeholder' | 'edited' }[] = [];
+          placeholders.forEach(p => markers.push({ ...p, type: 'placeholder' }));
+          // Merge internal highlights (active editing), synced external highlights (auto-inserted), and synced persistent ranges
+          const allEdited = [
+            ...highlightRanges,
+            ...((syncedExternalRanges || []).filter((r: { start: number; end: number }) => r && r.end > r.start)),
+            ...((syncedPersistentRanges || []).filter((r: { start: number; end: number }) => r && r.end > r.start))
+          ];
+          allEdited.forEach(r => markers.push({ ...r, type: 'edited' }));
+
+
+          markers.sort((a,b) => a.start - b.start);
+          
+          let cursor = 0;
+          let html = '';
+          const pushPlain = (to: number) => {
+            if (to > cursor) {
+              const chunk = value.slice(cursor, to);
+              // Split on newlines to style leading numeric markers per line
+              let idx = 0;
+              while (idx <= chunk.length) {
+                const nl = chunk.indexOf('\n', idx);
+                const isLast = nl === -1;
+                const line = chunk.slice(idx, isLast ? chunk.length : nl);
+                // Match: start spaces + number + dot + at least one space
+                const m = line.match(/^(\s*)(\d+)\.(\s+)/);
+                if (m) {
+                  const pre = m[1] ?? '';
+                  const num = m[2] ?? '';
+                  const after = m[3] ?? '';
+                  const rest = line.slice(m[0].length);
+                  html += `${escapeHtml(pre)}<span style="color:#D65541;font-weight:700;">${escapeHtml(num + '.')}<\/span>${escapeHtml(after + rest)}`;
+                } else {
+                  html += escapeHtml(line);
+                }
+                if (!isLast) html += '\n';
+                if (isLast) break;
+                idx = nl + 1;
+              }
+            }
+            cursor = to;
+          };
+          
+          markers.forEach(mark => {
+            if (mark.start < cursor) return; // skip overlaps
+            pushPlain(mark.start);
+            const segment = value.slice(mark.start, mark.end);
+            if (mark.type === 'placeholder') {
+              const inner = segment.length >= 2 && segment.startsWith('[') && segment.endsWith(']')
+                ? segment.slice(1, -1)
+                : segment;
+              // Keep blue pill style with dashed border; make text a touch lighter grey; no bold; brackets removed
+              html += `<span style="display:inline;background:#e0f0ff;border:1px dashed #8bbbe8;padding:2px 6px;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${escapeHtml(inner)}</span>`;
+            } else {
+              // Updated edited highlight: subtle green background only (no border/box), accessible text color
+              html += `<span style="display:inline;background:#e9f9f1;padding:0;margin:0;border:none;font-style:inherit;color:#0b3d2c">${escapeHtml(segment)}</span>`;
+            }
+            cursor = mark.end;
+          });
+          pushPlain(value.length);
+          return html || '';
+        })() }}
+      />
+      <textarea
+        ref={taRef}
+        value={value}
+        onChange={e => handleContentChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onFocus={selectPlaceholderAtCursor}
+        onClick={selectPlaceholderAtCursor}
+  onMouseDown={selectPlaceholderAtCursor}
+  onMouseUp={selectPlaceholderAtCursor}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          resize: 'none',
+          background: 'transparent',
+          color: 'transparent', // hide raw text, rely on highlighted layer
+          caretColor: '#222',
+          font: 'inherit',
+          lineHeight: 1.4,
+          fontKerning: 'none',
+          fontVariantLigatures: 'none',
+          letterSpacing: 'normal',
+          border: 'none',
+          padding: '4px 6px',
+          outline: 'none',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          overflow: 'hidden'
+        }}
+        spellCheck={true}
+        title="Shortcuts: Ctrl+Z (undo), Ctrl+Y (redo), Ctrl+Backspace (clear all), Alt+Backspace (delete word)"
+      />
+    </div>
+  );
+};
 
 interface EditorAndTemplateBlocksProps {
   isDarkMode: boolean;
@@ -33,10 +806,18 @@ interface EditorAndTemplateBlocksProps {
   subject: string;
   setSubject: (subject: string) => void;
   // Deal capture props
+  showDealCapture?: boolean;
   initialScopeDescription?: string;
   onScopeDescriptionChange?: (value: string) => void;
   amount?: string;
   onAmountChange?: (value: string) => void;
+  // Inline preview dependencies
+  userData?: any;
+  enquiry?: any;
+  passcode?: string;
+  handleDraftEmail?: () => void;
+  sendEmail?: () => void;
+  isDraftConfirmed?: boolean;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
@@ -66,38 +847,199 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   subject,
   setSubject,
   // Deal capture props
+  showDealCapture = false,
   initialScopeDescription,
   onScopeDescriptionChange,
   amount,
-  onAmountChange
+  onAmountChange,
+  // Inline preview dependencies
+  userData,
+  enquiry,
+  passcode,
+  handleDraftEmail,
+  sendEmail,
+  isDraftConfirmed
 }) => {
   // State for removed blocks
   const [removedBlocks, setRemovedBlocks] = useState<{ [key: string]: boolean }>({});
+  // Local editable contents per block
+  const [blockContents, setBlockContents] = useState<{ [key: string]: string }>({});
 
   // Deal capture state
   const [scopeDescription, setScopeDescription] = useState(initialScopeDescription || '');
   const [amountValue, setAmountValue] = useState(amount || '');
   const [amountError, setAmountError] = useState<string | null>(null);
   // Removed PIC placeholder insertion feature per user request
-  const [scopeTextareaRows, setScopeTextareaRows] = useState(3);
   const [isNotesPinned, setIsNotesPinned] = useState(false);
   const [showSubjectHint, setShowSubjectHint] = useState(false);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
+  const [showInlinePreview, setShowInlinePreview] = useState(false);
+  const [confirmReady, setConfirmReady] = useState(false);
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  // HMR tick to force re-render when scenarios module hot-reloads
+  const [hmrTick, setHmrTick] = useState(0);
+  // Helper: apply simple [RATE]/[ROLE] substitutions to keep injected text consistent with auto-insert effect
+  const applyRateRolePlaceholders = useCallback((text: string) => {
+    const u: any = Array.isArray(userData) ? (userData?.[0] ?? null) : userData;
+    if (!u || !text) return text;
+    const roleRaw = (u.Role ?? u.role ?? u.RoleName ?? u.roleName);
+    const rateRaw = (u.Rate ?? u.rate ?? u.HourlyRate ?? u.hourlyRate);
+    const roleStr = roleRaw == null ? '' : String(roleRaw).trim();
+    const parseRate = (val: unknown): number | null => {
+      if (val == null) return null;
+      if (typeof val === 'number') return isFinite(val) ? val : null;
+      const cleaned = String(val).replace(/[^0-9.\-]/g, '').trim();
+      if (!cleaned) return null;
+      const n = Number(cleaned);
+      return isFinite(n) ? n : null;
+    };
+    const rateNumber = parseRate(rateRaw);
+    const formatRateGBP = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    let out = text;
+    if (rateNumber != null) out = out.replace(/\[RATE\]/gi, formatRateGBP(rateNumber));
+    if (roleStr) out = out.replace(/\[ROLE\]/gi, roleStr);
+    return out;
+  }, [userData]);
+  // Track the last body we injected from a scenario so we can safely refresh on scenario edits
+  const lastScenarioBodyRef = useRef<string>('');
 
-  // Calculate textarea rows based on content
-  const calculateRows = (text: string) => {
-    if (!text) return 3;
-    const lines = text.split('\n').length;
-    const approximateWrappedLines = Math.ceil(text.length / 65); // Slightly more conservative estimate
-    const calculatedRows = Math.max(lines, approximateWrappedLines);
-    return Math.max(3, Math.min(12, calculatedRows)); // Min 3, max 12 rows for better UX
+  // Auto-select the first quick scenario on mount if none is selected
+  useEffect(() => {
+    if (!selectedScenarioId && SCENARIOS.length > 0) {
+      const firstScenario = SCENARIOS[0];
+      setSelectedScenarioId(firstScenario.id);
+
+      const raw = stripDashDividers(firstScenario.body);
+      const greetingName = (() => {
+        const e = enquiry as any;
+        const first = e?.First_Name ?? e?.first_name ?? e?.FirstName ?? e?.firstName ?? e?.Name?.split?.(' ')?.[0] ?? e?.ContactName?.split?.(' ')?.[0] ?? '';
+        const name = String(first || '').trim();
+        return name.length > 0 ? name : 'there';
+      })();
+      const salutation = `Dear ${greetingName},\n\n`;
+      const composed = salutation + raw;
+      const projected = applyRateRolePlaceholders(composed);
+      lastScenarioBodyRef.current = projected;
+      setBody(projected);
+
+      const firstBlock = templateBlocks[0];
+      if (firstBlock) {
+        setBlockContents(prev => ({ ...prev, [firstBlock.title]: projected }));
+      }
+    }
+  }, [selectedScenarioId, enquiry]); // Removed unstable dependencies that cause loops
+  // Accept hot updates to the scenarios module (CRA/Webpack HMR) and trigger a lightweight re-render
+  useEffect(() => {
+    const anyModule: any = module as any;
+    if (anyModule && anyModule.hot) {
+      const handler = () => setHmrTick((t) => t + 1);
+      try {
+        anyModule.hot.accept('./scenarios', handler);
+      } catch {
+        // no-op if HMR not available
+      }
+    }
+  }, []);
+  // Refresh selected scenario body when scenario definitions hot-update
+  // Removed this effect as it was causing constant resets due to SCENARIOS_VERSION changing on every import
+  // Ensure a default subject without tying it to scenario templates
+  const didSetDefaultSubject = useRef(false);
+  useEffect(() => {
+    if (!didSetDefaultSubject.current && (!subject || subject.trim() === '')) {
+      didSetDefaultSubject.current = true;
+      setSubject('Your Enquiry - Helix Law');
+    }
+  }, [subject, setSubject]);
+
+  // --- Create floating pin button with portal to render outside component tree ---
+  // Global sticky notes with portal when pinned
+  const GlobalStickyNotes = () => {
+    if (!initialNotes || !isNotesPinned) return null;
+    
+    return createPortal(
+      <div style={{
+        position: 'fixed',
+        top: 10,
+        left: 20,
+        right: 20,
+        maxWidth: '600px',
+        margin: '0 auto',
+        zIndex: 9999,
+        backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+        padding: '12px',
+        borderRadius: '8px',
+        border: `2px solid ${colours.blue}`,
+        boxShadow: '0 4px 12px rgba(0,120,212,0.15)',
+  transition: 'all 0.3s ease-in-out'
+      }}>
+        <div style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: isDarkMode ? colours.blue : colours.darkBlue,
+          marginBottom: 8,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          justifyContent: 'flex-start'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Icon iconName="Info" styles={{ root: { fontSize: 12 } }} />
+            Enquiry Notes
+          </div>
+        </div>
+        {/* Floating unpin icon */}
+        <button
+          onClick={() => setIsNotesPinned(false)}
+          title="Unpin notes"
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
+            border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+            color: isDarkMode ? colours.dark.text : colours.darkBlue,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            cursor: 'pointer'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = colours.blue;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#e1e5e9';
+          }}
+        >
+          <Icon iconName="Unpin" styles={{ root: { fontSize: 14, color: isDarkMode ? colours.dark.text : colours.darkBlue } }} />
+        </button>
+        <div style={{
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: isDarkMode ? colours.dark.text : colours.darkBlue,
+          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+          border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+          borderRadius: 6,
+          padding: '12px 16px',
+          maxHeight: '200px',
+          overflowY: 'auto',
+          whiteSpace: 'pre-wrap'
+        }}>
+          {initialNotes}
+        </div>
+      </div>,
+      document.body
+    );
   };
 
   // PIC feature removed
 
-  // Initialize textarea rows and ensure [AMOUNT] placeholder line present
+  // Initialize and ensure [AMOUNT] placeholder line present
   useEffect(() => {
-    // Only set initial rows, do not auto-insert 'Estimated fee: [AMOUNT]'
-    setScopeTextareaRows(calculateRows(scopeDescription || ''));
+    // Only ensure [AMOUNT] is present if not already in description
   }, []);
 
   // Replace placeholders with actual values when amount changes
@@ -140,10 +1082,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const handleScopeDescriptionChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
     const value = newValue || '';
     setScopeDescription(value);
-    
-    // Auto-adjust textarea height
-    const newRows = calculateRows(value);
-    setScopeTextareaRows(newRows);
     
     // Process the value to replace placeholders with actual values
     let processedValue = value;
@@ -193,24 +1131,114 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       }
       
       setScopeDescription(updatedScope);
-      setScopeTextareaRows(calculateRows(updatedScope));
       onScopeDescriptionChange?.(updatedScope);
     }
     
     onAmountChange?.(value);
   };
 
+  // Initialise blockContents when selections appear (do not overwrite if user already edited)
+  useEffect(() => {
+    const updates: { [k: string]: string } = {};
+    templateBlocks.forEach(block => {
+      const selectedOptions = selectedTemplateOptions[block.title];
+      const isMultiSelect = block.isMultiSelect;
+      const hasSelections = isMultiSelect
+        ? Array.isArray(selectedOptions) && selectedOptions.length > 0
+        : !!selectedOptions && selectedOptions !== '';
+      if (hasSelections && blockContents[block.title] === undefined) {
+        const base = block.editableContent || (isMultiSelect
+          ? block.options
+              .filter(opt => Array.isArray(selectedOptions) && selectedOptions.includes(opt.label))
+              .map(o => htmlToPlainText(o.previewText))
+              .join('\n\n')
+          : htmlToPlainText(block.options.find(opt => opt.label === selectedOptions)?.previewText || ''));
+        updates[block.title] = base;
+      }
+    });
+    if (Object.keys(updates).length) {
+      setBlockContents(prev => ({ ...prev, ...updates }));
+    }
+  }, [templateBlocks, selectedTemplateOptions]);
+
+  const handleBlockContentChange = (block: TemplateBlock, newValue?: string) => {
+    const value = newValue ?? '';
+    setBlockContents(prev => ({ ...prev, [block.title]: value }));
+    if (!editedBlocks[block.title]) {
+      markBlockAsEdited?.(block.title, true);
+    }
+  };
+
+  // Auto-insert Rate/Role highlight state and effect
+  const [allBodyReplacedRanges, setAllBodyReplacedRanges] = useState<{ start: number; end: number }[]>([]);
+  
+  // Auto-insert handler: replace the persistent green highlights with the new set from auto-insert
+  // This prevents accumulation/ghosting across scenario/template switches and ensures first-click visibility.
+  const handleAutoInsertHighlights = useCallback((ranges: { start: number; end: number }[]) => {
+    setAllBodyReplacedRanges(ranges.slice());
+  }, []);
+  
+  useAutoInsertRateRole(body, setBody, userData, handleAutoInsertHighlights);
+  // Also apply to subject so switching templates gets replacements too
+  useAutoInsertRateRole(subject, setSubject, userData);
+
   return (
     <>
-      <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
-        {/* Email Setup Section - Notes + Subject */}
+      {/* Global sticky notes portal */}
+      <GlobalStickyNotes />
+      {/* Hover-reveal button styles (scoped by class names) */}
+      <style>{`
+        .inline-reveal-btn {display:inline-flex;align-items:center;gap:0;overflow:hidden;position:relative;}
+        .inline-reveal-btn .label{max-width:0;opacity:0;transform:translateX(-4px);margin-left:0;white-space:nowrap;transition:max-width .45s ease,opacity .45s ease,transform .45s ease,margin-left .45s ease;}
+        .inline-reveal-btn:hover .label,.inline-reveal-btn:focus-visible .label{max-width:90px;opacity:1;transform:translateX(0);margin-left:6px;}
+      @keyframes fadeSlideIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+      .smooth-appear{animation:fadeSlideIn .18s ease}
+      
+  /* Numbered list styling with CTA red numbers */
+  /* Apply counters only to ordered lists that are NOT already number-inlined (.hlx-numlist) */
+  ol:not(.hlx-numlist) {
+        counter-reset: list-counter;
+        list-style: none;
+        padding-left: 0;
+        margin: 16px 0;
+      }
+  ol:not(.hlx-numlist) li {
+        counter-increment: list-counter;
+        position: relative;
+        padding-left: 2em;
+        margin-bottom: 12px;
+        line-height: 1.6;
+      }
+  ol:not(.hlx-numlist) li::before {
+        content: counter(list-counter) ".";
+        position: absolute;
+        left: 0;
+        top: 0;
+        color: #D65541;
+        font-weight: 700;
+        font-size: 1em;
+        line-height: 1.6;
+      }
+      /* Ensure proper indentation for multi-line list items */
+  ol:not(.hlx-numlist) li p {
+        margin: 0;
+        padding: 0;
+      }
+  /* Lists generated with inline number spans */
+  ol.hlx-numlist { list-style: none; padding-left: 0; margin: 16px 0; }
+  ol.hlx-numlist li { margin: 0 0 12px 0; line-height: 1.6; position: relative; }
+  ol.hlx-numlist li::before { content: none !important; }
+  ol.hlx-numlist > li > span:first-child { color: #D65541; font-weight: 700; display: inline-block; min-width: 1.6em; }
+      `}</style>
+
+  <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 0 } }}>
+        {/* Combined Email and Pitch Composition Section */}
         <div style={{
           border: '1px solid #e1e5e9',
           borderRadius: '8px',
             backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
           // Allow sticky children to work
-          overflow: 'visible',
-          marginBottom: 16
+          overflow: 'visible'
         }}>
           {/* Header */}
           <div style={{
@@ -232,6 +1260,62 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           </div>
 
           <div style={{ padding: 16 }}>
+            {/* Scenario Picker (minimal, non-breaking) */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: colours.blue,
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <Icon iconName="LightningBolt" styles={{ root: { fontSize: 12 } }} />
+                Quick scenarios
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {SCENARIOS.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setSelectedScenarioId(s.id);
+          // Prefill only the body; subject is kept independent. Prepend a dynamic salutation.
+                      const raw = stripDashDividers(s.body);
+                      const greetingName = (() => {
+                        const e = enquiry as any;
+                        const first = e?.First_Name ?? e?.first_name ?? e?.FirstName ?? e?.firstName ?? e?.Name?.split?.(' ')?.[0] ?? e?.ContactName?.split?.(' ')?.[0] ?? '';
+                        const name = String(first || '').trim();
+                        return name.length > 0 ? name : 'there';
+                      })();
+                      const salutation = `Dear ${greetingName},\n\n`;
+                      const composed = salutation + raw;
+                      const projected = applyRateRolePlaceholders(composed);
+                      lastScenarioBodyRef.current = projected;
+                      setBody(projected);
+                      // Optionally seed first block editable content to keep edit UX consistent
+                      const firstBlock = templateBlocks[0];
+                      if (firstBlock) {
+                        setBlockContents(prev => ({ ...prev, [firstBlock.title]: projected }));
+                      }
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: 12,
+                      borderRadius: 6,
+                      border: `1px solid ${selectedScenarioId === s.id ? colours.blue : '#e1e5e9'}`,
+                      background: selectedScenarioId === s.id ? '#eef6ff' : '#fff',
+                      color: selectedScenarioId === s.id ? colours.blue : '#333',
+                      cursor: 'pointer'
+                    }}
+                    title={s.name}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Scenario hot-update handled via top-level useEffect */}
             {/* Subject Line - Primary Focus */}
             <div style={{ marginBottom: initialNotes ? 16 : 0 }}>
               <div style={{
@@ -254,8 +1338,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  fontSize: 14,
-                  fontWeight: 500,
+                  fontSize: 13, // match editor font size
+                  fontWeight: 400,
                   border: `2px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
                   borderRadius: 8,
                   backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
@@ -275,19 +1359,272 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               />
             </div>
 
-            {/* Context Notes - Supporting Information */}
-            {initialNotes && (
+            {/* Default subject is set via a top-level effect to respect Hooks rules */}
+
+            {/* Email body / Preview (swap in place) */}
+            <div style={{ marginBottom: 16 }}>
               <div style={{
-                position: isNotesPinned ? 'sticky' : 'static',
-                top: isNotesPinned ? '10px' : 'auto',
-                zIndex: isNotesPinned ? 100 : 1,
+                fontSize: 12,
+                fontWeight: 600,
+                color: colours.blue,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                justifyContent: 'space-between'
+              }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Icon iconName="TextDocument" styles={{ root: { fontSize: 12 } }} />
+                  {showInlinePreview ? 'Preview' : 'Email body'}
+                </span>
+                <div style={{ display: 'inline-flex', gap: 6 }}>
+                  <button
+                    onClick={() => {
+                      const plain = htmlToPlainText(body);
+                      if (plain !== body) {
+                        setBody(plain);
+                      }
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      borderRadius: 4,
+                      border: '1px solid #e1e5e9',
+                      color: '#333',
+                      background: '#fff',
+                      cursor: 'pointer'
+                    }}
+                    title="Convert current content to plain text"
+                  >
+                    <Icon iconName="ClearFormatting" styles={{ root: { fontSize: 12 } }} /> Plain text
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (showInlinePreview) {
+                        if (!previewRef.current) return;
+                        const text = previewRef.current.innerText || '';
+                        try {
+                          void navigator.clipboard.writeText(text);
+                        } catch {
+                          const ta = document.createElement('textarea');
+                          ta.value = text;
+                          document.body.appendChild(ta);
+                          ta.select();
+                          try { document.execCommand('copy'); } catch {}
+                          document.body.removeChild(ta);
+                        }
+                        return;
+                      }
+                      const plain = htmlToPlainText(body);
+                      try {
+                        void navigator.clipboard.writeText(plain);
+                      } catch {
+                        // Fallback
+                        const ta = document.createElement('textarea');
+                        ta.value = plain;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); } catch {}
+                        document.body.removeChild(ta);
+                      }
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      borderRadius: 4,
+                      border: `1px solid ${colours.blue}`,
+                      color: colours.blue,
+                      background: '#fff',
+                      cursor: 'pointer'
+                    }}
+                    title={showInlinePreview ? 'Copy preview text' : 'Copy plain text'}
+                  >
+                    <Icon iconName="Copy" styles={{ root: { fontSize: 12 } }} /> Copy
+                  </button>
+                  <button
+                    onClick={() => setShowInlinePreview(v => !v)}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      borderRadius: 4,
+                      border: `1px solid ${showInlinePreview ? colours.blue : '#e1e5e9'}`,
+                      color: showInlinePreview ? colours.blue : '#333',
+                      background: '#fff',
+                      cursor: 'pointer'
+                    }}
+                    title="Toggle inline preview"
+                  >
+                    <Icon iconName="Preview" styles={{ root: { fontSize: 12 } }} /> {showInlinePreview ? 'Back to editor' : 'Preview here'}
+                  </button>
+                </div>
+              </div>
+              {!showInlinePreview && (
+                <div className="smooth-appear" style={{
+                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  borderRadius: 6,
+                  background: isDarkMode ? colours.dark.cardBackground : '#fff',
+                  padding: 4,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  {/* Watermark */}
+                  <div aria-hidden="true" style={{ position: 'absolute', top: 8, right: 8, width: 150, height: 150, opacity: isDarkMode ? 0.08 : 0.08, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none' }} />
+                  <InlineEditableArea
+                    value={body}
+                    onChange={(v) => setBody(v)}
+                    edited={false}
+                    minHeight={140}
+                    externalHighlights={undefined}
+                    allReplacedRanges={allBodyReplacedRanges}
+                  />
+                </div>
+              )}
+
+              {showInlinePreview && (
+                <div className="smooth-appear" style={{
+                marginTop: 12,
+                border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                borderRadius: 8,
+                background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                overflow: 'hidden',
+                position: 'relative'
+              }}>
+                {/* Watermark */}
+                <div aria-hidden="true" style={{ position: 'absolute', top: 10, right: 10, width: 160, height: 160, opacity: isDarkMode ? 0.08 : 0.08, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none' }} />
+                <div style={{
+                  padding: '10px 12px',
+                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                  borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#5f6368', letterSpacing: 0.4, textTransform: 'uppercase' }}>Inline Preview</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: '#888' }}>{subject || 'Your Enquiry - Helix Law'}</span>
+                </div>
+                <div ref={previewRef} style={{ padding: 12 }}>
+                  {(() => {
+                    // Build preview HTML with substitutions and signature
+                    const withoutAutoBlocks = stripDashDividers(body || '');
+                    const userDataLocal = (typeof userData !== 'undefined') ? userData : undefined;
+                    const enquiryLocal = (typeof enquiry !== 'undefined') ? enquiry : undefined;
+                    const sanitized = withoutAutoBlocks.replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
+                    const checkoutPreviewUrl = passcode && enquiryLocal?.ID ? `https://instruct.helix-law.com/pitch/${enquiryLocal.ID}-${passcode}` : '#';
+                    const substituted = applyDynamicSubstitutions(
+                      sanitized,
+                      userDataLocal,
+                      enquiryLocal,
+                      amount,
+                      passcode,
+                      checkoutPreviewUrl
+                    );
+                    const unresolvedBody = findPlaceholders(substituted);
+                    const finalBody = convertDoubleBreaksToParagraphs(substituted);
+                    const finalHighlighted = highlightPlaceholdersHtml(finalBody);
+                    return (
+                      <>
+                        {unresolvedBody.length > 0 && (
+                          <div style={{
+                            background: '#fff1f0',
+                            border: '1px solid #ffa39e',
+                            color: '#a8071a',
+                            fontSize: 12,
+                            padding: '8px 10px',
+                            borderRadius: 6,
+                            marginBottom: 10
+                          }}>
+                            <Icon iconName="Warning" styles={{ root: { fontSize: 12, color: '#a8071a', marginRight: 6 } }} />
+                            {unresolvedBody.length} placeholder{unresolvedBody.length === 1 ? '' : 's'} to resolve: {unresolvedBody.join(', ')}
+                          </div>
+                        )}
+                        <EmailSignature bodyHtml={finalHighlighted} userData={userDataLocal} />
+                      </>
+                    );
+                  })()}
+                </div>
+                <div style={{
+                  padding: '10px 12px',
+                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                  borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  flexWrap: 'wrap'
+                }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: isDarkMode ? colours.dark.text : '#3c4043' }}>
+                    <input type="checkbox" checked={confirmReady} onChange={e => setConfirmReady(e.currentTarget.checked)} />
+                    Everything looks good, ready to proceed
+                  </label>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {(() => {
+                      // Determine unresolved placeholders across subject and body after substitution
+                      const userDataLocal = (typeof userData !== 'undefined') ? userData : undefined;
+                      const enquiryLocal = (typeof enquiry !== 'undefined') ? enquiry : undefined;
+                      // Subject is independent; treat it directly
+                      const unresolvedSubject = findPlaceholders(subject || '');
+                      const sanitized = stripDashDividers(body || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
+                      const checkoutPreviewUrl = passcode && enquiryLocal?.ID ? `https://instruct.helix-law.com/pitch/${enquiryLocal.ID}-${passcode}` : '#';
+                      const substitutedBody = applyDynamicSubstitutions(sanitized, userDataLocal, enquiryLocal, amount, passcode, checkoutPreviewUrl);
+                      const unresolvedBody = findPlaceholders(substitutedBody);
+                      const unresolvedAny = unresolvedSubject.length > 0 || unresolvedBody.length > 0;
+                      const disableDraft = !confirmReady || isDraftConfirmed || unresolvedAny;
+                      const disableSend = true; // still disabled in testing mode
+                      return (
+                        <>
+                          <button
+                            onClick={() => sendEmail?.()}
+                            disabled={disableSend}
+                            title={unresolvedAny ? 'Resolve placeholders before sending' : 'Sending is disabled in testing mode. Use Draft Email.'}
+                            style={{
+                              padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'not-allowed',
+                              background: colours.blue, color: '#fff', fontWeight: 600, opacity: 0.6
+                            }}
+                          >
+                            <Icon iconName="Send" /> Send
+                          </button>
+                          <button
+                            onClick={() => handleDraftEmail?.()}
+                            disabled={disableDraft}
+                            style={{
+                              padding: '6px 12px', borderRadius: 6, border: `1px solid ${isDraftConfirmed ? colours.green : '#e1e5e9'}`,
+                              background: isDraftConfirmed ? '#e8f5e8' : '#fff', color: isDraftConfirmed ? colours.green : '#3c4043', fontWeight: 600
+                            }}
+                            title={isDraftConfirmed ? 'Drafted' : (unresolvedAny ? 'Resolve placeholders before drafting' : 'Draft Email')}
+                          >
+                            <Icon iconName={isDraftConfirmed ? 'CheckMark' : 'Mail'} /> {isDraftConfirmed ? 'Drafted' : 'Draft Email'}
+                          </button>
+                        </>
+                      );
+                    })()}
+                    <button
+                      onClick={() => {
+                        if (!previewRef.current) return;
+                        const text = previewRef.current.innerText || '';
+                        navigator.clipboard.writeText(text);
+                      }}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #e1e5e9', background: '#fff', color: '#3c4043', fontWeight: 500 }}
+                    >
+                      <Icon iconName="Copy" /> Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* Close Email body / Preview container */}
+            </div>
+
+            {/* Context Notes - Supporting Information */}
+            {initialNotes && !isNotesPinned && (
+              <div style={{
                 backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-                padding: isNotesPinned ? '12px' : '0',
-                borderRadius: isNotesPinned ? '8px' : '0',
-                border: isNotesPinned ? `2px solid ${colours.blue}` : 'none',
-                boxShadow: isNotesPinned ? '0 4px 12px rgba(0,120,212,0.15)' : 'none',
-                marginBottom: isNotesPinned ? '16px' : '0',
-                transition: 'all 0.3s ease-in-out'
+                padding: '0',
+                borderRadius: '0',
+                border: 'none',
+                boxShadow: 'none',
+                marginBottom: '0',
+                transition: 'all 0.3s ease-in-out',
+                position: 'relative'
               }}>
                 <div style={{
                   fontSize: 12,
@@ -307,19 +1644,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     <Icon iconName="Info" styles={{ root: { fontSize: 12 } }} />
                   </span>
                   Enquiry Notes
-                  {isNotesPinned && (
-                    <span style={{
-                      fontSize: 9,
-                      fontWeight: 700,
-                      color: colours.blue,
-                      backgroundColor: '#e3f2fd',
-                      padding: '1px 4px',
-                      borderRadius: '2px',
-                      marginLeft: 4
-                    }}>
-                      PINNED
-                    </span>
-                  )}
                   {showSubjectHint && (
                     <span style={{
                       position: 'absolute',
@@ -333,44 +1657,15 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       fontStyle: 'italic',
                       border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
                       borderRadius: 4,
-                      padding: '4px 8px',
+                      padding: '6px 8px',
                       zIndex: 10,
-                      whiteSpace: 'nowrap',
+                      whiteSpace: 'normal',
+                      maxWidth: 420,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
                     }}>
-                      (use this to inform your subject line)
+                      Source confirmation: these notes may be intake rep call notes, a web form message, or an auto‑parsed email.
                     </span>
                   )}
-                  <div style={{ marginLeft: 'auto' }}>
-                    <button
-                      onClick={() => setIsNotesPinned(!isNotesPinned)}
-                      style={{
-                        padding: '2px 8px',
-                        fontSize: 10,
-                        backgroundColor: isNotesPinned ? '#0078d4' : '#f3f9ff',
-                        color: isNotesPinned ? 'white' : colours.blue,
-                        border: `1px solid ${colours.blue}`,
-                        borderRadius: '3px',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        transition: 'all 0.2s ease',
-                        boxShadow: isNotesPinned ? '0 2px 4px rgba(0,120,212,0.3)' : 'none'
-                      }}
-                      title={isNotesPinned ? "Unpin notes from top" : "Pin notes to top while scrolling"}
-                      onMouseEnter={(e) => {
-                        if (!isNotesPinned) {
-                          e.currentTarget.style.backgroundColor = '#e3f2fd';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isNotesPinned) {
-                          e.currentTarget.style.backgroundColor = '#f3f9ff';
-                        }
-                      }}
-                    >
-                      📌 {isNotesPinned ? 'PINNED' : 'PIN'}
-                    </button>
-                  </div>
                 </div>
                 <div style={{
                   fontSize: 13,
@@ -383,35 +1678,44 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
                   position: 'relative'
                 }}>
+                  {/* Floating pin inside notes box */}
+                  <button
+                    onClick={() => setIsNotesPinned(true)}
+                    title="Pin notes"
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                      border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                      color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      cursor: 'pointer',
+                      zIndex: 2
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = colours.blue;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#e1e5e9';
+                    }}
+                  >
+                    {/* Use a known glyph and strong contrast to ensure visibility */}
+                    <Icon iconName="Pinned" styles={{ root: { fontSize: 16, color: colours.blue } }} />
+                  </button>
                   {initialNotes}
-                  {/* Visual connector arrow pointing up to subject */}
-                  <div style={{
-                    position: 'absolute',
-                    top: -8,
-                    right: 20,
-                    width: 0,
-                    height: 0,
-                    borderLeft: '8px solid transparent',
-                    borderRight: '8px solid transparent',
-                    borderBottom: `8px solid ${isDarkMode ? colours.dark.inputBackground : '#f8f9fa'}`,
-                    zIndex: 2
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    top: -9,
-                    right: 20,
-                    width: 0,
-                    height: 0,
-                    borderLeft: '8px solid transparent',
-                    borderRight: '8px solid transparent',
-                    borderBottom: `8px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                    zIndex: 1
-                  }} />
                 </div>
               </div>
             )}
 
-            {/* Deal Capture Section */}
+            {/* Deal Capture Section (admin-gated) */}
+            {showDealCapture && (
             <div style={{ marginTop: initialNotes ? 16 : 0 }}>
               <div style={{
                 fontSize: 12,
@@ -422,7 +1726,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 alignItems: 'center',
                 gap: 4
               }}>
-                <Icon iconName="BusinessHoursClock" styles={{ root: { fontSize: 12 } }} />
+                <Icon iconName="Clock" styles={{ root: { fontSize: 12 } }} />
                 Scope & Quote Description
               </div>
               <Stack tokens={{ childrenGap: 12 }}>
@@ -440,7 +1744,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         onClick={() => {
                           const template = `Advice and representation in relation to a commercial, shareholder or partnership dispute.\n\nOur service includes:\n- Initial review of relevant agreements and correspondence\n- Assessment of legal position and available remedies\n- Strategic advice on next steps and resolution options\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`;
                           setScopeDescription(template);
-                          setScopeTextareaRows(calculateRows(template));
                           onScopeDescriptionChange?.(template);
                         }}
                         style={{
@@ -468,7 +1771,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         onClick={() => {
                           const template = `Advice and representation for construction disputes, including adjudication.\n\nOur service includes:\n- Review of contract documents and payment history\n- Assessment of breach, termination or payment issues\n- Guidance on adjudication or court process\n- Practical advice to protect your position\n\nEstimated fee: [AMOUNT]`;
                           setScopeDescription(template);
-                          setScopeTextareaRows(calculateRows(template));
                           onScopeDescriptionChange?.(template);
                         }}
                         style={{
@@ -496,7 +1798,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         onClick={() => {
                           const template = `Advice and representation in relation to property disputes or evictions.\n\nOur service includes:\n- Review of lease, tenancy or title documents\n- Assessment of grounds for possession or dispute\n- Guidance on process and timescales\n- Practical steps to protect your interests\n\nEstimated fee: [AMOUNT]`;
                           setScopeDescription(template);
-                          setScopeTextareaRows(calculateRows(template));
                           onScopeDescriptionChange?.(template);
                         }}
                         style={{
@@ -524,7 +1825,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         onClick={() => {
                           const template = `Advice and action in relation to debt recovery or statutory demands.\n\nOur service includes:\n- Review of debt and supporting documents\n- Assessment of recovery options and risks\n- Preparation and service of statutory demand or claim\n- Guidance on defended claims and court process\n\nEstimated fee: [AMOUNT]`;
                           setScopeDescription(template);
-                          setScopeTextareaRows(calculateRows(template));
                           onScopeDescriptionChange?.(template);
                         }}
                         style={{
@@ -552,7 +1852,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         onClick={() => {
                           const template = `Advice and representation in relation to other commercial disputes.\n\nOur service includes:\n- Initial review and assessment of your issue\n- Guidance on process, options and likely outcomes\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`;
                           setScopeDescription(template);
-                          setScopeTextareaRows(calculateRows(template));
                           onScopeDescriptionChange?.(template);
                         }}
                         style={{
@@ -580,7 +1879,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   </div>
                   <TextField
                     multiline
-                    rows={scopeTextareaRows}
+                    autoAdjustHeight
+                    rows={3}
                     value={scopeDescription}
                     onChange={handleScopeDescriptionChange}
                     placeholder="Describe what we will be doing and charging..."
@@ -637,428 +1937,43 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       }
                     }}
                   />
-                  <span style={{
-                    fontSize: 11,
-                    color: isDarkMode ? colours.dark.text : '#666',
-                    fontStyle: 'italic'
-                  }}>
-                    Updates scope description automatically
-                  </span>
+                  {(() => {
+                    const amt = parseFloat(amountValue);
+                    if (!amountValue || isNaN(amt)) return null;
+                    const vatRate = 0.2;
+                    const vat = +(amt * vatRate).toFixed(2);
+                    const total = +(amt + vat).toFixed(2);
+                    const fmt = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    return (
+                      <div
+                        title={`Ex VAT: ${fmt(amt)}  •  VAT (20%): ${fmt(vat)}  •  Total inc VAT: ${fmt(total)}`}
+                        style={{
+                          marginLeft: 'auto',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                          borderRadius: 4,
+                          padding: '4px 8px'
+                        }}
+                      >
+                        <span style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#666' }}>VAT 20%:</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.darkBlue }}>{fmt(vat)}</span>
+                        <span style={{ opacity: 0.4 }}>·</span>
+                        <span style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#666' }}>Total inc VAT:</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: colours.blue }}>{fmt(total)}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </Stack>
             </div>
+            )}
           </div>
-        </div>
 
-        {/* Show removed blocks section if there are any */}
-        {Object.keys(removedBlocks).length > 0 && (
-          <div style={{
-            border: '1px solid #f0f0f0',
-            borderRadius: '6px',
-            backgroundColor: '#f8f9fa',
-            padding: '12px'
-          }}>
-            <Text styles={{ root: { fontSize: 11, fontWeight: 500, color: '#666', marginBottom: '8px' } }}>
-              Removed Blocks (click to add back):
-            </Text>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {templateBlocks
-                .filter(block => removedBlocks[block.title])
-                .map(block => (
-                  <div
-                    key={`removed-${block.title}`}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e1dfdd',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '11px',
-                      color: colours.highlight,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={() => handleReinsertBlock(block)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f0f8ff';
-                      e.currentTarget.style.borderColor = colours.highlight;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ffffff';
-                      e.currentTarget.style.borderColor = '#e1dfdd';
-                    }}
-                    title={`Add back "${block.title}" block`}
-                  >
-                    <Icon iconName="Add" styles={{ root: { fontSize: '10px' } }} />
-                    <span>{block.title}</span>
-                  </div>
-                ))
-              }
-            </div>
-          </div>
-        )}
-
-        {/* Progressive reveal template blocks */}
-        <div style={{
-          border: '1px solid #e1e5e9',
-          borderRadius: '6px',
-          backgroundColor: '#fff',
-          position: 'relative'
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 16 }}>
-            {templateBlocks
-              .filter(block => !removedBlocks[block.title])
-              .map((block, blockIndex) => {
-                // Progressive reveal logic: show Introduction always, others only after Introduction has selections
-                const isIntroduction = blockIndex === 0;
-                const introBlock = templateBlocks[0];
-                const introSelectedOptions = selectedTemplateOptions[introBlock?.title];
-                const introHasSelections = introBlock?.isMultiSelect
-                  ? Array.isArray(introSelectedOptions) && introSelectedOptions.length > 0
-                  : introSelectedOptions && introSelectedOptions !== '';
-
-                // Show Introduction always, show others only after Introduction has selections
-                if (!isIntroduction && !introHasSelections) {
-                  return null;
-                }
-
-                const selectedOptions = selectedTemplateOptions[block.title];
-                const isMultiSelect = block.isMultiSelect;
-                const hasSelections = isMultiSelect 
-                  ? Array.isArray(selectedOptions) && selectedOptions.length > 0
-                  : selectedOptions && selectedOptions !== '';
-                
-                return (
-                  <div
-                    key={`block-${block.title}-${blockIndex}`}
-                    className="block-editor"
-                    style={{
-                      border: hasSelections ? '1px solid #28a745' : '1px solid #e1e5e9',
-                      background: hasSelections ? '#f8fff9' : '#ffffff',
-                      borderRadius: '6px',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {/* Block Header */}
-                    <div style={{
-                      padding: '12px 16px',
-                      background: hasSelections ? '#f0f8f0' : '#f8f9fa',
-                      borderBottom: '1px solid #e1e5e9',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <h3 style={{
-                          margin: 0,
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: '#0d3955'
-                        }}>
-                          {block.title}
-                        </h3>
-                        <span 
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            backgroundColor: hasSelections ? '#d4edda' : '#e9ecef',
-                            color: hasSelections ? '#155724' : '#6c757d'
-                          }}
-                        >
-                          {hasSelections ? 'included' : 'not included'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        {hasSelections && (
-                          <button
-                            onClick={() => handleRemoveBlock(block)}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#dc3545',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 4,
-                              fontSize: 12,
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
-                            title="Remove this section"
-                          >
-                            <Icon iconName="Delete" />
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Special handling for Introduction block */}
-                    {isIntroduction ? (
-                      <div style={{ padding: 16 }}>
-                        {!hasSelections ? (
-                          <>
-                            <div style={{
-                              fontSize: 13,
-                              color: '#666',
-                              marginBottom: 12,
-                              fontWeight: 500
-                            }}>
-                              Select an introduction style:
-                            </div>
-                            
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                              {block.options.map(option => {
-                                return (
-                                  <div
-                                    key={option.label}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'flex-start',
-                                      gap: 8,
-                                      padding: '8px 12px',
-                                      borderRadius: 6,
-                                      border: '2px solid transparent',
-                                      background: '#fafbfc',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => {
-                                      // For Introduction, use single select behavior
-                                      handleMultiSelectChange(block.title, [option.label]);
-                                    }}
-                                  >
-                                    <div style={{
-                                      width: 20,
-                                      height: 20,
-                                      border: '2px solid #ccc',
-                                      borderRadius: '50%',
-                                      background: '#fff',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      flexShrink: 0,
-                                      marginTop: 2
-                                    }}>
-                                    </div>
-                                    
-                                    <div style={{ flex: 1 }}>
-                                      <div style={{
-                                        fontSize: 13,
-                                        fontWeight: 600,
-                                        color: '#333',
-                                        marginBottom: 4
-                                      }}>
-                                        {option.label}
-                                      </div>
-                                      <div style={{
-                                        fontSize: 12,
-                                        color: '#666',
-                                        lineHeight: 1.4,
-                                        maxHeight: 60,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                      }}>
-                                        {option.previewText.replace(/<[^>]+>/g, '').substring(0, 150)}
-                                        {option.previewText.length > 150 ? '...' : ''}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            {/* Show content box and change selection button */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                              <div style={{
-                                fontSize: 13,
-                                color: '#666',
-                                fontWeight: 500
-                              }}>
-                                Selected: {Array.isArray(selectedOptions) && selectedOptions.length > 0 ? selectedOptions[0] : ''}
-                              </div>
-                              <button
-                                onClick={() => {
-                                  handleMultiSelectChange(block.title, []);
-                                }}
-                                style={{
-                                  padding: '4px 8px',
-                                  backgroundColor: '#6c757d',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  fontSize: 12,
-                                  fontWeight: 500,
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                Change Selection
-                              </button>
-                            </div>
-                            
-                            {/* Content preview box */}
-                            <div style={{
-                              border: '1px solid #e1e5e9',
-                              borderRadius: 6,
-                              padding: 12,
-                              backgroundColor: '#f8f9fa',
-                              fontSize: 13,
-                              lineHeight: 1.5,
-                              minHeight: 80
-                            }}>
-                              {Array.isArray(selectedOptions) && selectedOptions.length > 0 && 
-                                block.options.find(opt => opt.label === selectedOptions[0])?.previewText
-                              }
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      /* Regular template blocks */
-                      <div style={{ padding: 16 }}>
-                        <div style={{
-                          fontSize: 13,
-                          color: '#666',
-                          marginBottom: 12,
-                          fontWeight: 500
-                        }}>
-                          Select options to include in this section:
-                        </div>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {block.options.map(option => {
-                            const isSelected = isMultiSelect
-                              ? Array.isArray(selectedOptions) && selectedOptions.includes(option.label)
-                              : selectedOptions === option.label;
-                            
-                            return (
-                              <div
-                                key={option.label}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'flex-start',
-                                  gap: 8,
-                                  padding: '8px 12px',
-                                  borderRadius: 6,
-                                  border: isSelected ? `2px solid ${colours.blue}` : '2px solid transparent',
-                                  background: isSelected ? '#f0f6ff' : '#fafbfc',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s ease'
-                                }}
-                                onClick={() => {
-                                  if (isMultiSelect) {
-                                    const currentSelections = Array.isArray(selectedOptions) ? selectedOptions : [];
-                                    if (isSelected) {
-                                      const updated = currentSelections.filter(s => s !== option.label);
-                                      handleMultiSelectChange(block.title, updated);
-                                    } else {
-                                      const updated = [...currentSelections, option.label];
-                                      handleMultiSelectChange(block.title, updated);
-                                    }
-                                  } else {
-                                    if (isSelected) {
-                                      handleSingleSelectChange(block.title, '');
-                                    } else {
-                                      handleSingleSelectChange(block.title, option.label);
-                                    }
-                                  }
-                                }}
-                              >
-                                <div style={{
-                                  width: 20,
-                                  height: 20,
-                                  border: isSelected ? `2px solid ${colours.blue}` : '2px solid #ccc',
-                                  borderRadius: isMultiSelect ? 4 : '50%',
-                                  background: isSelected ? colours.blue : '#fff',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0,
-                                  marginTop: 2
-                                }}>
-                                  {isSelected && (
-                                    <Icon 
-                                      iconName="CheckMark" 
-                                      styles={{ 
-                                        root: { 
-                                          fontSize: 12, 
-                                          color: '#fff',
-                                          fontWeight: 'bold'
-                                        } 
-                                      }} 
-                                    />
-                                  )}
-                                </div>
-                                
-                                <div style={{ flex: 1 }}>
-                                  <div style={{
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: isSelected ? colours.blue : '#333',
-                                    marginBottom: 4
-                                  }}>
-                                    {option.label}
-                                  </div>
-                                  <div style={{
-                                    fontSize: 12,
-                                    color: '#666',
-                                    lineHeight: 1.4,
-                                    maxHeight: 60,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis'
-                                  }}>
-                                    {option.previewText.replace(/<[^>]+>/g, '').substring(0, 150)}
-                                    {option.previewText.length > 150 ? '...' : ''}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        
-                        {/* Insert Button */}
-                        {hasSelections && (
-                          <div style={{ marginTop: 16, textAlign: 'center' }}>
-                            <button
-                              onClick={() => {
-                                const optionsToInsert = isMultiSelect 
-                                  ? selectedOptions as string[]
-                                  : [selectedOptions as string];
-                                insertTemplateBlock(block, optionsToInsert, true);
-                              }}
-                              style={{
-                                padding: '8px 16px',
-                                backgroundColor: colours.blue,
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: 4,
-                                fontSize: 13,
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                margin: '0 auto'
-                              }}
-                            >
-                              <Icon iconName="Add" />
-                              Insert Selected Options
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
+          {/* Template blocks removed in simplified flow */}
         </div>
       </Stack>
     </>
@@ -1066,3 +1981,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 };
 
 export default EditorAndTemplateBlocks;
+
+// Allow TS to understand Webpack HMR in CRA
+declare const module: { hot?: { accept: (path?: string, cb?: () => void) => void } };

@@ -128,16 +128,17 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                 paddingBottom: 2,
             }}
         >
-            {quickActions.map((action, index) => {
-                const cardProps: any = {
-                    key: action.title,
-                    title: getShortTitle(action.title),
-                    icon: action.icon,
-                    isDarkMode,
-                    onClick: () => onCardClick(action),
-                    iconColor: colours.cta,
-                    selected: selected === action.title,
-                    style: {
+            {quickActions.map((action, index) => (
+                <QuickActionsCard
+                    key={action.title}
+                    title={getShortTitle(action.title)}
+                    icon={action.icon}
+                    isDarkMode={isDarkMode}
+                    onClick={() => onCardClick(action)}
+                    iconColor={colours.cta}
+                    selected={selected === action.title}
+                    confirmed={action.title === 'Confirm Attendance' ? currentUserConfirmed : undefined}
+                    style={{
                         '--card-index': index,
                         fontSize: '15px',
                         padding: '0 12px',
@@ -148,13 +149,9 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                         justifyContent: 'flex-start',
                         flex: '0 0 auto',
                         marginLeft: index === 0 ? 0 : 0,
-                    } as React.CSSProperties,
-                };
-                if (action.title === 'Confirm Attendance') {
-                    cardProps.confirmed = currentUserConfirmed;
-                }
-                return <QuickActionsCard {...cardProps} />;
-            })}
+                    } as React.CSSProperties}
+                />
+            ))}
         </div>
     );
 }

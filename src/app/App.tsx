@@ -2,6 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
 import Navigator from '../components/Navigator';
+import { useNavigatorActions } from './functionality/NavigatorContext';
 import FormsSidebar from '../components/FormsSidebar';
 import ResourcesSidebar from '../components/ResourcesSidebar';
 import { NavigatorProvider } from './functionality/NavigatorContext';
@@ -71,7 +72,6 @@ const App: React.FC<AppProps> = ({
       county: v.County,
       post_code: v.Postcode,
       country: v.Country,
-      country_code: v.CountryCode,
       company_name: v.company_name || v.CompanyName,
       company_number: v.company_number || v.CompanyNumber,
       company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
@@ -93,14 +93,12 @@ const App: React.FC<AppProps> = ({
       client_id: v.ClientId,
       matter_id: v.MatterId,
     }))
-    // Filter out any invalid entries that don't have required fields
-    .filter(poid => 
-      poid && 
-      poid.poid_id && 
-      poid.first && 
-      poid.last && 
-      // Make sure fields aren't just numbers
-      isNaN(Number(poid.first)) && 
+    .filter(poid =>
+      poid &&
+      poid.poid_id &&
+      poid.first &&
+      poid.last &&
+      isNaN(Number(poid.first)) &&
       isNaN(Number(poid.last))
     );
   const [poidData, setPoidData] = useState<POID[]>(initialPoidData);
@@ -223,6 +221,9 @@ const App: React.FC<AppProps> = ({
   // Determine the current user's initials
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
+  // Authorised users for Reports tab (per request)
+  const authorizedInitials = ['AC', 'JW', 'LZ', 'KW', 'CB'];
+
   // Fetch instruction data on app load
   useEffect(() => {
     const useLocalData =
@@ -312,19 +313,21 @@ const App: React.FC<AppProps> = ({
 
   const tabs: Tab[] = [
     { key: 'enquiries', text: 'Enquiries' },
-    ...(showInstructionsTab
-      ? [{ key: 'instructions', text: 'Instructions' }]
-      : []),
+    ...(showInstructionsTab ? [{ key: 'instructions', text: 'Instructions' }] : []),
     { key: 'matters', text: 'Matters' },
-    // Removed 'forms' and 'resources' tabs since they are now on the sides
-    { key: 'reporting', text: 'Reports' },
+    ...(authorizedInitials.includes(userInitials) ? [{ key: 'reporting', text: 'Reports' }] : []),
     ...(isLocalhost ? [{ key: 'callhub', text: 'Call Hub' }] : []),
-    ];
-
-  // Check if the user has authorized initials for the Reporting tab
-  const authorizedInitials = ['AC', 'JW', 'LZ', 'BL'];
+  ];
 
   const isAuthorized = authorizedInitials.includes(userInitials);
+  const { setContent } = useNavigatorActions();
+
+  // Ensure Navigator content is cleared when navigating away from Home
+  React.useEffect(() => {
+    if (activeTab !== 'home') {
+      setContent(null);
+    }
+  }, [activeTab, setContent]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -443,7 +446,7 @@ const App: React.FC<AppProps> = ({
           <FormsSidebar
             userData={userData}
             teamData={teamData}
-            matters={allMattersFromHome || []}
+            matters={matters || []}
             activeTab={activeTab}
             hovered={formsTabHovered}
             pinned={formsSidebarPinned}

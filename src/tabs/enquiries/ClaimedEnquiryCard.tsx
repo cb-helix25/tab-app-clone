@@ -46,7 +46,7 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
   const [showActions, setShowActions] = useState(false);
   const [hasAnimatedActions, setHasAnimatedActions] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState(false);
-  const [showPitchBuilder, setShowPitchBuilder] = useState(false);
+  // Removed inline pitch builder modal usage; pitch now handled by parent detail view
   const clampRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
 
@@ -78,11 +78,41 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
     }
   })();
 
+  const isCardClickable = hasNotes && (isOverflowing || !expandedNotes); // allow click to expand notes when truncated
+  const svgMark = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" preserveAspectRatio="xMidYMid meet"><g fill="currentColor" opacity="0.22"><path d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/></g></svg>');
+  const bgColorToken = isDarkMode ? '#1f2732' : '#ffffff';
+  // Increased opacity for stronger visibility (previous 0.035 / 0.06)
+  const markColor = isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(6,23,51,0.11)';
+  const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const card = mergeStyles({
     position: 'relative',
     borderRadius: 5,
     padding: '14px 18px 14px 22px',
-    background: isDarkMode ? '#1f2732' : '#ffffff',
+    background: `${bgColorToken}`,
+    '::after': {
+      content: '""',
+      position: 'absolute',
+      top: 10,
+      bottom: 10,
+  right: 12,
+  width: 160, // bumped width for more presence (maintains aspect ratio via contain)
+      // Maintain aspect ratio (original ~0.5756 width:height) -> height auto via mask sizing
+      background: markColor,
+      maskImage: `url("data:image/svg+xml,${svgMark}")`,
+      WebkitMaskImage: `url("data:image/svg+xml,${svgMark}")`,
+      maskRepeat: 'no-repeat',
+      WebkitMaskRepeat: 'no-repeat',
+      maskPosition: 'center',
+      WebkitMaskPosition: 'center',
+      maskSize: 'contain',
+      WebkitMaskSize: 'contain',
+      opacity: 1,
+      mixBlendMode: isDarkMode ? 'screen' : 'multiply',
+      pointerEvents: 'none',
+      transition: 'opacity .3s',
+      filter: 'blur(.15px)',
+  zIndex: 0,
+    },
     border: `1px solid ${selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
     boxShadow: isDarkMode
       ? '0 4px 16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04)'
@@ -91,22 +121,25 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
     flexDirection: 'column',
     gap: 6,
     fontFamily: 'Raleway, sans-serif',
-    cursor: 'pointer',
+    cursor: isCardClickable ? 'pointer' : 'default',
     transition: 'border-color .2s, transform .15s',
     marginBottom: !isLast ? 4 : 0,
     overflow: 'hidden', // ensure left accent clips to rounded corners
     borderLeftWidth: 2,
     borderLeftStyle: 'solid',
     selectors: {
-      ':hover': { transform: 'translateY(-2px)', borderColor: selected ? colours.blue : colours.highlight },
-      ':active': { transform: 'translateY(-1px)' },
+      ':hover': isCardClickable ? { transform: 'translateY(-2px)', borderColor: selected ? colours.blue : colours.highlight } : { borderColor: selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)') },
+      ':active': isCardClickable ? { transform: 'translateY(-1px)' } : {},
     },
   });
 
   const actionButtons = [
-    { key: 'pitch', icon: 'Send', label: 'Pitch', onClick: () => setShowPitchBuilder(true) },
-    { key: 'call', icon: 'Phone', label: 'Call', onClick: () => enquiry.Phone_Number && (window.location.href = `tel:${enquiry.Phone_Number}`) },
-    { key: 'email', icon: 'Mail', label: 'Email', onClick: () => enquiry.Email && (window.location.href = `mailto:${enquiry.Email}?subject=Your%20Enquiry&bcc=1day@followupthen.com`) },
+    { key: 'pitch', icon: 'Send', label: 'Pitch', onClick: () => { onPitch ? onPitch(enquiry) : onSelect(enquiry); } },
+    // Only surface call/email locally alongside pitch
+    ...(isLocalhost ? [
+      { key: 'call', icon: 'Phone', label: 'Call', onClick: () => enquiry.Phone_Number && (window.location.href = `tel:${enquiry.Phone_Number}`) },
+      { key: 'email', icon: 'Mail', label: 'Email', onClick: () => enquiry.Email && (window.location.href = `mailto:${enquiry.Email}?subject=Your%20Enquiry&bcc=1day@followupthen.com`) },
+    ] : []),
     { key: 'rate', icon: enquiry.Rating ? (enquiry.Rating === 'Poor' ? 'DislikeSolid' : enquiry.Rating === 'Neutral' ? 'Like' : 'LikeSolid') : 'Like', label: enquiry.Rating || 'Rate', onClick: () => onRate(enquiry.ID) },
   ];
 
@@ -124,10 +157,20 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
       }}
       onMouseLeave={() => { if (!selected) setShowActions(false); }}
       onClick={(e) => {
-        const multi = e.metaKey || e.ctrlKey || e.shiftKey;
-        onSelect(enquiry, multi);
+        if (isCardClickable) {
+          // Expand notes if truncated; if already expanded do nothing further
+          if (!expandedNotes) {
+            setExpandedNotes(true);
+          }
+        }
       }}
-      onKeyDown={(e) => { if (e.key === 'Enter') onSelect(enquiry, e.metaKey || e.ctrlKey); }}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && isCardClickable) {
+          e.preventDefault();
+          if (!expandedNotes) setExpandedNotes(true);
+        }
+      }}
+  style={{ zIndex: 1 }}
     >
       {/* Selection Toggle (checkbox style) */}
       {onToggleSelect && (
@@ -184,7 +227,7 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
               )}
             </div>
           )}
-          {(isOverflowing || expandedNotes) && (
+          {(isOverflowing || (expandedNotes && isOverflowing)) && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setExpandedNotes(v => !v); }}
@@ -236,69 +279,7 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
         </div>
       </div>
       
-      {/* Pitch Builder Modal */}
-      {showPitchBuilder && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-          }}
-          onClick={() => setShowPitchBuilder(false)}
-        >
-          <div
-            style={{
-              backgroundColor: isDarkMode ? '#1f2732' : '#ffffff',
-              borderRadius: '8px',
-              width: '90%',
-              maxWidth: '1200px',
-              height: '90%',
-              overflow: 'hidden',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-              position: 'relative',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close button */}
-            <button
-              style={{
-                position: 'absolute',
-                top: '15px',
-                right: '15px',
-                background: 'transparent',
-                border: 'none',
-                fontSize: '20px',
-                cursor: 'pointer',
-                color: isDarkMode ? '#fff' : '#000',
-                zIndex: 1001,
-                width: '30px',
-                height: '30px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onClick={() => setShowPitchBuilder(false)}
-              aria-label="Close pitch builder"
-            >
-              ×
-            </button>
-            
-            {/* Pitch Builder */}
-            <div style={{ height: '100%', overflow: 'auto' }}>
-              <PitchBuilder enquiry={enquiry} userData={userData} />
-            </div>
-          </div>
-        </div>
-      )}
+  {/* Removed inline pitch builder modal */}
     </div>
   );
 };

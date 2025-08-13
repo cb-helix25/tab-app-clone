@@ -25,11 +25,38 @@
 - New UI: use `@fluentui/react-components` (v9). Keep v8 for existing code.
 - Co-locate component-specific types and tests.
 
+### UI micro-patterns from recent iterations
+- Sticky action/navigation bars: keep a subtle bottom border for separation
+	- Dark: `1px solid rgba(255,255,255,0.08)`
+	- Light: `1px solid rgba(0,0,0,0.06)`
+- Notes pin UX: a small, floating icon inside the notes box (top-right); no pointer triangle.
+	- Use Fluent UI icon names that exist (e.g., `Pinned` for pin, `Unpin` for unpin).
+	- Ensure `z-index` is above content to keep it visible.
+- Source confirmation microcopy: prefer a clear, neutral hint
+	- “Source confirmation: these notes may be intake rep call notes, a web form message, or an auto‑parsed email.”
+	- Display as a compact hover tooltip or a muted caption under the label.
+- VAT display: when an Amount is entered, show VAT 20% and Total inc VAT (formatted, concise) near the input.
+	- Don’t render the panel when the amount is empty or invalid.
+- Flattened detail layout: in detail mode, avoid double/triple card chrome; keep a sticky header + main content only.
+- Reveal/copy controls for contact info: reveal on hover, with copy affordance; keep typography compact.
+
+### Editor overlay pattern (for placeholder-rich text)
+- Use a transparent textarea over a highlighted pre layer to render placeholders like `[TOKEN]`.
+- Snap selection to the full placeholder token on click/drag inside it for easy replace.
+- Provide undo/redo (Ctrl+Z/Ctrl+Y) with a small, debounced history (≈300ms) to avoid noise.
+- Unify font metrics between layers (font, lineHeight, letterSpacing, ligatures) to prevent drift.
+
 ## Azure Functions (Node)
 - Use v4 model: `app.http(...)` with separate typed handler.
 - Always handle CORS + OPTIONS.
 - Read config from env; fallback to Key Vault in prod. No hardcoded secrets.
 - Error handling: 4xx for validation; 5xx for server errors.
+
+### Function security and observability
+- Validate and coerce inputs at the boundary; prefer narrow runtime validators.
+- Parameterize all SQL; never interpolate user input.
+- Don’t log PII or secrets; scrub if needed.
+- Return structured errors with appropriate status codes.
 
 ## Testing
 - Jest + Testing Library for React.

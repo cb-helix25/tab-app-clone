@@ -21,6 +21,7 @@ interface ImmediateActionsBarProps {
 }
 
 const ACTION_BAR_HEIGHT = 48;
+const HIDE_DELAY_MS = 3000; // Auto-hide delay when there is nothing to action
 
 const barStyle = (
     isDarkMode: boolean,
@@ -114,9 +115,13 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
     onDismiss,
 }) => {
     const [visible, setVisible] = useState(true);
+    const [autoHidden, setAutoHidden] = useState(false);
+    const computedVisible = (immediateActionsList.length > 0 || !immediateActionsReady) ? true : visible;
 
+    // Hide on scroll only when not auto-hidden and there are no actions
     useEffect(() => {
         const handleScroll = () => {
+            if (autoHidden) return; // keep hidden once auto-hidden until content changes
             const threshold = ACTION_BAR_HEIGHT * 2;
             if (window.scrollY > threshold) {
                 setVisible(false);
@@ -125,14 +130,36 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
             }
         };
 
-        if (immediateActionsList.length === 0) {
+        if (immediateActionsList.length === 0 && !autoHidden) {
             window.addEventListener('scroll', handleScroll);
         }
 
         return () => {
             window.removeEventListener('scroll', handleScroll);
         };
-    }, [immediateActionsList]);
+    }, [immediateActionsList, autoHidden]);
+
+    // Auto-hide the bar a few seconds after showing "Nothing to Action"
+    useEffect(() => {
+        let timer: number | undefined;
+        if (immediateActionsReady && immediateActionsList.length === 0) {
+            // show briefly, then hide
+            setAutoHidden(false);
+            setVisible(true);
+            timer = window.setTimeout(() => {
+                setAutoHidden(true);
+                setVisible(false);
+            }, HIDE_DELAY_MS);
+        } else {
+            // content changed (spinner or actions present) → ensure visible and reset auto-hidden
+            if (autoHidden) setAutoHidden(false);
+            setVisible(true);
+        }
+
+        return () => {
+            if (timer) window.clearTimeout(timer);
+        };
+    }, [immediateActionsReady, immediateActionsList.length]);
 
     return (
         <div
@@ -144,12 +171,12 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
             style={{
                 display: 'flex',
                 gap: '10px',
-                height: visible ? ACTION_BAR_HEIGHT : 0,
+                height: computedVisible ? ACTION_BAR_HEIGHT : 0,
                 overflow: 'hidden',
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'translateY(0)' : 'translateY(-10px)',
+                opacity: computedVisible ? 1 : 0,
+                transform: computedVisible ? 'translateY(0)' : 'translateY(-10px)',
                 transition: 'height 0.3s ease, opacity 0.3s ease, transform 0.3s ease',
-                pointerEvents: visible ? 'auto' : 'none',
+                pointerEvents: computedVisible ? 'auto' : 'none',
             }}
         >
             {!immediateActionsReady ? (

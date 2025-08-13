@@ -1,73 +1,145 @@
-diff --git a/src/utils/matterNormalization.ts b/src/utils/matterNormalization.ts
-index 3c362818ebede014261fbecf393c60927eac7904..db31a60147dba75fd480f5bdf52a467b763886b4 100644
---- a/src/utils/matterNormalization.ts
-+++ b/src/utils/matterNormalization.ts
-@@ -17,51 +17,67 @@ function namesMatch(name1: string, name2: string): boolean {
-     'lukasz': ['luke', 'lucas'],
-     'luke': ['lukasz', 'lucas'],
-     'lucas': ['luke', 'lukasz'],
-     'samuel': ['sam'],
-     'sam': ['samuel'],
-     'alexander': ['alex'],
-     'alex': ['alexander'],
-     'william': ['will', 'bill'],
-     'will': ['william'],
-     'bill': ['william'],
-     'robert': ['rob', 'bob'],
-     'rob': ['robert'],
-     'bob': ['robert'],
-     'michael': ['mike'],
-     'mike': ['michael'],
-     'christopher': ['chris'],
-     'chris': ['christopher'],
-     'elizabeth': ['liz', 'beth'],
-     'liz': ['elizabeth'],
-     'beth': ['elizabeth']
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 9e70170ae66236b3f7fd76a4255e221f06de7356..41be915928e120c08ffe7fd3ef732d29cc79718a 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -2152,54 +2152,60 @@ const officeAttendanceButtonText = currentUserConfirmed
+   const normalizeName = (name: string | null | undefined): string => {
+     if (!name) return '';
+     let normalized = name.trim().toLowerCase();
+     if (normalized === "bianca odonnell") {
+       normalized = "bianca o'donnell";
+     }
+     if (normalized === "samuel packwood") {
+       normalized = "sam packwood";
+     }
+     return normalized;
    };
    
-   // Split names into parts (first name, last name)
-   const n1Parts = n1.split(' ');
-   const n2Parts = n2.split(' ');
--  
-+
-+  // If either name lacks a last name, fall back to first-name comparison with variations
-+  if (n1Parts.length < 2 || n2Parts.length < 2) {
-+    const firstName1 = n1Parts[0];
-+    const firstName2 = n2Parts[0];
-+
-+    if (firstName1 === firstName2) return true;
-+
-+    const variations1 = nameVariations[firstName1] || [];
-+    const variations2 = nameVariations[firstName2] || [];
-+    if (variations1.includes(firstName2) || variations2.includes(firstName1)) {
-+      return true;
-+    }
-+
-+    return false;
-+  }
-+
-   // Check if first names match (with variations) and last names match
-   if (n1Parts.length >= 2 && n2Parts.length >= 2) {
-     const firstName1 = n1Parts[0];
-     const lastName1 = n1Parts[n1Parts.length - 1];
-     const firstName2 = n2Parts[0];
-     const lastName2 = n2Parts[n2Parts.length - 1];
-     
-     // Last names must match exactly
-     if (lastName1 === lastName2) {
-       // Check if first names match or are variations
-       if (firstName1 === firstName2) return true;
-       
-       // Check variations
-       const variations1 = nameVariations[firstName1] || [];
-       const variations2 = nameVariations[firstName2] || [];
-       
-       if (variations1.includes(firstName2) || variations2.includes(firstName1)) {
-         return true;
-       }
-     }
-   }
-   
-   return false;
- }
+   const { name: metricsName, clioId: metricsClioId } = getMetricsAlias(
+     userData?.[0]?.["Full Name"],
+     userData?.[0]?.Initials,
+     userData?.[0]?.["Clio ID"]
+   );
  
+   // IMPORTANT: For outstanding balances, use the actual current user's name
+   // (metricsName is an alias used for time/fees metrics demos and can skew ownership).
+   const userResponsibleName = (userData?.[0]?.FullName || userData?.[0]?.["Full Name"] || '').trim() || metricsName;
+   
+   const userMatterIDs = useMemo(() => {
+     if (!allMatters || allMatters.length === 0) return [];
+     return allMatters
+-      .filter((matter) => 
+-        normalizeName(matter.ResponsibleSolicitor) === normalizeName(userResponsibleName)
++      .filter(
++        (matter) =>
++          normalizeName(matter.ResponsibleSolicitor) ===
++          normalizeName(userResponsibleName)
+       )
+-      .map((matter) => Number(matter.UniqueID));
++      .map((matter) => {
++        const id = matter.MatterID ?? matter.UniqueID;
++        return Number(id);
++      })
++      .filter((id) => !isNaN(id));
+   }, [allMatters, userResponsibleName]);
+ 
+   const myOutstandingBalances = useMemo(() => {
+     if (!outstandingBalancesData?.data || userMatterIDs.length === 0) return [];
+     return outstandingBalancesData.data.filter((bal: any) =>
+       bal.associated_matter_ids.some((id: number) => userMatterIDs.includes(Number(id)))
+     );
+   }, [outstandingBalancesData, userMatterIDs]);
+ 
+   const [isOutstandingPanelOpen, setIsOutstandingPanelOpen] = useState(false);
+   const [showOnlyMine, setShowOnlyMine] = useState(true); // Changed default to true
+ 
+     // Create a derived variable mapping the raw outstanding balances data into MatterBalance[]
+     const outstandingBalancesList = useMemo<OutstandingClientBalance[]>(() => {
+       if (outstandingBalancesData && outstandingBalancesData.data) {
+         return outstandingBalancesData.data.map((record: any) => ({
+           id: record.id,
+           created_at: record.created_at,
+           updated_at: record.updated_at,
+           associated_matter_ids: record.associated_matter_ids,
+           contact: record.contact,
+           total_outstanding_balance: record.total_outstanding_balance,
+           last_payment_date: record.last_payment_date,
+           last_shared_date: record.last_shared_date,
+           newest_issued_bill_due_date: record.newest_issued_bill_due_date,
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 9e70170ae66236b3f7fd76a4255e221f06de7356..41be915928e120c08ffe7fd3ef732d29cc79718a 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -2272,67 +2278,69 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
+     const userInitials = userData?.[0]?.Initials?.trim().toLowerCase() || '';
+   
+     // Helper function to normalize names
+     const normalizeName = (name: string | null | undefined): string => {
+       if (!name) return '';
+       let normalized = name.trim().toLowerCase();
+       if (normalized === "bianca odonnell") {
+         normalized = "bianca o'donnell";
+       }
+       if (normalized === "samuel packwood") {
+         normalized = "sam packwood";
+       }
+       return normalized;
+     };
+   
+     // Calculate matters opened count for conversion metrics
+     // Use Sam Packwood when in local dev or when prod user is LZ; otherwise use the current user
+     const isConversionUseSP = (process.env.REACT_APP_USE_LOCAL_DATA === 'true') || ((userInitials || '').toUpperCase() === 'LZ');
+     const targetFirst = isConversionUseSP ? 'sam' : userFirstName;
+     const targetLast = isConversionUseSP ? 'packwood' : userLastName;
+     const targetFull = isConversionUseSP ? 'sam packwood' : userFullName;
+     const targetInitials = isConversionUseSP ? 'sp' : userInitials;
+ 
+     const mattersOpenedCount = allMatters
+       ? allMatters.filter((m) => {
+-          const openDate = new Date(m.OpenDate);
+-          let solicitorName = m.OriginatingSolicitor || '';
++          const openDate = m.OpenDate ? new Date(m.OpenDate) : null;
++          let solicitorName = m.OriginatingSolicitor || m.ResponsibleSolicitor || '';
+           solicitorName = normalizeName(solicitorName);
+ 
+           return (
++            openDate &&
++            !isNaN(openDate.getTime()) &&
+             openDate.getMonth() === currentMonth &&
+             openDate.getFullYear() === currentYear &&
+             (
+               solicitorName === targetFull || // Exact full name match
+               solicitorName === `${targetFirst} ${targetLast}` || // First + Last match
+               solicitorName.includes(targetFirst) || // Contains first name
+               solicitorName.includes(targetLast) || // Contains last name
+               solicitorName === targetInitials // Match on initials
+             )
+           );
+         }).length
+-      : 0;  
++      : 0;
+ 
+     if (!wipClioData) {
+         return [
+           { title: 'Time Today', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
+           { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
+           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
+           { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
+       // Use computed outstandingTotal even when WIP data hasn't loaded
+       { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0 },
+           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
+           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
+           { title: 'Enquiries This Month', isTimeMoney: false, count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
+           { title: 'Matters Opened', isTimeMoney: false, count: mattersOpenedCount, prevCount: 0 },
+         ];
+       }
+       
+     const currentWeekData = wipClioData.current_week?.daily_data[formattedToday];
+     const lastWeekDate = new Date(today);
+     lastWeekDate.setDate(today.getDate() - 7);
+     const formattedLastWeekDate = formatDateLocal(lastWeekDate);
+     const lastWeekData = wipClioData.last_week?.daily_data[formattedLastWeekDate];
+     const startOfCurrentWeek = new Date(today);
+     startOfCurrentWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
+     startOfCurrentWeek.setHours(0, 0, 0, 0);
+     const startOfLastWeek = new Date(startOfCurrentWeek);

@@ -376,9 +376,9 @@ const AttendanceCompact = forwardRef<
             else background = colours.greyText;
             const week = getMemberWeek(member.Initials);
             return (
-                <TooltipHost content={week}>
+                <TooltipHost content={week} key={`tt-${member.Initials}`}>
                     <div
-                        key={member.Initials}
+                        key={member.Initials} // Inner key kept for clarity though outer TooltipHost has key
                         className={avatarStyle}
                         style={{ background }}
                         title={member.Nickname || member.First}
@@ -403,14 +403,17 @@ const AttendanceCompact = forwardRef<
                 <div className={snakeGroup(isDarkMode)}>
                     <Icon iconName={icon} styles={{ root: { fontSize: 20, marginRight: 4 } }} />
                     <div className={snakeContainer}>
-                        {rows.map((row, idx) => (
-                            <div
-                                key={idx}
-                                style={{ display: 'flex', flexDirection: idx % 2 ? 'row-reverse' : 'row' }}
-                            >
-                                {row.map((m: any) => renderAvatar(m, status))}
-                            </div>
-                        ))}
+                        {rows.map((row, idx) => {
+                            const rowKey = `${status}-row-${idx}-${row.map((m: any) => m.Initials).join('-')}`;
+                            return (
+                                <div
+                                    key={rowKey}
+                                    style={{ display: 'flex', flexDirection: idx % 2 ? 'row-reverse' : 'row' }}
+                                >
+                                    {row.map((m: any) => renderAvatar(m, status))}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             );

@@ -156,7 +156,8 @@ const EnquiryBadge: React.FC<Props> = ({
         opacity: isVisible ? 1 : 0,
         transform: isVisible ? 'translateX(0) scale(1)' : 'translateX(20px) scale(0.95)',
         transition: 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        zIndex: 2 // ensure above decorative watermark ::after
       }}>
         {/* Area icon + label */}
         {enquiry.Area_of_Work && (
@@ -173,17 +174,30 @@ const EnquiryBadge: React.FC<Props> = ({
             </span>
             {/* Pulse dot for unclaimed only */}
             {showPulse && !isClaimed && (
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: areaColor,
-                  marginLeft: 4,
-                  animation: 'pulseEnquiry 1.8s ease-in-out infinite',
-                  display: 'inline-block',
-                }}
-              />
+              <span style={{ position:'relative', width:12, height:12, marginLeft:4, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                <span
+                  style={{
+                    position:'absolute',
+                    width:12,
+                    height:12,
+                    borderRadius:'50%',
+                    background: areaColor + '22',
+                    animation:'pulseEnquiry 1.8s ease-in-out infinite',
+                    boxShadow:`0 0 0 0 ${areaColor}55`,
+                    transformOrigin:'center',
+                  }}
+                />
+                <span
+                  style={{
+                    position:'relative',
+                    width:6,
+                    height:6,
+                    borderRadius:'50%',
+                    background: areaColor,
+                    boxShadow:`0 0 0 2px ${isDarkMode? 'rgba(0,0,0,0.4)':'#ffffff'}`,
+                  }}
+                />
+              </span>
             )}
           </div>
         )}

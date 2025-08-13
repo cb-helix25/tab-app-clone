@@ -1,23 +1,37 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useState, ReactNode } from 'react';
 // invisible change 2
 
-interface NavigatorContextProps {
-    content: ReactNode | null;
+// Split into two contexts so components that only need setContent don't re-render when content changes
+interface NavigatorActionsContextProps {
     setContent: (content: ReactNode | null) => void;
 }
 
-const NavigatorContext = createContext<NavigatorContextProps>({
-    content: null,
+interface NavigatorContentContextProps {
+    content: ReactNode | null;
+}
+
+const NavigatorActionsContext = createContext<NavigatorActionsContextProps>({
     setContent: () => { },
+});
+
+const NavigatorContentContext = createContext<NavigatorContentContextProps>({
+    content: null,
 });
 
 export const NavigatorProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [content, setContent] = useState<ReactNode | null>(null);
+
+    const actions = useMemo(() => ({ setContent }), [setContent]);
+    const contentValue = useMemo(() => ({ content }), [content]);
+
     return (
-        <NavigatorContext.Provider value={{ content, setContent }}>
-            {children}
-        </NavigatorContext.Provider>
+        <NavigatorActionsContext.Provider value={actions}>
+            <NavigatorContentContext.Provider value={contentValue}>
+                {children}
+            </NavigatorContentContext.Provider>
+        </NavigatorActionsContext.Provider>
     );
 };
 
-export const useNavigator = () => useContext(NavigatorContext);
+export const useNavigatorActions = () => useContext(NavigatorActionsContext);
+export const useNavigatorContent = () => useContext(NavigatorContentContext);

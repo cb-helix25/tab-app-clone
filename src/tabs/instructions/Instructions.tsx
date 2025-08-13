@@ -10,6 +10,7 @@ import {
   DialogType,
   DialogFooter,
   DefaultButton,
+  IconButton,
 } from "@fluentui/react";
 import {
   FaIdBadge,
@@ -22,9 +23,9 @@ import {
 } from 'react-icons/fa';
 import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import { FaShieldAlt } from 'react-icons/fa';
-import QuickActionsCard from "../home/QuickActionsCard";
+import QuickActionsCard from "../home/QuickActionsCard"; // legacy, to be removed after full migration
 import { useTheme } from "../../app/functionality/ThemeContext";
-import { useNavigator } from "../../app/functionality/NavigatorContext";
+import { useNavigatorActions } from "../../app/functionality/NavigatorContext";
 import { colours } from "../../app/styles/colours";
 import { dashboardTokens } from "./componentTokens";
 import InstructionCard from "./InstructionCard";
@@ -44,6 +45,10 @@ import "../../app/styles/InstructionsBanner.css";
 import DocumentEditorPage from "./DocumentEditorPage";
 import DocumentsV3 from "./DocumentsV3";
 import localUserData from "../../localData/localUserData.json";
+import SegmentedControl from '../../components/filter/SegmentedControl';
+import TwoLayerFilter, { TwoLayerFilterOption } from '../../components/filter/TwoLayerFilter';
+import ToggleSwitch from '../../components/ToggleSwitch';
+import InstructionApiDebugger from '../../components/InstructionApiDebugger';
 
 interface InstructionsProps {
   userInitials: string;
@@ -70,7 +75,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   setIsInMatterOpeningWorkflow,
 }) => {
   const { isDarkMode } = useTheme();
-  const { setContent } = useNavigator();
+  const { setContent } = useNavigatorActions();
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
@@ -83,6 +88,10 @@ const Instructions: React.FC<InstructionsProps> = ({
   const overviewGridRef = useRef<HTMLDivElement | null>(null);
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
   const [forceNewMatter, setForceNewMatter] = useState(false);
+  const [showCclDraftPage, setShowCclDraftPage] = useState(false);
+
+  // Flat tab navigation: default to Clients (order displayed will be pitches, clients, risk)
+  const [activeTab, setActiveTab] = useState<'clients' | 'pitches' | 'risk'>('clients');
 
   const handleRiskAssessmentSave = (risk: any) => {
     setInstructionData(prev =>
@@ -158,32 +167,152 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
   }, []); // Only run on mount
   
-  const [activePivot, setActivePivot] = useState<string>("deals-clients");
+  // Filter states
+  const [pitchStageFilter, setPitchStageFilter] = useState<'Active' | 'Closed' | 'All'>('Active');
+  const [clientsActionFilter, setClientsActionFilter] = useState<'All' | 'Verify ID' | 'Assess Risk' | 'Open Matter' | 'Draft CCL' | 'Complete'>('All');
+  const [riskStatusFilter, setRiskStatusFilter] = useState<'All' | 'Outstanding' | 'Completed'>('All');
+  
+  // Unified secondary filter state - tracks the secondary filter value for each tab
+  const [secondaryFilter, setSecondaryFilter] = useState<string>(() => {
+    switch (activeTab) {
+      case 'clients': return clientsActionFilter;
+      case 'pitches': return pitchStageFilter;
+      case 'risk': return riskStatusFilter;
+      default: return 'All';
+    }
+  });
+  
+  const [showApiDebugger, setShowApiDebugger] = useState(false);
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
   const [selectedDealRef, setSelectedDealRef] = useState<string | null>(null);
   const [showOnlyMyDeals, setShowOnlyMyDeals] = useState<boolean>(false);
+  
+  // Debug toggles for admin/localhost
+  const [useNewData, setUseNewData] = useState<boolean>(false);
+  const [twoColumn, setTwoColumn] = useState<boolean>(false);
+  
   const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
+  const isAdmin = !!currentUser?.Role && /admin/i.test(currentUser.Role);
+  const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const showDraftPivot = true; // Allow all users to see Document editor
 
+  // Unified filter configuration
+  const filterOptions: TwoLayerFilterOption[] = [
+    {
+      key: 'pitches',
+      label: 'Pitches',
+      subOptions: [
+        { key: 'Active', label: 'Active' },
+        { key: 'Closed', label: 'Closed' },
+        { key: 'All', label: 'All' },
+        ...(isAdmin ? [
+          { key: 'Mine', label: 'Mine' },
+          { key: 'Everyone', label: 'Everyone' }
+        ] : [])
+      ]
+    },
+    {
+      key: 'clients',
+      label: 'Clients',
+      subOptions: [
+        { key: 'All', label: 'All' },
+        { key: 'Verify ID', label: 'Verify ID' },
+        { key: 'Assess Risk', label: 'Assess Risk' },
+        { key: 'Open Matter', label: 'Open Matter' },
+        { key: 'Draft CCL', label: 'Draft CCL' },
+        { key: 'Complete', label: 'Complete' }
+      ]
+    },
+    {
+      key: 'risk',
+      label: 'Risk',
+      subOptions: [
+        { key: 'All', label: 'All' },
+        { key: 'Outstanding', label: 'Outstanding' },
+        { key: 'Completed', label: 'Completed' }
+      ]
+    }
+  ];
+
+  // Unified filter handlers
+  const handlePrimaryFilterChange = (key: string) => {
+    setActiveTab(key as 'clients' | 'pitches' | 'risk');
+    // Reset secondary filter to the default for the new tab
+    switch (key) {
+      case 'clients':
+        setSecondaryFilter(clientsActionFilter);
+        break;
+      case 'pitches':
+        setSecondaryFilter(pitchStageFilter);
+        break;
+      case 'risk':
+        setSecondaryFilter(riskStatusFilter);
+        break;
+    }
+  };
+
+  const handleSecondaryFilterChange = (key: string) => {
+    setSecondaryFilter(key);
+    // Update the appropriate individual filter state
+    switch (activeTab) {
+      case 'clients':
+        setClientsActionFilter(key as any);
+        break;
+      case 'pitches':
+        // Handle special case for pitches - admin scope vs stage filter
+        if (key === 'Mine' || key === 'Everyone') {
+          setShowOnlyMyDeals(key === 'Mine');
+        } else {
+          setPitchStageFilter(key as any);
+        }
+        break;
+      case 'risk':
+        setRiskStatusFilter(key as any);
+        break;
+    }
+  };
+
+  // Sync secondary filter when tab changes
+  React.useEffect(() => {
+    switch (activeTab) {
+      case 'clients':
+        setSecondaryFilter(clientsActionFilter);
+        break;
+      case 'pitches':
+        // For pitches, check if we have a valid stage filter value, otherwise use scope
+        if (isAdmin && ['Mine', 'Everyone'].includes(secondaryFilter)) {
+          // Keep the scope filter if it's already set
+          setSecondaryFilter(showOnlyMyDeals ? 'Mine' : 'Everyone');
+        } else {
+          setSecondaryFilter(pitchStageFilter);
+        }
+        break;
+      case 'risk':
+        setSecondaryFilter(riskStatusFilter);
+        break;
+    }
+  }, [activeTab, clientsActionFilter, pitchStageFilter, riskStatusFilter, showOnlyMyDeals, isAdmin, secondaryFilter]);
+
   // Clear selection when leaving overview tab
+  // Clear selection when leaving clients tab
   useEffect(() => {
-    if (activePivot !== "overview") {
+    if (activeTab !== "clients") {
       setSelectedInstruction(null);
     }
-  }, [activePivot]);
+  }, [activeTab]);
 
   useEffect(() => {
-    if (activePivot !== "risk") {
+    if (activeTab !== "risk") {
       setRiskFilterRef(null);
     }
-  }, [activePivot]);
+  }, [activeTab]);
 
   useEffect(() => {
-    if (activePivot !== "deals-clients") {
+    if (activeTab !== "pitches") {
       setSelectedDealRef(null);
       setShowOnlyMyDeals(false);
     }
-  }, [activePivot]);
+  }, [activeTab]);
 
   const ACTION_BAR_HEIGHT = 48;
 
@@ -193,9 +322,9 @@ const Instructions: React.FC<InstructionsProps> = ({
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
       boxShadow: dark
-        ? "0 2px 4px rgba(0,0,0,0.4)"
-        : "0 2px 4px rgba(0,0,0,0.1)",
-      padding: "0 24px",
+        ? "0 2px 6px rgba(0,0,0,0.5)"
+        : "0 2px 6px rgba(0,0,0,0.12)",
+      padding: "10px 24px 12px 24px", // Taller bar like Enquiries
       transition: "background-color 0.3s",
       display: "flex",
       flexDirection: "row",
@@ -204,7 +333,6 @@ const Instructions: React.FC<InstructionsProps> = ({
       msOverflowStyle: "none",
       scrollbarWidth: "none",
       alignItems: "center",
-      height: ACTION_BAR_HEIGHT,
       position: "sticky",
       top: ACTION_BAR_HEIGHT,
       zIndex: 999,
@@ -223,17 +351,16 @@ const Instructions: React.FC<InstructionsProps> = ({
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
       boxShadow: dark
-        ? "0 2px 4px rgba(0,0,0,0.4)"
-        : "0 2px 4px rgba(0,0,0,0.1)",
+        ? "0 2px 6px rgba(0,0,0,0.5)"
+        : "0 2px 6px rgba(0,0,0,0.12)",
       borderTop: dark
         ? "1px solid rgba(255,255,255,0.1)"
         : "1px solid rgba(0,0,0,0.05)",
-      padding: "0 24px",
+      padding: "10px 24px 12px 24px", // Match taller style
       display: "flex",
       flexDirection: "row",
       gap: "8px",
       alignItems: "center",
-      height: ACTION_BAR_HEIGHT,
       position: "sticky",
       top: ACTION_BAR_HEIGHT,
       zIndex: 999,
@@ -585,36 +712,68 @@ const Instructions: React.FC<InstructionsProps> = ({
           </div>
         ) : (
           <>
-            {/* Quick Actions Bar with Pivot Navigation */}
+            {/* Quick Actions Bar with Unified Two-Layer Filter */}
             <div className={quickLinksStyle(isDarkMode)}>
-              {/* Pivot Navigation as Quick Action Cards */}
-              <QuickActionsCard
-                title="Pitches"
-                icon="FileTemplate"
-                isDarkMode={isDarkMode}
-                selected={activePivot === "deals-clients"}
-                onClick={() => setActivePivot("deals-clients")}
-                iconColor={activePivot === "deals-clients" ? colours.cta : colours.greyText}
-                orientation="row"
-              />
-              <QuickActionsCard
-                title="Clients"
-                icon="People"
-                isDarkMode={isDarkMode}
-                selected={activePivot === "overview"}
-                onClick={() => setActivePivot("overview")}
-                iconColor={activePivot === "overview" ? colours.cta : colours.greyText}
-                orientation="row"
-              />
-              <QuickActionsCard
-                title="Risk & Compliance"
-                icon="Shield"
-                isDarkMode={isDarkMode}
-                selected={activePivot === "risk"}
-                onClick={() => setActivePivot("risk")}
-                iconColor={activePivot === "risk" ? colours.cta : colours.greyText}
-                orientation="row"
-              />            </div>
+              <div style={{ display:'flex', alignItems:'center', gap:24, width:'100%' }}>
+                <TwoLayerFilter
+                  id="instructions-unified-filter"
+                  ariaLabel="Instructions navigation and filtering"
+                  primaryValue={activeTab}
+                  secondaryValue={secondaryFilter}
+                  onPrimaryChange={handlePrimaryFilterChange}
+                  onSecondaryChange={handleSecondaryFilterChange}
+                  options={filterOptions}
+                />
+                {/* Spacer */}
+                <div style={{ flex: 1 }} />
+                {/* Admin controls (debug) for admin or localhost */}
+                {(isAdmin || isLocalhost) && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '2px 10px 2px 6px',
+                      height: 40,
+                      borderRadius: 12,
+                      background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
+                      border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: isDarkMode ? '#ffe9a3' : '#5d4700'
+                    }}
+                    title="Admin / debug controls"
+                  >
+                    <IconButton
+                      iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
+                      title="Debug API calls"
+                      ariaLabel="Open data inspector"
+                      onClick={() => setShowApiDebugger(v => !v)}
+                      styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
+                    />
+                    <ToggleSwitch
+                      id="instructions-new-data-toggle"
+                      checked={useNewData}
+                      onChange={setUseNewData}
+                      size="sm"
+                      onText="New"
+                      offText="Legacy"
+                      ariaLabel="Toggle dataset between legacy and new"
+                    />
+                    <ToggleSwitch
+                      id="instructions-two-column-toggle"
+                      checked={twoColumn}
+                      onChange={setTwoColumn}
+                      size="sm"
+                      onText="2-col"
+                      offText="1-col"
+                      ariaLabel="Toggle two column layout"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         )}
       </>,
@@ -624,7 +783,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     setContent,
     isDarkMode,
     instructionData,
-    activePivot,
+    activeTab,
     showNewMatterPage,
     showRiskPage,
     showEIDPage,
@@ -632,6 +791,12 @@ const Instructions: React.FC<InstructionsProps> = ({
     hasActiveMatter,
     selectedDealRef,
     riskFilterRef,
+    pitchStageFilter,
+    clientsActionFilter,
+    riskStatusFilter,
+    secondaryFilter,
+    showOnlyMyDeals,
+    showApiDebugger,
   ]);
 
   const containerStyle = mergeStyles({
@@ -653,7 +818,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
       padding: "16px",
-      paddingBottom: activePivot === "overview" ? "120px" : "16px", // Add bottom padding for global action area
+      paddingBottom: activeTab === "clients" ? "120px" : "16px", // Add bottom padding for global action area
       borderRadius: 0,
       boxShadow: dark
         ? `0 4px 12px ${colours.dark.border}`
@@ -1194,13 +1359,59 @@ const Instructions: React.FC<InstructionsProps> = ({
     [instructionData],
   );
 
-  const filteredRiskComplianceData = useMemo(
-    () =>
-      riskComplianceData.filter((r) =>
-        riskFilterRef ? r.MatterId === riskFilterRef : true,
-      ),
-    [riskComplianceData, riskFilterRef],
-  );
+  const filteredRiskComplianceData = useMemo(() => {
+    let base = riskComplianceData.filter(r => riskFilterRef ? r.MatterId === riskFilterRef : true);
+    if (riskStatusFilter === 'All') return base;
+    const isCompleted = (item: any) => {
+      const passed = (val: any) => typeof val === 'string' && ['passed','approved','low','low risk'].includes(val.toLowerCase());
+      const eidOk = passed(item.EIDStatus) || passed(item.CheckResult) || passed(item.EIDOverallResult);
+      const riskOk = passed(item.RiskAssessmentResult) || passed(item.CheckResult);
+      return eidOk && riskOk;
+    };
+    if (riskStatusFilter === 'Completed') return base.filter(isCompleted);
+    return base.filter(i => !isCompleted(i));
+  }, [riskComplianceData, riskFilterRef, riskStatusFilter]);
+
+  // Derive next action for clients (overview items reused later)
+  const overviewItemsWithNextAction = useMemo(()=>{
+    return overviewItems.map(item => {
+      const inst = item.instruction as any;
+      const eid = item.eid;
+      const riskResultRaw = item.risk?.RiskAssessmentResult?.toString().toLowerCase();
+      const poidResult = eid?.EIDOverallResult?.toLowerCase();
+      const poidPassed = poidResult === 'passed' || poidResult === 'approved';
+      const eidStatus = eid?.EIDStatus?.toLowerCase() ?? '';
+      const proofOfIdComplete = Boolean(inst?.PassportNumber || inst?.DriversLicenseNumber);
+      let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
+      if (!eid || eidStatus === 'pending') verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
+      else if (poidPassed) verifyIdStatus = 'complete'; else verifyIdStatus = 'review';
+      const riskStatus = riskResultRaw ? (['low','low risk','pass','approved'].includes(riskResultRaw)? 'complete':'flagged') : 'pending';
+      const paymentCompleted = (inst?.PaymentResult||'').toLowerCase() === 'successful';
+      const hasMatter = inst?.MatterId;
+      let nextAction: string = 'Complete';
+      if (verifyIdStatus !== 'complete') nextAction = 'Verify ID';
+      else if (riskStatus === 'pending') nextAction = 'Assess Risk';
+      else if (!hasMatter && poidPassed && paymentCompleted) nextAction = 'Open Matter';
+      else if (hasMatter) nextAction = 'Draft CCL';
+      return { ...item, nextAction };
+    });
+  }, [overviewItems]);
+
+  const filteredOverviewItems = useMemo(()=>{
+    if (clientsActionFilter === 'All') return overviewItemsWithNextAction;
+    return overviewItemsWithNextAction.filter(i => i.nextAction === clientsActionFilter || (clientsActionFilter==='Complete' && i.nextAction==='Complete'));
+  }, [overviewItemsWithNextAction, clientsActionFilter]);
+
+  // Filter deals by claim & stage
+  const filteredDeals = useMemo(()=> deals.filter(d => {
+    if (pitchStageFilter === 'Active' && String(d.Status).toLowerCase()==='closed') return false;
+    if (pitchStageFilter === 'Closed' && String(d.Status).toLowerCase()!=='closed') return false;
+    if (!isAdmin && showOnlyMyDeals && currentUser?.Email) {
+      const em = currentUser.Email.toLowerCase();
+      if (!((d.LeadClientEmail||'').toLowerCase()===em || (d.Email||'').toLowerCase()===em || (d.assignedTo||'').toLowerCase()===em)) return false;
+    }
+    return true;
+  }), [deals, pitchStageFilter, showOnlyMyDeals, isAdmin, currentUser]);
 
   // Create POID data for client address information
   const idVerificationOptions = useMemo(() => {
@@ -1496,12 +1707,12 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const handleOpenRiskCompliance = (ref: string) => {
     setRiskFilterRef(ref);
-    setActivePivot('risk');
+    setActiveTab('risk');
   };
 
   const handleDraftCclNow = () => {
     setShowNewMatterPage(false);
-    setActivePivot('draft-ccl');
+    setShowCclDraftPage(true);
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 100);
@@ -1514,7 +1725,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     // Set a global variable or state to force initialTemplate to 'ccl'
     // If DocumentsV3 is rendered here, pass initialTemplate='ccl' directly
     // If not, ensure the prop is always 'ccl' for this action
-    setActivePivot('draft-ccl');
+    setShowCclDraftPage(true);
     // Optionally, if you use a state for initialTemplate, set it here:
     // setInitialTemplate('ccl');
   };
@@ -1530,13 +1741,14 @@ const Instructions: React.FC<InstructionsProps> = ({
   });
 
   const overviewGridStyle = mergeStyles({
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: "8px",
-    width: "100%",
-    margin: "0 auto",
-    boxSizing: "border-box",
-  });
+    display: 'grid',
+    gridTemplateColumns: twoColumn ? 'repeat(2, minmax(0,1fr))' : '1fr',
+    gap: twoColumn ? '16px' : '8px',
+    width: '100%',
+    margin: '0 auto',
+    boxSizing: 'border-box',
+    transition: 'grid-template-columns .25s ease',
+  }, twoColumn && 'two-col-grid');
 
   const overviewItemStyle = mergeStyles({
     minWidth: 350,
@@ -1573,7 +1785,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   useLayoutEffect(() => {
     if (
-      activePivot === "overview" &&
+      activeTab === "clients" &&
       !showRiskPage &&
       !showNewMatterPage &&
       !showEIDPage
@@ -1584,7 +1796,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     overviewItems,
     selectedInstruction,
     repositionMasonry,
-    activePivot,
+    activeTab,
     showRiskPage,
     showNewMatterPage,
     showEIDPage,
@@ -1709,13 +1921,13 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   function handleOpenInstruction(ref: string): void {
     // For deals, don't change filtering - cards should expand inline instead
-    if (activePivot === "deals-clients") {
+    if (activeTab === "pitches") {
       // No longer filtering to single deal view - cards handle their own expansion
       return;
     } else {
       // Navigate to the risk compliance view for this specific instruction
       setRiskFilterRef(ref);
-      setActivePivot('risk');
+      setActiveTab('risk');
     }
   }
 
@@ -1724,9 +1936,18 @@ const Instructions: React.FC<InstructionsProps> = ({
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className={sectionContainerStyle(isDarkMode)}>
-          {activePivot === "overview" && (
+      {activeTab === "clients" && (
               <div className={overviewGridStyle} ref={overviewGridRef}>
-                {overviewItems.map((item, idx) => {
+                {twoColumn && typeof document !== 'undefined' && !document.getElementById('instructionsTwoColStyles') && (
+                  (() => {
+                    const styleEl = document.createElement('style');
+                    styleEl.id = 'instructionsTwoColStyles';
+                    styleEl.textContent = '@media (max-width: 860px){.two-col-grid{grid-template-columns:1fr!important;}}';
+                    document.head.appendChild(styleEl);
+                    return null;
+                  })()
+                )}
+        {filteredOverviewItems.map((item, idx) => {
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const animationDelay = row * 0.2 + col * 0.1;
@@ -1766,11 +1987,11 @@ const Instructions: React.FC<InstructionsProps> = ({
                 })}
             </div>
           )}
-          {activePivot === "deals-clients" && (
+      {activeTab === "pitches" && (
             <div>
               {/* Deals Section - Joint clients appear as pins within each deal card */}
               <DealsPivot
-                deals={deals}
+        deals={filteredDeals}
                 handleOpenInstruction={handleOpenInstruction}
                 selectedDealRef={selectedDealRef}
                 onClearSelection={() => setSelectedDealRef(null)}
@@ -1783,7 +2004,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               />
             </div>
           )}
-          {activePivot === "risk" && (
+          {activeTab === "risk" && (
             <>
               <div className={gridContainerStyle}>
                 {groupedRiskComplianceData.length === 0 && (
@@ -1809,14 +2030,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               </div>
             </>
           )}
-          {activePivot === "documents" && (
-            <DocumentEditorPage 
-              matterId={selectedInstruction?.InstructionRef} 
-              instruction={selectedInstruction}
-              instructions={instructionData}
-            />
-          )}
-          {activePivot === "draft-ccl" && (
+          {showCclDraftPage && (
             <DocumentsV3
               selectedInstructionProp={selectedInstruction}
               initialTemplate={selectedInstruction ? 'ccl' : undefined}
@@ -1824,8 +2038,11 @@ const Instructions: React.FC<InstructionsProps> = ({
             />
           )}
         </div>
+        {showApiDebugger && (
+          <InstructionApiDebugger currentInstructions={instructionData} onClose={()=> setShowApiDebugger(false)} />
+        )}
         {/* Global Action Area - always visible, enhanced when instruction selected */}
-        {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && (
+        {activeTab === "clients" && !showNewMatterPage && !showRiskPage && !showEIDPage && (
           <div 
             className={`global-action-area${selectedInstruction ? ' expanded' : ''}`}
             style={{
@@ -2013,7 +2230,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             </button>
             <button
               className={`global-action-btn${selectedInstruction || nextReadyAction === 'ccl' ? ' selected' : ''}${nextReadyAction === 'ccl' ? ' next-action-pulse' : ''}`}
-              onClick={canOpenMatter ? () => setActivePivot("draft-ccl") : undefined}
+              onClick={canOpenMatter ? () => setShowCclDraftPage(true) : undefined}
               onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
               onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
