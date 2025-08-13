@@ -41,7 +41,6 @@ export function convertDoubleBreaksToParagraphs(html: string): string {
  * Looks for patterns like "1. " and "2. " and converts them to proper <ol><li> structure.
  */
 export function convertNumberedListsToHTML(text: string): string {
-  // Split into lines for processing
   const lines = text.split('\n');
   const result: string[] = [];
   let inList = false;
@@ -50,8 +49,6 @@ export function convertNumberedListsToHTML(text: string): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmedLine = line.trim();
-
-    // Match lines like: "1. Something" (number + dot + space)
     const listItemMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
 
     if (listItemMatch) {
@@ -64,7 +61,6 @@ export function convertNumberedListsToHTML(text: string): string {
       listItems.push({ n, content: itemContent });
     } else {
       if (inList) {
-        // Emit an HTML list that is robust in Outlook by inlining the numbers and disabling default markers
         const html =
           `<ol class="hlx-numlist" style="list-style:none;padding-left:0;margin:16px 0;">` +
           listItems
@@ -79,12 +75,10 @@ export function convertNumberedListsToHTML(text: string): string {
         inList = false;
         listItems = [];
       }
-      // Add the non-list line (preserve empty lines)
       result.push(trimmedLine ? line : '');
     }
   }
 
-  // Handle a list at EOF
   if (inList && listItems.length > 0) {
     const html =
       `<ol class="hlx-numlist" style="list-style:none;padding-left:0;margin:16px 0;">` +
@@ -407,16 +401,18 @@ export function applyDynamicSubstitutions(
         ? `${baseUrl}?passcode=${encodeURIComponent(String(passcode))}`
         : baseUrl);
 
+  // Prebuild the anchor used in HTML previews/emails
+  const instructAnchor = `<a href="${finalInstructionsLink}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`;
+
   return text
+  // Support explicit marker syntax used in editor content
+  .replace(/\[\[INSTRUCT_LINK::[^\]]*\]\]/gi, instructAnchor)
     .replace(/\[FE\]/g, userInitials)
     .replace(/\[ACID\]/g, enquiryID)
     .replace(/\[Position\]/g, userRole)
     .replace(/\[Rate\]/g, formattedRate)
     .replace(/\[Amount\]/g, formattedAmount)
     .replace(/\[Passcode\]/g, passcode || '[Passcode]')
-    // Render a human-friendly hyperlink instead of a raw URL
-    .replace(
-      /\[InstructLink\]/g,
-      `<a href="${finalInstructionsLink}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`
-    );
+  // Render a human-friendly hyperlink instead of a raw URL
+  .replace(/\[InstructLink\]/g, instructAnchor);
 }

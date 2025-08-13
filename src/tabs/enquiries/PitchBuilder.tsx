@@ -2057,8 +2057,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode && dealId
-        ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
+      dealPasscode && enquiry?.ID
+        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
         : undefined
     );
     insertAtCursor(html);
@@ -2093,8 +2093,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           enquiry,
           amount,
           dealPasscode,
-          dealPasscode && dealId
-            ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
+          dealPasscode && enquiry?.ID
+            ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
             : undefined
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2135,8 +2135,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           enquiry,
           amount,
           dealPasscode,
-          dealPasscode && dealId
-            ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
+          dealPasscode && enquiry?.ID
+            ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
             : undefined
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2334,8 +2334,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode && dealId
-        ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
+      dealPasscode && enquiry?.ID
+        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
         : undefined
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2454,8 +2454,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode && dealId
-        ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
+      dealPasscode && enquiry?.ID
+        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
         : undefined
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2954,8 +2954,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     let rawHtml = removeHighlightSpans(body);
 
     // Apply dynamic substitutions such as amount just before sending
-    const instructionsLink = dealPasscode && dealId
-      ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
+    const instructionsLink = dealPasscode && enquiry?.ID
+      ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
       : undefined;
     rawHtml = applyDynamicSubstitutions(
       rawHtml,
@@ -3443,8 +3443,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
                 enquiry,
                 amount,
                 dealPasscode,
-                dealPasscode && dealId
-                  ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
+                dealPasscode && enquiry?.ID
+                  ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
                   : undefined
               );
               return (
@@ -3469,8 +3469,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         enquiry,
         amount,
         dealPasscode,
-        dealPasscode && dealId
-          ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
+        dealPasscode && enquiry?.ID
+          ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
           : undefined
       );
       return (
@@ -3853,7 +3853,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         enquiry,
         amount,
         dealPasscode,
-        dealPasscode && dealId ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}` : undefined
+        dealPasscode && enquiry?.ID
+          ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
+          : undefined
       );
       raw = cleanTemplateString(raw);
       const formatted = formatSectionContent(raw);
@@ -4169,7 +4171,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
                         enquiry,
                         amount,
                         dealPasscode,
-                        dealPasscode && dealId ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}` : undefined
+                        dealPasscode && enquiry?.ID
+                          ? `${((process.env.REACT_APP_INSTRUCTIONS_URL ?? 'https://instruct.helix-law.com').replace(/\/$/, ''))}/pitch/${enquiry.ID}-${dealPasscode}`
+                          : undefined
                       );
                       const isSelected = snippetOptionsLabel === option.key;
                       return (
