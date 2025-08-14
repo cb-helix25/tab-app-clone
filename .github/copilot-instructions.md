@@ -1,5 +1,8 @@
 # Copilot custom instructions for this workspace
 
+<!-- User preference: keep answers strictly concise with no extra explanation or fluff. -->
+<!-- Responses should be short, factual, and limited to the requested action or change. -->
+
 ## Project context
 - Stack: React 18 + TypeScript (strict), Azure Functions (Node 18/20, @azure/functions v4), TeamsFx, Fluent UI, Jest.
 - Structure: Frontend in `src/`; Azure Functions in `api/src/functions`; `decoupled-functions` project; local Azurite.

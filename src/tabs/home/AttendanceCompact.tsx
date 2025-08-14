@@ -7,6 +7,7 @@ import React, {
     useRef,
 } from 'react';
 import { Icon, TooltipHost, mergeStyles, DefaultButton } from '@fluentui/react';
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
@@ -278,7 +279,7 @@ const AttendanceCompact = forwardRef<
 
             try {
                 const response = await fetch(
-                    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_ATTENDANCE_PATH}?code=${process.env.REACT_APP_INSERT_ATTENDANCE_CODE}`,
+                    `${getProxyBaseUrl()}/${process.env.REACT_APP_INSERT_ATTENDANCE_PATH}?code=${process.env.REACT_APP_INSERT_ATTENDANCE_CODE}`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 // invisible change removed
 import { Stack, Text, Spinner, MessageBar, MessageBarType, DefaultButton, IButtonStyles, TextField, ITextFieldStyles } from '@fluentui/react';
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import { Transaction, Matter } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
 
@@ -122,8 +123,8 @@ const TransactionApprovalPopup: React.FC<TransactionApprovalPopupProps> = ({
       // Optimistically update the status to 'transfer' for the animation
       setLocalStatus('transfer');
 
-      const response = await fetch(
-        `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_UPDATE_TRANSACTIONS_PATH}?code=${process.env.REACT_APP_UPDATE_TRANSACTIONS_CODE}`,
+        const response = await fetch(
+          `${getProxyBaseUrl()}/${process.env.REACT_APP_UPDATE_TRANSACTIONS_PATH}?code=${process.env.REACT_APP_UPDATE_TRANSACTIONS_CODE}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 // invisible change
 import { Stack, Text, Spinner, SpinnerSize, Icon, DefaultButton, IButtonStyles } from '@fluentui/react';
+import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
 import { colours } from '../app/styles/colours';
 import { useTheme } from '../app/functionality/ThemeContext';
 import BespokeForm, { FormField } from './BespokeForms';
@@ -321,7 +322,7 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
   }
 
   async function submitBooking(data: BookSpaceData) {
-    const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_BOOK_SPACE_PATH}?code=${process.env.REACT_APP_INSERT_BOOK_SPACE_CODE}`;
+  const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_INSERT_BOOK_SPACE_PATH}?code=${process.env.REACT_APP_INSERT_BOOK_SPACE_CODE}`;
     let finalTimeStr = data.booking_time;
     if (!finalTimeStr.includes('.')) {
       finalTimeStr += '.0000000';

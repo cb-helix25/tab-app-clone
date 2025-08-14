@@ -94,6 +94,7 @@ import { getActionableInstructions } from './InstructionsPrompt';
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
 import Attendance from './AttendanceCompact';
+import AttendanceConfirmPanel from './AttendanceConfirmPanel';
 
 import TransactionCard from '../transactions/TransactionCard';
 import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
@@ -2150,6 +2151,62 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
   });
 };
 
+// Wrapper used by top-level AttendanceConfirmPanel to save attendance for the current user.
+  const saveAttendance = async (weekStart: string, attendanceDays: string): Promise<void> => {
+  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || window.location.hostname === 'localhost';
+  const initials = userInitials || (userData?.[0]?.Initials || '');
+  const firstName = (transformedTeamData.find((t) => t.Initials === initials)?.First) || '';
+
+  if (useLocalData) {
+    const newRecord: AttendanceRecord = {
+      Attendance_ID: 0,
+      Entry_ID: 0,
+      First_Name: firstName,
+      Initials: initials,
+  Level: (attendanceTeam.find((t: any) => t.Initials === initials)?.Level) || '',
+      Week_Start: weekStart,
+      Week_End: new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6)).toISOString().split('T')[0],
+  ISO_Week: getISOWeek(new Date(weekStart)),
+      Attendance_Days: attendanceDays,
+      Confirmed_At: new Date().toISOString(),
+    };
+    // Reuse existing handler to merge into state
+    handleAttendanceUpdated([newRecord]);
+    return;
+  }
+
+  try {
+    const url = `${proxyBaseUrl}/${process.env.REACT_APP_INSERT_ATTENDANCE_PATH}?code=${process.env.REACT_APP_INSERT_ATTENDANCE_CODE}`;
+    const payload = [{ firstName, initials, weekStart, attendanceDays }];
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Failed to save attendance: ${res.status}`);
+    const updated = await res.json();
+    // Map response into AttendanceRecord[] expected by handleAttendanceUpdated
+    const mapped: AttendanceRecord[] = (updated || []).map((result: any) => ({
+      Attendance_ID: result.entryId || 0,
+      Entry_ID: result.entryId || 0,
+      First_Name: firstName,
+      Initials: initials,
+  Level: (attendanceTeam.find((t: any) => t.Initials === initials)?.Level) || '',
+      Week_Start: result.weekStart || weekStart,
+      Week_End: new Date(new Date(result.weekStart || weekStart).setDate(new Date(result.weekStart || weekStart).getDate() + 6)).toISOString().split('T')[0],
+      ISO_Week: getISOWeek(new Date(result.weekStart || weekStart)),
+      Attendance_Days: result.attendanceDays || attendanceDays,
+      Confirmed_At: new Date().toISOString(),
+    }));
+    if (mapped.length) handleAttendanceUpdated(mapped);
+  } catch (err) {
+    console.error('Error saving attendance (home):', err);
+    // Surface a minimal user visible error
+    // eslint-disable-next-line no-alert
+    alert('Failed to save attendance');
+  }
+};
+
 
 // Decide which week we consider "the relevant week"
   const relevantWeekKey = isThursdayAfterMidday ? nextKey : currentKey;
@@ -2796,14 +2853,19 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     switch (titleText) {
       case "Confirm Attendance":
       case "Update Attendance":
-        if (attendanceRef.current) {
-          const now = new Date();
-          const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
-          const week = isThursdayAfterMidday ? 'next' : 'current';
-          attendanceRef.current.setWeek(week);
-          attendanceRef.current.focusTable();
-        }
-        return; // Exit early, no panel needed
+        // Open the global BespokePanel containing the AttendanceConfirmPanel
+        content = (
+          <AttendanceConfirmPanel
+            isDarkMode={isDarkMode}
+            attendanceRecords={transformedAttendanceRecords}
+            teamData={(transformedTeamData ?? []) as any[]}
+            annualLeaveRecords={annualLeaveRecords}
+            futureLeaveRecords={futureLeaveRecords}
+            userData={userData}
+            onSave={saveAttendance}
+          />
+        );
+        break; // continue to open the panel via the shared logic below
       case 'Create a Task':
         content = (
           <Suspense fallback={<Spinner size={SpinnerSize.small} />}>

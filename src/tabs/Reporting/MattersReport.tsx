@@ -36,6 +36,7 @@ import MattersCombinedMenu from '../matters/MattersCombinedMenu';
 import AreaCountCard from '../enquiries/AreaCountCard';
 import MatterTransactions from '../matters/MatterTransactions';
 import Documents from '../matters/documents/Documents';
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 
 
@@ -45,7 +46,7 @@ import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 async function callGetMatterOverview(matterId: number) {
     const code = process.env.REACT_APP_GET_MATTER_OVERVIEW_CODE;
     const path = process.env.REACT_APP_GET_MATTER_OVERVIEW_PATH;
-    const baseUrl = process.env.REACT_APP_PROXY_BASE_URL; // Ensure this is set in your env
+    const baseUrl = getProxyBaseUrl();
     if (!code || !path || !baseUrl) {
         console.error('Missing required environment variables for getMatterOverview');
         return null;
@@ -75,7 +76,7 @@ async function callGetMatterOverview(matterId: number) {
 async function callGetComplianceData(matterId: string, clientId: string): Promise<any> {
     const code = process.env.REACT_APP_GET_COMPLIANCE_DATA_CODE;
     const path = process.env.REACT_APP_GET_COMPLIANCE_DATA_PATH;
-    const baseUrl = process.env.REACT_APP_PROXY_BASE_URL; // Ensure this is set in your env
+    const baseUrl = getProxyBaseUrl();
     if (!code || !path || !baseUrl) {
         console.error('Missing required environment variables for getComplianceData');
         return null;
@@ -105,7 +106,7 @@ async function callGetComplianceData(matterId: string, clientId: string): Promis
 async function callGetMatterSpecificActivities(matterId: string): Promise<any> {
     const code = process.env.REACT_APP_GET_MATTER_SPECIFIC_ACTIVITIES_CODE;
     const path = process.env.REACT_APP_GET_MATTER_SPECIFIC_ACTIVITIES_PATH;
-    const baseUrl = process.env.REACT_APP_PROXY_BASE_URL; // Ensure this is set in your env
+    const baseUrl = getProxyBaseUrl();
     if (!code || !path || !baseUrl) {
         console.error('Missing required environment variables for getMatterSpecificActivities');
         return null;

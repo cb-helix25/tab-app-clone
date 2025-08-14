@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import {
   Stack,
   Text,
@@ -500,7 +501,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const handleEditRating = useCallback(async (id: string, newRating: string) => {
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_UPDATE_RATING_PATH}?code=${process.env.REACT_APP_UPDATE_RATING_CODE}`,
+        `${getProxyBaseUrl()}/${process.env.REACT_APP_UPDATE_RATING_PATH}?code=${process.env.REACT_APP_UPDATE_RATING_CODE}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

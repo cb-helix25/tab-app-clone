@@ -67,6 +67,7 @@ import SnippetEditPopover from './pitch-builder/SnippetEditPopover';
 
 
 import { placeholderSuggestions } from '../../app/customisation/InsertSuggestions';
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import {
   convertDoubleBreaksToParagraphs,
@@ -682,7 +683,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           }
         }
         try {
-          const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
+          const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
           const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();
@@ -2537,8 +2538,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     const snippetId = firstSnippet ? parseInt(firstSnippet.getAttribute('data-snippet-id') || '0', 10) : undefined;
     const block = blocks.find(b => b.title === blockTitle);
     const blockId = block?.blockId;
-    try {
-      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
+  try {
+  const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
       await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2568,8 +2569,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     sortOrder?: number,
     isNew?: boolean,
   ) {
-    try {
-      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
+  try {
+  const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
       const block = blocks.find(b => b.title === blockTitle);
       const blockId = block?.blockId;
       await fetch(url, {
@@ -2835,12 +2836,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     return true;
   }
 
-  async function insertDealIfNeeded() {
+  async function insertDealIfNeeded(options?: { background?: boolean }) {
     try {
-      const numericAmount = parseFloat(amount.replace(/,/g, '')) || 0;
-      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
+      const numericAmount = options?.background ? 0 : parseFloat(amount.replace(/,/g, '')) || 0;
+      const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
       const payload = {
-  initialScopeDescription,
+        // when background=true, override description to make it obvious these were auto-created
+        initialScopeDescription: options?.background
+          ? 'Placeholder deal capture (phased out)'
+          : initialScopeDescription,
         amount: numericAmount,
         areaOfWork: enquiry.Area_of_Work,
         prospectId: enquiry.ID,
@@ -2877,6 +2881,31 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       return false;
     }
   }
+
+  // Auto-create deal/passcode in background when PitchBuilder mounts and no passcode exists.
+  // This runs silently so the Instructions app can load even if deal UI is hidden.
+  useEffect(() => {
+    let cancelled = false;
+    async function ensureDeal() {
+      try {
+        // Only attempt when we don't already have a passcode and enquiry exists
+        if (!dealPasscode && enquiry && enquiry.ID) {
+          await insertDealIfNeeded({ background: true });
+        }
+      } catch (e) {
+        // swallow errors; background creation should not block UI
+        // but log for dev visibility
+        // eslint-disable-next-line no-console
+        console.warn('Background insertDealIfNeeded failed', e);
+      }
+    }
+    ensureDeal();
+    return () => {
+      cancelled = true;
+    };
+    // We intentionally omit insertDealIfNeeded from deps to avoid re-running
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * If user hits "Send Email" in the preview, we might do something else.
@@ -2997,7 +3026,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       setErrorMessage('');
       setIsErrorVisible(false);
       const response = await fetch(
-        `${process.env.REACT_APP_PROXY_BASE_URL}/sendEmail?code=${process.env.REACT_APP_SEND_EMAIL_CODE}`,
+        `${getProxyBaseUrl()}/sendEmail?code=${process.env.REACT_APP_SEND_EMAIL_CODE}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

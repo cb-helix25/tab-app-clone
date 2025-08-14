@@ -12,6 +12,7 @@ import {
   IconButton,
 } from '@fluentui/react';
 import { useTheme } from '../app/functionality/ThemeContext';
+import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
 import { colours } from '../app/styles/colours';
 import { NormalizedMatter } from '../app/functionality/types';
 
@@ -238,9 +239,9 @@ const MatterApiDebugger: React.FC<MatterApiDebuggerProps> = ({ currentMatters, o
     
     // Log the fetch configuration
     console.log('FETCH CONFIGURATION:');
-    console.log('REACT_APP_GET_MATTERS_PATH:', process.env.REACT_APP_GET_MATTERS_PATH);
-    console.log('REACT_APP_GET_MATTERS_CODE:', process.env.REACT_APP_GET_MATTERS_CODE ? 'SET' : 'NOT SET');
-    console.log('REACT_APP_PROXY_BASE_URL:', process.env.REACT_APP_PROXY_BASE_URL);
+  console.log('REACT_APP_GET_MATTERS_PATH:', process.env.REACT_APP_GET_MATTERS_PATH);
+  console.log('REACT_APP_GET_MATTERS_CODE:', process.env.REACT_APP_GET_MATTERS_CODE ? 'SET' : 'NOT SET');
+  console.log('REACT_APP_PROXY_BASE_URL:', getProxyBaseUrl());
     console.log('Current hostname:', window.location.hostname);
     
     if (currentMatters.length > 0) {
@@ -532,7 +533,7 @@ const MatterApiDebugger: React.FC<MatterApiDebuggerProps> = ({ currentMatters, o
             <div style={{ fontSize: '12px', fontFamily: 'monospace' }}>
               <div><strong>REACT_APP_GET_MATTERS_PATH:</strong> {process.env.REACT_APP_GET_MATTERS_PATH || 'NOT SET'}</div>
               <div><strong>REACT_APP_GET_MATTERS_CODE:</strong> {process.env.REACT_APP_GET_MATTERS_CODE ? 'SET' : 'NOT SET'}</div>
-              <div><strong>REACT_APP_PROXY_BASE_URL:</strong> {process.env.REACT_APP_PROXY_BASE_URL || 'NOT SET'}</div>
+              <div><strong>REACT_APP_PROXY_BASE_URL:</strong> {getProxyBaseUrl() || 'NOT SET'}</div>
               <div><strong>Environment:</strong> {window.location.hostname === 'localhost' ? 'Development' : 'Production'}</div>
             </div>
           </div>

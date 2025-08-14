@@ -2,6 +2,7 @@
 // invisible change removed
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import {
   Stack,
   Text,
@@ -432,8 +433,8 @@ const AddSuggestionForm: React.FC = () => {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_INSERT_ROADMAP_PATH}?code=${process.env.REACT_APP_GET_INSERT_ROADMAP_CODE}`,
+  const response = await fetch(
+  `${getProxyBaseUrl()}/${process.env.REACT_APP_GET_INSERT_ROADMAP_PATH}?code=${process.env.REACT_APP_GET_INSERT_ROADMAP_CODE}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -606,7 +607,7 @@ const Roadmap: React.FC<RoadmapProps> = ({ userData }) => {
           setRoadmapError(null);
 
           const response = await fetch(
-            `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_GET_ROADMAP_PATH}?code=${process.env.REACT_APP_GET_GET_ROADMAP_CODE}`,
+            `${getProxyBaseUrl()}/${process.env.REACT_APP_GET_GET_ROADMAP_PATH}?code=${process.env.REACT_APP_GET_GET_ROADMAP_CODE}`,
             {
               method: 'GET',
               headers: { 'Content-Type': 'application/json' },

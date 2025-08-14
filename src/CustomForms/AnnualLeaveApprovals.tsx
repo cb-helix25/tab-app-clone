@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
 // invisible change
 import {
   Stack,
@@ -199,7 +200,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     newStatus: string,
     reason: string | null
   ): Promise<void> => {
-    const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_CODE}`;
+  const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_CODE}`;
     const payload = { id: leaveId, newStatus, reason: reason || '' };
     const response = await fetch(url, {
       method: 'POST',

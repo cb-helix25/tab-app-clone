@@ -14,6 +14,7 @@ import HelixAvatar from '../assets/helix avatar.png';
 import GreyHelixMark from '../assets/grey helix mark.png'; // Not currently used
 import '../app/styles/personas.css';
 import { TeamData, AnnualLeaveRecord } from '../app/functionality/types';
+import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
 
 interface AnnualLeaveFormProps {
   futureLeave: AnnualLeaveRecord[];
@@ -294,9 +295,11 @@ function AnnualLeaveForm({
         hearing_confirmation: hearingConfirmation,
         hearing_details: hearingConfirmation === 'no' ? hearingDetails : '',
       };
-      console.log('Annual Leave Form Payload:', payload);
-      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_INSERT_ANNUAL_LEAVE_CODE}`;
-      const response = await fetch(url, {
+  console.log('Annual Leave Form Payload:', payload);
+  // use helper so production builds don't point at localhost accidentally
+  const base = getProxyBaseUrl();
+  const url = `${base}/${process.env.REACT_APP_INSERT_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_INSERT_ANNUAL_LEAVE_CODE}`;
+  const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -585,7 +588,8 @@ function AnnualLeaveForm({
                     <DefaultButton
                       text="Remove Range"
                       onClick={() => handleRemoveDateRange(index)}
-                      iconProps={{ iconName: 'Minus' }}
+                      /* use a registered icon name - 'Cancel' is available in the Fluent icons set */
+                      iconProps={{ iconName: 'Cancel' }}
                       styles={buttonStylesFixedWidthSecondary}
                     />
                   </Stack>

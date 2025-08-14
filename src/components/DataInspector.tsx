@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getCallLogs, clearCallLogs, CallLogEntry } from '../utils/callLogger';
+import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
 
 interface DataInspectorProps {
   data: any;
@@ -56,7 +57,7 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data, onClose }) => {
     },
     configuration: {
       useLocalData: process.env.REACT_APP_USE_LOCAL_DATA,
-      proxyBaseUrl: process.env.REACT_APP_PROXY_BASE_URL,
+      proxyBaseUrl: getProxyBaseUrl(),
       nodeEnv: process.env.NODE_ENV,
     }
   });

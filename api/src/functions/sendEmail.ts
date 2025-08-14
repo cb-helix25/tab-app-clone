@@ -83,8 +83,52 @@ async function sendEmailWithGraph(
             message: {
                 subject: "Your Enquiry from Helix",
                 body: {
-                    contentType: "HTML",
-                    content: email_contents,
+                        contentType: "HTML",
+                        // Ensure any relative links/images in the HTML are converted to absolute URLs
+                        // so they survive rendering in email clients. Base URL is read from env first.
+                        content: ((): string => {
+                            try {
+                                const baseUrl =
+                                    process.env.EMAIL_PUBLIC_BASE_URL ||
+                                    process.env.REACT_APP_PUBLIC_BASE_URL ||
+                                    process.env.PUBLIC_URL ||
+                                    'https://helix-law.com';
+
+                                const makeLinksAbsolute = (html: string, base: string) => {
+                                    if (!html) return html;
+                                    // Normalize base (no trailing slash)
+                                    const normalizedBase = base.replace(/\/$/, '');
+                                    // Don't touch already-absolute URLs (http(s), mailto, tel, protocol-relative, fragments)
+                                    const isAbsolute = /^(?:https?:|mailto:|tel:|#|\/\/)/i;
+
+                                    // Replace href and src attributes
+                                    const replacer = (match: string, attr: string, url: string) => {
+                                        try {
+                                            if (isAbsolute.test(url)) return `${attr}="${url}"`;
+                                            // Prepend slash if missing
+                                            const withSlash = url.startsWith('/') ? url : `/${url}`;
+                                            return `${attr}="${normalizedBase}${withSlash}"`;
+                                        } catch (e) {
+                                            return match;
+                                        }
+                                    };
+
+                                    // Use regex to find href="..." or src='...'
+                                    return html
+                                        .replace(/(href)=\"([^\"]+)\"/gi, replacer)
+                                        .replace(/(href)=\'([^\']+)\'/gi, replacer)
+                                        .replace(/(src)=\"([^\"]+)\"/gi, replacer)
+                                        .replace(/(src)=\'([^\']+)\'/gi, replacer);
+                                };
+
+                                const transformed = makeLinksAbsolute(String(email_contents), String(baseUrl));
+                                context.log(`Transformed email body length: ${transformed.length}`);
+                                return transformed;
+                            } catch (e) {
+                                context.warn('Failed to transform links to absolute URLs, sending original body.');
+                                return String(email_contents);
+                            }
+                        })(),
                 },
                 toRecipients: [
                     {

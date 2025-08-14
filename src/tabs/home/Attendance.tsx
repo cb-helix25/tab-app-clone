@@ -10,6 +10,7 @@ import {
   Icon,
   DefaultButton,
 } from '@fluentui/react';
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -157,6 +158,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   const tableRef = useRef<HTMLTableElement>(null);
   const cellDimensionsRef = useRef<{ width: number; height: number; header: number }>({ width: 100, height: 40, header: 48 });
   const collapseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // modal/backdrop state will be derived from isTableExpanded
 
   const userInitials = userData?.[0]?.Initials || 'LZ';
 
@@ -361,7 +363,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_ATTENDANCE_PATH}?code=${process.env.REACT_APP_INSERT_ATTENDANCE_CODE}`,
+        `${getProxyBaseUrl()}/${process.env.REACT_APP_INSERT_ATTENDANCE_PATH}?code=${process.env.REACT_APP_INSERT_ATTENDANCE_CODE}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -598,6 +600,18 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
     return () => window.removeEventListener('resize', updateDimensions);
   }, [attendancePersons.length]);
 
+  // Close modal on ESC
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTableExpanded) {
+        setIsTableExpanded(false);
+        setMousePosition(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isTableExpanded]);
+
   const todayIndex = useMemo(() => {
     const weekKey = selectedWeek === 'current' ? currentWeek : nextWeek;
     const diffDays = Math.floor(
@@ -723,18 +737,46 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
                 You have unsaved changes.
               </MessageBar>
             )}
-            <div
-              className={tableContainerStyle}
-              ref={tableContainerRef}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-            >
-              <table
-                className={tableStyle}
-                ref={tableRef}
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
-              >
+            {/* When expanded show a centered modal with backdrop for a compact, focused editor */}
+            {isTableExpanded ? (
+              <>
+                <div
+                  style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 99990 }}
+                  onClick={() => { setIsTableExpanded(false); setMousePosition(null); }}
+                />
+                <div
+                  style={{
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 99999,
+                    width: 'min(1000px, 96%)',
+                    maxHeight: '80vh',
+                    overflow: 'auto',
+                    background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+                    borderRadius: '8px',
+                    padding: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 600 }}>Edit attendance</div>
+                    <DefaultButton text="Close" onClick={() => { setIsTableExpanded(false); setMousePosition(null); }} />
+                  </div>
+                  <div
+                    className={tableContainerStyle}
+                    ref={tableContainerRef}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                    style={{ height: 'auto', overflow: 'auto' }}
+                  >
+                    <table
+                      className={tableStyle}
+                      ref={tableRef}
+                      onMouseMove={handleMouseMove}
+                      onMouseLeave={handleMouseLeave}
+                    >
                 <thead>
                   <tr className={headerRowStyle}>
                     <th style={{ border: '1px solid transparent', padding: '8px', width: '100px' }}></th>
@@ -815,8 +857,106 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
                     );
                   })}
                 </tbody>
-              </table>
-            </div>
+                    </table>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div
+                className={tableContainerStyle}
+                ref={tableContainerRef}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+              >
+                <table
+                  className={tableStyle}
+                  ref={tableRef}
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <thead>
+                    <tr className={headerRowStyle}>
+                      <th style={{ border: '1px solid transparent', padding: '8px', width: '100px' }}></th>
+                      {attendancePersons.map((person) => (
+                        <th
+                          key={person.initials}
+                          style={{
+                            border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                            padding: '8px',
+                            textAlign: 'center',
+                            backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+                            width: '100px',
+                          }}
+                        >
+                          <AttendancePersonaHeader person={person} />
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orderedWeekDays.map((day, index) => {
+                      const weekKey = selectedWeek === 'current' ? currentWeek : nextWeek;
+                      const originalIndex = weekDays.indexOf(day);
+                      const dayDate = new Date(weekKey.start);
+                      dayDate.setUTCDate(dayDate.getUTCDate() + originalIndex);
+                      const cellDateStr = formatDateLocal(dayDate);
+                      const isCurrentDay = selectedWeek === 'current' && originalIndex === todayIndex;
+
+                      return (
+                        <tr
+                          key={day}
+                          className={rowStyle(isCurrentDay, originalIndex, todayIndex, isTableExpanded, selectedWeek === 'next')}
+                        >
+                          <td
+                            style={{
+                              border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                              padding: '8px',
+                              fontWeight: 'bold',
+                              backgroundColor: colours.reporting.tableHeaderBackground,
+                              width: '100px',
+                              fontSize: '14px',
+                            }}
+                          >
+                            {getShortDayLabel(dayDate)}
+                          </td>
+                          {attendancePersons.map((person) => {
+                            const weekStart = selectedWeek === 'current' ? currentWeek.start : nextWeek.start;
+                            const localDays = localAttendance[weekStart]?.[person.initials] || person.attendance;
+                            const status = getCellStatus(localDays, person.initials, day, cellDateStr);
+                            const cellBg = isCurrentDay
+                              ? status === 'in'
+                                ? inHighlight
+                                : status === 'wfh'
+                                ? wfhHighlight
+                                : outHighlight
+                              : isDarkMode
+                              ? colours.dark.sectionBackground
+                              : colours.light.sectionBackground;
+                            const proximity = getCellProximity(day, person.initials);
+
+                            return (
+                              <td
+                                key={person.initials}
+                                className={cellStyle}
+                                style={{ backgroundColor: cellBg }}
+                                onClick={() => handleCellClick(person.initials, day, cellDateStr)}
+                              >
+                                <AttendanceCell
+                                  status={status}
+                                  highlight={isCurrentDay}
+                                  editable={person.initials === userInitials}
+                                  proximity={proximity}
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {userInitials && (
               <div style={{ marginTop: 10, textAlign: 'right' }}>
                 <DefaultButton
