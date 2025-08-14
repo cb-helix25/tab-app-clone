@@ -954,9 +954,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       enquiry,
       amount,
       effectivePass,
-      effectivePass && (enquiry as any)?.ID
-        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${(enquiry as any).ID}-${effectivePass}`
-        : undefined
+      'https://helix-law.co.uk/proof-of-identity/'
     );
     // Replace the HTML anchor with a React anchor for in-editor display
     substituted = substituted.replace(
@@ -967,7 +965,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       }
     );
     return substituted;
-  return substituted;
   }, [userData, enquiry, amount, passcode]);
   // Track the last body we injected from a scenario so we can safely refresh on scenario edits
   const lastScenarioBodyRef = useRef<string>('');
@@ -1660,7 +1657,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       const unresolvedSubject = findPlaceholders(subject || '');
                       const sanitized = stripDashDividers(body || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
                       const effective = passcode || (enquiryLocal?.ID ? computeLocalPasscode(String(enquiryLocal.ID)) : undefined);
-                      const checkoutPreviewUrl = effective && enquiryLocal?.ID ? `https://instruct.helix-law.com/pitch/${enquiryLocal.ID}-${effective}` : '#';
+                      const checkoutPreviewUrl = 'https://helix-law.co.uk/proof-of-identity/';
                       const substitutedBody = applyDynamicSubstitutions(sanitized, userDataLocal, enquiryLocal, amount, effective, checkoutPreviewUrl);
                       const unresolvedBody = findPlaceholders(substitutedBody);
                       const unresolvedAny = unresolvedSubject.length > 0 || unresolvedBody.length > 0;

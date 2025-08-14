@@ -121,6 +121,8 @@ router.get('/getUserData', (req, res) => proxyToAzureFunction(req, res, 'getUser
 router.get('/getTeamData', (req, res) => proxyToAzureFunction(req, res, 'getTeamData', 7072, 'GET'));
 router.get('/getRoadmap', (req, res) => proxyToAzureFunction(req, res, 'getRoadmap', 7072, 'GET'));
 router.get('/getComplianceData', (req, res) => proxyToAzureFunction(req, res, 'getComplianceData', 7072, 'GET'));
+// Deal capture API
+router.post('/insertDeal', (req, res) => proxyToAzureFunction(req, res, 'insertDeal', 7072, 'POST'));
 
 // Decoupled Functions (port 7071) - These are the JavaScript functions
 router.get('/fetchMattersData', (req, res) => proxyToAzureFunction(req, res, 'fetchMattersData', 7071, 'GET'));

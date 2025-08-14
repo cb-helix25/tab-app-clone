@@ -393,7 +393,7 @@ export function applyDynamicSubstitutions(
 
   // Prefer provided instructionsLink. Otherwise, if we have passcode and enquiry ID, include both.
   // Fallbacks maintain older behavior.
-  const baseUrl = process.env.REACT_APP_INSTRUCTIONS_URL || '#';
+  const baseUrl = process.env.REACT_APP_INSTRUCTIONS_URL || 'https://helix-law.co.uk/proof-of-identity/';
   const finalInstructionsLink = instructionsLink
     || (passcode && enquiry?.ID
       ? `${baseUrl}?deal=${encodeURIComponent(String(enquiry.ID))}&token=${encodeURIComponent(String(passcode))}`

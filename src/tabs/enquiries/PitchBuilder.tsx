@@ -82,6 +82,7 @@ import {
 import { inputFieldStyle } from '../../CustomForms/BespokeForms';
 import { ADDITIONAL_CLIENT_PLACEHOLDER_ID } from '../../constants/deals';
 
+const PROOF_OF_ID_URL = 'https://helix-law.co.uk/proof-of-identity/';
 
 // Dynamic import + HMR for ProductionTemplateBlocks
 function useDynamicTemplateBlocks(templateSet: TemplateSet) {
@@ -641,9 +642,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigatorActions();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
-  const userEmailAddress = userData?.[0]?.Initials
-    ? `${userData[0].Initials.toLowerCase()}@helix-law.com`
-    : '';
+  // Prefer explicit email fields if present; fall back to constructed email from initials
+  const userEmailCandidate = (userData && userData[0]) || {} as any;
+  const userEmailAddress =
+    (userEmailCandidate.Email && String(userEmailCandidate.Email).trim()) ||
+    (userEmailCandidate.WorkEmail && String(userEmailCandidate.WorkEmail).trim()) ||
+    (userEmailCandidate.Mail && String(userEmailCandidate.Mail).trim()) ||
+    (userEmailCandidate.UserPrincipalName && String(userEmailCandidate.UserPrincipalName).trim()) ||
+    (userEmailCandidate['Email Address'] && String(userEmailCandidate['Email Address']).trim()) ||
+    (userInitials ? `${userInitials.toLowerCase()}@helix-law.com` : '');
 
   // Local fetch logging
   const { apiCalls, clear: clearApiCalls } = useLocalFetchLogger(isLocalhost);
@@ -2066,9 +2073,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode && enquiry?.ID
-        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
-        : undefined
+      PROOF_OF_ID_URL
     );
     insertAtCursor(html);
   }
@@ -2102,9 +2107,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           enquiry,
           amount,
           dealPasscode,
-          dealPasscode && enquiry?.ID
-            ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
-            : undefined
+          PROOF_OF_ID_URL
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
         text = wrapInsertPlaceholders(text);
@@ -2144,9 +2147,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           enquiry,
           amount,
           dealPasscode,
-          dealPasscode && enquiry?.ID
-            ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
-            : undefined
+          PROOF_OF_ID_URL
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
         text = wrapInsertPlaceholders(text);
@@ -2343,9 +2344,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode && enquiry?.ID
-        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
-        : undefined
+      PROOF_OF_ID_URL
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
     text = wrapInsertPlaceholders(text);
@@ -2463,9 +2462,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode && enquiry?.ID
-        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
-        : undefined
+      PROOF_OF_ID_URL
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
     text = wrapInsertPlaceholders(text);
@@ -2840,11 +2837,26 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     try {
       const numericAmount = options?.background ? 0 : parseFloat(amount.replace(/,/g, '')) || 0;
       const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
+      // Ensure we always send a non-empty description. If the user hasn't set one,
+      // derive a short, plain-text fallback from the editor body so upstream validation passes.
+      const fallbackDescription = (() => {
+        if (options?.background) return 'Placeholder deal capture (phased out)';
+        if (initialScopeDescription && initialScopeDescription.trim()) return initialScopeDescription;
+        // Strip HTML from current editor body and take a short excerpt
+        try {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = body || '';
+          const text = (tmp.textContent || tmp.innerText || '').trim().replace(/\s+/g, ' ');
+          if (text && text.length > 0) return text.length > 200 ? `${text.slice(0, 197)}...` : text;
+        } catch (e) {
+          // fall through
+        }
+        return 'Draft created via Pitch Builder';
+      })();
+
       const payload = {
         // when background=true, override description to make it obvious these were auto-created
-        initialScopeDescription: options?.background
-          ? 'Placeholder deal capture (phased out)'
-          : initialScopeDescription,
+        initialScopeDescription: fallbackDescription,
         amount: numericAmount,
         areaOfWork: enquiry.Area_of_Work,
         prospectId: enquiry.ID,
@@ -2885,11 +2897,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   // Auto-create deal/passcode in background when PitchBuilder mounts and no passcode exists.
   // This runs silently so the Instructions app can load even if deal UI is hidden.
   useEffect(() => {
-    let cancelled = false;
     async function ensureDeal() {
       try {
-        // Only attempt when we don't already have a passcode and enquiry exists
-        if (!dealPasscode && enquiry && enquiry.ID) {
+        if (!dealPasscode && enquiry?.ID) {
           await insertDealIfNeeded({ background: true });
         }
       } catch (e) {
@@ -2900,12 +2910,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       }
     }
     ensureDeal();
-    return () => {
-      cancelled = true;
-    };
-    // We intentionally omit insertDealIfNeeded from deps to avoid re-running
+    // We intentionally omit insertDealIfNeeded/dealPasscode to avoid duplicate inserts
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enquiry?.ID]);
 
   /**
    * If user hits "Send Email" in the preview, we might do something else.
@@ -2991,16 +2998,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     let rawHtml = removeHighlightSpans(body);
 
     // Apply dynamic substitutions such as amount just before sending
-    const instructionsLink = dealPasscode && enquiry?.ID
-      ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
-      : undefined;
     rawHtml = applyDynamicSubstitutions(
       rawHtml,
       userData,
       enquiry,
       amount,
       dealPasscode,
-      instructionsLink
+      PROOF_OF_ID_URL
     );
 
     // Remove leftover placeholders
@@ -3021,6 +3025,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       cc,
       bcc,
     };
+
+    // Guard: ensure we have a valid recipient email for the drafted message
+    if (!userEmailAddress || userEmailAddress.trim() === '') {
+      setErrorMessage('Cannot draft email: sender email address is not available.');
+      setIsErrorVisible(true);
+      setToast({ message: 'Failed to draft email', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
 
     try {
       setErrorMessage('');
@@ -3480,9 +3493,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
                 enquiry,
                 amount,
                 dealPasscode,
-                dealPasscode && enquiry?.ID
-                  ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
-                  : undefined
+                PROOF_OF_ID_URL
               );
               return (
                 <li
@@ -3506,9 +3517,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         enquiry,
         amount,
         dealPasscode,
-        dealPasscode && enquiry?.ID
-          ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
-          : undefined
+        PROOF_OF_ID_URL
       );
       return (
         <div
@@ -3890,9 +3899,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         enquiry,
         amount,
         dealPasscode,
-        dealPasscode && enquiry?.ID
-          ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${enquiry.ID}-${dealPasscode}`
-          : undefined
+        PROOF_OF_ID_URL
       );
       raw = cleanTemplateString(raw);
       const formatted = formatSectionContent(raw);
@@ -4208,9 +4215,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
                         enquiry,
                         amount,
                         dealPasscode,
-                        dealPasscode && enquiry?.ID
-                          ? `${((process.env.REACT_APP_INSTRUCTIONS_URL ?? 'https://instruct.helix-law.com').replace(/\/$/, ''))}/pitch/${enquiry.ID}-${dealPasscode}`
-                          : undefined
+                        PROOF_OF_ID_URL
                       );
                       const isSelected = snippetOptionsLabel === option.key;
                       return (

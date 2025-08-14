@@ -56,8 +56,9 @@ module.exports = async function (context, req) {
     const now = new Date();
     const pitchValidUntil = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
+    const instructionRef = body.instructionRef || null;
     const dealResult = await pool.request()
-      .input('InstructionRef', sql.NVarChar(50), null)
+      .input('InstructionRef', sql.NVarChar(50), instructionRef)
       .input('ProspectId', sql.Int, prospectId || null)
       .input('ServiceDescription', sql.NVarChar(255), serviceDescription)
       .input('Amount', sql.Money, amount)
