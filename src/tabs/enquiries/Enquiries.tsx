@@ -1274,6 +1274,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                                   groupedEnquiry={item}
                                   onSelect={handleSelectEnquiry}
                                   onRate={handleRate}
+                                  onPitch={handleSelectEnquiry}
                                   teamData={teamData}
                                   isLast={isLast}
                                   userAOW={userAOW}

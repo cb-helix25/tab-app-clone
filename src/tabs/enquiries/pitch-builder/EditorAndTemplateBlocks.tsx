@@ -762,8 +762,8 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
               // Use outline (doesn't affect layout) for dashed box appearance and avoid padding which would change width.
               html += `<span style="display:inline;background:#e0f0ff;outline:1px dashed #8bbbe8;padding:0;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${escapeHtml(segment)}</span>`;
             } else if (mark.type === 'instructLink') {
-              // Use the temporary, static proof-of-identity URL per request
-              const href = 'https://helix-law.co.uk/proof-of-identity/';
+              // Use the new instruct.helix-law.com domain for pitch links
+              const href = 'https://instruct.helix-law.com/pitch';
               const safe = escapeHtml(href);
               // Show the friendly label instead of the raw URL, keep link styling prominent and bold
               html += `<a href="${safe}" style="color:#174ea6;font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
@@ -777,8 +777,8 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           // Render any [[INSTRUCT_LINK::href]] markers as visible link text in the overlay
           try {
             const replaced = html.replace(/\[\[INSTRUCT_LINK::([^\]]+)\]\]/g, (_m, _href) => {
-              // Use static temporary URL for instruct links
-              const safeHref = escapeHtml('https://helix-law.co.uk/proof-of-identity/');
+              // Use new instruct domain for instruct links
+              const safeHref = escapeHtml('https://instruct.helix-law.com/pitch');
               // Render a friendly, bold blue anchor label for instruct links in the overlay
               return `<a href="${safeHref}" style="color:#174ea6;font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
             });
@@ -954,7 +954,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       enquiry,
       amount,
       effectivePass,
-      'https://helix-law.co.uk/proof-of-identity/'
+      'https://instruct.helix-law.com/pitch'
     );
     // Replace the HTML anchor with a React anchor for in-editor display
     substituted = substituted.replace(
@@ -1595,8 +1595,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     const userDataLocal = (typeof userData !== 'undefined') ? userData : undefined;
                     const enquiryLocal = (typeof enquiry !== 'undefined') ? enquiry : undefined;
                     const sanitized = withoutAutoBlocks.replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
-                    // Use temporary static URL for proof-of-identity links in preview
-                    const checkoutPreviewUrl = 'https://helix-law.co.uk/proof-of-identity/';
+                    // Use new instruct domain for preview links
+                    const checkoutPreviewUrl = 'https://instruct.helix-law.com/pitch';
                     const substituted = applyDynamicSubstitutions(
                       sanitized,
                       userDataLocal,
@@ -1608,10 +1608,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     const unresolvedBody = findPlaceholders(substituted);
                     const finalBody = convertDoubleBreaksToParagraphs(substituted);
                     const finalHighlighted = highlightPlaceholdersHtml(finalBody);
-                    // Ensure any Instruct Helix Law anchors are styled using the project's highlight colour and bold font
-                    // Normalize any Instruct Helix Law anchors to use the project's highlight colour and static URL
+                    // Normalize any Instruct Helix Law anchors to use the project's highlight colour and new domain
                     const styledFinalHighlighted = finalHighlighted.replace(/<a\s+href="([^"]+)"[^>]*>\s*Instruct\s+Helix\s+Law\s*<\/a>/gi, (_m, _href) => {
-                      const safe = escapeHtml('https://helix-law.co.uk/proof-of-identity/');
+                      const safe = escapeHtml('https://instruct.helix-law.com/pitch');
                       return `<a href="${safe}" style="color:${colours.highlight};font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
                     });
                     return (
@@ -1657,7 +1656,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       const unresolvedSubject = findPlaceholders(subject || '');
                       const sanitized = stripDashDividers(body || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
                       const effective = passcode || (enquiryLocal?.ID ? computeLocalPasscode(String(enquiryLocal.ID)) : undefined);
-                      const checkoutPreviewUrl = 'https://helix-law.co.uk/proof-of-identity/';
+                      const checkoutPreviewUrl = 'https://instruct.helix-law.com/pitch';
                       const substitutedBody = applyDynamicSubstitutions(sanitized, userDataLocal, enquiryLocal, amount, effective, checkoutPreviewUrl);
                       const unresolvedBody = findPlaceholders(substitutedBody);
                       const unresolvedAny = unresolvedSubject.length > 0 || unresolvedBody.length > 0;

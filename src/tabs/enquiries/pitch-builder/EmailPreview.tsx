@@ -114,7 +114,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   const withoutAutoBlocks = body;
   
   // Generate checkout URL first
-  const checkoutPreviewUrl = 'https://helix-law.co.uk/proof-of-identity/';
+  const checkoutPreviewUrl = 'https://instruct.helix-law.com/pitch';
   
   // Process body HTML using imported functions
   const sanitized = removeHighlightSpans(withoutAutoBlocks);

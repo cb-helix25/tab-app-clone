@@ -16,7 +16,7 @@ import {
   DirectionalHint,
   Separator,
   Checkbox,
-// invisible change
+  // invisible change
   ChoiceGroup,
   IChoiceGroupOption,
   IPoint,
@@ -82,21 +82,21 @@ import {
 import { inputFieldStyle } from '../../CustomForms/BespokeForms';
 import { ADDITIONAL_CLIENT_PLACEHOLDER_ID } from '../../constants/deals';
 
-const PROOF_OF_ID_URL = 'https://helix-law.co.uk/proof-of-identity/';
+// PROOF_OF_ID_URL constant removed - now constructed dynamically with passcode in applyDynamicSubstitutions
 
 // Dynamic import + HMR for ProductionTemplateBlocks
 function useDynamicTemplateBlocks(templateSet: TemplateSet) {
   const [blocks, setBlocks] = useState<TemplateBlock[]>(() => getTemplateBlocks(templateSet));
   useEffect(() => {
     let cancelled = false;
-      async function loadBlocks() {
-        const mod = await import('../../app/customisation/ProductionTemplateBlocks');
-        if (!cancelled) {
-          // If you export named blocks, adjust as needed
-          setBlocks(getTemplateBlocks(templateSet));
-        }
+    async function loadBlocks() {
+      const mod = await import('../../app/customisation/ProductionTemplateBlocks');
+      if (!cancelled) {
+        // If you export named blocks, adjust as needed
+        setBlocks(getTemplateBlocks(templateSet));
       }
-      loadBlocks();
+    }
+    loadBlocks();
     // HMR support
     // @ts-expect-error: HMR property only exists in dev
     if (import.meta && import.meta.hot) {
@@ -104,7 +104,7 @@ function useDynamicTemplateBlocks(templateSet: TemplateSet) {
       import.meta.hot.accept('../../app/customisation/ProductionTemplateBlocks', (mod: any) => {
         loadBlocks();
       });
-    // @ts-expect-error: HMR property only exists in dev
+      // @ts-expect-error: HMR property only exists in dev
     } else if (typeof module !== 'undefined' && module.hot) {
       // @ts-expect-error: HMR property only exists in dev
       module.hot.accept('../../app/customisation/ProductionTemplateBlocks', () => {
@@ -584,7 +584,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           <Icon iconName={iconName} styles={{ root: { color, fontSize: 14 } }} />
         </span>
         {/* Value tray (right) */}
-    <span
+        <span
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -594,10 +594,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
             border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}`,
             borderLeft: 'none', // join with icon square
             borderRadius: '0 6px 6px 0',
-      height: 28,
-      padding: '0 8px',
+            height: 28,
+            padding: '0 8px',
             fontSize: 13,
-      lineHeight: 1,
+            lineHeight: 1,
             boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(0,0,0,0.04)',
             userSelect: 'text',
           }}
@@ -660,10 +660,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   const [templateSet, setTemplateSet] = useState<TemplateSet>('Database');
   const templateBlocks = useDynamicTemplateBlocks(templateSet);
-  
+
   // Qualifying question state - determines base template
   const [qualifyingAnswer, setQualifyingAnswer] = useState<string>('');
-  
+
   // Ref for the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
   const [dragSentence, setDragSentence] = useState<HTMLElement | null>(null);
@@ -719,14 +719,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     setPinnedBlocks({});
     setEditedBlocks({});
     setOriginalBlockContent({});
-      loadBlocks().then((newBlocks) => {
-        const blocksToUse = (newBlocks || getTemplateBlocks(newSet)).filter(
-          b => !hiddenBlocks[b.title]
-        );
+    loadBlocks().then((newBlocks) => {
+      const blocksToUse = (newBlocks || getTemplateBlocks(newSet)).filter(
+        b => !hiddenBlocks[b.title]
+      );
 
-        // v1 templates should no longer auto select any blocks
-        // autoInsertDefaultBlocks(blocksToUse, newSet);
-      });
+      // v1 templates should no longer auto select any blocks
+      // autoInsertDefaultBlocks(blocksToUse, newSet);
+    });
   }
 
   // Initial Scope options (formerly Service)
@@ -977,16 +977,16 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   function saveToUndoStack(content: string) {
     if (isUndoRedoOperation) return;
     if (!content || !content.trim()) return; // Don't save empty content
-    
+
     // Don't save duplicate content
     if (undoStack.length > 0 && undoStack[undoStack.length - 1] === content) return;
-    
+
     setUndoStack(prev => {
       const newStack = [...prev, content];
       // Keep last 50 states (increased from 20)
       return newStack.slice(-50);
     });
-    
+
     // Clear redo stack when new action is performed
     setRedoStack([]);
   }
@@ -995,47 +995,47 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   function saveToUndoStackImmediate(content: string) {
     if (isUndoRedoOperation) return;
     if (!content || !content.trim()) return;
-    
+
     // Don't save duplicate content
     if (undoStack.length > 0 && undoStack[undoStack.length - 1] === content) return;
-    
+
     // Cancel any pending debounced saves from input handler
     if (inputTimeoutRef.current) {
       clearTimeout(inputTimeoutRef.current);
       inputTimeoutRef.current = null;
     }
-    
+
     setUndoStack(prev => {
       const newStack = [...prev, content];
       return newStack.slice(-50);
     });
-    
+
     setRedoStack([]);
   }
 
   function undo() {
     if (undoStack.length <= 1) return; // Need at least 2 items to undo (current + previous)
-    
+
     const currentContent = bodyEditorRef.current?.innerHTML || body;
     const previousContent = undoStack[undoStack.length - 1];
-    
+
     setIsUndoRedoOperation(true);
-    
+
     // Save current state to redo stack
     setRedoStack(prev => [...prev, currentContent]);
-    
+
     // Remove the last item from undo stack
     setUndoStack(prev => prev.slice(0, -1));
-    
+
     // Update both DOM and React state
     if (bodyEditorRef.current) {
       bodyEditorRef.current.innerHTML = previousContent;
     }
     setBodyState(previousContent);
-    
+
     // Sync all related state
     syncStateFromContent(previousContent);
-    
+
     // Clear the flag and trigger highlighting update
     setTimeout(() => {
       const { blocks, snippets } = computeSnippetChanges();
@@ -1047,27 +1047,27 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   function redo() {
     if (redoStack.length === 0) return;
-    
+
     const currentContent = bodyEditorRef.current?.innerHTML || body;
     const nextContent = redoStack[redoStack.length - 1];
-    
+
     setIsUndoRedoOperation(true);
-    
+
     // Save current state to undo stack
     setUndoStack(prev => [...prev, currentContent]);
-    
+
     // Remove the last item from redo stack
     setRedoStack(prev => prev.slice(0, -1));
-    
+
     // Update both DOM and React state
     if (bodyEditorRef.current) {
       bodyEditorRef.current.innerHTML = nextContent;
     }
     setBodyState(nextContent);
-    
+
     // Sync all related state
     syncStateFromContent(nextContent);
-    
+
     // Clear the flag and trigger highlighting update
     setTimeout(() => {
       const { blocks, snippets } = computeSnippetChanges();
@@ -1083,7 +1083,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     const parser = new DOMParser();
     const doc = parser.parseFromString(content, 'text/html');
     const insertedBlockElements = doc.querySelectorAll('[data-inserted]');
-    
+
     const newInsertedBlocks: { [key: string]: boolean } = {};
     insertedBlockElements.forEach((el) => {
       const blockTitle = el.getAttribute('data-inserted');
@@ -1091,7 +1091,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         newInsertedBlocks[blockTitle] = true;
       }
     });
-    
+
     setInsertedBlocks(newInsertedBlocks);
   }
 
@@ -1105,11 +1105,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     const block = templateBlocks.find((b) => b.title === blockTitle);
     if (!block) return;
     if (lockedBlocks[blockTitle]) return;
-    
+
     // Save current state before making changes (immediate, not debounced)
     const currentContent = bodyEditorRef.current?.innerHTML || body;
     saveToUndoStackImmediate(currentContent);
-    
+
     if (block.isMultiSelect) {
       const current = Array.isArray(selectedTemplateOptions[blockTitle])
         ? ([...(selectedTemplateOptions[blockTitle] as string[])])
@@ -1147,11 +1147,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     if (lockedBlocks[blockTitle]) return;
     const selected = selectedTemplateOptions[blockTitle];
     if (!selected) return;
-    
+
     // Save current state before making changes (immediate, not debounced)
     const currentContent = bodyEditorRef.current?.innerHTML || body;
     saveToUndoStackImmediate(currentContent);
-    
+
     insertTemplateBlock(block, selected, true, false);
   }
 
@@ -1171,7 +1171,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       const block = templateBlocks.find((b) => b.title === title);
       if (block) handleClearBlock(block);
     };
-    
+
     // Add keyboard shortcuts for undo/redo
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -1186,7 +1186,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         }
       }
     };
-    
+
     // Attach to document with capture=true to intercept before other handlers
     document.addEventListener('keydown', handleKeyDown, true);
     return () => {
@@ -1209,7 +1209,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   useEffect(() => {
     const saved = localStorage.getItem('pitchBuilderState');
-  const shouldResume = localStorage.getItem('resumePitchBuilder') === 'true';
+    const shouldResume = localStorage.getItem('resumePitchBuilder') === 'true';
     let initialSet: TemplateSet = 'Database';
     if (saved) {
       try {
@@ -1248,7 +1248,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         if (state.hiddenBlocks) setHiddenBlocks(state.hiddenBlocks);
         if (state.blocks) setBlocks(state.blocks);
         if (state.savedSnippets) setSavedSnippets(state.savedSnippets);
-  if (shouldResume && state.body) setBody(state.body);
+        if (shouldResume && state.body) setBody(state.body);
       } catch (e) {
         console.error('Failed to parse saved pitch builder state', e);
         initialSet = 'Database';
@@ -1330,11 +1330,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   const [sectionSelections, setSectionSelections] = useState<Record<string, string[]>>({});
   const [sectionContent, setSectionContent] = useState<Record<string, string>>({});
   const [body, setBodyState] = useState<string>('');
-  
+
   function setBody(newBody: string | ((prevBody: string) => string)) {
     const resolvedBody = typeof newBody === 'function' ? newBody(body) : newBody;
     setBodyState(resolvedBody);
-    
+
     // Trigger change detection for precise highlighting
     setTimeout(() => {
       const { blocks, snippets } = computeSnippetChanges();
@@ -1347,7 +1347,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   function setBodyInternal(newBody: string | ((prevBody: string) => string)) {
     const resolvedBody = typeof newBody === 'function' ? newBody(body) : newBody;
     setBodyState(resolvedBody);
-    
+
     // Trigger change detection for precise highlighting
     setTimeout(() => {
       const { blocks, snippets } = computeSnippetChanges();
@@ -1445,7 +1445,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     [key: string]: { [label: string]: string };
   }>({});
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
-  
+
   // Undo/Redo functionality
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
@@ -1582,7 +1582,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           // Save current state before making changes (immediate, not debounced)
           const currentContent = bodyEditorRef.current?.innerHTML || body;
           saveToUndoStackImmediate(currentContent);
-          
+
           sentence.remove();
           setBodyInternal(editor.innerHTML);
         }
@@ -1712,7 +1712,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           // Save current state before making changes (immediate, not debounced)
           const currentContent = bodyEditorRef.current?.innerHTML || body;
           saveToUndoStackImmediate(currentContent);
-          
+
           const before = e.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
           if (before) {
             parent.insertBefore(dragSentence, target);
@@ -1764,21 +1764,21 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     const handleInput = (e: Event) => {
       // Capture the current DOM content and save it to undo stack BEFORE React state updates
       const currentDOMContent = editor.innerHTML;
-      
+
       // Save to undo stack (debounced) - this captures the state BEFORE the input change
       if (!isUndoRedoOperation && body && body.trim() && currentDOMContent !== body) {
         if (inputTimeoutRef.current) {
           clearTimeout(inputTimeoutRef.current);
         }
-        
+
         inputTimeoutRef.current = setTimeout(() => {
           saveToUndoStack(body); // Save the React state (which is the previous state)
         }, 300); // Shorter debounce for better responsiveness
       }
-      
+
       // Update body state immediately to reflect the change
       setBodyState(currentDOMContent);
-      
+
       // Trigger precise highlighting detection (debounced)
       setTimeout(() => {
         const { blocks, snippets } = computeSnippetChanges();
@@ -1857,16 +1857,16 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   function detectTextEdits(blockTitle: string, snippetLabel: string, currentText: string, originalText: string) {
     if (currentText === originalText) return [];
-    
+
     const edits: Array<{ start: number; end: number; text: string }> = [];
-    
+
     // Simple diff algorithm to find edited portions
     const currentWords = currentText.split(/\s+/);
     const originalWords = originalText.split(/\s+/);
-    
+
     let currentIndex = 0;
     let originalIndex = 0;
-    
+
     while (currentIndex < currentWords.length || originalIndex < originalWords.length) {
       if (currentIndex < currentWords.length && originalIndex < originalWords.length) {
         if (currentWords[currentIndex] === originalWords[originalIndex]) {
@@ -1876,11 +1876,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           // Found a difference - track the edit
           const startIdx = currentIndex;
           while (currentIndex < currentWords.length && originalIndex < originalWords.length &&
-                 currentWords[currentIndex] !== originalWords[originalIndex]) {
+            currentWords[currentIndex] !== originalWords[originalIndex]) {
             currentIndex++;
             originalIndex++;
           }
-          
+
           const editedText = currentWords.slice(startIdx, currentIndex).join(' ');
           edits.push({
             start: startIdx,
@@ -1902,7 +1902,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         break;
       }
     }
-    
+
     return edits;
   }
 
@@ -1931,30 +1931,30 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       const snippetEls = Array.from(
         span.querySelectorAll('[data-snippet]')
       ) as HTMLElement[];
-      
+
       let blockHasEdits = false;
-      
+
       snippetEls.forEach((el) => {
         const label = el.getAttribute('data-snippet') || '';
         const original = originalSnippetContent[title]?.[label];
         if (original === undefined) return;
-        
+
         const currentText = el.textContent || '';
         const originalText = new DOMParser().parseFromString(original, 'text/html').body.textContent || '';
         const changed = currentText !== originalText;
-        
+
         if (!updatedSnippets[title]) updatedSnippets[title] = {};
         updatedSnippets[title][label] = changed;
-        
+
         if (changed) {
           blockHasEdits = true;
           updatedBlocks[title] = true;
-          
+
           // Detect precise edits
           const edits = detectTextEdits(title, label, currentText, originalText);
           if (!updatedEditRanges[title]) updatedEditRanges[title] = {};
           updatedEditRanges[title][label] = edits;
-          
+
           // Apply precise highlighting
           highlightEditedText(el, edits);
         }
@@ -1972,7 +1972,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         } else {
           el.classList.remove('has-edits');
         }
-        
+
         el.style.backgroundColor = snippetBg;
       });
 
@@ -2026,7 +2026,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     // Save current state before making changes (immediate, not debounced)
     const currentContent = bodyEditorRef.current?.innerHTML || body;
     saveToUndoStackImmediate(currentContent);
-    
+
     if (!isSelectionInsideEditor()) {
       setBodyInternal(body + `\n\n${html}`);
       return;
@@ -2073,7 +2073,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      PROOF_OF_ID_URL
+      undefined // Let applyDynamicSubstitutions construct URL with passcode
     );
     insertAtCursor(html);
   }
@@ -2107,7 +2107,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           enquiry,
           amount,
           dealPasscode,
-          PROOF_OF_ID_URL
+          undefined // Let applyDynamicSubstitutions construct URL with passcode
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
         text = wrapInsertPlaceholders(text);
@@ -2147,7 +2147,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           enquiry,
           amount,
           dealPasscode,
-          PROOF_OF_ID_URL
+          undefined // Let applyDynamicSubstitutions construct URL with passcode
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
         text = wrapInsertPlaceholders(text);
@@ -2213,7 +2213,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
       'g'
     );
-    
+
     if (existingBlockRegex.test(newBody)) {
       if (append) {
         newBody = newBody.replace(existingBlockRegex, (match) =>
@@ -2253,7 +2253,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           (bodyEditorRef.current.innerHTML = newBody);
       }
     }
-    
+
     setBodyInternal(newBody);
 
     // Remove grey placeholder styling once the block is inserted
@@ -2344,7 +2344,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      PROOF_OF_ID_URL
+      undefined // Let applyDynamicSubstitutions construct URL with passcode
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
     text = wrapInsertPlaceholders(text);
@@ -2462,7 +2462,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      PROOF_OF_ID_URL
+      undefined // Let applyDynamicSubstitutions construct URL with passcode
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
     text = wrapInsertPlaceholders(text);
@@ -2535,8 +2535,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     const snippetId = firstSnippet ? parseInt(firstSnippet.getAttribute('data-snippet-id') || '0', 10) : undefined;
     const block = blocks.find(b => b.title === blockTitle);
     const blockId = block?.blockId;
-  try {
-  const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
+    try {
+      const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
       await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2566,8 +2566,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     sortOrder?: number,
     isNew?: boolean,
   ) {
-  try {
-  const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
+    try {
+      const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
       const block = blocks.find(b => b.title === blockTitle);
       const blockId = block?.blockId;
       await fetch(url, {
@@ -2641,11 +2641,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   function removeBlockOption(block: TemplateBlock, optionLabel: string) {
     if (lockedBlocks[block.title]) return;
-    
+
     // Save current state before making changes (immediate, not debounced)
     const currentContent = bodyEditorRef.current?.innerHTML || body;
     saveToUndoStackImmediate(currentContent);
-    
+
     if (block.isMultiSelect) {
       const current = Array.isArray(selectedTemplateOptions[block.title])
         ? ([...(selectedTemplateOptions[block.title] as string[])])
@@ -2669,11 +2669,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     const block = templateBlocks.find(b => b.title === title);
     if (!block) return;
     if (lockedBlocks[title]) return;
-    
+
     // Save current state before making changes (immediate, not debounced)
     const currentContent = bodyEditorRef.current?.innerHTML || body;
     saveToUndoStackImmediate(currentContent);
-    
+
     setHiddenBlocks(prev => ({ ...prev, [title]: true }));
     if (bodyEditorRef.current) {
       const span = bodyEditorRef.current.querySelector(
@@ -3004,7 +3004,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       enquiry,
       amount,
       dealPasscode,
-      PROOF_OF_ID_URL
+      undefined // Let applyDynamicSubstitutions construct URL with passcode
     );
 
     // Remove leftover placeholders
@@ -3493,7 +3493,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
                 enquiry,
                 amount,
                 dealPasscode,
-                PROOF_OF_ID_URL
+                undefined // Let applyDynamicSubstitutions construct URL with passcode
               );
               return (
                 <li
@@ -3517,7 +3517,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         enquiry,
         amount,
         dealPasscode,
-        PROOF_OF_ID_URL
+        undefined // Let applyDynamicSubstitutions construct URL with passcode
       );
       return (
         <div
@@ -3563,7 +3563,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     if (currentSet !== 'Production') return;
 
     blocksToUse.forEach((block) => {
-  if (EXTRACTED_BLOCKS.includes(block.title)) return; // handled separately now
+      if (EXTRACTED_BLOCKS.includes(block.title)) return; // handled separately now
       if (
         DEFAULT_SINGLE_OPTION_BLOCKS.includes(block.title) &&
         block.options.length === 1
@@ -3624,7 +3624,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     boxShadow: isDarkMode
       ? '0 4px 12px rgba(255, 255, 255, 0.1)'
       : '0 4px 12px rgba(0, 0, 0, 0.1)',
-  maxWidth: 1350,
+    maxWidth: 1350,
     width: '100%',
     margin: '0 auto',
     fontFamily: 'Raleway, sans-serif',
@@ -3785,83 +3785,83 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   useEffect(() => {
     return () => {
-    if (suppressSaveRef.current) {
-      suppressSaveRef.current = false;
-      return;
-    }
-    const state = {
-      templateSet,
-  initialScopeDescription,
-      selectedOption,
-      amount,
-      subject,
-      to,
-      cc,
-      bcc,
-      body,
-      attachments,
-      followUp,
-      activeTab,
-      selectedTemplateOptions,
-      insertedBlocks,
-      autoInsertedBlocks,
-      lockedBlocks,
-      pinnedBlocks,
-      editedBlocks,
-      editedSnippets,
-      originalBlockContent,
-      originalSnippetContent,
-      hiddenBlocks,
-      blocks,
-      savedSnippets,
-      enquiryId: enquiry.ID,
-    };
-    const sections = Object.keys(insertedBlocks)
-      .filter((title) => insertedBlocks[title])
-      .map((title) => ({
-        block: title,
-        option: selectedTemplateOptions[title] || '',
-        content: savedSnippets[title] || '',
-      }));
-    if (sections.length > 0) {
-      fetch('/api/pitches', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          enquiryId: enquiry.ID,
-          sections,
-          user: userInitials,
-        }),
-      }).catch((err) => console.error('Failed to save pitch sections', err));
-    }
-    try {
-      localStorage.setItem('pitchBuilderState', JSON.stringify(state));
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-        // Try to trim large fields and retry
-        const trimmed = { ...state };
-        if (trimmed.attachments && Array.isArray(trimmed.attachments)) {
-          trimmed.attachments = [];
-        }
-        if (trimmed.body && typeof trimmed.body === 'string' && trimmed.body.length > 2000) {
-          trimmed.body = trimmed.body.slice(0, 2000) + '…';
-        }
-        try {
-          localStorage.setItem('pitchBuilderState', JSON.stringify(trimmed));
-        } catch (e2) {
-          // If still fails, clear the key and log error
-          localStorage.removeItem('pitchBuilderState');
-          // Optionally, surface a user notification here
-          console.error('PitchBuilder: Could not save state, storage quota exceeded and fallback failed.', e2);
-        }
-      } else {
-        throw e;
+      if (suppressSaveRef.current) {
+        suppressSaveRef.current = false;
+        return;
       }
-    }
-  };
+      const state = {
+        templateSet,
+        initialScopeDescription,
+        selectedOption,
+        amount,
+        subject,
+        to,
+        cc,
+        bcc,
+        body,
+        attachments,
+        followUp,
+        activeTab,
+        selectedTemplateOptions,
+        insertedBlocks,
+        autoInsertedBlocks,
+        lockedBlocks,
+        pinnedBlocks,
+        editedBlocks,
+        editedSnippets,
+        originalBlockContent,
+        originalSnippetContent,
+        hiddenBlocks,
+        blocks,
+        savedSnippets,
+        enquiryId: enquiry.ID,
+      };
+      const sections = Object.keys(insertedBlocks)
+        .filter((title) => insertedBlocks[title])
+        .map((title) => ({
+          block: title,
+          option: selectedTemplateOptions[title] || '',
+          content: savedSnippets[title] || '',
+        }));
+      if (sections.length > 0) {
+        fetch('/api/pitches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            enquiryId: enquiry.ID,
+            sections,
+            user: userInitials,
+          }),
+        }).catch((err) => console.error('Failed to save pitch sections', err));
+      }
+      try {
+        localStorage.setItem('pitchBuilderState', JSON.stringify(state));
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+          // Try to trim large fields and retry
+          const trimmed = { ...state };
+          if (trimmed.attachments && Array.isArray(trimmed.attachments)) {
+            trimmed.attachments = [];
+          }
+          if (trimmed.body && typeof trimmed.body === 'string' && trimmed.body.length > 2000) {
+            trimmed.body = trimmed.body.slice(0, 2000) + '…';
+          }
+          try {
+            localStorage.setItem('pitchBuilderState', JSON.stringify(trimmed));
+          } catch (e2) {
+            // If still fails, clear the key and log error
+            localStorage.removeItem('pitchBuilderState');
+            // Optionally, surface a user notification here
+            console.error('PitchBuilder: Could not save state, storage quota exceeded and fallback failed.', e2);
+          }
+        } else {
+          throw e;
+        }
+      }
+    };
   }, [
     templateSet,
-  initialScopeDescription,
+    initialScopeDescription,
     selectedOption,
     amount,
     subject,
@@ -3899,11 +3899,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         enquiry,
         amount,
         dealPasscode,
-        PROOF_OF_ID_URL
+        undefined // Let applyDynamicSubstitutions construct URL with passcode
       );
       raw = cleanTemplateString(raw);
       const formatted = formatSectionContent(raw);
-      parts.push(`<div class=\"section-snippet\" data-label=\"${label.replace(/"/g,'&quot;')}\">${formatted}</div>`);
+      parts.push(`<div class=\"section-snippet\" data-label=\"${label.replace(/"/g, '&quot;')}\">${formatted}</div>`);
     });
     return parts.join('<br /><br />');
   }
@@ -3919,11 +3919,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       if (/^(?:[-*] |\d+\. )/m.test(p)) {
         const lines = p.split(/\n/).map(l => l.trim()).filter(Boolean);
         if (lines.every(l => /^[-*] /.test(l))) {
-          const items = lines.map(l => `<li>${escapeHtml(l.replace(/^[-*] /,''))}</li>`).join('');
+          const items = lines.map(l => `<li>${escapeHtml(l.replace(/^[-*] /, ''))}</li>`).join('');
           return `<ul style=\"margin:0 0 12px 20px; padding:0;\">${items}</ul>`;
         }
         if (lines.every(l => /^\d+\. /.test(l))) {
-          const items = lines.map(l => `<li>${escapeHtml(l.replace(/^\d+\. /,''))}</li>`).join('');
+          const items = lines.map(l => `<li>${escapeHtml(l.replace(/^\d+\. /, ''))}</li>`).join('');
           return `<ol style=\"margin:0 0 12px 20px; padding:0;\">${items}</ol>`;
         }
       }
@@ -3937,11 +3937,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   function escapeHtml(str: string): string {
     return str
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#39;');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   // Highlight placeholders that remain (not substituted) with a subtle background
@@ -3950,7 +3950,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   }
 
   // Rebuild body injecting extracted block sections (with markers) after greeting
-  function rebuildBodyWithSections(base: string, sections: Record<string,string>): string {
+  function rebuildBodyWithSections(base: string, sections: Record<string, string>): string {
     // Strip existing markers first
     let cleaned = base.replace(/<!--BLOCK_START:[^>]+-->([\s\S]*?)<!--BLOCK_END:[^>]+-->/g, '').trim();
     const splitIndex = cleaned.indexOf('\n\n');
@@ -3993,8 +3993,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     setSectionContent(prev => {
       // Clean editing artifacts (e.g., <div><br></div>) & re-format
       const cleaned = html
-        .replace(/<div><br\s*\/?><\/div>/g,'')
-        .replace(/<div>([\s\S]*?)<\/div>/g,(m,inner)=> inner.includes('<p')||inner.includes('<ul')? m : inner + '<br />');
+        .replace(/<div><br\s*\/?><\/div>/g, '')
+        .replace(/<div>([\s\S]*?)<\/div>/g, (m, inner) => inner.includes('<p') || inner.includes('<ul') ? m : inner + '<br />');
       const formatted = highlightUnresolvedPlaceholders(wrapInsertPlaceholders(cleaned));
       const updated = { ...prev, [blockTitle]: formatted };
       setBodyInternal(prevBody => rebuildBodyWithSections(prevBody, updated));
@@ -4004,8 +4004,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   return (
     <Stack className={containerStyle}>
-  {/* Client Info Header - Simplified (admin controls moved to Navigator) */}
-  <div style={{ padding: '12px 20px', borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}` }}>
+      {/* Client Info Header - Simplified (admin controls moved to Navigator) */}
+      <div style={{ padding: '12px 20px', borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ display: 'flex', alignItems: 'center' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#3690CE" xmlns="http://www.w3.org/2000/svg">
@@ -4038,10 +4038,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
               const selections = sectionSelections[title] || [];
               const content = sectionContent[title];
               return (
-                <div key={title} style={{ 
-                  marginBottom: 16, 
-                  background: isDarkMode ? colours.dark.cardBackground : '#ffffff', 
-                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}`, 
+                <div key={title} style={{
+                  marginBottom: 16,
+                  background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}`,
                   borderRadius: 8,
                   padding: 16,
                   boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
@@ -4068,7 +4068,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
                             position: 'relative',
                             transition: 'all 0.2s ease'
                           }}
-                          title={opt.previewText.split('\n').slice(0,3).join(' ')}
+                          title={opt.previewText.split('\n').slice(0, 3).join(' ')}
                         >
                           {opt.label}
                           {selected && <span style={{ position: 'absolute', top: 2, right: 4, fontSize: 10, color: colours.blue }}>✓</span>}
@@ -4114,7 +4114,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         {/* Old InstructionCard removed: now using unified summary card above */}
 
         {/* Row: Combined Email Editor and Template Blocks */}
-  <EditorAndTemplateBlocks
+        <EditorAndTemplateBlocks
           isDarkMode={isDarkMode}
           body={body}
           setBody={setBodyForComponents}
@@ -4157,19 +4157,19 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           handleDraftEmail={handleDraftEmail}
           sendEmail={sendEmail}
           isDraftConfirmed={isDraftConfirmed}
-          // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
-          // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
-          // highlightBlock prop removed; not needed by EditorAndTemplateBlocks
-          // onReorderBlocks prop removed; not needed by EditorAndTemplateBlocks
-          // onDuplicateBlock prop removed; not needed by EditorAndTemplateBlocks
-          // onClearAllBlocks prop removed; not needed by EditorAndTemplateBlocks
-          // removedBlocks prop removed; not needed by EditorAndTemplateBlocks
-          // onAddBlock prop removed; not needed by EditorAndTemplateBlocks
-          // showToast prop removed; not needed by EditorAndTemplateBlocks
-          // undo prop removed; not needed by EditorAndTemplateBlocks
-          // redo prop removed; not needed by EditorAndTemplateBlocks
-          // canUndo prop removed; not needed by EditorAndTemplateBlocks
-          // canRedo prop removed; not needed by EditorAndTemplateBlocks
+        // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
+        // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
+        // highlightBlock prop removed; not needed by EditorAndTemplateBlocks
+        // onReorderBlocks prop removed; not needed by EditorAndTemplateBlocks
+        // onDuplicateBlock prop removed; not needed by EditorAndTemplateBlocks
+        // onClearAllBlocks prop removed; not needed by EditorAndTemplateBlocks
+        // removedBlocks prop removed; not needed by EditorAndTemplateBlocks
+        // onAddBlock prop removed; not needed by EditorAndTemplateBlocks
+        // showToast prop removed; not needed by EditorAndTemplateBlocks
+        // undo prop removed; not needed by EditorAndTemplateBlocks
+        // redo prop removed; not needed by EditorAndTemplateBlocks
+        // canUndo prop removed; not needed by EditorAndTemplateBlocks
+        // canRedo prop removed; not needed by EditorAndTemplateBlocks
         />
 
         {snippetOptionsBlock && snippetOptionsTarget && (
@@ -4215,7 +4215,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
                         enquiry,
                         amount,
                         dealPasscode,
-                        PROOF_OF_ID_URL
+                        undefined // Let applyDynamicSubstitutions construct URL with passcode
                       );
                       const isSelected = snippetOptionsLabel === option.key;
                       return (
@@ -4313,7 +4313,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
             onDismiss={() => {
               setSnippetEdit(null);
               setPendingOptionText('');
-            } }
+            }}
             onSave={({ label, sortOrder, isNew }) => {
               submitPlaceholderOption(
                 snippetEdit.blockTitle,
@@ -4325,7 +4325,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
               );
               setSnippetEdit(null);
               setPendingOptionText('');
-            } } originalText={''} editedText={''}          />
+            }} originalText={''} editedText={''} />
         )}
 
         {/* Reset button preserved */}

@@ -27,6 +27,7 @@ interface GroupedEnquiryCardProps {
   groupedEnquiry: GroupedEnquiry;
   onSelect: (enquiry: Enquiry) => void;
   onRate: (enquiryId: string) => void;
+  onPitch?: (enquiry: Enquiry) => void;
   teamData?: TeamData[] | null;
   isLast?: boolean;
   userAOW?: string[]; // List of user's areas of work (lowercase)
@@ -93,7 +94,7 @@ const iconButtonStyles = (iconColor: string): IButtonStyles => ({
   },
 });
 
-const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry, onSelect, onRate, teamData, isLast, userAOW }) => {
+const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry, onSelect, onRate, onPitch, teamData, isLast, userAOW }) => {
   const { isDarkMode } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const { clientName, clientEmail, enquiries, latestDate, areas } = groupedEnquiry;
@@ -303,8 +304,8 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry,
           <Stack tokens={{ childrenGap: 8 }}>
             <Text variant="medium" styles={{ root: { fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text, marginBottom: 8 } }}>All Enquiries ({enquiryCount})</Text>
             {enquiries.map((enquiry, idx) => (
-              <div key={enquiry.ID} style={{ backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground, borderRadius: 4, overflow: 'hidden' }}>
-                <EnquiryLineItem enquiry={enquiry} onSelect={onSelect} onRate={onRate} teamData={teamData} isLast={idx === enquiries.length - 1} userAOW={userAOW} />
+              <div key={enquiry.ID} style={{ borderRadius: 4, overflow: 'hidden' }}>
+                <EnquiryLineItem enquiry={enquiry} onSelect={onSelect} onRate={onRate} onPitch={onPitch} teamData={teamData} isLast={idx === enquiries.length - 1} userAOW={undefined} />
               </div>
             ))}
           </Stack>

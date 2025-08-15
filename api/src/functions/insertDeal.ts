@@ -38,8 +38,80 @@ interface DealRequest {
 import axios from "axios";
 
 /**
+ * Look up fee earner email from team data based on their full name
+ * This uses a simplified lookup table. In production, this could be enhanced
+ * to fetch from a shared team API or database.
+ */
+function getFeeEarnerEmail(pitchedBy: string): string | null {
+  try {
+    if (!pitchedBy || typeof pitchedBy !== 'string') {
+      return null;
+    }
+
+    // Normalize the input (trim and handle case variations)
+    const normalizedName = pitchedBy.trim();
+    
+    // Team member lookup table based on current team-sql-data.json
+    // This should be kept in sync with the main team data
+    const teamLookup: { [key: string]: string } = {
+      "Alex Cook": "ac@helix-law.com",
+      "Anouszka Taverna": "at@helix-law.com", 
+      "Billy Leith": "bl@helix-law.com",
+      "Caroline Hennessy": "ch@helix-law.com",
+      "Charlotte Ramsden": "cr@helix-law.com",
+      "Daisy Wickham": "dw@helix-law.com",
+      "Daniel Gordon": "dg@helix-law.com",
+      "Daniel Lee": "dl@helix-law.com",
+      "Dominic Lund": "dl2@helix-law.com",
+      "Emily Stringer": "es@helix-law.com",
+      "Francesca Fleming": "ff@helix-law.com",
+      "George Haste": "gh@helix-law.com",
+      "Gemma Pinnington": "gp@helix-law.com",
+      "Harriet Knowles": "hk@helix-law.com",
+      "James McKinney": "jm@helix-law.com",
+      "James Pickering": "jp@helix-law.com",
+      "Kelly Caddick": "kc@helix-law.com",
+      "Lauren Davis": "ld@helix-law.com",
+      "Leah Zimmerer": "lz@helix-law.com",
+      "Mark Torbitt": "mt@helix-law.com",
+      "Matthew Clarke": "mc@helix-law.com",
+      "Meghan Ashworth": "ma@helix-law.com",
+      "Nicholas Davidson": "nd@helix-law.com",
+      "Ollie Lund": "ol@helix-law.com",
+      "Orla Costello": "oc@helix-law.com",
+      "Richard Poulter": "rp@helix-law.com",
+      "Robert Birnie": "rb@helix-law.com",
+      "Sara Lovell": "sl@helix-law.com",
+      "Sophie Long": "slong@helix-law.com",
+      "Sophie Williams": "sw@helix-law.com",
+      "Stephanie Horton": "sh@helix-law.com",
+      "Thomas Keyzor": "tk@helix-law.com",
+      "Victoria Holden": "vh@helix-law.com"
+    };
+    
+    // Direct lookup first
+    if (teamLookup[normalizedName]) {
+      return teamLookup[normalizedName];
+    }
+    
+    // Fallback: try case-insensitive lookup
+    const lowerName = normalizedName.toLowerCase();
+    for (const [name, email] of Object.entries(teamLookup)) {
+      if (name.toLowerCase() === lowerName) {
+        return email;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
  * Send an admin monitoring email to lz@helix-law.com with a full snapshot
  * of the deal that was captured and the email metadata.
+ * Also CC the fee earner who pitched the deal.
  */
 async function sendTestDealEmail(context: InvocationContext, dealInfo: any) {
   try {
@@ -73,6 +145,9 @@ async function sendTestDealEmail(context: InvocationContext, dealInfo: any) {
     const baseInstructions = process.env.DEAL_INSTRUCTIONS_URL || 'https://instruct.helix-law.com/pitch';
     const instructionsUrl = `${baseInstructions.replace(/\/$/, '')}/${encodeURIComponent(dealInfo.passcode ?? '')}`;
 
+    // Get fee earner email for CC
+    const feeEarnerEmail = getFeeEarnerEmail(dealInfo.pitchedBy || '');
+
     const now = new Date();
     const htmlRows = (obj: any) => Object.entries(obj)
       .map(([k, v]) => `<tr><td style="padding:4px 8px;border:1px solid #ddd"><strong>${k}</strong></td><td style="padding:4px 8px;border:1px solid #ddd">${String(v ?? '')}</td></tr>`)
@@ -103,14 +178,26 @@ async function sendTestDealEmail(context: InvocationContext, dealInfo: any) {
         <h3 style="margin-top:12px">Original payload (JSON)</h3>
         <pre style="background:#f6f6f6;padding:8px;border-radius:4px;max-height:220px;overflow:auto">${JSON.stringify(dealInfo, null, 2)}</pre>
         <p style="margin-top:12px">Instructions URL: <a href="${instructionsUrl}">${instructionsUrl}</a></p>
-        <p style="color:#666;font-size:12px">Delivered to: lz@helix-law.com — this message is for monitoring only.</p>
+        <p style="color:#666;font-size:12px">Delivered to: lz@helix-law.com${feeEarnerEmail ? ` | CC: ${feeEarnerEmail}` : ''} — this message is for monitoring only.</p>
       </div>`;
+
+    // Build recipients list
+    const toRecipients = [{ emailAddress: { address: 'lz@helix-law.com' } }];
+    const ccRecipients = feeEarnerEmail ? [{ emailAddress: { address: feeEarnerEmail } }] : [];
+
+    // Log CC information
+    if (feeEarnerEmail) {
+      context.log(`Admin monitoring email: CC'ing fee earner ${dealInfo.pitchedBy} at ${feeEarnerEmail}`);
+    } else {
+      context.log(`Admin monitoring email: No email found for fee earner '${dealInfo.pitchedBy}'`);
+    }
 
     const emailContent = {
       message: {
         subject: `Admin: Deal captured for ${dealInfo.serviceDescription ?? 'unknown'}`,
         body: { contentType: 'HTML', content: emailHtml },
-        toRecipients: [{ emailAddress: { address: 'lz@helix-law.com' } }],
+        toRecipients,
+        ccRecipients,
         from: { emailAddress: { address: 'automations@helix-law.com' } },
       },
       saveToSentItems: false,
