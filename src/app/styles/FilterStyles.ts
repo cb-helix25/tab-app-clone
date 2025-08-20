@@ -25,9 +25,9 @@ export const sharedSearchBoxStyle = (isDarkMode: boolean) => ({
   root: {
     position: 'relative' as const,
     backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-    border: 'none',
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
     boxShadow: 'none',
-    borderRadius: '8px 8px 0 0',
+    borderRadius: '16px',
     padding: '0',
     width: '100%',
     maxWidth: '300px',
@@ -35,34 +35,20 @@ export const sharedSearchBoxStyle = (isDarkMode: boolean) => ({
     alignItems: 'center',
     height: '32px',
     outline: 'none',
+    transition: 'border-color 0.15s ease',
     selectors: {
       ':focus': {
         outline: 'none',
-        border: 'none',
+        borderColor: isDarkMode ? 'rgba(255,255,255,0.24)' : 'rgba(0,0,0,0.24)',
         boxShadow: 'none',
       },
       ':focus-within': {
         outline: 'none',
-        border: 'none',
+        borderColor: isDarkMode ? 'rgba(255,255,255,0.24)' : 'rgba(0,0,0,0.24)',
         boxShadow: 'none',
       },
-      '&::after': {
-        content: '""',
-        position: 'absolute' as const,
-        left: '50%',
-        bottom: '0',
-        height: '1px',
-        width: '100%',
-        backgroundColor: isDarkMode ? colours.dark.highlight : colours.highlight,
-        transform: 'translateX(-50%) scaleX(0)',
-        transformOrigin: 'center',
-        transition: 'transform 0.15s ease-out',
-      },
-      '&:hover::after': {
-        transform: 'translateX(-50%) scaleX(1)',
-      },
-      '&:focus-within::after': {
-        transform: 'translateX(-50%) scaleX(1)',
+      ':hover': {
+        borderColor: isDarkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
       },
     },
   },

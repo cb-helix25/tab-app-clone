@@ -27,6 +27,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+// Search UI
+import { SearchBox } from '@fluentui/react';
+import { sharedSearchBoxContainerStyle, sharedSearchBoxStyle } from '../../app/styles/FilterStyles';
 import { parseISO, startOfMonth, format, isValid } from 'date-fns';
 import { Enquiry, POID, UserData } from '../../app/functionality/types';
 import EnquiryLineItem from './EnquiryLineItem';
@@ -1029,6 +1032,18 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               options={[{ key: 'All', label: 'All' }, ...userData[0].AOW.split(',').map(a => a.trim()).map(a => ({ key: a, label: a }))]}
             />
           )}
+          {/* Search box */}
+          <div className={sharedSearchBoxContainerStyle(isDarkMode)}>
+            <SearchBox
+              placeholder="Search (name, email, company, type, ID)"
+              value={searchTerm}
+              onChange={(_, v) => setSearchTerm(v || '')}
+              onSearch={(v) => setSearchTerm(v || '')}
+              onClear={() => setSearchTerm('')}
+              styles={sharedSearchBoxStyle(isDarkMode)}
+              aria-label="Search enquiries"
+            />
+          </div>
           <div style={{ flex: 1 }} />
           {(isAdmin || isLocalhost) && (
             <div

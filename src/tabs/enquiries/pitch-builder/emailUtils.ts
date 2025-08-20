@@ -391,15 +391,13 @@ export function applyDynamicSubstitutions(
         })()
       : '[Amount]';
 
-  // Prefer provided instructionsLink. Otherwise, if we have passcode and enquiry ID, use new path-based format.
-  // New format: /pitch/prospectId-passcode or /pitch/passcode 
+  // Prefer provided instructionsLink. Otherwise build using passcode ONLY (drop legacy prospectId-passcode format).
+  // Required format now: https://instruct.helix-law.com/pitch/<passcode>
   const baseUrl = process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com';
   const finalInstructionsLink = instructionsLink
-    || (passcode && enquiry?.ID
-      ? `${baseUrl}/pitch/${enquiry.ID}-${passcode}`
-      : passcode
-        ? `${baseUrl}/pitch/${passcode}`
-        : `${baseUrl}/pitch`);
+    || (passcode
+      ? `${baseUrl}/pitch/${passcode}`
+      : `${baseUrl}/pitch`);
 
   // Prebuild the anchor used in HTML previews/emails
   const instructAnchor = `<a href="${finalInstructionsLink}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`;

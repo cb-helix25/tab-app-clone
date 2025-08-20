@@ -123,8 +123,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
     userData,
     enquiry,
     amount,
-    passcode,
-    checkoutPreviewUrl
+    passcode
   );
   const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
   const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);

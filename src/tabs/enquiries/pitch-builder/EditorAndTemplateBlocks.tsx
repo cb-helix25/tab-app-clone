@@ -953,8 +953,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       userData,
       enquiry,
       amount,
-      effectivePass,
-      'https://instruct.helix-law.com/pitch'
+      effectivePass
     );
     // Replace the HTML anchor with a React anchor for in-editor display
     substituted = substituted.replace(
