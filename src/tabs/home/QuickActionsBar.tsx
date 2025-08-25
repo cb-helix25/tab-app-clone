@@ -141,12 +141,13 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                     style={{
                         '--card-index': index,
                         fontSize: '15px',
-                        padding: '0 12px',
+                        padding: '0 8px', // More compact padding
                         height: '48px', // Changed from 44px to match Enquiries/Matters
-                        minWidth: 0,
+                        minWidth: '44px', // Start compact
+                        width: '44px', // Fixed compact width
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'flex-start',
+                        justifyContent: 'center', // Center the icon
                         flex: '0 0 auto',
                         marginLeft: index === 0 ? 0 : 0,
                     } as React.CSSProperties}

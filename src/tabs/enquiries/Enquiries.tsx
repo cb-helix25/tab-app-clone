@@ -1035,6 +1035,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           {/* Search box */}
           <div className={sharedSearchBoxContainerStyle(isDarkMode)}>
             <SearchBox
+              key="enquiries-search-box"
               placeholder="Search (name, email, company, type, ID)"
               value={searchTerm}
               onChange={(_, v) => setSearchTerm(v || '')}
@@ -1135,6 +1136,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     selectedEnquiry,
     activeState,
     activeAreaFilter,
+    searchTerm,
     userData,
     isAdmin,
     isLocalhost,

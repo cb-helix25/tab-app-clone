@@ -5,9 +5,12 @@ export function getProxyBaseUrl(): string {
     const envUrl = process.env.REACT_APP_PROXY_BASE_URL;
     const nodeEnv = process.env.NODE_ENV;
 
-    // In development allow explicit overrides, otherwise fall back to the
-    // remote API to avoid failed calls when the local server isn't running.
+    // In development, check if we should use setupProxy.js routing
     if (nodeEnv === "development") {
+        // If envUrl is explicitly empty or localhost:3001, use relative paths for setupProxy.js
+        if (envUrl === "" || !envUrl || envUrl.includes("localhost:3001")) {
+            return ""; // Use relative URLs to enable setupProxy.js routing
+        }
         return envUrl || DEFAULT_PROXY_BASE_URL;
     }
 

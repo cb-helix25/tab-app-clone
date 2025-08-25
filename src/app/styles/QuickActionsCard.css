@@ -172,3 +172,28 @@
 }
 
 /* subtlePulse keyframes moved to animations.css */
+
+/* Simple hover expansion for compact quick actions */
+.quickActionCard {
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              min-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.quickActionCard .quick-action-label {
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+}
+
+/* On hover, expand to show full text */
+.quickActionCard:hover {
+  width: auto !important;
+  min-width: auto !important;
+  max-width: 160px;
+  padding-right: 12px !important;
+}
+
+.quickActionCard:hover .quick-action-label {
+  opacity: 1 !important;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.15s;
+}

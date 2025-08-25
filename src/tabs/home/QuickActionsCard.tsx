@@ -42,6 +42,14 @@ import {
   FaCheck,
   FaPlus,
   FaDownload,
+  FaPhone,
+  FaRegClock,
+  FaClock,
+  FaUserCheck,
+  FaTasks,
+  FaClipboardList,
+  FaRegBuilding,
+  FaBuilding,
 } from 'react-icons/fa';
 import {
   AiOutlineCheck,
@@ -66,6 +74,10 @@ import {
   MdPeople,
   MdHelp,
   MdOutlineHelp,
+  MdPhone,
+  MdCall,
+  MdEventSeat,
+  MdOutlineEventSeat,
 } from 'react-icons/md';
 import { PiTreePalm } from 'react-icons/pi';
 import { IconType } from 'react-icons';
@@ -78,11 +90,16 @@ import AnimatedPulsingDot from '../../components/AnimatedPulsingDot';
 const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   Accept: { outline: FaRegCheckSquare, filled: FaCheckSquare },
   CheckCircle: { outline: FaRegCheckCircle, filled: FaCheckCircle },
-  Checklist: { outline: FaRegListAlt, filled: FaListAlt },
-  Comment: { outline: FaRegCommentDots, filled: FaCommentDots },
-  Calendar: { outline: FaRegCalendarAlt, filled: FaCalendarAlt },
-  CalendarCheck: { outline: FaRegCalendarCheck, filled: FaCalendarCheck },
-  Room: { outline: MdOutlineMeetingRoom, filled: MdMeetingRoom },
+  // Better task/checklist icon - more recognizable
+  Checklist: { outline: FaTasks, filled: FaClipboardList },
+  // Better phone/comment icon for telephone notes
+  Comment: { outline: MdPhone, filled: MdCall },
+  // Attendance/time icons - clock is more intuitive than calendar for daily attendance
+  Calendar: { outline: FaRegClock, filled: FaClock },
+  CalendarCheck: { outline: FaUserCheck, filled: FaUserCheck },
+  // Room/space booking - seat icon is clearer for space booking
+  Room: { outline: MdOutlineEventSeat, filled: MdEventSeat },
+  // Warning/alert icons
   Warning: { outline: MdOutlineWarning, filled: MdWarning },
   Cancel: { outline: FaRegTimesCircle, filled: FaTimesCircle },
   Document: { outline: FaRegFile, filled: FaFile },
@@ -364,7 +381,21 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
           </span>
         ) : (
           <>
-            <Text variant="small" styles={{ root: textStyle }} className="quick-action-label">
+            <Text 
+              variant="small" 
+              styles={{ 
+                root: {
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  whiteSpace: 'nowrap',
+                  textAlign: 'center',
+                  opacity: 0, // Hidden by default
+                  marginLeft: '6px',
+                  transition: 'opacity 0.3s ease',
+                }
+              }} 
+              className="quick-action-label"
+            >
               {title}
             </Text>
             {showPulsingDot && orientation === 'column' && (

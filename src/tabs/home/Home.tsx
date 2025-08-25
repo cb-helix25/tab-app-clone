@@ -401,9 +401,8 @@ const quickActions: QuickLink[] = [
   { title: 'Confirm Attendance', icon: 'Calendar' },
   { title: 'Create a Task', icon: 'Checklist' },
   { title: 'Save Telephone Note', icon: 'Comment' },
-  { title: 'Request Annual Leave', icon: 'Calendar' },
+  { title: 'Request Annual Leave', icon: 'PalmTree' }, // Better icon for vacation/leave
   { title: 'Book Space', icon: 'Room' },
-  { title: 'Unclaimed Enquiries', icon: 'Warning' },
 ];
 
 //////////////////////
@@ -1971,7 +1970,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     const storedData = localStorage.getItem('outstandingBalancesData');
     if (storedData) {
       const parsedData = JSON.parse(storedData);
-      console.log("Loaded outstanding balances from localStorage:", parsedData);
+      console.log("Loaded outstanding balances from localStorage:", parsedData.length, "items");
       if (onOutstandingBalancesFetched) {
         onOutstandingBalancesFetched(parsedData);
       }
@@ -2029,7 +2028,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         const data = await fetchOutstandingBalances();
         if (data) {
           cachedOutstandingBalances = data; // Cache in-memory for subsequent calls
-          console.log("Fetched outstanding balances:", data);
+          console.log("Fetched outstanding balances:", data.length, "items");
           localStorage.setItem('outstandingBalancesData', JSON.stringify(data));
           if (onOutstandingBalancesFetched) {
             onOutstandingBalancesFetched(data);
@@ -2376,8 +2375,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
 
     useEffect(() => {
       if (userMatterIDs.length && outstandingBalancesData) {
-        console.log("After update - User Matter IDs:", userMatterIDs);
-        console.log("After update - Outstanding Balances Data:", outstandingBalancesData);
+        console.log("After update - User Matter IDs:", userMatterIDs.length, "matters");
+        console.log("After update - Outstanding Balances Data:", outstandingBalancesData.length, "items");
       }
     }, [userMatterIDs, outstandingBalancesData]);
 
@@ -3467,85 +3466,6 @@ const conversionRate = enquiriesMonthToDate
           outstandingBalances={myOutstandingBalances}
         />
       </SectionCard>
-
-      {/* Favourites Section */}
-      {(formsFavorites.length > 0 || resourcesFavorites.length > 0) && (
-        <SectionCard 
-          title="Favourites" 
-          id="favourites-section"
-          variant="default"
-          animationDelay={0.2}
-        >
-          {formsFavorites.length > 0 && (
-            <div>
-              <div className={favouritesGridStyle}>
-                {formsFavorites.map((form: FormItem, index: number) => (
-                  <FormCard
-                    key={`form-${form.title}`}
-                    link={form}
-                    isFavorite
-                    onCopy={(url: string, title: string) => {
-                      navigator.clipboard
-                        .writeText(url)
-                        .then(() => console.log(`Copied '${title}' to clipboard.`))
-                        .catch((err) => console.error('Failed to copy: ', err));
-                    }}
-                    onSelect={() => setSelectedForm(form)}
-                    onToggleFavorite={() => {
-                      const updatedFavorites = formsFavorites.filter(
-                        (fav) => fav.title !== form.title
-                      );
-                      setFormsFavorites(updatedFavorites);
-                      localStorage.setItem(
-                        'formsFavorites',
-                        JSON.stringify(updatedFavorites)
-                      );
-                    }}
-                    onGoTo={() => window.open(form.url, '_blank')}
-                    animationDelay={index * 0.1}
-                    description={form.description}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          {resourcesFavorites.length > 0 && (
-            <div>
-              <div style={{ marginBottom: '15px' }}>
-                <Text className={subLabelStyle(isDarkMode)}>Resources</Text>
-              </div>
-              <div className={favouritesGridStyle}>
-                {resourcesFavorites.map((resource: Resource, index: number) => (
-                  <ResourceCard
-                    key={`resource-${resource.title}`}
-                    resource={resource}
-                    isFavorite
-                    onCopy={(url: string, title: string) => {
-                      navigator.clipboard
-                        .writeText(url)
-                        .then(() => console.log(`Copied '${title}' to clipboard.`))
-                        .catch((err) => console.error('Failed to copy: ', err));
-                    }}
-                    onToggleFavorite={() => {
-                      const updatedFavorites = resourcesFavorites.filter(
-                        (fav) => fav.title !== resource.title
-                      );
-                      setResourcesFavorites(updatedFavorites);
-                      localStorage.setItem(
-                        'resourcesFavorites',
-                        JSON.stringify(updatedFavorites)
-                      );
-                    }}
-                    onGoTo={() => window.open(resource.url, '_blank')}
-                    onSelect={() => setSelectedResource(resource)}
-                    animationDelay={index * 0.1}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </SectionCard>
-      )}
 
       <SectionCard 
         title="Attendance" 

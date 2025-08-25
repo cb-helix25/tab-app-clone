@@ -30,9 +30,7 @@ interface CustomTabsProps {
   ariaLabel?: string;
   onHomeClick: () => void;
   user?: UserData;
-  onFormsHover?: (hover: boolean) => void;
   onFormsClick?: () => void;
-  onResourcesHover?: (hover: boolean) => void;
   onResourcesClick?: () => void;
   hasActiveMatter?: boolean; // Whether there's an active matter opening
   isInMatterOpeningWorkflow?: boolean; // Whether user is currently in the matter opening workflow
@@ -74,9 +72,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   ariaLabel,
   onHomeClick,
   user,
-  onFormsHover,
   onFormsClick,
-  onResourcesHover,
   onResourcesClick,
   hasActiveMatter = false,
   isInMatterOpeningWorkflow = false,
@@ -192,18 +188,6 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
               className: tab.disabled ? 'disabledTab' : '',
               style: { '--animation-delay': `${index * 0.1}s` } as React.CSSProperties,
               'aria-disabled': tab.disabled ? 'true' : undefined,
-              onMouseEnter:
-                tab.key === 'forms' && onFormsHover
-                  ? () => onFormsHover(true)
-                  : tab.key === 'resources' && onResourcesHover
-                    ? () => onResourcesHover(true)
-                  : undefined,
-              onMouseLeave:
-                tab.key === 'forms' && onFormsHover
-                  ? () => onFormsHover(false)
-                  : tab.key === 'resources' && onResourcesHover
-                    ? () => onResourcesHover(false)
-                  : undefined,
             }}
           />
         ))}

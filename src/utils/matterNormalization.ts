@@ -97,8 +97,9 @@ export function determineUserRole(
                isOriginating ? 'originating' :
                'none';
 
-  // Debug first few role determinations
-  if (Math.random() < 0.5) { // 50% sample - increased for debugging
+  // Debug role determinations (controlled by flag)
+  const DEBUG_ROLE_DETERMINATION = false;
+  if (DEBUG_ROLE_DETERMINATION && Math.random() < 0.1) { // 10% sample when enabled
     console.log('🔍 Role determination:', {
       userFullName: userFullName.trim(),
       responsible: responsibleSolicitor.trim(),
@@ -144,8 +145,9 @@ export function normalizeMatterData(
   userFullName: string,
   dataSource: MatterDataSource
 ): NormalizedMatter {
-  // Debug first few matters from each source
-  if (Math.random() < 0.5) { // 50% sample - increased for debugging
+  // Debug matter data (controlled by flag)
+  const DEBUG_MATTER_NORMALIZATION = false;
+  if (DEBUG_MATTER_NORMALIZATION && Math.random() < 0.1) { // 10% sample when enabled
     console.log(`🔍 Raw matter data from ${dataSource}:`, {
       matter,
       keys: Object.keys(matter)
@@ -306,24 +308,33 @@ export function applyAdminFilter(
   userFullName: string,
   userRole: string
 ): NormalizedMatter[] {
-  console.log('🔍 Admin filter input:', { showEveryone, userFullName, userRole, isAdmin: hasAdminAccess(userRole, userFullName) });
+  const DEBUG_ADMIN_FILTER = false;
+  if (DEBUG_ADMIN_FILTER) {
+    console.log('🔍 Admin filter input:', { showEveryone, userFullName, userRole, isAdmin: hasAdminAccess(userRole, userFullName) });
+  }
   
   // If user is not admin, always filter to their matters
   if (!hasAdminAccess(userRole, userFullName)) {
     const filtered = matters.filter(matter => matter.role !== 'none');
-    console.log('🔍 Non-admin filter - showing matters with role !== none:', filtered.length);
+    if (DEBUG_ADMIN_FILTER) {
+      console.log('🔍 Non-admin filter - showing matters with role !== none:', filtered.length);
+    }
     return filtered;
   }
   
   // If admin and "show everyone" is enabled, show all matters
   if (showEveryone) {
-    console.log('🔍 Admin showing everyone:', matters.length);
+    if (DEBUG_ADMIN_FILTER) {
+      console.log('🔍 Admin showing everyone:', matters.length);
+    }
     return matters;
   }
   
   // If admin but "show everyone" is disabled, filter to their matters
   const filtered = matters.filter(matter => matter.role !== 'none');
-  console.log('🔍 Admin not showing everyone - filtering to user matters:', filtered.length);
+  if (DEBUG_ADMIN_FILTER) {
+    console.log('🔍 Admin not showing everyone - filtering to user matters:', filtered.length);
+  }
   return filtered;
 }
 

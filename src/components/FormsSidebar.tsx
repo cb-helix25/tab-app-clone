@@ -1,11 +1,12 @@
 import React from "react";
 // invisible change 2
-import { IconButton, Text, mergeStyles, Stack } from "@fluentui/react";
+import { IconButton, Text, mergeStyles, Stack, SearchBox } from "@fluentui/react";
 import { useTheme } from "../app/functionality/ThemeContext";
 import { colours } from "../app/styles/colours";
 import { formSections } from "../tabs/forms/formsData";
 import { FormItem, UserData, NormalizedMatter, TeamData } from "../app/functionality/types";
 import FormEmbed from "./FormEmbed";
+import './PremiumSidebar.css';
 
 interface FormsSidebarProps {
     userData: UserData[] | null;
@@ -17,7 +18,7 @@ interface FormsSidebarProps {
     setPinned: (pinned: boolean) => void;
 }
 
-const sidebarWidth = "60vw";
+const sidebarWidth = "380px";
 
 // Offset to position the sidebar just below the stacked header bars
 // (three bars, each 48px high). This value should line up exactly
@@ -57,14 +58,17 @@ const sidebarContainer = (isOpen: boolean, isDarkMode: boolean, top: number) =>
         width: sidebarWidth,
         height: "100vh",
         paddingTop: top,
-        backgroundColor: isDarkMode
-            ? colours.dark.sectionBackground
-            : colours.light.sectionBackground,
-        boxShadow: "2px 0 4px rgba(0,0,0,0.2)",
-        padding: 16,
+        backgroundColor: isDarkMode ? '#0f0f0f' : '#fafbfc',
+        borderRight: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+        padding: '0',
         overflowY: "auto",
-        transition: "left 0.3s ease",
+        overflowX: "hidden",
+        transition: "left 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
         zIndex: 850,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: isOpen ? '2px 0 24px rgba(0,0,0,0.15)' : 'none',
     });
 
 const handleStyle = (isOpen: boolean, isDarkMode: boolean, top: number) =>
@@ -73,26 +77,24 @@ const handleStyle = (isOpen: boolean, isDarkMode: boolean, top: number) =>
         top: 0,
         left: isOpen ? sidebarWidth : 0,
         height: "100vh",
-        width: 24,
+        width: 40,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         cursor: "pointer",
-        backgroundColor: isOpen
-            ? isDarkMode
-                ? colours.dark.cardHover
-                : colours.light.cardHover
-            : "transparent",
-        boxShadow: "2px 0 4px rgba(0,0,0,0.2)",
-        transition: "opacity 0.3s ease",
+        backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+        borderRight: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+        transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
         zIndex: 851,
-        opacity: isOpen ? 1 : 0,
+        borderRadius: isOpen ? '0 12px 12px 0' : '0',
+        boxShadow: isOpen ? '2px 0 16px rgba(0,0,0,0.1)' : 'none',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         selectors: {
             ":hover": {
-                opacity: 1,
-                backgroundColor: isDarkMode
-                    ? colours.dark.cardHover
-                    : colours.light.cardHover,
+                backgroundColor: isDarkMode ? '#2a2a2a' : '#f0f2f5',
+                transform: isOpen ? 'translateX(4px)' : 'translateX(2px)',
+                boxShadow: '2px 0 20px rgba(0,0,0,0.15)',
             },
         },
     });
@@ -100,11 +102,203 @@ const handleStyle = (isOpen: boolean, isDarkMode: boolean, top: number) =>
 
 const sectionContainer = (isDarkMode: boolean) =>
     mergeStyles({
-        border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
-        borderRadius: 4,
-        padding: 8,
-        marginTop: 16,
-      });
+        backgroundColor: isDarkMode ? '#252525' : '#f8f9fa',
+        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+        borderRadius: 8,
+        padding: '12px',
+        marginBottom: 12,
+        transition: 'all 0.15s ease',
+        selectors: {
+            ':hover': {
+                backgroundColor: isDarkMode ? '#2a2a2a' : '#e9ecef',
+                transform: 'translateY(-1px)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            },
+        },
+    });
+
+// Premium Form Item Component
+interface FormItemProps {
+    form: FormItem;
+    isDarkMode: boolean;
+    isExpanded: boolean;
+    isFavorite: boolean;
+    onToggle: () => void;
+    onCopy: () => void;
+    onToggleFavorite: () => void;
+    userData: UserData[] | null;
+    teamData?: TeamData[] | null;
+    matters: NormalizedMatter[];
+    animationDelay?: number;
+    isCompact?: boolean;
+}
+
+const FormItemComponent: React.FC<FormItemProps> = ({
+    form,
+    isDarkMode,
+    isExpanded,
+    isFavorite,
+    onToggle,
+    onCopy,
+    onToggleFavorite,
+    userData,
+    teamData,
+    matters,
+    animationDelay = 0,
+    isCompact = false,
+}) => {
+    return (
+        <div 
+            className="form-item-container"
+            style={{
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                borderRadius: 12,
+                overflow: 'hidden',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                animationDelay: `${animationDelay}s`,
+            }}
+        >
+            {/* Header */}
+            <div style={{
+                padding: isCompact ? '12px 16px' : '16px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                backgroundColor: isExpanded ? (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)') : 'transparent',
+                borderBottom: isExpanded ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` : 'none',
+            }} onClick={onToggle}>
+                <IconButton
+                    iconProps={{
+                        iconName: isExpanded ? "ChevronDown" : "ChevronRight",
+                    }}
+                    styles={{
+                        root: {
+                            width: 24,
+                            height: 24,
+                            color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                            marginRight: 8,
+                            transition: 'all 0.2s ease',
+                        },
+                        rootHovered: {
+                            backgroundColor: 'transparent',
+                            color: isDarkMode ? '#ffffff' : '#0f0f0f',
+                            transform: 'scale(1.1)',
+                        },
+                    }}
+                />
+                
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {form.icon && (
+                        <div style={{
+                            width: isCompact ? 20 : 24,
+                            height: isCompact ? 20 : 24,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                            borderRadius: 6,
+                            fontSize: isCompact ? 12 : 14,
+                            color: '#0078d4',
+                        }}>
+                            📄
+                        </div>
+                    )}
+                    
+                    <span style={{
+                        fontSize: isCompact ? 13 : 14,
+                        fontWeight: 500,
+                        color: isDarkMode ? '#e0e0e0' : '#2a2a2a',
+                        lineHeight: 1.4,
+                    }}>
+                        {form.title}
+                    </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 4 }}>
+                    <IconButton
+                        iconProps={{ iconName: isFavorite ? "FavoriteStarFill" : "FavoriteStar" }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleFavorite();
+                        }}
+                        styles={{
+                            root: {
+                                width: 28,
+                                height: 28,
+                                color: isFavorite ? '#D65541' : (isDarkMode ? '#8a8a8a' : '#6a6a6a'),
+                                transition: 'all 0.2s ease',
+                            },
+                            rootHovered: {
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                                color: '#D65541',
+                                transform: 'scale(1.1)',
+                            },
+                        }}
+                    />
+                    
+                    <IconButton
+                        iconProps={{ iconName: "Copy" }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onCopy();
+                        }}
+                        styles={{
+                            root: {
+                                width: 28,
+                                height: 28,
+                                color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                                transition: 'all 0.2s ease',
+                            },
+                            rootHovered: {
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                                color: isDarkMode ? '#ffffff' : '#0f0f0f',
+                                transform: 'scale(1.1)',
+                            },
+                        }}
+                    />
+                    
+                    <IconButton
+                        iconProps={{ iconName: "NavigateExternalInline" }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (form.url) window.open(form.url, '_blank');
+                        }}
+                        styles={{
+                            root: {
+                                width: 28,
+                                height: 28,
+                                color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                                transition: 'all 0.2s ease',
+                            },
+                            rootHovered: {
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                                color: '#0078d4',
+                                transform: 'scale(1.1)',
+                            },
+                        }}
+                    />
+                </div>
+            </div>
+
+            {/* Expanded Content */}
+            {isExpanded && (
+                <div style={{
+                    padding: '20px',
+                    backgroundColor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)',
+                    animation: 'formContentSlideIn 0.3s ease-out',
+                }}>
+                    <FormEmbed
+                        link={form}
+                        userData={userData}
+                        teamData={teamData}
+                        matters={matters}
+                    />
+                </div>
+            )}
+        </div>
+    );
+};
 
 const FormsSidebar: React.FC<FormsSidebarProps> = ({
     userData,
@@ -117,11 +311,11 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({
 }) => {
     const { isDarkMode } = useTheme();
     const [isOpen, setIsOpen] = React.useState(false);
-    const [expanded, setExpanded] = React.useState<{ [title: string]: boolean }>(
-        {},
-    );
-    const [sidebarTop, setSidebarTop] =
-        React.useState<number>(DEFAULT_SIDEBAR_TOP);
+    const [expanded, setExpanded] = React.useState<{ [title: string]: boolean }>({});
+    const [searchQuery, setSearchQuery] = React.useState("");
+    const [sidebarTop, setSidebarTop] = React.useState<number>(DEFAULT_SIDEBAR_TOP);
+    const [favorites, setFavorites] = React.useState<string[]>([]);
+    const [recentlyUsed, setRecentlyUsed] = React.useState<string[]>([]);
 
     const updateTop = React.useCallback(() => {
         setSidebarTop(calculateSidebarTop());
@@ -176,7 +370,51 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({
 
     const copyLink = (url: string, title: string) => {
         navigator.clipboard.writeText(url).catch((err) => console.error(err));
+        // Track usage
+        setRecentlyUsed(prev => {
+            const updated = [title, ...prev.filter(t => t !== title)].slice(0, 5);
+            localStorage.setItem('formsRecentlyUsed', JSON.stringify(updated));
+            return updated;
+        });
     };
+
+    const toggleFavorite = (title: string) => {
+        setFavorites(prev => {
+            const updated = prev.includes(title) 
+                ? prev.filter(t => t !== title)
+                : [...prev, title];
+            localStorage.setItem('formsFavorites', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
+    const filteredForms = React.useMemo(() => {
+        if (!searchQuery.trim()) return formSections;
+        
+        const filtered: typeof formSections = {
+            General_Processes: [],
+            Operations: [],
+            Financial: [],
+        };
+        
+        Object.entries(formSections).forEach(([section, forms]) => {
+            if (section !== 'Favorites') {
+                filtered[section as keyof typeof filtered] = forms.filter(form =>
+                    form.title.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
+        });
+        
+        return filtered;
+    }, [searchQuery]);
+
+    // Load favorites and recent from localStorage
+    React.useEffect(() => {
+        const storedFavorites = localStorage.getItem('formsFavorites');
+        const storedRecent = localStorage.getItem('formsRecentlyUsed');
+        if (storedFavorites) setFavorites(JSON.parse(storedFavorites));
+        if (storedRecent) setRecentlyUsed(JSON.parse(storedRecent));
+    }, []);
 
     return (
       <>
@@ -200,79 +438,242 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({
                 />
             </div>
             <div className={sidebarContainer(isOpen, isDarkMode, sidebarTop)}>
-                <Stack
-                    horizontalAlign="space-between"
-                    horizontal
-                    verticalAlign="center"
-                >
-                    <Text variant="large">Forms</Text>
-                    <IconButton
-                        iconProps={{ iconName: "DoubleChevronUp" }}
-                        onClick={collapseAll}
-                        ariaLabel="Collapse All"
+                {/* Premium Header */}
+                <div style={{
+                    padding: '24px 24px 16px',
+                    borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+                    backgroundColor: isDarkMode ? '#111' : '#fff',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 10,
+                    backdropFilter: 'blur(20px)',
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 16,
+                    }}>
+                        <h1 style={{
+                            fontSize: '20px',
+                            fontWeight: 700,
+                            color: isDarkMode ? '#ffffff' : '#0f0f0f',
+                            letterSpacing: '-0.02em',
+                            margin: 0,
+                            lineHeight: 1.2,
+                        }}>
+                            Forms Hub
+                        </h1>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <IconButton
+                                iconProps={{ iconName: "Refresh" }}
+                                onClick={() => window.location.reload()}
+                                ariaLabel="Refresh Forms"
+                                styles={{
+                                    root: {
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 8,
+                                        color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                                        transition: 'all 0.2s ease',
+                                    },
+                                    rootHovered: {
+                                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                        color: isDarkMode ? '#ffffff' : '#0f0f0f',
+                                        transform: 'scale(1.05)',
+                                    },
+                                }}
+                            />
+                            <IconButton
+                                iconProps={{ iconName: "DoubleChevronUp" }}
+                                onClick={collapseAll}
+                                ariaLabel="Collapse All"
+                                styles={{
+                                    root: {
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 8,
+                                        color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                                        transition: 'all 0.2s ease',
+                                    },
+                                    rootHovered: {
+                                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                        color: isDarkMode ? '#ffffff' : '#0f0f0f',
+                                        transform: 'scale(1.05)',
+                                    },
+                                }}
+                            />
+                        </div>
+                    </div>
+                    
+                    {/* Premium Search */}
+                    <SearchBox
+                        placeholder="Search forms..."
+                        value={searchQuery}
+                        onChange={(_, newValue) => setSearchQuery(newValue || "")}
+                        styles={{
+                            root: {
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                                borderRadius: 12,
+                                height: 44,
+                                transition: 'all 0.2s ease',
+                                selectors: {
+                                    ':hover': {
+                                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                        borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                                    },
+                                    ':focus-within': {
+                                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                        borderColor: '#0078d4',
+                                        boxShadow: '0 0 0 2px rgba(0,120,212,0.2)',
+                                    },
+                                },
+                            },
+                            field: {
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                color: isDarkMode ? '#ffffff' : '#0f0f0f',
+                                fontSize: 14,
+                                fontWeight: 400,
+                                padding: '0 16px',
+                                selectors: {
+                                    '::placeholder': {
+                                        color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                                    },
+                                },
+                            },
+                            icon: {
+                                color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                            },
+                        }}
                     />
-                </Stack>
-                {Object.entries(formSections).map(([section, forms]) => (
-                    <div key={section} className={sectionContainer(isDarkMode)}>
-                        {forms.map((form) => (
-                            <div key={form.title} style={{ marginBottom: 8 }}>
-                                <Stack
-                                    horizontal
-                                    verticalAlign="center"
-                                    styles={{ root: { width: "100%" } }}
-                                >
-                                    <Stack
-                                        horizontal
-                                        verticalAlign="center"
-                                        tokens={{ childrenGap: 4 }}
-                                    >
-                                        <IconButton
-                                            iconProps={{
-                                                iconName: expanded[form.title]
-                                                    ? "ChevronDown"
-                                                    : "ChevronRight",
-                                            }}
-                                            onClick={() => toggle(form.title)}
-                                            ariaLabel="Expand"
-                                        />
-                                        <Text
-                                            styles={{ root: { cursor: "pointer" } }}
-                                            onClick={() => toggle(form.title)}
-                                        >
-                                            {form.title}
-                                        </Text>
-                                    </Stack>
-                                    <Stack
-                                        horizontal
-                                        tokens={{ childrenGap: 4 }}
-                                        styles={{ root: { marginLeft: "auto" } }}
-                                    >
-                                        <IconButton
-                                            iconProps={{ iconName: "Copy" }}
-                                            onClick={() => form.url && copyLink(form.url, form.title)}
-                                            ariaLabel="Copy link"
-                                        />
-                                        <IconButton
-                                            iconProps={{ iconName: "NavigateExternalInline" }}
-                                            href={form.url}
-                                            target="_blank"
-                                            ariaLabel="Open link"
-                                        />
-                                    </Stack>
-  
-                </Stack>
-                                {expanded[form.title] && (
-                                    <FormEmbed
-                                        link={form}
+                </div>
+
+                {/* Content Area */}
+                <div style={{ padding: '16px 24px 24px' }}>
+                    {/* Quick Access - Favorites */}
+                    {favorites.length > 0 && (
+                        <div style={{ marginBottom: 24 }}>
+                            <h3 style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                                margin: '0 0 12px 0',
+                            }}>
+                                ⭐ Favorites
+                            </h3>
+                            <div style={{ display: 'grid', gap: 8 }}>
+                                {Object.values(formSections).flat().filter(form => 
+                                    favorites.includes(form.title)
+                                ).map((form, index) => (
+                                    <FormItemComponent 
+                                        key={`fav-${form.title}`}
+                                        form={form}
+                                        isDarkMode={isDarkMode}
+                                        isExpanded={expanded[form.title]}
+                                        isFavorite={true}
+                                        onToggle={() => toggle(form.title)}
+                                        onCopy={() => copyLink(form.url || '', form.title)}
+                                        onToggleFavorite={() => toggleFavorite(form.title)}
                                         userData={userData}
                                         teamData={teamData}
                                         matters={matters}
+                                        animationDelay={index * 0.05}
                                     />
-                                )}
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                ))}
+                        </div>
+                    )}
+
+                    {/* Recently Used */}
+                    {recentlyUsed.length > 0 && (
+                        <div style={{ marginBottom: 24 }}>
+                            <h3 style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                                margin: '0 0 12px 0',
+                            }}>
+                                🕒 Recent
+                            </h3>
+                            <div style={{ display: 'grid', gap: 8 }}>
+                                {Object.values(formSections).flat().filter(form => 
+                                    recentlyUsed.includes(form.title)
+                                ).slice(0, 3).map((form, index) => (
+                                    <FormItemComponent 
+                                        key={`recent-${form.title}`}
+                                        form={form}
+                                        isDarkMode={isDarkMode}
+                                        isExpanded={expanded[form.title]}
+                                        isFavorite={favorites.includes(form.title)}
+                                        onToggle={() => toggle(form.title)}
+                                        onCopy={() => copyLink(form.url || '', form.title)}
+                                        onToggleFavorite={() => toggleFavorite(form.title)}
+                                        userData={userData}
+                                        teamData={teamData}
+                                        matters={matters}
+                                        animationDelay={index * 0.05}
+                                        isCompact={true}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Form Sections */}
+                    {Object.entries(filteredForms).map(([section, forms], sectionIndex) => (
+                        forms.length > 0 && (
+                            <div key={section} style={{ marginBottom: 24 }}>
+                                <h3 style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                                    margin: '0 0 12px 0',
+                                }}>
+                                    {section.replace(/_/g, ' ')}
+                                </h3>
+                                <div style={{ display: 'grid', gap: 8 }}>
+                                    {forms.map((form, index) => (
+                                        <FormItemComponent 
+                                            key={form.title}
+                                            form={form}
+                                            isDarkMode={isDarkMode}
+                                            isExpanded={expanded[form.title]}
+                                            isFavorite={favorites.includes(form.title)}
+                                            onToggle={() => toggle(form.title)}
+                                            onCopy={() => copyLink(form.url || '', form.title)}
+                                            onToggleFavorite={() => toggleFavorite(form.title)}
+                                            userData={userData}
+                                            teamData={teamData}
+                                            matters={matters}
+                                            animationDelay={(sectionIndex * 0.1) + (index * 0.05)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    ))}
+
+                    {/* Empty State */}
+                    {searchQuery && Object.values(filteredForms).every(forms => forms.length === 0) && (
+                        <div style={{
+                            textAlign: 'center',
+                            padding: '48px 16px',
+                            color: isDarkMode ? '#8a8a8a' : '#6a6a6a',
+                        }}>
+                            <div style={{ fontSize: 24, marginBottom: 12 }}>🔍</div>
+                            <div style={{ fontSize: 14, fontWeight: 500 }}>No forms found</div>
+                            <div style={{ fontSize: 12, marginTop: 4 }}>Try a different search term</div>
+                        </div>
+                    )}
+                </div>
             </div>
         </>
     );

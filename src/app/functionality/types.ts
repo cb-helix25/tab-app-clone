@@ -1,3 +1,5 @@
+import React from 'react';
+
 export type SectionName = 'Favorites' | 'General_Processes' | 'Operations' | 'Financial';
 // invisible change 2
 
@@ -6,8 +8,6 @@ export interface Tab {
   text: string;
   disabled?: boolean;
 }
-
-import React from 'react';
 
 export interface FormItem {
   title: string;

@@ -20,29 +20,30 @@ import { sharedDefaultButtonStyles, sharedPrimaryButtonStyles } from '../../app/
 // Define button styles similar to LinkCard
 const iconButtonStyles = (iconColor: string): IButtonStyles => ({
   root: {
-    marginBottom: '8px',
     color: iconColor,
     backgroundColor: 'transparent',
     border: 'none',
+    height: '32px',
+    width: '32px',
+    padding: '0px',
+    borderRadius: '6px',
+    transition: 'all 0.15s ease',
     selectors: {
       ':hover': {
-        backgroundColor: colours.cta,
+        backgroundColor: '#0D2F60',
         color: '#ffffff',
+        transform: 'scale(1.05)',
       },
       ':focus': {
-        backgroundColor: colours.cta,
+        backgroundColor: '#0D2F60',
         color: '#ffffff',
       },
     },
-    height: '24px',
-    width: '24px',
-    padding: '0px',
-    boxShadow: 'none',
   },
   icon: {
     fontSize: '16px',
-    lineHeight: '20px',
-    color: iconColor,
+    lineHeight: '16px',
+    color: 'inherit',
   },
 });
 
@@ -58,26 +59,26 @@ interface ResourceCardProps {
 
 const cardStyle = (isDarkMode: boolean) =>
   mergeStyles({
-    padding: '20px',
-    backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: '8px',
-    boxShadow: isDarkMode
-      ? '0 2px 8px rgba(255, 255, 255, 0.1)'
-      : '0 2px 8px rgba(0, 0, 0, 0.1)',
-    transition: 'box-shadow 0.3s, transform 0.3s, background-color 0.3s',
+    padding: '16px',
+    backgroundColor: isDarkMode ? '#252525' : '#ffffff',
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+    borderRadius: '12px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     cursor: 'pointer',
     display: 'flex',
-    flexDirection: 'row', // Maintain row layout for left and right sections
+    flexDirection: 'row',
     alignItems: 'center',
     height: '100%',
     position: 'relative',
     overflow: 'hidden',
-    ':hover': {
-      boxShadow: isDarkMode
-        ? '0 4px 16px rgba(255, 255, 255, 0.2)'
-        : '0 4px 16px rgba(0, 0, 0, 0.2)',
-      transform: 'translateY(-5px)',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    selectors: {
+      ':hover': {
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        transform: 'translateY(-2px)',
+        backgroundColor: isDarkMode ? '#2a2a2a' : '#f8f9fa',
+      },
     },
   });
 
@@ -263,7 +264,7 @@ const ResourceCard: React.FC<ResourceCardProps> = React.memo(
                   e.stopPropagation();
                   onCopy(resource.url, resource.title);
                 }}
-                styles={iconButtonStyles(colours.cta)}
+                styles={iconButtonStyles(isDarkMode ? '#8a8a8a' : '#6a6a6a')}
               />
             </TooltipHost>
 
@@ -280,7 +281,7 @@ const ResourceCard: React.FC<ResourceCardProps> = React.memo(
                   e.stopPropagation();
                   onToggleFavorite(resource);
                 }}
-                styles={iconButtonStyles(colours.cta)}
+                styles={iconButtonStyles(isFavorite ? '#D65541' : (isDarkMode ? '#8a8a8a' : '#6a6a6a'))}
               />
             </TooltipHost>
 
@@ -297,7 +298,7 @@ const ResourceCard: React.FC<ResourceCardProps> = React.memo(
                   e.stopPropagation();
                   onGoTo(resource.url);
                 }}
-                styles={iconButtonStyles(colours.cta)}
+                styles={iconButtonStyles(isDarkMode ? '#8a8a8a' : '#6a6a6a')}
               />
             </TooltipHost>
           </div>

@@ -1,0 +1,192 @@
+/* Premium Sidebar/* Premium Sidebar Animations */
+@keyframes formItemFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes resourceItemFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes premiumSidebarSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes premiumContentFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+} and Styles */
+
+.form-item-container {
+    animation: formItemFadeIn 0.5s ease-out both;
+}
+
+.form-item-container:hover {
+    background-color: rgba(255,255,255,0.04) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.form-item-container[data-theme="light"]:hover {
+    background-color: rgba(0,0,0,0.04) !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+
+/* Keyframe Animations */
+@keyframes formItemFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes formContentSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 500px;
+    }
+}
+
+@keyframes premiumPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+@keyframes slideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes floatUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Hover Effects */
+.premium-sidebar-handle:hover {
+    animation: premiumPulse 0.6s ease-in-out;
+}
+
+.form-search-box:focus-within {
+    transform: scale(1.02);
+    transition: transform 0.2s ease;
+}
+
+/* Scrollbar Styling */
+.premium-sidebar-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.premium-sidebar-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.premium-sidebar-content::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+}
+
+.premium-sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+/* Light theme scrollbar */
+[data-theme="light"] .premium-sidebar-content::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+}
+
+[data-theme="light"] .premium-sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.2);
+}
+
+/* Responsive Animations */
+@media (prefers-reduced-motion: reduce) {
+    .form-item-container,
+    .premium-sidebar-handle,
+    .form-search-box {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Enhanced Focus States */
+.premium-button:focus-visible {
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+/* Stagger Animation Classes */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Premium Glass Effect */
+.glass-effect {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+[data-theme="light"] .glass-effect {
+    background: rgba(255,255,255,0.8);
+    border: 1px solid rgba(0,0,0,0.1);
+}

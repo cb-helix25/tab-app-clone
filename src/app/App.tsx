@@ -3,8 +3,8 @@ import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
 import Navigator from '../components/Navigator';
 import { useNavigatorActions } from './functionality/NavigatorContext';
-import FormsSidebar from '../components/FormsSidebar';
-import ResourcesSidebar from '../components/ResourcesSidebar';
+import FormsModal from '../components/FormsModal';
+import ResourcesModal from '../components/ResourcesModal';
 import { NavigatorProvider } from './functionality/NavigatorContext';
 import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
@@ -108,11 +108,11 @@ const App: React.FC<AppProps> = ({
   const [transactions, setTransactions] = useState<Transaction[] | undefined>(undefined);
   const [boardroomBookings, setBoardroomBookings] = useState<BoardroomBooking[] | null>(null);
   const [soundproofBookings, setSoundproofBookings] = useState<SoundproofPodBooking[] | null>(null);
-  const [formsTabHovered, setFormsTabHovered] = useState(false);
-  const [formsSidebarPinned, setFormsSidebarPinned] = useState(false);
-
-  const [resourcesTabHovered, setResourcesTabHovered] = useState(false);
-  const [resourcesSidebarPinned, setResourcesSidebarPinned] = useState(false);
+  
+  // Modal state management with mutual exclusivity
+  const [isFormsModalOpen, setIsFormsModalOpen] = useState(false);
+  const [isResourcesModalOpen, setIsResourcesModalOpen] = useState(false);
+  
   const [hasActiveMatter, setHasActiveMatter] = useState(false);
   const [isInMatterOpeningWorkflow, setIsInMatterOpeningWorkflow] = useState(false);
 
@@ -131,15 +131,35 @@ const App: React.FC<AppProps> = ({
     return () => clearInterval(interval);
   }, [isInMatterOpeningWorkflow]);
 
+  // Modal handlers with mutual exclusivity
+  const openFormsModal = () => {
+    setIsResourcesModalOpen(false); // Close resources modal first
+    setIsFormsModalOpen(true);
+  };
+
+  const openResourcesModal = () => {
+    setIsFormsModalOpen(false); // Close forms modal first
+    setIsResourcesModalOpen(true);
+  };
+
+  const closeFormsModal = () => {
+    setIsFormsModalOpen(false);
+  };
+
+  const closeResourcesModal = () => {
+    setIsResourcesModalOpen(false);
+  };
+
+  // Open modals when tabs are selected
   useEffect(() => {
     if (activeTab === 'forms') {
-      setFormsSidebarPinned(true);
+      openFormsModal();
     }
   }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === 'resources') {
-      setResourcesSidebarPinned(true);
+      openResourcesModal();
     }
   }, [activeTab]);
 
@@ -178,11 +198,19 @@ const App: React.FC<AppProps> = ({
   };
 
   const handleFormsTabClick = () => {
-    setFormsSidebarPinned((prev) => !prev);
+    if (isFormsModalOpen) {
+      closeFormsModal();
+    } else {
+      openFormsModal();
+    }
   };
 
   const handleResourcesTabClick = () => {
-    setResourcesSidebarPinned((prev) => !prev);
+    if (isResourcesModalOpen) {
+      closeResourcesModal();
+    } else {
+      openResourcesModal();
+    }
   };
 
   useEffect(() => {
@@ -315,6 +343,8 @@ const App: React.FC<AppProps> = ({
     { key: 'enquiries', text: 'Enquiries' },
     ...(showInstructionsTab ? [{ key: 'instructions', text: 'Instructions' }] : []),
     { key: 'matters', text: 'Matters' },
+    { key: 'forms', text: 'Forms', disabled: true }, // Disabled tab that triggers modal
+    { key: 'resources', text: 'Resources', disabled: true }, // Disabled tab that triggers modal
     ...(authorizedInitials.includes(userInitials) ? [{ key: 'reporting', text: 'Reports' }] : []),
     ...(isLocalhost ? [{ key: 'callhub', text: 'Call Hub' }] : []),
   ];
@@ -431,9 +461,7 @@ const App: React.FC<AppProps> = ({
             tabs={tabs}
             ariaLabel="Main Navigation Tabs"
             user={userData[0]}
-            onFormsHover={setFormsTabHovered}
             onFormsClick={handleFormsTabClick}
-            onResourcesHover={setResourcesTabHovered}
             onResourcesClick={handleResourcesTabClick}
             hasActiveMatter={hasActiveMatter}
             isInMatterOpeningWorkflow={isInMatterOpeningWorkflow}
@@ -443,21 +471,20 @@ const App: React.FC<AppProps> = ({
             onUserChange={onUserChange}
           />
           <Navigator />
-          <FormsSidebar
+          
+          {/* Full-width Modal Overlays */}
+          <FormsModal
             userData={userData}
             teamData={teamData}
             matters={matters || []}
-            activeTab={activeTab}
-            hovered={formsTabHovered}
-            pinned={formsSidebarPinned}
-            setPinned={setFormsSidebarPinned}
+            isOpen={isFormsModalOpen}
+            onDismiss={closeFormsModal}
           />
-          <ResourcesSidebar
-            activeTab={activeTab}
-            hovered={resourcesTabHovered}
-            pinned={resourcesSidebarPinned}
-            setPinned={setResourcesSidebarPinned}
+          <ResourcesModal
+            isOpen={isResourcesModalOpen}
+            onDismiss={closeResourcesModal}
           />
+          
           <Suspense fallback={<div>Loading...</div>}>
             {renderContent()}
           </Suspense>

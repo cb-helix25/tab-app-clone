@@ -44,15 +44,22 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   const isAdmin = hasAdminAccess(userRole || '', userFullName || '');
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
+  // Debug flag to control verbose logging
+  const DEBUG_MATTERS_FILTERING = false;
+
   // Debug the incoming matters
-  console.log('🔍 Matters received:', matters.length);
-  console.log('🔍 First matter sample:', matters[0]);
-  console.log('🔍 User info:', { userFullName, userRole, isAdmin });
+  if (DEBUG_MATTERS_FILTERING) {
+    console.log('🔍 Matters received:', matters.length);
+    console.log('🔍 First matter sample:', matters[0]);
+    console.log('🔍 User info:', { userFullName, userRole, isAdmin });
+  }
 
   // Apply all filters in sequence
   const filtered = useMemo(() => {
     let result = matters;
-    console.log('🔍 Filter Debug - Starting with matters:', result.length);
+    if (DEBUG_MATTERS_FILTERING) {
+      console.log('🔍 Filter Debug - Starting with matters:', result.length);
+    }
 
     // Decide dataset and scope to construct allowed sources
     const effectiveUseNew = isAdmin ? useNewData : false;
@@ -61,12 +68,16 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
     ]);
     if (allowedSources.size > 0) {
       result = result.filter((m) => allowedSources.has(m.dataSource));
-      console.log('🔍 After source filter:', result.length, 'sources:', Array.from(allowedSources));
-  console.log('🔍 Sample after source filter:', result.slice(0,3).map(m => ({id: m.matterId, ds: m.dataSource, originalStatus: m.originalStatus, status: m.status, role: m.role})));
+      if (DEBUG_MATTERS_FILTERING) {
+        console.log('🔍 After source filter:', result.length, 'sources:', Array.from(allowedSources));
+        // console.log('🔍 Sample after source filter:', result.slice(0,3).map(m => ({id: m.matterId, ds: m.dataSource, originalStatus: m.originalStatus, status: m.status, role: m.role})));
+      }
     } else {
       // If no sources selected, show nothing
       result = [];
-      console.log('🔍 After source filter: 0 (no sources selected)');
+      if (DEBUG_MATTERS_FILTERING) {
+        console.log('🔍 After source filter: 0 (no sources selected)');
+      }
     }
 
     // Apply admin filter next
@@ -74,13 +85,17 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   // - Otherwise => show only user's matters
   const effectiveShowEveryone = scope === 'all' && isAdmin;
   result = applyAdminFilter(result, effectiveShowEveryone, userFullName || '', userRole || '');
-  console.log('🔍 After admin filter:', result.length, 'showEveryone:', effectiveShowEveryone);
+  if (DEBUG_MATTERS_FILTERING) {
+    console.log('🔍 After admin filter:', result.length, 'showEveryone:', effectiveShowEveryone);
+  }
 
     // For New data + Mine, restrict to Responsible solicitor only
     if (effectiveUseNew && scope === 'mine') {
       const before = result.length;
       result = result.filter(m => m.role === 'responsible' || m.role === 'both');
-      console.log('🔍 New+Mine responsible-only filter:', { before, after: result.length });
+      if (DEBUG_MATTERS_FILTERING) {
+        console.log('🔍 New+Mine responsible-only filter:', { before, after: result.length });
+      }
     }
 
     // Apply status filter
@@ -88,17 +103,25 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
     if (activeFilter === 'Matter Requests') {
       const before = result.length;
       result = result.filter(m => (m.originalStatus || '').toLowerCase() === 'matterrequest');
-      console.log('🔍 Matter Requests filter applied:', { before, after: result.length });
+      if (DEBUG_MATTERS_FILTERING) {
+        console.log('🔍 Matter Requests filter applied:', { before, after: result.length });
+      }
     } else if (activeFilter !== 'All') {
       result = filterMattersByStatus(result, activeFilter.toLowerCase() as any);
-      console.log('🔍 After status filter:', result.length, 'activeFilter:', activeFilter);
+      if (DEBUG_MATTERS_FILTERING) {
+        console.log('🔍 After status filter:', result.length, 'activeFilter:', activeFilter);
+      }
     } else {
-      console.log('🔍 Status filter skipped (All selected):', result.length);
+      if (DEBUG_MATTERS_FILTERING) {
+        console.log('🔍 Status filter skipped (All selected):', result.length);
+      }
     }
 
     // Apply area filter
     result = filterMattersByArea(result, activeAreaFilter);
-    console.log('🔍 After area filter:', result.length, 'activeAreaFilter:', activeAreaFilter);
+    if (DEBUG_MATTERS_FILTERING) {
+      console.log('🔍 After area filter:', result.length, 'activeAreaFilter:', activeAreaFilter);
+    }
 
     // Apply role filter
     if (activeRoleFilter !== 'All') {
@@ -106,7 +129,9 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                           activeRoleFilter === 'Originating' ? ['originating'] :
                           ['responsible', 'originating'];
       result = filterMattersByRole(result, allowedRoles as any);
-      console.log('🔍 After role filter:', result.length, 'activeRoleFilter:', activeRoleFilter);
+      if (DEBUG_MATTERS_FILTERING) {
+        console.log('🔍 After role filter:', result.length, 'activeRoleFilter:', activeRoleFilter);
+      }
     }
 
     // Apply search term filter
@@ -118,10 +143,14 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
         m.description?.toLowerCase().includes(term) ||
         m.practiceArea?.toLowerCase().includes(term)
       );
-      console.log('🔍 After search filter:', result.length, 'searchTerm:', searchTerm);
+      if (DEBUG_MATTERS_FILTERING) {
+        console.log('🔍 After search filter:', result.length, 'searchTerm:', searchTerm);
+      }
     }
 
-    console.log('🔍 Final filtered result:', result.length);
+    if (DEBUG_MATTERS_FILTERING) {
+      console.log('🔍 Final filtered result:', result.length);
+    }
     return result;
   }, [
     matters,
