@@ -462,8 +462,12 @@ async function fetchAllMatters(): Promise<Matter[]> {
   let allMatters: any[] = [];
 
   try {
-    const getAllMattersUrl = isLocalDev ? '/api/getAllMatters' : '/api/getAllMatters';
-    console.log('🔍 Fetching ALL matters from:', getAllMattersUrl);
+    const getAllMattersCode = process.env.REACT_APP_GET_ALL_MATTERS_CODE;
+    // Use Express server proxy when developing, same pattern as getEnquiries
+    const getAllMattersUrl = isLocalDev 
+      ? `http://localhost:8080/getAllMatters${getAllMattersCode ? `?code=${getAllMattersCode}` : ''}` 
+      : `/api/getAllMatters${getAllMattersCode ? `?code=${getAllMattersCode}` : ''}`;
+    console.log('🔍 Fetching ALL matters from:', getAllMattersUrl.replace(/code=[^&]+/, 'code=***'));
     
     const response = await fetch(getAllMattersUrl, {
       method: "GET",

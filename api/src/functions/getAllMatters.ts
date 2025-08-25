@@ -77,10 +77,21 @@ app.http("getAllMatters", {
 });
 
 
-// Implement the SQL query function (now supports env var config like getMatters)
+// Implement the SQL query function (using the same pattern as getTransactions)
 async function queryAllMattersFromSQL(context: InvocationContext): Promise<MatterData[]> {
-  // Build tedious config supporting local env overrides; fallback to Key Vault for production
-  const config = await buildSqlConfig(context);
+  // Use the same key vault and database values as the working functions
+  const kvUri = "https://helix-keys.vault.azure.net/";
+  const passwordSecretName = "sql-databaseserver-password";
+  const sqlServer = "helix-database-server.database.windows.net";
+  const sqlDatabase = "helix-core-data";
+
+  const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
+  const passwordSecret = await secretClient.getSecret(passwordSecretName);
+  const password = passwordSecret.value;
+
+  // Build connection string (same as getTransactions)
+  const connectionString = `Server=${sqlServer};Database=${sqlDatabase};User ID=helix-database-server;Password=${password};`;
+  const config = parseConnectionString(connectionString, context);
 
   return new Promise<MatterData[]>((resolve, reject) => {
     const connection = new Connection(config);
@@ -99,7 +110,8 @@ async function queryAllMattersFromSQL(context: InvocationContext): Promise<Matte
 
       const query = `
         SELECT *
-        FROM matters;
+        FROM matters
+        ORDER BY [Open Date] DESC;
       `;
 
       const sqlRequest = new SqlRequest(query, (err, rowCount) => {

@@ -21,7 +21,7 @@ module.exports = function(app) {
     '/ccls'
   ];
 
-  // Azure Functions routes (port 7071)
+  // Azure Functions routes (port 7072 - api folder TypeScript functions)
   const azureFunctionRoutes = [
     '/getSnippetEdits',
     '/getAttendance',
@@ -46,7 +46,7 @@ module.exports = function(app) {
         // Fallback to Azure Functions if Express server fails
         console.log('Attempting fallback to Azure Functions...');
         const fallbackProxy = createProxyMiddleware({
-          target: 'http://localhost:7071',
+          target: 'http://localhost:7072',
           changeOrigin: true,
         });
         fallbackProxy(req, res);
@@ -54,11 +54,11 @@ module.exports = function(app) {
     })
   );
 
-  // Proxy Azure Functions routes to port 7071
+  // Proxy Azure Functions routes to port 7072 (api folder)
   app.use(
     azureFunctionRoutes,
     createProxyMiddleware({
-      target: 'http://localhost:7071',
+      target: 'http://localhost:7072',
       changeOrigin: true,
       pathRewrite: {
         '^/(.*)': '/api/$1', // Rewrite /getAttendance to /api/getAttendance
@@ -86,7 +86,7 @@ module.exports = function(app) {
         console.error(`Proxy error for ${req.url} (Express server):`, err.message);
         console.log('Attempting fallback to Azure Functions...');
         const fallbackProxy = createProxyMiddleware({
-          target: 'http://localhost:7071',
+          target: 'http://localhost:7072',
           changeOrigin: true,
         });
         fallbackProxy(req, res);

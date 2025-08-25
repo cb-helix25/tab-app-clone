@@ -117,6 +117,7 @@ router.post('/getAnnualLeave', (req, res) => proxyToAzureFunction(req, res, 'get
 router.post('/getEnquiries', (req, res) => proxyToAzureFunction(req, res, 'getEnquiries', 7072, 'POST'));
 router.post('/getMatters', (req, res) => proxyToAzureFunction(req, res, 'getMatters', 7072, 'POST'));
 router.get('/getMatters', (req, res) => proxyToAzureFunction(req, res, 'getMatters', 7072, 'GET'));
+router.get('/getAllMatters', (req, res) => proxyToAzureFunction(req, res, 'getAllMatters', 7072, 'GET'));
 router.get('/getUserData', (req, res) => proxyToAzureFunction(req, res, 'getUserData', 7072, 'GET'));
 router.get('/getTeamData', (req, res) => proxyToAzureFunction(req, res, 'getTeamData', 7072, 'GET'));
 router.get('/getRoadmap', (req, res) => proxyToAzureFunction(req, res, 'getRoadmap', 7072, 'GET'));
