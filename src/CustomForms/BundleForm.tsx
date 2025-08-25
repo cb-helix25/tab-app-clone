@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Stack, Dropdown, IDropdownOption, ComboBox, IComboBoxOption, TextField, DatePicker, PrimaryButton, DefaultButton, IButtonStyles } from '@fluentui/react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Stack, Dropdown, IDropdownOption, ComboBox, IComboBox, IComboBoxOption, TextField, DatePicker, PrimaryButton, DefaultButton, IButtonStyles } from '@fluentui/react';
 import { colours } from '../app/styles/colours';
 import { dashboardTokens } from '../tabs/instructions/componentTokens';
 import '../app/styles/MatterOpeningCard.css';
@@ -56,18 +56,63 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
     const [copiesInOffice, setCopiesInOffice] = useState<number>(1);
     const [notes, setNotes] = useState<string>('');
     const [submitting, setSubmitting] = useState<boolean>(false);
-    const userOptions: IDropdownOption[] = users.map(u => {
-        const fullName = (u as any)["Full Name"] || u.FullName || `${u.First || ''} ${u.Last || ''}`.trim();
-        const key = u.Initials || fullName;
-        return { key, text: fullName };
-    });
     const [matterFilter, setMatterFilter] = useState<string>('');
-    const matterOptions: IComboBoxOption[] = React.useMemo(() =>
-        matters
+
+    // Optimized user options with memoization
+    const userOptions: IDropdownOption[] = useMemo(() => {
+        return users.map(u => {
+            const fullName = (u as any)["Full Name"] || u.FullName || `${u.First || ''} ${u.Last || ''}`.trim();
+            const key = u.Initials || fullName;
+            return { key, text: fullName };
+        });
+    }, [users]);
+
+    // Optimized matter options with better performance
+    const matterOptions: IComboBoxOption[] = useMemo(() => {
+        if (!matters || matters.length === 0) return [];
+        
+        // Limit initial results and sort efficiently
+        return matters
             .slice()
             .sort((a, b) => new Date(b.OpenDate).getTime() - new Date(a.OpenDate).getTime())
-            .map(m => ({ key: m.DisplayNumber, text: m.DisplayNumber })),
-        [matters]);
+            .slice(0, 1000) // Limit to 1000 most recent matters for performance
+            .map(m => ({ 
+                key: m.DisplayNumber, 
+                text: `${m.DisplayNumber} - ${m.ClientName || 'Unknown Client'}` 
+            }));
+    }, [matters]);
+
+    // Debounced filtering function
+    const handleResolveOptions = useCallback((options: IComboBoxOption[]): IComboBoxOption[] => {
+        if (!matterFilter || matterFilter.length < 2) {
+            return matterOptions.slice(0, 50); // Show only first 50 when no filter
+        }
+        
+        const lowercaseFilter = matterFilter.toLowerCase();
+        return matterOptions
+            .filter(option => 
+                option.text.toLowerCase().includes(lowercaseFilter) ||
+                option.key.toString().toLowerCase().includes(lowercaseFilter)
+            )
+            .slice(0, 100); // Limit filtered results to 100
+    }, [matterOptions, matterFilter]);
+
+    // Handle matter selection
+    const handleMatterChange = useCallback((event: React.FormEvent<IComboBox>, option?: IComboBoxOption, index?: number, value?: string) => {
+        if (option) {
+            setMatterRef(option.key.toString());
+        } else if (value) {
+            setMatterRef(value);
+        }
+    }, []);
+
+    // Handle matter input change with debouncing effect
+    const handleMatterInputChange = useCallback((value: string) => {
+        setMatterFilter(value || '');
+        if (value && value !== matterRef) {
+            setMatterRef(value);
+        }
+    }, [matterRef]);
 
     // Validation function
     const isValid = () => {
@@ -157,12 +202,9 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                                 allowFreeform
                                 autoComplete="on"
                                 selectedKey={matterRef}
-                                onInputValueChange={(val) => setMatterFilter(val)}
-                                onChange={(_, option, __, val) => setMatterRef(option ? String(option.key) : (val || ''))}
-                                onResolveOptions={() => {
-                                    if (!matterFilter) return matterOptions;
-                                    return matterOptions.filter((opt) => opt.text.toLowerCase().includes(matterFilter.toLowerCase()));
-                                }}
+                                onInputValueChange={handleMatterInputChange}
+                                onChange={handleMatterChange}
+                                onResolveOptions={handleResolveOptions}
                                 required
                             />
                         </Stack>

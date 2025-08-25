@@ -34,6 +34,7 @@ import "./functions/insertAnnualLeave";
 import "./functions/insertAttendance";
 import "./functions/insertBookSpace";
 import "./functions/insertDeal";
+import "./functions/insertNotableCaseInfo";
 import "./functions/insertRiskAssessment";
 import "./functions/insertRoadmap";
 import "./functions/postFinancialTask";

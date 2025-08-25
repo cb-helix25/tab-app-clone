@@ -29,7 +29,7 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
             ? '0 2px 4px rgba(0,0,0,0.4)'
             : '0 2px 4px rgba(0,0,0,0.1)',
         padding: '0 24px',
-        transition: 'background-color 0.3s',
+        transition: 'background-color 0.3s, width 0.25s ease',
         display: 'flex',
         flexDirection: 'row',
         gap: '4px',
@@ -47,6 +47,8 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
         minWidth: 0,
         width: '100%',
         flexWrap: 'nowrap',
+        // Add smooth container transitions to prevent jolting
+        contain: 'layout style', // Optimize for layout changes
         ...(highlighted && {
             transform: 'scale(1.02)',
             filter: 'brightness(1.05)',

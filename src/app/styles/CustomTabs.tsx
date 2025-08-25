@@ -155,7 +155,6 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
             itemKey={tab.key}
             key={tab.key}
             headerText={tab.text}
-            itemIcon={tab.key === 'reporting' ? 'Lock' : undefined}
             onRenderItemLink={
               tab.key === 'instructions' && hasActiveMatter && selectedKey !== 'instructions'
                 ? (link, defaultRenderer) => (

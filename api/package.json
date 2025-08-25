@@ -10,7 +10,7 @@
     "build:ts": "tsc",
     "build": "npm-run-all clean build:ts",
     "dev:teamsfx": "env-cmd --silent -f .localConfigs npm run dev",
-    "dev": "func start --typescript --language-worker=\"--inspect=9229\" --port \"7071\" --cors \"*\"",
+    "dev": "func start --typescript --language-worker=\"--inspect=9229\" --port \"7072\" --cors \"*\"",
     "watch:teamsfx": "tsc -w",
     "prestart": "npm run clean && npm run build",
     "start": "npx func start",

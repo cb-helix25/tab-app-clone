@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
 import Navigator from '../components/Navigator';
@@ -14,7 +14,7 @@ import { hasActiveMatterOpening } from './functionality/matterOpeningUtils';
 import localIdVerifications from '../localData/localIdVerifications.json';
 import localInstructionData from '../localData/localInstructionData.json';
 import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
-import { ADMIN_USERS } from './admin';
+import { ADMIN_USERS, isAdminUser } from './admin';
 
 const proxyBaseUrl = getProxyBaseUrl();
 
@@ -249,9 +249,6 @@ const App: React.FC<AppProps> = ({
   // Determine the current user's initials
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
-  // Authorised users for Reports tab (per request)
-  const authorizedInitials = ['AC', 'JW', 'LZ', 'KW', 'CB'];
-
   // Fetch instruction data on app load
   useEffect(() => {
     const useLocalData =
@@ -332,24 +329,36 @@ const App: React.FC<AppProps> = ({
   }, [userInitials]);
 
   // Tabs visible to all users start with the Enquiries tab.
-  // Only show the Instructions tab to Alex (AC), Jonathan (JW), Luke (LZ), Kelly (KW), Ben (BL), RC, JWH, and Cass (CB).
-  // Keep it visible when developing locally (hostname === 'localhost').
-  const instructionsUsers = [...ADMIN_USERS, 'KW', 'BL', 'JW', 'RC', 'JWH'];
-  const isLocalhost = window.location.hostname === 'localhost';
-  const showInstructionsTab =
-    instructionsUsers.includes(userInitials) || isLocalhost;
+  // Only show the Instructions tab to admins or when developing locally (hostname === 'localhost').
+  // Only show the Reports tab to admins.
+  const tabs: Tab[] = useMemo(() => {
+    const isLocalhost = window.location.hostname === 'localhost';
+    const currentUser = userData?.[0] || null;
+    const isAdmin = isAdminUser(currentUser);
+    
+    const showInstructionsTab = isAdmin;
+    const showReportsTab = isAdmin;
 
-  const tabs: Tab[] = [
-    { key: 'enquiries', text: 'Enquiries' },
-    ...(showInstructionsTab ? [{ key: 'instructions', text: 'Instructions' }] : []),
-    { key: 'matters', text: 'Matters' },
-    { key: 'forms', text: 'Forms', disabled: true }, // Disabled tab that triggers modal
-    { key: 'resources', text: 'Resources', disabled: true }, // Disabled tab that triggers modal
-    ...(authorizedInitials.includes(userInitials) ? [{ key: 'reporting', text: 'Reports' }] : []),
-    ...(isLocalhost ? [{ key: 'callhub', text: 'Call Hub' }] : []),
-  ];
+    return [
+      { key: 'enquiries', text: 'Enquiries' },
+      ...(showInstructionsTab ? [{ key: 'instructions', text: 'Instructions' }] : []),
+      { key: 'matters', text: 'Matters' },
+      { key: 'forms', text: 'Forms', disabled: true }, // Disabled tab that triggers modal
+      { key: 'resources', text: 'Resources', disabled: true }, // Disabled tab that triggers modal
+      ...(showReportsTab ? [{ key: 'reporting', text: 'Reports' }] : []),
+      ...(isLocalhost ? [{ key: 'callhub', text: 'Call Hub' }] : []),
+    ];
+  }, [userData]);
 
-  const isAuthorized = authorizedInitials.includes(userInitials);
+  // Ensure the active tab is still valid when tabs change (e.g., when switching users)
+  // If current tab is no longer available, redirect to home instead of breaking navigation
+  useEffect(() => {
+    const validTabKeys = tabs.map(tab => tab.key);
+    if (activeTab !== 'home' && !validTabKeys.includes(activeTab)) {
+      setActiveTab('home'); // Redirect to home if current tab is no longer valid
+    }
+  }, [tabs, activeTab]);
+
   const { setContent } = useNavigatorActions();
 
   // Ensure Navigator content is cleared when navigating away from Home
@@ -412,14 +421,7 @@ const App: React.FC<AppProps> = ({
           />
         );
       case 'reporting':
-        return isAuthorized ? (
-          <ReportingHome userData={userData} teamData={teamData} />
-        ) : (
-          <div style={{ padding: '20px', textAlign: 'center' }}>
-            <h2>Access Denied</h2>
-            <p>You do not have permission to view the Reports dashboard.</p>
-          </div>
-        );
+        return <ReportingHome userData={userData} teamData={teamData} />;
       case 'callhub':
         return <CallHub />;
       default:

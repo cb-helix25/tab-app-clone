@@ -60,6 +60,9 @@ module.exports = function(app) {
     createProxyMiddleware({
       target: 'http://localhost:7071',
       changeOrigin: true,
+      pathRewrite: {
+        '^/(.*)': '/api/$1', // Rewrite /getAttendance to /api/getAttendance
+      },
       onError: (err, req, res) => {
         console.error(`Proxy error for ${req.url} (Azure Functions):`, err.message);
         // Fallback to Express server if Azure Functions fails

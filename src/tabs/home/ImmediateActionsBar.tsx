@@ -198,6 +198,7 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
                             isDarkMode={isDarkMode}
                             onClick={action.onClick}
                             iconColor={colours.cta}
+                            alwaysShowText={true}
                             style={{
                                 '--card-index': index,
                                 fontSize: '16px',

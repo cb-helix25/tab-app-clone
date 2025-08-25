@@ -175,14 +175,17 @@
 
 /* Simple hover expansion for compact quick actions */
 .quickActionCard {
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
-              min-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s ease;
   overflow: hidden;
+  will-change: width, padding, transform;
 }
 
 .quickActionCard .quick-action-label {
-  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity;
 }
 
 /* On hover, expand to show full text */
@@ -191,9 +194,43 @@
   min-width: auto !important;
   max-width: 160px;
   padding-right: 12px !important;
+  transform: translateZ(0); /* Force GPU acceleration */
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+              min-width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s ease;
 }
 
 .quickActionCard:hover .quick-action-label {
   opacity: 1 !important;
-  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.15s;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1) 0.05s;
+}
+
+/* Add slight delay on hover out to prevent jolting */
+.quickActionCard:not(:hover) {
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
+              min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
+              padding 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.05s;
+}
+
+.quickActionCard:not(:hover) .quick-action-label {
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Override for immediate actions - always show text and don't expand on hover */
+.quickActionCard.always-show-text {
+  width: auto !important;
+  min-width: auto !important;
+  padding-right: 12px !important;
+}
+
+.quickActionCard.always-show-text .quick-action-label {
+  opacity: 1 !important;
+}
+
+.quickActionCard.always-show-text:hover {
+  width: auto !important;
+  min-width: auto !important;
+  max-width: none !important;
+  padding-right: 12px !important;
 }

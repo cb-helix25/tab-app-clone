@@ -143,6 +143,8 @@ interface QuickActionsCardProps {
   showPulsingDot?: boolean;
   /** Whether the card should be disabled */
   disabled?: boolean;
+  /** Always show text instead of reveal on hover */
+  alwaysShowText?: boolean;
 }
 
 const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
@@ -157,6 +159,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   orientation = 'row',
   showPulsingDot = false,
   disabled = false,
+  alwaysShowText = false,
 }) => {
   // Base card style
   const baseCardStyle = mergeStyles({
@@ -340,7 +343,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
 
   return (
     <div
-      className={`quickActionCard icon-hover ${dynamicClasses}`}
+      className={`quickActionCard icon-hover ${dynamicClasses} ${alwaysShowText ? 'always-show-text' : ''}`}
       style={{ ...cardVars, ...style, position: 'relative', overflow: 'visible' }}
       onClick={disabled ? undefined : onClick}
       role="button"
@@ -389,9 +392,9 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
                   fontSize: '14px',
                   whiteSpace: 'nowrap',
                   textAlign: 'center',
-                  opacity: 0, // Hidden by default
+                  opacity: alwaysShowText ? 1 : 0, // Show by default if alwaysShowText is true
                   marginLeft: '6px',
-                  transition: 'opacity 0.3s ease',
+                  transition: 'opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 }
               }} 
               className="quick-action-label"

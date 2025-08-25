@@ -8,6 +8,7 @@ import {
   PrimaryButton,
   DefaultButton,
   ComboBox,
+  IComboBox,
   IComboBoxOption,
 } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react';
@@ -231,7 +232,9 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
   isSubmitting,
   value,
 }) => {
-  // Create clean options from matters data
+  const [filterText, setFilterText] = React.useState<string>('');
+
+  // Create clean options from matters data with performance optimization
   const options = React.useMemo<IComboBoxOption[]>(() => {
     if (!matters || matters.length === 0) {
       return [];
@@ -244,6 +247,7 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
         const dateB = new Date(b.openDate || '').getTime();
         return dateB - dateA; // Most recent first
       })
+      .slice(0, 1000) // Limit to 1000 most recent matters for performance
       .map((m) => {
         const displayNum = m.displayNumber || m.matterId || '';
         const desc = m.description || '';
@@ -253,6 +257,32 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
         };
       });
   }, [matters]);
+
+  // Optimized filtering function
+  const handleResolveOptions = React.useCallback((comboBoxOptions: IComboBoxOption[]): IComboBoxOption[] => {
+    if (!filterText || filterText.length < 2) {
+      return options.slice(0, 50); // Show only first 50 when no filter
+    }
+    
+    const lowercaseFilter = filterText.toLowerCase();
+    return options
+      .filter(option => 
+        option.text.toLowerCase().includes(lowercaseFilter) ||
+        option.key.toString().toLowerCase().includes(lowercaseFilter)
+      )
+      .slice(0, 100); // Limit filtered results to 100
+  }, [options, filterText]);
+
+  // Handle input change with debouncing effect
+  const handleInputValueChange = React.useCallback((inputValue: string) => {
+    setFilterText(inputValue || '');
+  }, []);
+
+  // Handle selection change
+  const handleChange = React.useCallback((event: React.FormEvent<IComboBox>, option?: IComboBoxOption, index?: number, inputValue?: string) => {
+    const newValue = option ? option.key as string : inputValue || '';
+    handleInputChange(field.name, newValue);
+  }, [field.name, handleInputChange]);
 
   return (
     <div>
@@ -265,10 +295,9 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
         autoComplete="on"
         selectedKey={value || undefined}
         text={value || ''}
-        onChange={(_, option, __, inputValue) => {
-          const newValue = option ? option.key as string : inputValue || '';
-          handleInputChange(field.name, newValue);
-        }}
+        onInputValueChange={handleInputValueChange}
+        onChange={handleChange}
+        onResolveOptions={handleResolveOptions}
         disabled={isSubmitting}
         styles={{
           root: { 
