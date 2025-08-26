@@ -100,22 +100,51 @@ router.post('/', async (req, res) => {
             accessToken = 'local-token';
         }
 
+        // Helper function to format dates nicely
+        const formatDate = (dateString) => {
+            if (!dateString) return null;
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-GB', { 
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                });
+            } catch (err) {
+                return dateString; // fallback to original if parsing fails
+            }
+        };
+
         const descriptionParts = [
-            `Matter: ${matterReference}`,
-            `Bundle: ${bundleLink}`
+            `📋 Matter: ${matterReference}`,
+            `🔗 Bundle Link: ${bundleLink}`
         ];
-        if (notes) descriptionParts.push(`Notes: ${notes}`);
+        
+        if (notes) {
+            descriptionParts.push('', `📝 Notes: ${notes}`);
+        }
+        
         if (deliveryOptions.posted) {
-            descriptionParts.push('Posted to opponent');
-            if (arrivalDate) descriptionParts.push(`Arrival date: ${arrivalDate}`);
+            descriptionParts.push('', '📮 POSTED TO OPPONENT');
+            if (arrivalDate) {
+                const formattedDate = formatDate(arrivalDate);
+                descriptionParts.push(`📅 Arrival date: ${formattedDate}`);
+            }
             if (coveringLetter && coveringLetter.link) {
-                descriptionParts.push(`Letter: ${coveringLetter.link} x${coveringLetter.copies}`);
+                descriptionParts.push(`📄 Covering letter: ${coveringLetter.link} (${coveringLetter.copies} ${coveringLetter.copies === 1 ? 'copy' : 'copies'})`);
             }
         }
+        
         if (deliveryOptions.leftInOffice) {
-            descriptionParts.push('Copies left in office');
-            if (officeReadyDate) descriptionParts.push(`Office-ready date: ${officeReadyDate}`);
-            if (copiesInOffice) descriptionParts.push(`Copies: ${copiesInOffice}`);
+            descriptionParts.push('', '🏢 COPIES LEFT IN OFFICE');
+            if (officeReadyDate) {
+                const formattedDate = formatDate(officeReadyDate);
+                descriptionParts.push(`📅 Office-ready date: ${formattedDate}`);
+            }
+            if (copiesInOffice) {
+                descriptionParts.push(`📋 Number of copies: ${copiesInOffice}`);
+            }
         }
 
         const taskBody = {

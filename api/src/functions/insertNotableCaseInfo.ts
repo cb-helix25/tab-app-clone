@@ -24,11 +24,25 @@ interface Matter {
   // Add other relevant matter fields as needed
 }
 
+// Interface for notable case entries from database
+interface NotableCaseEntry {
+  id: string;
+  initials: string;
+  display_number: string;
+  summary: string;
+  value_in_dispute?: string;
+  c_reference_status: boolean;
+  counsel_instructed: boolean;
+  counsel_name?: string;
+  created_at: Date;
+}
+
 // Interface for the insert result
 interface InsertResult {
   success: boolean;
   message: string;
   insertedId?: string;
+  emailSent?: boolean;
 }
 
 /**
@@ -119,42 +133,50 @@ async function lookupRelatedMatters(
   config: any,
   context: InvocationContext
 ): Promise<Matter[]> {
+  context.log(`=== LOOKUP RELATED MATTERS START ===`);
   context.log(`Looking up related matters for display number: ${displayNumber}`);
+  context.log(`Config for database connection: ${JSON.stringify({ ...config, authentication: { ...config.authentication, options: { ...config.authentication?.options, password: '***' } } }, null, 2)}`);
 
   return new Promise<Matter[]>((resolve, reject) => {
     const connection = new Connection(config);
 
     connection.on("error", (err) => {
       context.error("SQL Connection Error (lookupRelatedMatters):", err);
+      context.error("Connection error details:", JSON.stringify(err, null, 2));
       reject("An error occurred with the SQL connection for matter lookup.");
     });
 
     connection.on("connect", (err) => {
       if (err) {
         context.error("SQL Connection Error (lookupRelatedMatters):", err);
+        context.error("Connect error details:", JSON.stringify(err, null, 2));
         reject("Failed to connect to SQL database for matter lookup.");
         return;
       }
 
       context.log("Successfully connected to SQL database for matter lookup.");
 
-      // Query to find all matters with the same display number
+      // Query to find all notable case entries with the same display number
       const query = `
         SELECT 
           [display_number],
-          [client_name],
-          [matter_description],
-          [fee_earner]
-        FROM [dbo].[matters_vnet_direct] 
+          [initials] as [client_name],
+          [summary] as [matter_description],
+          [initials] as [fee_earner]
+        FROM [dbo].[notable_case_info] 
         WHERE [display_number] = @DisplayNumber
-        ORDER BY [client_name], [matter_description];
+        ORDER BY [created_at] DESC;
       `;
+
+      context.log("Executing query:", query);
+      context.log("Query parameter DisplayNumber:", displayNumber);
 
       const matters: Matter[] = [];
 
       const sqlRequest = new SqlRequest(query, (err, rowCount) => {
         if (err) {
           context.error("SQL Query Execution Error (lookupRelatedMatters):", err);
+          context.error("Query error details:", JSON.stringify(err, null, 2));
           reject("SQL query failed for matter lookup.");
           connection.close();
           return;
@@ -163,18 +185,22 @@ async function lookupRelatedMatters(
       });
 
       sqlRequest.on("row", (columns) => {
+        context.log("Processing row with columns:", columns.map(c => ({ name: c.metadata.colName, value: c.value })));
         const matter: Matter = {
           display_number: columns.find(c => c.metadata.colName === "display_number")?.value || "",
           client_name: columns.find(c => c.metadata.colName === "client_name")?.value || "",
           matter_description: columns.find(c => c.metadata.colName === "matter_description")?.value || "",
           fee_earner: columns.find(c => c.metadata.colName === "fee_earner")?.value || "",
         };
+        context.log("Created matter object:", matter);
         matters.push(matter);
       });
 
       sqlRequest.on("requestCompleted", () => {
         context.log(`Found ${matters.length} related matters for display number: ${displayNumber}`);
+        context.log("All matters found:", matters);
         connection.close();
+        context.log("=== LOOKUP RELATED MATTERS END ===");
         resolve(matters);
       });
 
@@ -182,6 +208,7 @@ async function lookupRelatedMatters(
       connection.execSql(sqlRequest);
     });
 
+    context.log("Initiating database connection...");
     connection.connect();
   });
 }
@@ -194,19 +221,31 @@ async function insertNotableCaseInfo(
   config: any,
   context: InvocationContext
 ): Promise<InsertResult> {
+  context.log("=== INSERT NOTABLE CASE INFO START ===");
   context.log("Starting notable case info insertion into database.");
+  context.log("Request data to insert:", {
+    initials: requestData.initials,
+    display_number: requestData.display_number,
+    summary: requestData.summary.substring(0, 100) + (requestData.summary.length > 100 ? '...' : ''),
+    value_in_dispute: requestData.value_in_dispute,
+    c_reference_status: requestData.c_reference_status,
+    counsel_instructed: requestData.counsel_instructed,
+    counsel_name: requestData.counsel_name
+  });
 
   return new Promise<InsertResult>((resolve, reject) => {
     const connection = new Connection(config);
 
     connection.on("error", (err) => {
       context.error("SQL Connection Error (insertNotableCaseInfo):", err);
+      context.error("Connection error details:", JSON.stringify(err, null, 2));
       reject("An error occurred with the SQL connection for notable case insertion.");
     });
 
     connection.on("connect", (err) => {
       if (err) {
         context.error("SQL Connection Error (insertNotableCaseInfo):", err);
+        context.error("Connect error details:", JSON.stringify(err, null, 2));
         reject("Failed to connect to SQL database for notable case insertion.");
         return;
       }
@@ -218,14 +257,16 @@ async function insertNotableCaseInfo(
           ([initials], [display_number], [summary], [value_in_dispute], [c_reference_status], [counsel_instructed], [counsel_name])
         VALUES 
           (@Initials, @DisplayNumber, @Summary, @ValueInDispute, @CReferenceStatus, @CounselInstructed, @CounselName);
-        SELECT CAST(SCOPE_IDENTITY() AS NVARCHAR(50)) AS InsertedId;
       `;
+
+      context.log("Executing insert query:", query);
 
       let insertedId: string | undefined;
 
       const sqlRequest = new SqlRequest(query, (err, rowCount) => {
         if (err) {
           context.error("SQL Query Execution Error (insertNotableCaseInfo):", err);
+          context.error("Insert query error details:", JSON.stringify(err, null, 2));
           reject("SQL query failed for notable case insertion.");
           connection.close();
           return;
@@ -234,26 +275,45 @@ async function insertNotableCaseInfo(
       });
 
       sqlRequest.on("row", (columns) => {
+        context.log(`DEBUG: Row event fired with ${columns.length} columns`);
+        context.log("Insert result row columns:", columns.map(c => ({ name: c.metadata.colName, value: c.value, type: typeof c.value })));
+        
+        // Try different approaches to find the ID
         const id = columns.find(c => c.metadata.colName === "InsertedId")?.value;
+        const idByIndex = columns[0]?.value; // Try first column
+        
+        context.log(`DEBUG: ID by column name: ${id}`);
+        context.log(`DEBUG: ID by index [0]: ${idByIndex}`);
+        
         if (id) {
           insertedId = id as string;
+          context.log("SUCCESS: Extracted inserted ID by name:", insertedId);
+        } else if (idByIndex) {
+          insertedId = idByIndex as string;
+          context.log("SUCCESS: Extracted inserted ID by index:", insertedId);
+        } else {
+          context.log("WARNING: No ID found in any column");
         }
       });
 
       sqlRequest.on("requestCompleted", () => {
+        context.log("DEBUG: Insert request completed event fired");
+        context.log("DEBUG: Final insertedId value:", insertedId);
+        context.log("Insert request completed. Closing connection.");
         connection.close();
-        if (insertedId) {
-          resolve({
-            success: true,
-            message: "Notable case info inserted successfully.",
-            insertedId
-          });
-        } else {
-          reject("Insert failed: No ID returned.");
-        }
+        // Always resolve successfully if we got here - the insert worked
+        const result = {
+          success: true,
+          message: "Notable case info inserted successfully.",
+          insertedId: insertedId || "ID not captured (but insert successful)"
+        };
+        context.log("Insert successful, resolving with:", result);
+        context.log("=== INSERT NOTABLE CASE INFO END ===");
+        resolve(result);
       });
 
       // Bind parameters
+      context.log("Adding parameters to SQL request...");
       sqlRequest.addParameter("Initials", TYPES.NVarChar, requestData.initials);
       sqlRequest.addParameter("DisplayNumber", TYPES.NVarChar, requestData.display_number);
       sqlRequest.addParameter("Summary", TYPES.Text, requestData.summary);
@@ -262,17 +322,97 @@ async function insertNotableCaseInfo(
       sqlRequest.addParameter("CounselInstructed", TYPES.Bit, requestData.counsel_instructed);
       sqlRequest.addParameter("CounselName", TYPES.NVarChar, requestData.counsel_name || null);
 
-      context.log("Executing notable case insertion with parameters:", {
-        Initials: requestData.initials,
-        DisplayNumber: requestData.display_number,
-        Summary: requestData.summary.substring(0, 100) + "...", // Log truncated summary
-        ValueInDispute: requestData.value_in_dispute,
-        CReferenceStatus: requestData.c_reference_status,
-        CounselInstructed: requestData.counsel_instructed,
-        CounselName: requestData.counsel_name
+      context.log("Parameters added. Executing SQL request...");
+      connection.execSql(sqlRequest);
+    });
+
+    context.log("Initiating database connection for insert...");
+    connection.connect();
+  });
+}
+
+/**
+ * Fetch all notable case entries for a specific matter
+ */
+async function fetchNotableCaseHistory(
+  displayNumber: string,
+  context: InvocationContext
+): Promise<NotableCaseEntry[]> {
+  context.log(`Fetching notable case history for matter: ${displayNumber}`);
+
+  const connectionString = process.env.TeamsSQLConnectionString;
+  if (!connectionString) {
+    throw new Error("SQL connection string not found");
+  }
+  
+  const config = parseConnectionString(connectionString, context);
+  
+  return new Promise<NotableCaseEntry[]>((resolve, reject) => {
+    const connection = new Connection(config);
+
+    connection.on("error", (err) => {
+      context.error("SQL Connection Error:", err);
+      reject(new Error("Database connection failed"));
+    });
+
+    connection.on("connect", (err) => {
+      if (err) {
+        context.error("SQL Connection Error:", err);
+        reject(new Error("Failed to connect to database"));
+        return;
+      }
+
+      const query = `
+        SELECT 
+          id,
+          initials,
+          display_number,
+          summary,
+          value_in_dispute,
+          c_reference_status,
+          counsel_instructed,
+          counsel_name,
+          created_at
+        FROM notable_case_info
+        WHERE display_number = @DisplayNumber
+        ORDER BY created_at DESC
+      `;
+
+      const request = new SqlRequest(query, (err, rowCount) => {
+        if (err) {
+          context.error("SQL Query Error:", err);
+          reject(new Error("Failed to fetch notable case history"));
+          connection.close();
+          return;
+        }
+        context.log(`Retrieved ${rowCount} historical entries for matter ${displayNumber}`);
       });
 
-      connection.execSql(sqlRequest);
+      request.addParameter('DisplayNumber', TYPES.VarChar, displayNumber);
+
+      const results: NotableCaseEntry[] = [];
+
+      request.on('row', (columns) => {
+        const entry: NotableCaseEntry = {
+          id: columns[0].value,
+          initials: columns[1].value,
+          display_number: columns[2].value,
+          summary: columns[3].value,
+          value_in_dispute: columns[4].value,
+          c_reference_status: columns[5].value,
+          counsel_instructed: columns[6].value,
+          counsel_name: columns[7].value,
+          created_at: columns[8].value
+        };
+        results.push(entry);
+      });
+
+      request.on('requestCompleted', () => {
+        resolve(results);
+        connection.close();
+      });
+
+      connection.execSql(request);
     });
 
     connection.connect();
@@ -290,6 +430,16 @@ async function sendNotificationEmail(
   context.log("Sending notification email for notable case info submission.");
 
   try {
+    // Fetch historical notable case entries for this matter
+    let historicalEntries: NotableCaseEntry[] = [];
+    try {
+      historicalEntries = await fetchNotableCaseHistory(requestData.display_number, context);
+      context.log(`Retrieved ${historicalEntries.length} historical entries for matter ${requestData.display_number}`);
+    } catch (error) {
+      context.log(`Warning: Failed to fetch historical entries: ${error}`);
+      // Continue without historical data rather than failing completely
+    }
+
     const tenantId = "7fbc252f-3ce5-460f-9740-4e1cb8bf78b8";
 
     const kvUri = "https://helix-keys.vault.azure.net/";
@@ -358,6 +508,35 @@ async function sendNotificationEmail(
       </table>
     ` : '<p><em>No related matters found for this display number.</em></p>';
 
+    // Build historical entries table
+    const historicalTable = historicalEntries.length > 0 ? `
+      <h3>Previous Notable Case Entries for this Matter:</h3>
+      <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%; margin-bottom: 20px;">
+        <thead>
+          <tr style="background-color: #e8f4fd;">
+            <th>Date Submitted</th>
+            <th>Submitted By</th>
+            <th>Summary</th>
+            <th>Value in Dispute</th>
+            <th>Client Reference</th>
+            <th>Counsel</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${historicalEntries.map(entry => `
+            <tr>
+              <td>${new Date(entry.created_at).toLocaleDateString('en-GB')}</td>
+              <td>${entry.initials}</td>
+              <td>${entry.summary}</td>
+              <td>${entry.value_in_dispute || 'Not specified'}</td>
+              <td>${entry.c_reference_status ? 'Yes' : 'No'}</td>
+              <td>${entry.counsel_instructed ? (entry.counsel_name || 'Yes') : 'No'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    ` : '<p><em>No previous notable case entries found for this matter.</em></p>';
+
     const emailContent = {
       message: {
         subject: `Notable Case Information Submitted - ${requestData.display_number}`,
@@ -405,6 +584,8 @@ async function sendNotificationEmail(
                 
                 ${mattersTable}
                 
+                ${historicalTable}
+                
                 <p style="font-size: 12px; color: #666; margin-top: 30px;">
                   This email was automatically generated by the Helix Hub system.
                 </p>
@@ -416,6 +597,16 @@ async function sendNotificationEmail(
           {
             emailAddress: {
               address: "lz@helix-law.com",
+            },
+          },
+          {
+            emailAddress: {
+              address: "ac@helix-law.com",
+            },
+          },
+          {
+            emailAddress: {
+              address: "cb@helix-law.com",
             },
           },
         ],
@@ -460,7 +651,12 @@ export async function insertNotableCaseInfoHandler(
   req: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  context.log("Invocation started for insertNotableCaseInfo Azure Function.");
+  context.log("=== INVOCATION STARTED: insertNotableCaseInfo Azure Function ===");
+  context.log(`Request method: ${req.method}`);
+  context.log(`Request URL: ${req.url}`);
+  context.log(`Request headers: ${JSON.stringify(req.headers)}`);
+  context.log(`Environment variables check: SQL_CONNECTION_STRING exists = ${!!process.env.SQL_CONNECTION_STRING}`);
+  context.log(`Environment variables check: TeamsSQLConnectionString exists = ${!!process.env.TeamsSQLConnectionString}`);
 
   // CORS headers
   const corsHeaders = {
@@ -471,6 +667,7 @@ export async function insertNotableCaseInfoHandler(
 
   // Handle OPTIONS preflight request
   if (req.method === "OPTIONS") {
+    context.log("Handling OPTIONS preflight request");
     return {
       status: 204,
       headers: corsHeaders,
@@ -490,10 +687,16 @@ export async function insertNotableCaseInfoHandler(
   // Parse and validate the request body
   let requestBody: InsertNotableCaseInfoRequest;
   try {
+    context.log("Attempting to parse request body...");
+    context.log(`Request body type: ${typeof req.body}`);
+    context.log(`Request body length: ${req.body ? JSON.stringify(req.body).length : 'null'}`);
+    
     requestBody = await getRequestBody(req);
-    context.log("Request body parsed successfully.");
+    context.log("Request body parsed successfully:");
+    context.log(`Parsed request body: ${JSON.stringify(requestBody, null, 2)}`);
   } catch (error) {
     context.error("Error parsing request body:", error);
+    context.error(`Error details: ${error instanceof Error ? error.message : String(error)}`);
     return {
       status: 400,
       headers: corsHeaders,
@@ -502,10 +705,12 @@ export async function insertNotableCaseInfoHandler(
   }
 
   const { initials, display_number, summary } = requestBody;
+  context.log(`Extracted fields - initials: "${initials}", display_number: "${display_number}", summary length: ${summary?.length || 0}`);
 
   // Validate required fields
   if (!initials || !display_number || !summary) {
     context.warn("Missing required fields in request body.");
+    context.warn(`Field validation - initials: ${!!initials}, display_number: ${!!display_number}, summary: ${!!summary}`);
     return {
       status: 400,
       headers: corsHeaders,
@@ -514,36 +719,64 @@ export async function insertNotableCaseInfoHandler(
   }
 
   try {
-    context.log("Starting notable case info processing...");
+    context.log("=== STARTING NOTABLE CASE INFO PROCESSING ===");
 
-    // Step 1: Retrieve SQL password from Azure Key Vault
+    // Step 1: Get database configuration for helix-project-data
+    // For local development, use the connection credentials but override database
+    // For production, use Key Vault
     const kvUri = "https://helix-keys.vault.azure.net/";
     const passwordSecretName = "sql-databaseserver-password";
     const sqlServer = "helix-database-server.database.windows.net";
-    const sqlDatabase = "helix-project-data";
+    const sqlDatabase = "helix-project-data"; // Always use project data for notable case info
+    
+    context.log(`Database configuration - Server: ${sqlServer}, Database: ${sqlDatabase}`);
+    
+    let password: string;
+    
+    // Check if we have local connection string (extract password from it)
+    const localConnectionString = process.env.SQL_CONNECTION_STRING;
+    context.log(`Local connection string available: ${!!localConnectionString}`);
+    context.log(`Local connection string preview: ${localConnectionString ? localConnectionString.substring(0, 50) + '...' : 'N/A'}`);
+    
+    if (localConnectionString) {
+      // Running locally - extract password from local connection string
+      context.log("Using local SQL credentials with helix-project-data database.");
+      const passwordMatch = localConnectionString.match(/Password=([^;]+)/);
+      password = passwordMatch ? passwordMatch[1] : "";
+      context.log(`Password extraction successful: ${!!password}`);
+      if (!password) {
+        throw new Error("Could not extract password from local connection string");
+      }
+    } else {
+      // Running in production - retrieve password from Azure Key Vault
+      context.log("Retrieving SQL password from Azure Key Vault for production.");
+      const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
+      const passwordSecret = await secretClient.getSecret(passwordSecretName);
+      password = passwordSecret.value || "";
+      context.log("Retrieved SQL password from Key Vault - success:", !!password);
+    }
 
-    const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
-    const passwordSecret = await secretClient.getSecret(passwordSecretName);
-    const password = passwordSecret.value || "";
-    context.log("Retrieved SQL password from Key Vault.");
-
-    // Step 2: Parse connection string
+    // Build connection string for helix-project-data
     const connectionString = `Server=${sqlServer};Database=${sqlDatabase};User ID=helix-database-server;Password=${password};Encrypt=true;TrustServerCertificate=false;`;
+    context.log(`Built connection string (masked): Server=${sqlServer};Database=${sqlDatabase};User ID=helix-database-server;Password=***;Encrypt=true;TrustServerCertificate=false;`);
+    
     const config = parseConnectionString(connectionString, context);
+    context.log(`Parsed config: ${JSON.stringify({ ...config, authentication: { ...config.authentication, options: { ...config.authentication?.options, password: '***' } } }, null, 2)}`);
 
-    // Step 3: Look up related matters with the same display number
-    context.log(`Looking up related matters for display number: ${display_number}`);
+    // Step 2: Look up related matters with the same display number
+    context.log(`=== STEP 2: Looking up related matters for display number: ${display_number} ===`);
     const relatedMatters = await lookupRelatedMatters(display_number, config, context);
-    context.log(`Found ${relatedMatters.length} related matters.`);
+    context.log(`Found ${relatedMatters.length} related matters:`, relatedMatters);
 
-    // Step 4: Insert notable case info into the database
-    context.log("Inserting notable case info into database...");
+    // Step 3: Insert notable case info into the database
+    context.log("=== STEP 3: Inserting notable case info into database ===");
     const insertResult = await insertNotableCaseInfo(requestBody, config, context);
     context.log("Notable case info inserted successfully:", insertResult);
 
-    // Step 5: Send notification email
-    context.log("Sending notification email...");
+    // Step 4: Send notification email
+    context.log("=== STEP 4: Sending notification email ===");
     const emailResult = await sendNotificationEmail(requestBody, relatedMatters, context);
+    context.log("Email result:", emailResult);
     
     if (!emailResult.success) {
       context.warn("Email sending failed:", emailResult.error);
@@ -552,26 +785,36 @@ export async function insertNotableCaseInfoHandler(
       context.log("Notification email sent successfully.");
     }
 
+    const finalResponse = {
+      message: "Notable case information submitted successfully.",
+      insertedId: insertResult.insertedId,
+      emailSent: emailResult.success,
+      relatedMattersFound: relatedMatters.length,
+    };
+
+    context.log("=== FINAL RESPONSE ===", finalResponse);
+
     return {
       status: 201,
       headers: corsHeaders,
-      body: JSON.stringify({
-        message: "Notable case information submitted successfully.",
-        insertedId: insertResult.insertedId,
-        emailSent: emailResult.success,
-        relatedMattersFound: relatedMatters.length,
-      }),
+      body: JSON.stringify(finalResponse),
     };
 
   } catch (error) {
-    context.error("Error processing notable case info submission:", error);
+    context.error("=== ERROR PROCESSING NOTABLE CASE INFO SUBMISSION ===");
+    context.error("Error details:", error);
+    context.error("Error message:", error instanceof Error ? error.message : String(error));
+    context.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
     return {
       status: 500,
       headers: corsHeaders,
-      body: "Error processing notable case info submission.",
+      body: JSON.stringify({
+        error: "Error processing notable case info submission.",
+        details: error instanceof Error ? error.message : String(error)
+      }),
     };
   } finally {
-    context.log("Invocation completed for insertNotableCaseInfo Azure Function.");
+    context.log("=== INVOCATION COMPLETED: insertNotableCaseInfo Azure Function ===");
   }
 }
 

@@ -2,6 +2,21 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { Stack, Dropdown, IDropdownOption, ComboBox, IComboBox, IComboBoxOption, TextField, DatePicker, PrimaryButton, DefaultButton, IButtonStyles, IDropdownStyles, IComboBoxStyles, ITextFieldStyles, Icon, Text } from '@fluentui/react';
 import { Matter, UserData, NormalizedMatter } from '../app/functionality/types';
 
+// Add spinning animation CSS
+const spinKeyframes = `
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+`;
+
+// Inject the keyframes into the document head
+if (typeof document !== 'undefined') {
+    const style = document.createElement('style');
+    style.textContent = spinKeyframes;
+    document.head.appendChild(style);
+}
+
 // Premium styling inspired by the checkout components
 const premiumContainerStyle: React.CSSProperties = {
     background: 'transparent',
@@ -301,6 +316,8 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
     const [copiesInOffice, setCopiesInOffice] = useState<number>(1);
     const [notes, setNotes] = useState<string>('');
     const [submitting, setSubmitting] = useState<boolean>(false);
+    const [submitStatus, setSubmitStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+    const [submitMessage, setSubmitMessage] = useState<string>('');
     const [matterFilter, setMatterFilter] = useState<string>('');
 
     // Optimized user options with memoization
@@ -395,7 +412,11 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
 
     const handleSubmit = async () => {
         if (!isValid()) return;
+        
         setSubmitting(true);
+        setSubmitStatus('submitting');
+        setSubmitMessage('Creating Asana task...');
+        
         const currentUser = users[0];
 
         const getAsanaField = (user: any, key: string) => {
@@ -431,14 +452,28 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
         }
 
         try {
-            await fetch('/api/bundle', {
+            const response = await fetch('/api/bundle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
-            onBack();
+            
+            if (response.ok) {
+                setSubmitStatus('success');
+                setSubmitMessage('Bundle task created successfully!');
+                // Wait a moment to show success message before going back
+                setTimeout(() => {
+                    onBack();
+                }, 1500);
+            } else {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                setSubmitStatus('error');
+                setSubmitMessage(`Failed to create task: ${errorData.error || 'Unknown error'}`);
+            }
         } catch (err) {
             console.error(err);
+            setSubmitStatus('error');
+            setSubmitMessage('Network error - please check your connection and try again');
         } finally {
             setSubmitting(false);
         }
@@ -495,6 +530,7 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                                         onChange={(e) => handleMatterSearchChange(e.target.value)}
                                         onFocus={() => setMatterDropdownOpen(true)}
                                         placeholder="Search by matter number or client name..."
+                                        disabled={submitting}
                                         style={{
                                             width: '100%',
                                             height: '48px',
@@ -504,7 +540,8 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                                             fontSize: '16px',
                                             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                                             padding: '0 48px 0 12px',
-                                            color: '#374151',
+                                            color: submitting ? '#9ca3af' : '#374151',
+                                            cursor: submitting ? 'not-allowed' : 'text',
                                         }}
                                         required
                                     />
@@ -587,6 +624,7 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                                 value={bundleLink}
                                 onChange={(_, v) => setBundleLink(v || '')}
                                 required
+                                disabled={submitting}
                                 styles={premiumInputStyle}
                                 placeholder="Enter bundle reference or link"
                             />
@@ -604,6 +642,7 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                                 text="Posted"
                                 checked={posted}
                                 onClick={() => setPosted(!posted)}
+                                disabled={submitting}
                                 iconProps={{ iconName: 'Send' }}
                                 styles={posted ? { ...toggleStyles, rootChecked: toggleStyles.rootChecked } : toggleStyles}
                             />
@@ -611,6 +650,7 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                                 text="Left in office"
                                 checked={leftInOffice}
                                 onClick={() => setLeftInOffice(!leftInOffice)}
+                                disabled={submitting}
                                 iconProps={{ iconName: 'Home' }}
                                 styles={leftInOffice ? { ...toggleStyles, rootChecked: toggleStyles.rootChecked } : toggleStyles}
                             />
@@ -701,6 +741,41 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                         />
                     </div>
 
+                    {/* Status Feedback Section */}
+                    {submitStatus !== 'idle' && (
+                        <div style={{
+                            ...premiumSectionStyle,
+                            background: submitStatus === 'success' ? 'rgba(34, 197, 94, 0.1)' : 
+                                       submitStatus === 'error' ? 'rgba(239, 68, 68, 0.1)' : 
+                                       'rgba(59, 130, 246, 0.1)',
+                            border: `1px solid ${submitStatus === 'success' ? 'rgba(34, 197, 94, 0.3)' : 
+                                                submitStatus === 'error' ? 'rgba(239, 68, 68, 0.3)' : 
+                                                'rgba(59, 130, 246, 0.3)'}`,
+                        }}>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                color: submitStatus === 'success' ? '#16a34a' : 
+                                       submitStatus === 'error' ? '#dc2626' : 
+                                       '#2563eb',
+                            }}>
+                                {submitStatus === 'submitting' && (
+                                    <Icon iconName="More" style={{ fontSize: '1.25rem', animation: 'spin 1s linear infinite' }} />
+                                )}
+                                {submitStatus === 'success' && (
+                                    <Icon iconName="CheckMark" style={{ fontSize: '1.25rem' }} />
+                                )}
+                                {submitStatus === 'error' && (
+                                    <Icon iconName="ErrorBadge" style={{ fontSize: '1.25rem' }} />
+                                )}
+                                <Text variant="medium" style={{ fontWeight: '600' }}>
+                                    {submitMessage}
+                                </Text>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Action Buttons Bar */}
                     <div style={{ 
                         background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%)',
@@ -740,11 +815,15 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                                     iconProps={{ iconName: 'Cancel' }}
                                 />
                                 <PrimaryButton
-                                    text={submitting ? 'Submitting...' : 'Submit Bundle'}
+                                    text={submitting ? 'Creating Task...' : submitStatus === 'success' ? 'Task Created!' : 'Submit Bundle'}
                                     onClick={handleSubmit}
-                                    disabled={!isValid() || submitting}
+                                    disabled={!isValid() || submitting || submitStatus === 'success'}
                                     styles={premiumButtonStyle}
-                                    iconProps={submitting ? { iconName: 'More' } : { iconName: 'Send' }}
+                                    iconProps={
+                                        submitting ? { iconName: 'More', style: { animation: 'spin 1s linear infinite' } } :
+                                        submitStatus === 'success' ? { iconName: 'CheckMark' } :
+                                        { iconName: 'Send' }
+                                    }
                                 />
                             </Stack>
                         </Stack>

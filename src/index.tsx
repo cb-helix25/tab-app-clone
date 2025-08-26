@@ -466,7 +466,7 @@ async function fetchAllMatters(): Promise<Matter[]> {
     // Use Express server proxy when developing, same pattern as getEnquiries
     const getAllMattersUrl = isLocalDev 
       ? `http://localhost:8080/getAllMatters${getAllMattersCode ? `?code=${getAllMattersCode}` : ''}` 
-      : `/api/getAllMatters${getAllMattersCode ? `?code=${getAllMattersCode}` : ''}`;
+      : `${proxyBaseUrl}/${process.env.REACT_APP_GET_ALL_MATTERS_PATH}?code=${getAllMattersCode}`;
     console.log('🔍 Fetching ALL matters from:', getAllMattersUrl.replace(/code=[^&]+/, 'code=***'));
     
     const response = await fetch(getAllMattersUrl, {

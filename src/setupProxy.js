@@ -32,7 +32,8 @@ module.exports = function(app) {
     '/getTransactions',
     '/getOutstandingClientBalances',
     '/getSnippetBlocks',
-    '/getAnnualLeave'
+    '/getAnnualLeave',
+    '/insertNotableCaseInfo'
   ];
 
   // Proxy Express server routes to port 8080
