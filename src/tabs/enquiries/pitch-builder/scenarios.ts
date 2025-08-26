@@ -29,7 +29,7 @@ export const SCENARIOS: Scenario[] = [
     id: 'before-call-call',
     name: 'Before call — Call',
     subject: 'Pitch before call — Call',
-    body: `Thank yotu for your enquiry to Helix Law. I have set out below some details that I hope help in relation to your enquiry. We’re a specialist firm of solicitors and we only dealt with litigation and disputes. We act nationally.
+    body: `Thank you for your enquiry to Helix Law. I have set out below some details that I hope help in relation to your enquiry. We’re a specialist firm of solicitors and we only dealt with litigation and disputes. We act nationally.
 
 We often deal with disputes such as yours and I am confident we are well-placed to assist in relation to your matter.
 

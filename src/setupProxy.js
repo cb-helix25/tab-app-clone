@@ -33,7 +33,18 @@ module.exports = function(app) {
     '/getOutstandingClientBalances',
     '/getSnippetBlocks',
     '/getAnnualLeave',
-    '/insertNotableCaseInfo'
+    '/insertNotableCaseInfo',
+    '/insertDeal'  // Added for deal capture
+  ];
+
+  // Decoupled Azure Functions routes (port 7071 - JavaScript functions)
+  const decoupledFunctionRoutes = [
+    '/fetchMattersData',
+    '/fetchEnquiriesData',
+    '/fetchSnippetEdits',
+    '/insertEnquiry',
+    '/processEnquiry',
+    '/sendEmail'  // Added for email sending
   ];
 
   // Proxy Express server routes to port 8080
@@ -66,6 +77,28 @@ module.exports = function(app) {
       },
       onError: (err, req, res) => {
         console.error(`Proxy error for ${req.url} (Azure Functions):`, err.message);
+        // Fallback to Express server if Azure Functions fails
+        console.log('Attempting fallback to Express server...');
+        const fallbackProxy = createProxyMiddleware({
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+        });
+        fallbackProxy(req, res);
+      }
+    })
+  );
+
+  // Proxy Decoupled Azure Functions routes to port 7071 (JavaScript functions)
+  app.use(
+    decoupledFunctionRoutes,
+    createProxyMiddleware({
+      target: 'http://localhost:7071',
+      changeOrigin: true,
+      pathRewrite: {
+        '^/(.*)': '/api/$1', // Rewrite /sendEmail to /api/sendEmail
+      },
+      onError: (err, req, res) => {
+        console.error(`Proxy error for ${req.url} (Decoupled Functions):`, err.message);
         // Fallback to Express server if Azure Functions fails
         console.log('Attempting fallback to Express server...');
         const fallbackProxy = createProxyMiddleware({

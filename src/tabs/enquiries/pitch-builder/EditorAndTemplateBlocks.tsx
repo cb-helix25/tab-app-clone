@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Stack, Text, Icon, Pivot, PivotItem, TextField } from '@fluentui/react';
+import { FaBolt, FaEdit, FaFileAlt, FaEraser, FaCopy, FaEye, FaInfoCircle, FaThumbtack, FaCalculator, FaExclamationTriangle, FaEnvelope, FaCheck, FaPaperPlane, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { colours } from '../../../app/styles/colours';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 import SnippetEditPopover from './SnippetEditPopover';
@@ -920,6 +921,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [isNotesPinned, setIsNotesPinned] = useState(false);
   const [showSubjectHint, setShowSubjectHint] = useState(false);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
+  const [isTemplatesCollapsed, setIsTemplatesCollapsed] = useState(false); // Start expanded for immediate selection
   const [showInlinePreview, setShowInlinePreview] = useState(false);
   const [confirmReady, setConfirmReady] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
@@ -983,34 +985,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     }
   }, [passcode, enquiry, body, applyRateRolePlaceholders, setBody]);
 
-  // Auto-select the first quick scenario on mount if none is selected
-  useEffect(() => {
-    if (!selectedScenarioId && SCENARIOS.length > 0) {
-      const firstScenario = SCENARIOS[0];
-      setSelectedScenarioId(firstScenario.id);
-
-      // Only inject scenario content if editor is empty or whitespace
-      if (!body || body.trim() === '') {
-        const raw = stripDashDividers(firstScenario.body);
-        const greetingName = (() => {
-          const e = enquiry as any;
-          const first = e?.First_Name ?? e?.first_name ?? e?.FirstName ?? e?.firstName ?? e?.Name?.split?.(' ')?.[0] ?? e?.ContactName?.split?.(' ')?.[0] ?? '';
-          const name = String(first || '').trim();
-          return name.length > 0 ? name : 'there';
-        })();
-        const salutation = `Dear ${greetingName},\n\n`;
-        const composed = salutation + raw;
-        const projected = applyRateRolePlaceholders(composed);
-        lastScenarioBodyRef.current = projected;
-        setBody(projected);
-
-        const firstBlock = templateBlocks[0];
-        if (firstBlock) {
-          setBlockContents(prev => ({ ...prev, [firstBlock.title]: projected }));
-        }
-      }
-    }
-  }, [selectedScenarioId, enquiry, body, setBody, applyRateRolePlaceholders, templateBlocks]);
   // Accept hot updates to the scenarios module (CRA/Webpack HMR) and trigger a lightweight re-render
   useEffect(() => {
     const anyModule: any = module as any;
@@ -1066,7 +1040,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           justifyContent: 'flex-start'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Icon iconName="Info" styles={{ root: { fontSize: 12 } }} />
+            <FaInfoCircle style={{ fontSize: 12 }} />
             Enquiry Notes
           </div>
         </div>
@@ -1097,7 +1071,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#e1e5e9';
           }}
         >
-          <Icon iconName="Unpin" styles={{ root: { fontSize: 14, color: isDarkMode ? colours.dark.text : colours.darkBlue } }} />
+          <FaThumbtack style={{ fontSize: 14, color: isDarkMode ? colours.dark.text : colours.darkBlue }} />
         </button>
         <div style={{
           fontSize: 13,
@@ -1267,102 +1241,235 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
   return (
     <>
-      {/* Global sticky notes portal */}
-      <GlobalStickyNotes />
-      {/* Hover-reveal button styles (scoped by class names) */}
+      {/* Design System CSS Variables */}
       <style>{`
-        .inline-reveal-btn {display:inline-flex;align-items:center;gap:0;overflow:hidden;position:relative;}
-        .inline-reveal-btn .label{max-width:0;opacity:0;transform:translateX(-4px);margin-left:0;white-space:nowrap;transition:max-width .45s ease,opacity .45s ease,transform .45s ease,margin-left .45s ease;}
-        .inline-reveal-btn:hover .label,.inline-reveal-btn:focus-visible .label{max-width:90px;opacity:1;transform:translateX(0);margin-left:6px;}
-      @keyframes fadeSlideIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-      .smooth-appear{animation:fadeSlideIn .18s ease}
-      
-  /* Numbered list styling with CTA red numbers */
-  /* Apply counters only to ordered lists that are NOT already number-inlined (.hlx-numlist) */
-  ol:not(.hlx-numlist) {
-        counter-reset: list-counter;
-        list-style: none;
-        padding-left: 0;
-        margin: 16px 0;
-      }
-  ol:not(.hlx-numlist) li {
-        counter-increment: list-counter;
-        position: relative;
-        padding-left: 2em;
-        margin-bottom: 12px;
-        line-height: 1.6;
-      }
-  ol:not(.hlx-numlist) li::before {
-        content: counter(list-counter) ".";
-        position: absolute;
-        left: 0;
-        top: 0;
-        color: #D65541;
-        font-weight: 700;
-        font-size: 1em;
-        line-height: 1.6;
-      }
-      /* Ensure proper indentation for multi-line list items */
-  ol:not(.hlx-numlist) li p {
-        margin: 0;
-        padding: 0;
-      }
-  /* Lists generated with inline number spans */
-  ol.hlx-numlist { list-style: none; padding-left: 0; margin: 16px 0; }
-  ol.hlx-numlist li { margin: 0 0 12px 0; line-height: 1.6; position: relative; }
-  ol.hlx-numlist li::before { content: none !important; }
-  ol.hlx-numlist > li > span:first-child { color: #D65541; font-weight: 700; display: inline-block; min-width: 1.6em; }
+        :root {
+          --helix-navy: #061733;
+          --helix-blue: #3690CE;
+          --helix-grey: #F4F4F6;
+          --helix-border: #E3E8EF;
+          --helix-success: #10B981;
+          --helix-warning: #F59E0B;
+          --helix-error: #EF4444;
+          --white: #FFFFFF;
+          
+          /* Raleway as default font family */
+          --helix-font: 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        /* Apply Raleway to all elements in this component */
+        .helix-professional-content * {
+          font-family: var(--helix-font) !important;
+        }
+        
+        /* Custom text selection styling - softer blue for brand consistency */
+        .helix-professional-content *::selection {
+          background-color: rgba(54, 144, 206, 0.15);
+          color: #1E293B;
+        }
+        
+        .helix-professional-content *::-moz-selection {
+          background-color: rgba(54, 144, 206, 0.15);
+          color: #1E293B;
+        }
+          --grey-50: #F9FAFB;
+          --grey-100: #F3F4F6;
+          --grey-200: #E5E7EB;
+          --grey-300: #D1D5DB;
+          --grey-400: #9CA3AF;
+          --grey-500: #6B7280;
+          --grey-600: #4B5563;
+          --grey-700: #374151;
+          --grey-800: #1F2937;
+          --grey-900: #111827;
+          --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+          --text-xs: 0.75rem;
+          --text-sm: 0.875rem;
+          --text-base: 1rem;
+          --text-lg: 1.125rem;
+          --text-xl: 1.25rem;
+          --weight-normal: 400;
+          --weight-medium: 500;
+          --weight-semibold: 600;
+          --weight-bold: 700;
+          --leading-tight: 1.25;
+          --leading-normal: 1.5;
+          --leading-relaxed: 1.625;
+          --space-1: 0.25rem;
+          --space-2: 0.5rem;
+          --space-3: 0.75rem;
+          --space-4: 1rem;
+          --space-5: 1.25rem;
+          --space-6: 1.5rem;
+          --space-8: 2rem;
+          --space-12: 3rem;
+          --radius-base: 0.25rem;
+          --radius-md: 0.375rem;
+          --radius-lg: 0.5rem;
+          --radius-xl: 0.75rem;
+          --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+          --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+          --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .helix-professional-content {
+          padding: var(--space-8);
+        }
+
+        .helix-professional-input {
+          font-family: var(--font-primary);
+          border-radius: var(--radius-lg);
+          border: 1px solid var(--grey-300);
+          padding: var(--space-3) var(--space-4);
+          font-size: var(--text-sm);
+          background-color: var(--white);
+          transition: var(--transition-base);
+        }
+
+        .helix-professional-input:focus {
+          border-color: var(--helix-blue);
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(54, 144, 206, 0.1);
+        }
+
+        .helix-professional-button {
+          padding: var(--space-2) var(--space-4);
+          border-radius: var(--radius-lg);
+          border: 1px solid var(--grey-300);
+          background-color: var(--white);
+          color: var(--grey-700);
+          cursor: pointer;
+          font-size: var(--text-sm);
+          font-weight: var(--weight-medium);
+          transition: var(--transition-base);
+          font-family: var(--font-primary);
+        }
+
+        .helix-professional-button:hover {
+          border-color: var(--helix-blue);
+          background-color: var(--grey-50);
+        }
+
+        .helix-professional-button-primary {
+          background-color: var(--helix-blue);
+          color: var(--white);
+          border: none;
+        }
+
+        .helix-professional-button-primary:hover {
+          background-color: #2980b9;
+        }
+
+        .helix-professional-label {
+          font-size: var(--text-sm);
+          font-weight: var(--weight-medium);
+          color: var(--helix-navy);
+          margin-bottom: var(--space-2);
+          display: flex;
+          align-items: center;
+          gap: var(--space-2);
+        }
       `}</style>
 
-  <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 0 } }}>
-        {/* Combined Email and Pitch Composition Section */}
-        <div style={{
-          border: '1px solid #e1e5e9',
-          borderRadius: '8px',
-            backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-          // Allow sticky children to work
-          overflow: 'visible'
-        }}>
-          {/* Header */}
+      {/* Global sticky notes portal */}
+      <GlobalStickyNotes />
+      
+      {/* Content */}
+      <div className="helix-professional-content">
+      
+      <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 0 } }}>
+        {/* Direct content without Email Composer container */}
+        <div style={{ padding: '0 0 16px 0' }}>
+          {/* Scenario Picker (minimal, non-breaking) */}
           <div style={{
-            padding: '12px 16px',
-            backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-            borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
+            background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+            borderRadius: '16px',
+            padding: '24px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+            marginBottom: 20,
+            fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            position: 'relative'
           }}>
-            <Icon iconName="Mail" styles={{ root: { fontSize: 14, color: colours.blue } }} />
-            <span style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: isDarkMode ? colours.dark.text : colours.darkBlue
-            }}>
-              Email and Pitch Composition
-            </span>
-          </div>
-
-          <div style={{ padding: 16 }}>
-            {/* Scenario Picker (minimal, non-breaking) */}
-            <div style={{ marginBottom: 12 }}>
-              <div style={{
-                fontSize: 12,
+            {/* Subtle accent border */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '40px',
+              height: '2px',
+              background: 'linear-gradient(90deg, #3690CE, #60A5FA)',
+              borderRadius: '0 0 6px 6px'
+            }}></div>
+            
+            <div 
+              style={{
+                fontSize: '16px',
                 fontWeight: 600,
-                color: colours.blue,
-                marginBottom: 6,
+                color: '#0F172A',
+                marginBottom: isTemplatesCollapsed ? 0 : '16px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4
-              }}>
-                <Icon iconName="LightningBolt" styles={{ root: { fontSize: 12 } }} />
-                Quick scenarios
+                justifyContent: 'space-between',
+                gap: '8px',
+                padding: '8px 16px',
+                background: 'rgba(255, 255, 255, 0.7)',
+                borderRadius: '10px',
+                border: '1px solid rgba(54, 144, 206, 0.1)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onClick={() => setIsTemplatesCollapsed(!isTemplatesCollapsed)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+                e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)';
+                e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.1)';
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaBolt style={{ fontSize: 14, color: '#3690CE' }} />
+                Quick Templates
+                {isTemplatesCollapsed && selectedScenarioId && (
+                  <span style={{ 
+                    fontSize: '13px', 
+                    fontWeight: 400, 
+                    color: '#64748B',
+                    marginLeft: '8px'
+                  }}>
+                    • {SCENARIOS.find(s => s.id === selectedScenarioId)?.name || 'Selected'}
+                  </span>
+                )}
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {SCENARIOS.map(s => (
+              {isTemplatesCollapsed ? 
+                <FaChevronDown style={{ fontSize: 12, color: '#64748B' }} /> : 
+                <FaChevronUp style={{ fontSize: 12, color: '#64748B' }} />
+              }
+            </div>
+            
+            {!isTemplatesCollapsed && (
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: 12,
+                padding: '12px',
+                background: 'rgba(255, 255, 255, 0.5)',
+                borderRadius: '12px',
+                border: '1px solid rgba(203, 213, 225, 0.6)',
+                animation: 'cascadeIn 0.3s ease-out',
+                opacity: 1,
+                transform: 'translateY(0)'
+              }}>
+                {SCENARIOS.map((s, index) => (
                   <button
                     key={s.id}
                     onClick={() => {
                       setSelectedScenarioId(s.id);
+                      setIsTemplatesCollapsed(true); // Collapse after selection
           // Prefill only the body; subject is kept independent. Prepend a dynamic salutation.
                       const raw = stripDashDividers(s.body);
                       const greetingName = (() => {
@@ -1383,13 +1490,43 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       }
                     }}
                     style={{
-                      padding: '6px 10px',
-                      fontSize: 12,
-                      borderRadius: 6,
-                      border: `1px solid ${selectedScenarioId === s.id ? colours.blue : '#e1e5e9'}`,
-                      background: selectedScenarioId === s.id ? '#eef6ff' : '#fff',
-                      color: selectedScenarioId === s.id ? colours.blue : '#333',
-                      cursor: 'pointer'
+                      padding: '10px 16px',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      borderRadius: '8px',
+                      border: `1px solid ${selectedScenarioId === s.id ? '#3690CE' : '#CBD5E1'}`,
+                      background: selectedScenarioId === s.id 
+                        ? 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)' 
+                        : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      color: selectedScenarioId === s.id ? '#3690CE' : '#475569',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedScenarioId === s.id 
+                        ? '0 4px 8px rgba(54, 144, 206, 0.25)' 
+                        : '0 1px 3px rgba(0, 0, 0, 0.1)',
+                      transform: selectedScenarioId === s.id ? 'translateY(-1px)' : 'translateY(0)',
+                      animation: `cascadeIn 0.4s ease-out ${index * 0.1}s both`,
+                      opacity: 0,
+                      animationFillMode: 'forwards'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedScenarioId !== s.id) {
+                        e.currentTarget.style.borderColor = '#3690CE';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)';
+                        e.currentTarget.style.color = '#3690CE';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(54, 144, 206, 0.15)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedScenarioId !== s.id) {
+                        e.currentTarget.style.borderColor = '#CBD5E1';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                        e.currentTarget.style.color = '#475569';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                      }
                     }}
                     title={s.name}
                   >
@@ -1397,20 +1534,46 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   </button>
                 ))}
               </div>
+            )}
             </div>
             {/* Scenario hot-update handled via top-level useEffect */}
+            
+            {/* Only show the rest of the form after a template is selected */}
+            {selectedScenarioId && (
+            <div style={{
+              animation: 'cascadeIn 0.3s ease-out',
+              opacity: 1,
+              transform: 'translateY(0)'
+            }}>
+            
             {/* Subject Line - Primary Focus */}
-            <div style={{ marginBottom: initialNotes ? 16 : 0 }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+              borderRadius: '12px',
+              padding: '20px',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+              marginBottom: initialNotes ? 20 : 0,
+              fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+            }}>
               <div style={{
-                fontSize: 12,
+                fontSize: '14px',
                 fontWeight: 600,
-                color: colours.blue,
-                marginBottom: 8,
+                color: '#1E293B',
+                marginBottom: '12px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4
+                gap: '8px'
               }}>
-                <Icon iconName="Edit" styles={{ root: { fontSize: 12 } }} />
+                <div style={{
+                  padding: '6px',
+                  background: 'rgba(54, 144, 206, 0.1)',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <FaEdit style={{ fontSize: 12, color: '#3690CE' }} />
+                </div>
                 Subject Line
               </div>
               <input
@@ -1420,24 +1583,28 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 placeholder="Craft your email subject based on the context below..."
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
-                  fontSize: 13, // match editor font size
+                  padding: '14px 18px',
+                  fontSize: '14px',
                   fontWeight: 400,
-                  border: `2px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                  borderRadius: 8,
-                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-                  color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '8px',
+                  backgroundColor: '#FFFFFF',
+                  color: '#0F172A',
                   outline: 'none',
                   transition: 'all 0.2s ease',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = colours.blue;
-                  e.target.style.boxShadow = `0 0 0 3px ${colours.blue}20`;
+                  e.target.style.borderColor = '#3690CE';
+                  e.target.style.borderWidth = '2px';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(54, 144, 206, 0.1), 0 4px 6px rgba(0,0,0,0.1)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = isDarkMode ? colours.dark.border : '#e1e5e9';
-                  e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                  e.target.style.borderColor = '#CBD5E1';
+                  e.target.style.borderWidth = '1px';
+                  e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
                 }}
               />
             </div>
@@ -1445,22 +1612,42 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             {/* Default subject is set via a top-level effect to respect Hooks rules */}
 
             {/* Email body / Preview (swap in place) */}
-            <div style={{ marginBottom: 16 }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+              borderRadius: '12px',
+              padding: '20px',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+              marginBottom: 18,
+              fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+            }}>
               <div style={{
-                fontSize: 12,
+                fontSize: '14px',
                 fontWeight: 600,
-                color: colours.blue,
-                marginBottom: 8,
+                color: '#1E293B',
+                marginBottom: '16px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                justifyContent: 'space-between'
+                gap: '12px',
+                justifyContent: 'space-between',
+                padding: '8px 16px',
+                background: 'rgba(255, 255, 255, 0.7)',
+                borderRadius: '10px',
+                border: '1px solid rgba(54, 144, 206, 0.1)'
               }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Icon iconName="TextDocument" styles={{ root: { fontSize: 12 } }} />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{
+                    padding: '6px',
+                    background: 'rgba(54, 144, 206, 0.1)',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <FaFileAlt style={{ fontSize: 12, color: '#3690CE' }} />
+                  </div>
                   {showInlinePreview ? 'Preview' : 'Email body'}
                 </span>
-                <div style={{ display: 'inline-flex', gap: 6 }}>
+                <div style={{ display: 'inline-flex', gap: 8 }}>
                   <button
                     onClick={() => {
                       const plain = htmlToPlainText(body);
@@ -1469,17 +1656,38 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       }
                     }}
                     style={{
-                      padding: '4px 8px',
-                      fontSize: 11,
-                      borderRadius: 4,
-                      border: '1px solid #e1e5e9',
-                      color: '#333',
-                      background: '#fff',
-                      cursor: 'pointer'
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      color: '#64748B',
+                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      fontWeight: 500,
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#3690CE';
+                      e.currentTarget.style.color = '#3690CE';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#CBD5E1';
+                      e.currentTarget.style.color = '#64748B';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
                     }}
                     title="Convert current content to plain text"
                   >
-                    <Icon iconName="ClearFormatting" styles={{ root: { fontSize: 12 } }} /> Plain text
+                    <FaEraser style={{ fontSize: 12 }} /> Plain text
                   </button>
                   <button
                     onClick={() => {
@@ -1512,46 +1720,93 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       }
                     }}
                     style={{
-                      padding: '4px 8px',
-                      fontSize: 11,
-                      borderRadius: 4,
-                      border: `1px solid ${colours.blue}`,
-                      color: colours.blue,
-                      background: '#fff',
-                      cursor: 'pointer'
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      borderRadius: '6px',
+                      border: '1px solid #3690CE',
+                      color: '#3690CE',
+                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      fontWeight: 500,
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      boxShadow: '0 1px 3px rgba(54, 144, 206, 0.15)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(54, 144, 206, 0.15)';
                     }}
                     title={showInlinePreview ? 'Copy preview text' : 'Copy plain text'}
                   >
-                    <Icon iconName="Copy" styles={{ root: { fontSize: 12 } }} /> Copy
+                    <FaCopy style={{ fontSize: 12 }} /> Copy
                   </button>
                   <button
                     onClick={() => setShowInlinePreview(v => !v)}
                     style={{
-                      padding: '4px 8px',
-                      fontSize: 11,
-                      borderRadius: 4,
-                      border: `1px solid ${showInlinePreview ? colours.blue : '#e1e5e9'}`,
-                      color: showInlinePreview ? colours.blue : '#333',
-                      background: '#fff',
-                      cursor: 'pointer'
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      borderRadius: '6px',
+                      border: `1px solid ${showInlinePreview ? '#3690CE' : '#CBD5E1'}`,
+                      color: showInlinePreview ? '#3690CE' : '#64748B',
+                      background: showInlinePreview 
+                        ? 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)' 
+                        : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      fontWeight: 500,
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      boxShadow: showInlinePreview 
+                        ? '0 2px 4px rgba(54, 144, 206, 0.2)' 
+                        : '0 1px 3px rgba(0, 0, 0, 0.1)'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!showInlinePreview) {
+                        e.currentTarget.style.borderColor = '#3690CE';
+                        e.currentTarget.style.color = '#3690CE';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.15)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!showInlinePreview) {
+                        e.currentTarget.style.borderColor = '#CBD5E1';
+                        e.currentTarget.style.color = '#64748B';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                      }
                     }}
                     title="Toggle inline preview"
                   >
-                    <Icon iconName="Preview" styles={{ root: { fontSize: 12 } }} /> {showInlinePreview ? 'Back to editor' : 'Preview here'}
+                    <FaEye style={{ fontSize: 12 }} /> {showInlinePreview ? 'Back to editor' : 'Preview here'}
                   </button>
                 </div>
               </div>
               {!showInlinePreview && (
                 <div className="smooth-appear" style={{
-                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                  borderRadius: 6,
-                  background: isDarkMode ? colours.dark.cardBackground : '#fff',
-                  padding: 4,
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #FFFFFF 0%, #FEFEFE 100%)',
+                  padding: '6px',
                   position: 'relative',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
                 }}>
                   {/* Watermark */}
-                  <div aria-hidden="true" style={{ position: 'absolute', top: 8, right: 8, width: 150, height: 150, opacity: isDarkMode ? 0.08 : 0.08, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none' }} />
+                  <div aria-hidden="true" style={{ position: 'absolute', top: 8, right: 8, width: 150, height: 150, opacity: 0.06, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none' }} />
                   <InlineEditableArea
                     value={body}
                     onChange={(v) => setBody(v)}
@@ -1568,9 +1823,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               {showInlinePreview && (
                 <div className="smooth-appear" style={{
                 marginTop: 12,
-                border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                borderRadius: 8,
-                background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                border: '1px solid #CBD5E1',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #FFFFFF 0%, #FEFEFE 100%)',
                 overflow: 'hidden',
                 position: 'relative'
               }}>
@@ -1624,7 +1879,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                             borderRadius: 6,
                             marginBottom: 10
                           }}>
-                            <Icon iconName="Warning" styles={{ root: { fontSize: 12, color: '#a8071a', marginRight: 6 } }} />
+                            <FaExclamationTriangle style={{ fontSize: 12, color: '#a8071a', marginRight: 6 }} />
                             {unresolvedBody.length} placeholder{unresolvedBody.length === 1 ? '' : 's'} to resolve: {unresolvedBody.join(', ')}
                           </div>
                         )}
@@ -1660,30 +1915,100 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       const unresolvedBody = findPlaceholders(substitutedBody);
                       const unresolvedAny = unresolvedSubject.length > 0 || unresolvedBody.length > 0;
                       const disableDraft = !confirmReady || isDraftConfirmed || unresolvedAny;
-                      const disableSend = true; // still disabled in testing mode
+                      const disableSend = unresolvedAny; // Enable send when no unresolved placeholders
                       return (
                         <>
                           <button
                             onClick={() => sendEmail?.()}
                             disabled={disableSend}
-                            title={unresolvedAny ? 'Resolve placeholders before sending' : 'Sending is disabled in testing mode. Use Draft Email.'}
+                            title={unresolvedAny ? 'Resolve placeholders before sending' : 'Send Email'}
                             style={{
-                              padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'not-allowed',
-                              background: colours.blue, color: '#fff', fontWeight: 600, opacity: 0.6
+                              padding: '6px 12px', 
+                              borderRadius: 6, 
+                              border: 'none', 
+                              cursor: disableSend ? 'not-allowed' : 'pointer',
+                              background: disableSend ? '#CCCCCC' : colours.blue, 
+                              color: '#fff', 
+                              fontWeight: 600, 
+                              opacity: disableSend ? 0.6 : 1,
+                              transition: 'all 0.2s ease',
+                              transform: 'translateY(0)'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!disableSend) {
+                                e.currentTarget.style.background = '#2B7BC7';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(54, 144, 206, 0.3)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!disableSend) {
+                                e.currentTarget.style.background = colours.blue;
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }
+                            }}
+                            onMouseDown={(e) => {
+                              if (!disableSend) {
+                                e.currentTarget.style.transform = 'translateY(1px)';
+                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(54, 144, 206, 0.2)';
+                              }
+                            }}
+                            onMouseUp={(e) => {
+                              if (!disableSend) {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(54, 144, 206, 0.3)';
+                              }
                             }}
                           >
-                            <Icon iconName="Send" /> Send
+                            <FaPaperPlane style={{ marginRight: 4 }} /> Send
                           </button>
                           <button
                             onClick={() => handleDraftEmail?.()}
                             disabled={disableDraft}
                             style={{
-                              padding: '6px 12px', borderRadius: 6, border: `1px solid ${isDraftConfirmed ? colours.green : '#e1e5e9'}`,
-                              background: isDraftConfirmed ? '#e8f5e8' : '#fff', color: isDraftConfirmed ? colours.green : '#3c4043', fontWeight: 600
+                              padding: '6px 12px', 
+                              borderRadius: 6, 
+                              border: `1px solid ${isDraftConfirmed ? colours.green : '#e1e5e9'}`,
+                              background: isDraftConfirmed ? '#e8f5e8' : '#fff', 
+                              color: isDraftConfirmed ? colours.green : '#3c4043', 
+                              fontWeight: 600,
+                              cursor: disableDraft ? 'not-allowed' : 'pointer',
+                              transition: 'all 0.2s ease',
+                              transform: 'translateY(0)',
+                              opacity: disableDraft ? 0.6 : 1
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!disableDraft && !isDraftConfirmed) {
+                                e.currentTarget.style.borderColor = colours.green;
+                                e.currentTarget.style.background = '#f0f9f0';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(32, 178, 108, 0.15)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!disableDraft && !isDraftConfirmed) {
+                                e.currentTarget.style.borderColor = '#e1e5e9';
+                                e.currentTarget.style.background = '#fff';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }
+                            }}
+                            onMouseDown={(e) => {
+                              if (!disableDraft && !isDraftConfirmed) {
+                                e.currentTarget.style.transform = 'translateY(1px)';
+                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(32, 178, 108, 0.1)';
+                              }
+                            }}
+                            onMouseUp={(e) => {
+                              if (!disableDraft && !isDraftConfirmed) {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(32, 178, 108, 0.15)';
+                              }
                             }}
                             title={isDraftConfirmed ? 'Drafted' : (unresolvedAny ? 'Resolve placeholders before drafting' : 'Draft Email')}
                           >
-                            <Icon iconName={isDraftConfirmed ? 'CheckMark' : 'Mail'} /> {isDraftConfirmed ? 'Drafted' : 'Draft Email'}
+                            {isDraftConfirmed ? <FaCheck style={{ marginRight: 4 }} /> : <FaEnvelope style={{ marginRight: 4 }} />} {isDraftConfirmed ? 'Drafted' : 'Draft Email'}
                           </button>
                         </>
                       );
@@ -1694,9 +2019,41 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         const text = previewRef.current.innerText || '';
                         navigator.clipboard.writeText(text);
                       }}
-                      style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #e1e5e9', background: '#fff', color: '#3c4043', fontWeight: 500 }}
+                      style={{ 
+                        padding: '6px 12px', 
+                        borderRadius: 6, 
+                        border: '1px solid #e1e5e9', 
+                        background: '#fff', 
+                        color: '#3c4043', 
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        transform: 'translateY(0)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3690CE';
+                        e.currentTarget.style.background = '#f8fafc';
+                        e.currentTarget.style.color = '#3690CE';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(54, 144, 206, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e1e5e9';
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.color = '#3c4043';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                      onMouseDown={(e) => {
+                        e.currentTarget.style.transform = 'translateY(1px)';
+                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(54, 144, 206, 0.1)';
+                      }}
+                      onMouseUp={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(54, 144, 206, 0.15)';
+                      }}
                     >
-                      <Icon iconName="Copy" /> Copy
+                      <FaCopy style={{ marginRight: 4 }} /> Copy
                     </button>
                   </div>
                 </div>
@@ -1709,31 +2066,44 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             {/* Context Notes - Supporting Information */}
             {initialNotes && !isNotesPinned && (
               <div style={{
-                backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-                padding: '0',
-                borderRadius: '0',
-                border: 'none',
-                boxShadow: 'none',
-                marginBottom: '0',
+                background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+                borderRadius: '12px',
+                padding: '20px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                marginBottom: '16px',
                 transition: 'all 0.3s ease-in-out',
-                position: 'relative'
+                position: 'relative',
+                fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
               }}>
                 <div style={{
-                  fontSize: 12,
+                  fontSize: '14px',
                   fontWeight: 600,
-                  color: isDarkMode ? colours.blue : colours.darkBlue,
-                  marginBottom: 8,
+                  color: '#1E293B',
+                  marginBottom: '12px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 4,
-                  position: 'relative'
+                  gap: '8px',
+                  position: 'relative',
+                  padding: '8px 16px',
+                  background: 'rgba(255, 255, 255, 0.7)',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(54, 144, 206, 0.1)'
                 }}>
                   <span
                     onMouseEnter={() => setShowSubjectHint(true)}
                     onMouseLeave={() => setShowSubjectHint(false)}
                     style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
                   >
-                    <Icon iconName="Info" styles={{ root: { fontSize: 12 } }} />
+                    <div style={{
+                      padding: '6px',
+                      background: 'rgba(54, 144, 206, 0.1)',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <FaInfoCircle style={{ fontSize: 12, color: '#3690CE' }} />
+                    </div>
                   </span>
                   Enquiry Notes
                   {showSubjectHint && (
@@ -1741,34 +2111,35 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       position: 'absolute',
                       left: 0,
                       top: '100%',
-                      marginTop: 2,
-                      background: isDarkMode ? colours.dark.inputBackground : '#fff',
-                      color: isDarkMode ? colours.blue : colours.darkBlue,
-                      fontSize: 10,
+                      marginTop: 8,
+                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      color: '#1E293B',
+                      fontSize: '11px',
                       fontWeight: 400,
                       fontStyle: 'italic',
-                      border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                      borderRadius: 4,
-                      padding: '6px 8px',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
                       zIndex: 10,
                       whiteSpace: 'normal',
                       maxWidth: 420,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                     }}>
                       Source confirmation: these notes may be intake rep call notes, a web form message, or an auto‑parsed email.
                     </span>
                   )}
                 </div>
                 <div style={{
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                  color: isDarkMode ? colours.dark.text : '#666',
+                  fontSize: '14px',
+                  lineHeight: 1.6,
+                  color: '#64748B',
                   whiteSpace: 'pre-wrap',
-                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-                  padding: 12,
-                  borderRadius: 6,
-                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                  position: 'relative'
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(203, 213, 225, 0.6)',
+                  position: 'relative',
+                  fontFamily: 'inherit'
                 }}>
                   {/* Floating pin inside notes box */}
                   <button
@@ -1776,30 +2147,37 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     title="Pin notes"
                     style={{
                       position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
+                      top: 10,
+                      right: 10,
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-                      border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                      color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      border: '1px solid #CBD5E1',
+                      color: '#1E293B',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                       cursor: 'pointer',
-                      zIndex: 2
+                      zIndex: 2,
+                      transition: 'all 0.2s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = colours.blue;
+                      e.currentTarget.style.borderColor = '#3690CE';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(54, 144, 206, 0.25)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#e1e5e9';
+                      e.currentTarget.style.borderColor = '#CBD5E1';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
                     }}
                   >
                     {/* Use a known glyph and strong contrast to ensure visibility */}
-                    <Icon iconName="Pinned" styles={{ root: { fontSize: 16, color: colours.blue } }} />
+                    <FaThumbtack style={{ fontSize: 16, color: '#3690CE' }} />
                   </button>
                   {initialNotes}
                 </div>
@@ -1808,227 +2186,271 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
             {/* Deal Capture Section (admin-gated) */}
             {showDealCapture && (
-            <div style={{ marginTop: initialNotes ? 16 : 0 }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+              borderRadius: '16px',
+              padding: '32px',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              marginTop: initialNotes ? 16 : 0,
+              fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+              position: 'relative'
+            }}>
+              {/* Subtle accent border */}
               <div style={{
-                fontSize: 12,
+                position: 'absolute',
+                top: 0,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '60px',
+                height: '3px',
+                background: 'linear-gradient(90deg, #3690CE, #60A5FA)',
+                borderRadius: '0 0 8px 8px'
+              }}></div>
+              
+              <div style={{
+                fontSize: '18px',
                 fontWeight: 600,
-                color: colours.blue,
-                marginBottom: 8,
+                color: '#0F172A',
+                marginBottom: '24px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4
+                gap: '12px',
+                padding: '12px 20px',
+                background: 'rgba(255, 255, 255, 0.7)',
+                borderRadius: '12px',
+                border: '1px solid rgba(54, 144, 206, 0.1)'
               }}>
-                <Icon iconName="Clock" styles={{ root: { fontSize: 12 } }} />
+                <Icon iconName="Clock" styles={{ root: { fontSize: 16, color: '#3690CE' } }} />
                 Scope & Quote Description
               </div>
-              <Stack tokens={{ childrenGap: 12 }}>
-                <div>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                    marginBottom: 8,
-                    gap: 6,
-                    flexWrap: 'wrap'
+              
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{
+                  marginBottom: '20px',
+                  padding: '20px',
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(226, 232, 240, 0.8)'
+                }}>
+                  <label style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: '#1E293B',
+                    marginBottom: '12px',
+                    display: 'block'
                   }}>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    Quick Templates
+                  </label>
+                  
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    gap: '12px'
+                  }}>
+                    {[
+                      {
+                        title: 'Commercial/Shareholder Dispute',
+                        template: `Advice and representation in relation to a commercial, shareholder or partnership dispute.\n\nOur service includes:\n- Initial review of relevant agreements and correspondence\n- Assessment of legal position and available remedies\n- Strategic advice on next steps and resolution options\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`
+                      },
+                      {
+                        title: 'Construction Dispute',
+                        template: `Advice and representation for construction disputes, including adjudication.\n\nOur service includes:\n- Review of contract documents and payment history\n- Assessment of breach, termination or payment issues\n- Guidance on adjudication or court process\n- Practical advice to protect your position\n\nEstimated fee: [AMOUNT]`
+                      },
+                      {
+                        title: 'Property Dispute',
+                        template: `Advice and representation in relation to property disputes or evictions.\n\nOur service includes:\n- Review of lease, tenancy or title documents\n- Assessment of grounds for possession or dispute\n- Guidance on process and timescales\n- Practical steps to protect your interests\n\nEstimated fee: [AMOUNT]`
+                      },
+                      {
+                        title: 'Debt Recovery',
+                        template: `Advice and action in relation to debt recovery or statutory demands.\n\nOur service includes:\n- Review of debt and supporting documents\n- Assessment of recovery options and risks\n- Preparation and service of statutory demand or claim\n- Guidance on defended claims and court process\n\nEstimated fee: [AMOUNT]`
+                      },
+                      {
+                        title: 'Other',
+                        template: `Advice and representation in relation to other commercial disputes.\n\nOur service includes:\n- Initial review and assessment of your issue\n- Guidance on process, options and likely outcomes\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`
+                      }
+                    ].map((item, index) => (
                       <button
+                        key={index}
                         onClick={() => {
-                          const template = `Advice and representation in relation to a commercial, shareholder or partnership dispute.\n\nOur service includes:\n- Initial review of relevant agreements and correspondence\n- Assessment of legal position and available remedies\n- Strategic advice on next steps and resolution options\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`;
-                          setScopeDescription(template);
-                          onScopeDescriptionChange?.(template);
+                          setScopeDescription(item.template);
+                          onScopeDescriptionChange?.(item.template);
                         }}
                         style={{
-                          padding: '4px 8px',
-                          fontSize: 11,
-                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
-                          borderRadius: '4px',
+                          padding: '12px 16px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          color: '#475569',
+                          background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                          border: '1px solid #CBD5E1',
+                          borderRadius: '8px',
                           cursor: 'pointer',
-                          fontWeight: 400,
-                          transition: 'all 0.2s ease'
+                          transition: 'all 0.2s ease',
+                          textAlign: 'left',
+                          minHeight: '48px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          fontFamily: 'inherit',
+                          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
-                          e.currentTarget.style.borderColor = colours.blue;
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
+                          e.currentTarget.style.borderColor = '#3690CE';
+                          e.currentTarget.style.color = '#3690CE';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px 0 rgba(54, 144, 206, 0.25)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
-                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                          e.currentTarget.style.borderColor = '#CBD5E1';
+                          e.currentTarget.style.color = '#475569';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
                         }}
-                        title="Insert commercial/shareholder dispute template"
-                      >Commercial/Shareholder Dispute</button>
-                      <button
-                        onClick={() => {
-                          const template = `Advice and representation for construction disputes, including adjudication.\n\nOur service includes:\n- Review of contract documents and payment history\n- Assessment of breach, termination or payment issues\n- Guidance on adjudication or court process\n- Practical advice to protect your position\n\nEstimated fee: [AMOUNT]`;
-                          setScopeDescription(template);
-                          onScopeDescriptionChange?.(template);
-                        }}
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: 11,
-                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: 400,
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
-                          e.currentTarget.style.borderColor = colours.blue;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
-                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
-                        }}
-                        title="Insert construction dispute template"
-                      >Construction Dispute</button>
-                      <button
-                        onClick={() => {
-                          const template = `Advice and representation in relation to property disputes or evictions.\n\nOur service includes:\n- Review of lease, tenancy or title documents\n- Assessment of grounds for possession or dispute\n- Guidance on process and timescales\n- Practical steps to protect your interests\n\nEstimated fee: [AMOUNT]`;
-                          setScopeDescription(template);
-                          onScopeDescriptionChange?.(template);
-                        }}
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: 11,
-                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: 400,
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
-                          e.currentTarget.style.borderColor = colours.blue;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
-                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
-                        }}
-                        title="Insert property dispute template"
-                      >Property Dispute</button>
-                      <button
-                        onClick={() => {
-                          const template = `Advice and action in relation to debt recovery or statutory demands.\n\nOur service includes:\n- Review of debt and supporting documents\n- Assessment of recovery options and risks\n- Preparation and service of statutory demand or claim\n- Guidance on defended claims and court process\n\nEstimated fee: [AMOUNT]`;
-                          setScopeDescription(template);
-                          onScopeDescriptionChange?.(template);
-                        }}
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: 11,
-                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: 400,
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
-                          e.currentTarget.style.borderColor = colours.blue;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
-                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
-                        }}
-                        title="Insert debt recovery template"
-                      >Debt Recovery</button>
-                      <button
-                        onClick={() => {
-                          const template = `Advice and representation in relation to other commercial disputes.\n\nOur service includes:\n- Initial review and assessment of your issue\n- Guidance on process, options and likely outcomes\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`;
-                          setScopeDescription(template);
-                          onScopeDescriptionChange?.(template);
-                        }}
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: 11,
-                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: 400,
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
-                          e.currentTarget.style.borderColor = colours.blue;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
-                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
-                        }}
-                        title="Insert other dispute template"
-                      >Other</button>
-                    </div>
+                        title={`Insert ${item.title.toLowerCase()} template`}
+                      >
+                        {item.title}
+                      </button>
+                    ))}
                   </div>
+                </div>
+                
+                <div style={{ 
+                  marginBottom: '24px',
+                  padding: '20px',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(203, 213, 225, 0.6)'
+                }}>
+                  <label style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: '#1E293B',
+                    marginBottom: '8px',
+                    display: 'block'
+                  }}>
+                    Service Description
+                  </label>
+                  
                   <TextField
                     multiline
                     autoAdjustHeight
-                    rows={3}
+                    rows={4}
                     value={scopeDescription}
                     onChange={handleScopeDescriptionChange}
                     placeholder="Describe what we will be doing and charging..."
                     styles={{
                       field: { 
-                        fontSize: 13,
-                        backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-                        color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                        resize: 'vertical' // Allow manual resize too
+                        fontSize: '14px',
+                        lineHeight: '1.5',
+                        backgroundColor: '#FFFFFF',
+                        color: '#0F172A',
+                        resize: 'vertical',
+                        fontFamily: 'inherit',
+                        padding: '12px 16px'
                       },
                       fieldGroup: { 
-                        border: `1px solid ${isDarkMode ? colours.dark.border : '#d2d0ce'}`,
-                        borderRadius: '4px'
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '8px',
+                        '&:hover': {
+                          borderColor: '#3690CE'
+                        },
+                        '&.is-focused': {
+                          borderColor: '#3690CE',
+                          borderWidth: '2px',
+                          boxShadow: '0 0 0 3px rgba(54, 144, 206, 0.1)'
+                        }
                       }
                     }}
                   />
                 </div>
                 
-                {/* Amount input - now integrated with scope */}
+                {/* Premium Amount Section */}
                 <div style={{
+                  background: 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)',
+                  border: '1px solid #94A3B8',
+                  borderRadius: '12px',
+                  padding: '24px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                  borderRadius: '4px'
+                  gap: '20px',
+                  flexWrap: 'wrap',
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}>
-                  <Icon iconName="Calculator" styles={{ root: { fontSize: 14, color: colours.blue } }} />
-                  <span style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                    minWidth: '80px'
+                  {/* Subtle pattern overlay */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '100px',
+                    height: '100px',
+                    background: 'radial-gradient(circle, rgba(54, 144, 206, 0.05) 0%, transparent 70%)',
+                    borderRadius: '50%',
+                    transform: 'translate(30px, -30px)'
+                  }}></div>
+                  
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    flex: '1',
+                    minWidth: '200px',
+                    position: 'relative',
+                    zIndex: 1
                   }}>
-                    Amount (£):
-                  </span>
-                  <TextField
-                    value={amountValue}
-                    onChange={handleAmountChange}
-                    placeholder="5000"
-                    errorMessage={amountError || undefined}
-                    styles={{
-                      root: { flex: 1, maxWidth: '150px' },
-                      field: { 
-                        fontSize: 13,
-                        backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-                        color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                        fontWeight: 600
-                      },
-                      fieldGroup: { 
-                        border: `1px solid ${isDarkMode ? colours.dark.border : '#d2d0ce'}`,
-                        borderRadius: '4px'
-                      }
-                    }}
-                  />
+                    <div style={{
+                      padding: '8px',
+                      background: 'rgba(54, 144, 206, 0.1)',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <FaCalculator style={{ fontSize: 16, color: '#3690CE', flexShrink: 0 }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        color: '#1E293B',
+                        marginBottom: '4px',
+                        display: 'block'
+                      }}>
+                        Estimated Fee (£)
+                      </label>
+                      <TextField
+                        value={amountValue}
+                        onChange={handleAmountChange}
+                        placeholder="5000"
+                        errorMessage={amountError || undefined}
+                        styles={{
+                          field: { 
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            backgroundColor: '#FFFFFF',
+                            color: '#0F172A',
+                            fontFamily: 'inherit'
+                          },
+                          fieldGroup: { 
+                            border: '1px solid #94A3B8',
+                            borderRadius: '6px',
+                            minWidth: '120px',
+                            '&:hover': {
+                              borderColor: '#3690CE'
+                            },
+                            '&.is-focused': {
+                              borderColor: '#3690CE',
+                              borderWidth: '2px',
+                              boxShadow: '0 0 0 3px rgba(54, 144, 206, 0.1)'
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* VAT Calculation Display */}
                   {(() => {
                     const amt = parseFloat(amountValue);
                     if (!amountValue || isNaN(amt)) return null;
@@ -2037,37 +2459,104 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     const total = +(amt + vat).toFixed(2);
                     const fmt = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     return (
-                      <div
-                        title={`Ex VAT: ${fmt(amt)}  •  VAT (20%): ${fmt(vat)}  •  Total inc VAT: ${fmt(total)}`}
-                        style={{
-                          marginLeft: 'auto',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          flexWrap: 'wrap',
-                          background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                          borderRadius: 4,
-                          padding: '4px 8px'
-                        }}
-                      >
-                        <span style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#666' }}>VAT 20%:</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.darkBlue }}>{fmt(vat)}</span>
-                        <span style={{ opacity: 0.4 }}>·</span>
-                        <span style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#666' }}>Total inc VAT:</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: colours.blue }}>{fmt(total)}</span>
+                      <div style={{
+                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '12px',
+                        padding: '20px',
+                        minWidth: '240px',
+                        position: 'relative',
+                        zIndex: 1,
+                        boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.05)'
+                      }}>
+                        <div style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#3690CE',
+                          marginBottom: '12px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          Cost Breakdown
+                        </div>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'auto 1fr',
+                          gap: '8px 12px',
+                          alignItems: 'center'
+                        }}>
+                          <span style={{ fontSize: '13px', color: '#64748B' }}>Ex VAT:</span>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>{fmt(amt)}</span>
+                          
+                          <span style={{ fontSize: '13px', color: '#64748B' }}>VAT (20%):</span>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>{fmt(vat)}</span>
+                          
+                          <div style={{ gridColumn: '1 / -1', height: '1px', background: 'linear-gradient(90deg, #E2E8F0, #CBD5E1, #E2E8F0)', margin: '8px 0' }}></div>
+                          
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>Total inc VAT:</span>
+                          <span style={{ 
+                            fontSize: '16px', 
+                            fontWeight: 700, 
+                            color: '#3690CE', 
+                            textAlign: 'right',
+                            background: 'linear-gradient(135deg, #3690CE, #60A5FA)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent'
+                          }}>{fmt(total)}</span>
+                        </div>
                       </div>
                     );
                   })()}
                 </div>
-              </Stack>
+              </div>
             </div>
             )}
-          </div>
 
           {/* Template blocks removed in simplified flow */}
+          </div>
+        )}
         </div>
       </Stack>
+      </div>
+
+      {/* Additional styling for hover reveals and list styling */}
+      <style>{`
+        .inline-reveal-btn {display:inline-flex;align-items:center;gap:0;overflow:hidden;position:relative;}
+        .inline-reveal-btn .label{max-width:0;opacity:0;transform:translateX(-4px);margin-left:0;white-space:nowrap;transition:max-width .45s ease,opacity .45s ease,transform .45s ease,margin-left .45s ease;}
+        .inline-reveal-btn:hover .label,.inline-reveal-btn:focus-visible .label{max-width:90px;opacity:1;transform:translateX(0);margin-left:6px;}
+        @keyframes fadeSlideIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes cascadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+        .smooth-appear{animation:fadeSlideIn .18s ease}
+        
+        /* Numbered list styling with CTA red numbers */
+        ol:not(.hlx-numlist) {
+          counter-reset: list-counter;
+          list-style: none;
+          padding-left: 0;
+          margin: 16px 0;
+        }
+        ol:not(.hlx-numlist) li {
+          counter-increment: list-counter;
+          position: relative;
+          padding-left: 2em;
+          margin-bottom: 12px;
+          line-height: 1.6;
+        }
+        ol:not(.hlx-numlist) li::before {
+          content: counter(list-counter) ".";
+          position: absolute;
+          left: 0;
+          top: 0;
+          color: #D65541;
+          font-weight: 700;
+          margin: 0;
+        }
+        ol.hlx-numlist { list-style: none; padding-left: 0; margin: 16px 0; }
+        ol.hlx-numlist li { margin: 0 0 12px 0; line-height: 1.6; position: relative; }
+        ol.hlx-numlist li::before { content: none !important; }
+        ol.hlx-numlist > li > span:first-child { color: #D65541; font-weight: 700; display: inline-block; min-width: 1.6em; }
+      `}</style>
     </>
   );
 };
