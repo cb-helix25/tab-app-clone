@@ -1272,6 +1272,27 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           background-color: rgba(54, 144, 206, 0.15);
           color: #1E293B;
         }
+
+        /* Keyframe animation for radio button check */
+        @keyframes radio-check {
+          from {
+            transform: translate(-50%, -50%) scale(0);
+          }
+          to {
+            transform: translate(-50%, -50%) scale(1);
+          }
+        }
+
+        @keyframes cascadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
           --grey-50: #F9FAFB;
           --grey-100: #F3F4F6;
           --grey-200: #E5E7EB;
@@ -1453,10 +1474,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             
             {!isTemplatesCollapsed && (
               <div style={{ 
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                gap: 12,
-                padding: '12px',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gridTemplateRows: 'repeat(2, 1fr)',
+                gap: '16px',
+                padding: '16px',
                 background: 'rgba(255, 255, 255, 0.5)',
                 borderRadius: '12px',
                 border: '1px solid rgba(203, 213, 225, 0.6)',
@@ -1467,6 +1489,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 {SCENARIOS.map((s, index) => (
                   <button
                     key={s.id}
+                    type="button"
+                    className={`premium-professional-choice-card ${selectedScenarioId === s.id ? 'active' : ''}`}
+                    aria-pressed={selectedScenarioId === s.id}
+                    role="radio"
                     onClick={() => {
                       setSelectedScenarioId(s.id);
                       setIsTemplatesCollapsed(true); // Collapse after selection
@@ -1490,47 +1516,118 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       }
                     }}
                     style={{
-                      padding: '10px 16px',
-                      fontSize: '13px',
-                      fontWeight: 500,
+                      position: 'relative',
+                      background: '#ffffff',
+                      border: '1px solid #e5e7eb',
                       borderRadius: '8px',
-                      border: `1px solid ${selectedScenarioId === s.id ? '#3690CE' : '#CBD5E1'}`,
-                      background: selectedScenarioId === s.id 
-                        ? 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)' 
-                        : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                      color: selectedScenarioId === s.id ? '#3690CE' : '#475569',
+                      padding: '20px 24px',
                       cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedScenarioId === s.id 
-                        ? '0 4px 8px rgba(54, 144, 206, 0.25)' 
-                        : '0 1px 3px rgba(0, 0, 0, 0.1)',
-                      transform: selectedScenarioId === s.id ? 'translateY(-1px)' : 'translateY(0)',
+                      transition: 'all 0.25s ease',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '20px',
+                      textAlign: 'left',
+                      minHeight: '100px',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                      transform: 'translateY(0)',
                       animation: `cascadeIn 0.4s ease-out ${index * 0.1}s both`,
                       opacity: 0,
-                      animationFillMode: 'forwards'
+                      animationFillMode: 'forwards',
+                      overflow: 'hidden',
+                      fontFamily: 'inherit'
                     }}
                     onMouseEnter={(e) => {
                       if (selectedScenarioId !== s.id) {
-                        e.currentTarget.style.borderColor = '#3690CE';
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)';
-                        e.currentTarget.style.color = '#3690CE';
+                        e.currentTarget.style.borderColor = '#061733';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.12)';
                         e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(54, 144, 206, 0.15)';
+                        e.currentTarget.style.background = '#fafbfc';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (selectedScenarioId !== s.id) {
-                        e.currentTarget.style.borderColor = '#CBD5E1';
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                        e.currentTarget.style.color = '#475569';
+                        e.currentTarget.style.borderColor = '#e5e7eb';
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.08)';
                         e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                        e.currentTarget.style.background = '#ffffff';
                       }
                     }}
-                    title={s.name}
                   >
-                    {s.name}
+                    {selectedScenarioId === s.id && (
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '3px',
+                        background: '#061733',
+                        borderRadius: '6px 6px 0 0'
+                      }}></div>
+                    )}
+                    
+                    <div className="premium-choice-content" style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}>
+                      <div className="premium-choice-title" style={{
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        color: '#1E293B',
+                        lineHeight: '1.3',
+                        marginBottom: '6px'
+                      }}>
+                        {s.name}
+                      </div>
+                      <div className="premium-choice-description" style={{
+                        fontSize: '14px',
+                        color: '#6b7280',
+                        lineHeight: '1.4',
+                        fontWeight: 400
+                      }}>
+                        {s.name === 'Before call — Call' ? 'Send pitch email before scheduling consultation call' :
+                         s.name === 'Before call — No call' ? 'Send pitch email without scheduling a call' :
+                         s.name === 'After call — Probably can\'t assist' ? 'Polite follow-up when unable to take the case' :
+                         s.name === 'After call — Want the instruction' ? 'Formal proposal after successful consultation' :
+                         'Standard professional response template'}
+                      </div>
+                    </div>
+                    
+                    <div className="premium-choice-indicator" style={{
+                      flexShrink: 0,
+                      marginTop: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <div className="premium-choice-radio" style={{
+                        width: '20px',
+                        height: '20px',
+                        border: '2px solid #d1d5db',
+                        borderRadius: '50%',
+                        background: '#ffffff',
+                        position: 'relative',
+                        transition: 'all 0.25s ease',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                        borderColor: selectedScenarioId === s.id ? '#061733' : '#d1d5db',
+                        backgroundColor: selectedScenarioId === s.id ? '#061733' : '#ffffff'
+                      }}>
+                        {selectedScenarioId === s.id && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            width: '5px',
+                            height: '5px',
+                            background: '#ffffff',
+                            borderRadius: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            animation: 'radio-check 0.25s ease 0.1s forwards'
+                          }}></div>
+                        )}
+                      </div>
+                    </div>
                   </button>
                 ))}
               </div>
