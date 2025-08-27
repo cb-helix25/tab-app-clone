@@ -8,9 +8,9 @@ import {
   filterMattersByArea,
   filterMattersByRole,
   applyAdminFilter,
-  hasAdminAccess,
   getUniquePracticeAreas
 } from '../../utils/matterNormalization';
+import { isAdminUser } from '../../app/admin';
 import MatterLineItem from './MatterLineItem';
 import MatterOverview from './MatterOverview';
 import { colours } from '../../app/styles/colours';
@@ -41,7 +41,7 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
 
   const userFullName = userData?.[0]?.FullName?.toLowerCase();
   const userRole = userData?.[0]?.Role?.toLowerCase();
-  const isAdmin = hasAdminAccess(userRole || '', userFullName || '');
+  const isAdmin = isAdminUser(userData?.[0] || null);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   // Debug flag to control verbose logging

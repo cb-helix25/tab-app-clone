@@ -43,7 +43,7 @@ import EnquiryCalls from './EnquiryCalls';
 import EnquiryEmails from './EnquiryEmails';
 import { colours } from '../../app/styles/colours';
 import ToggleSwitch from '../../components/ToggleSwitch';
-import { hasAdminAccess } from '../../utils/matterNormalization';
+import { isAdminUser } from '../../app/admin';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import UnclaimedEnquiries from './UnclaimedEnquiries';
@@ -212,7 +212,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     userRec['Full Name'] ||
     [userRec.First, userRec.Last].filter(Boolean).join(' ')
   )?.toString() || '';
-  const isAdmin = hasAdminAccess(userRole, userFullName);
+  const isAdmin = isAdminUser(userData?.[0] || null);
   // Debug storage for raw payloads when inspecting
   const [debugRaw, setDebugRaw] = useState<{ legacy?: unknown; direct?: unknown }>({});
   const [debugLoading, setDebugLoading] = useState(false);

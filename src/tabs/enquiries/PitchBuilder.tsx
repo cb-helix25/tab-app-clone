@@ -27,7 +27,7 @@ import ModernMultiSelect from '../instructions/MatterOpening/ModernMultiSelect';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
 import ToggleSwitch from '../../components/ToggleSwitch';
-import { hasAdminAccess } from '../../utils/matterNormalization';
+import { isAdminUser } from '../../app/admin';
 import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
@@ -635,7 +635,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     userRec['Full Name'] ||
     [userRec.First, userRec.Last].filter(Boolean).join(' ')
   )?.toString() || '';
-  const isAdmin = hasAdminAccess(userRole, userFullName);
+  const isAdmin = isAdminUser(userData?.[0] || null);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   // Initial Notes state
   const [initialNotes, setInitialNotes] = useState<string>('');
