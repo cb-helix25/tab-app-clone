@@ -52,11 +52,15 @@ interface NotableCaseInfoFormProps {
 
 interface FormData {
   initials: string;
-  display_number: string;
-  summary: string;
-  value_in_dispute: string;
-  c_reference_status: boolean;
-  counsel_instructed: boolean;
+  context_type: 'C' | 'P'; // C = Client/Matter, P = Prospect/Enquiry
+  display_number: string;  // matter ref when context_type = C
+  prospect_id: string;     // prospect/enquiry ref when context_type = P
+  merit_press: string;     // PR justification
+  summary: string;         // matter/enquiry summary
+  value_in_dispute: string; // band
+  value_in_dispute_exact?: string; // numeric exact > 500k
+  c_reference_status: boolean; // client/prospect prepared to provide reference
+  counsel_instructed: boolean; // only for client matters
   counsel_name: string;
 }
 
@@ -289,9 +293,13 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
 }) => {
   const [formData, setFormData] = useState<FormData>({
     initials: '',
+    context_type: 'C',
     display_number: '',
+    prospect_id: '',
+    merit_press: '',
     summary: '',
     value_in_dispute: '',
+    value_in_dispute_exact: undefined,
     c_reference_status: false,
     counsel_instructed: false,
     counsel_name: '',
@@ -377,7 +385,7 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
     { key: 'Uncertain', text: 'Uncertain' },
   ];
 
-  const handleInputChange = useCallback((field: keyof FormData, value: string | boolean) => {
+  const handleInputChange = useCallback((field: keyof FormData, value: string | boolean | undefined) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -390,10 +398,21 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
   const validateForm = useCallback((): string[] => {
     const errors: string[] = [];
     
-    if (!formData.display_number.trim()) {
-      errors.push('File Reference is required');
+    if (formData.context_type === 'C') {
+      if (!formData.display_number.trim()) {
+        errors.push('File Reference is required');
+      }
+    } else {
+      if (!formData.prospect_id.trim()) {
+        errors.push('Prospect / Enquiry ID is required');
+      }
     }
-    
+    if (formData.value_in_dispute === '£500,001 or more' && formData.value_in_dispute_exact) {
+      const exact = Number(formData.value_in_dispute_exact.replace(/[,£\s]/g, ''));
+      if (isNaN(exact) || exact <= 500000) {
+        errors.push('Exact value must be a number greater than 500,000');
+      }
+    }
     if (!formData.summary.trim()) {
       errors.push('Summary is required');
     }
@@ -419,12 +438,16 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
       // Prepare the payload for the Azure Function
       const payload = {
         initials: users?.[0]?.Initials || '',
-        display_number: formData.display_number,
+        context_type: formData.context_type,
+        display_number: formData.context_type === 'C' ? formData.display_number : null,
+        prospect_id: formData.context_type === 'P' ? formData.prospect_id : null,
+        merit_press: formData.merit_press || null,
         summary: formData.summary,
-        value_in_dispute: formData.value_in_dispute,
+        value_in_dispute: formData.value_in_dispute || null,
+        value_in_dispute_exact: formData.value_in_dispute === '£500,001 or more' ? (formData.value_in_dispute_exact || null) : null,
         c_reference_status: formData.c_reference_status,
-        counsel_instructed: formData.counsel_instructed,
-        counsel_name: formData.counsel_name,
+        counsel_instructed: formData.context_type === 'C' ? formData.counsel_instructed : false,
+        counsel_name: formData.context_type === 'C' && formData.counsel_instructed ? formData.counsel_name : null,
       };
 
       console.log('Notable Case Info Form Payload:', payload);
@@ -456,9 +479,13 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
       setTimeout(() => {
         setFormData({
           initials: users?.[0]?.Initials || '',
+          context_type: formData.context_type,
           display_number: '',
+          prospect_id: '',
+          merit_press: '',
           summary: '',
           value_in_dispute: '',
+          value_in_dispute_exact: undefined,
           c_reference_status: false,
           counsel_instructed: false,
           counsel_name: '',
@@ -482,9 +509,13 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
   const handleReset = useCallback(() => {
     setFormData({
       initials: users?.[0]?.Initials || '',
+      context_type: 'C',
       display_number: '',
+      prospect_id: '',
+      merit_press: '',
       summary: '',
       value_in_dispute: '',
+      value_in_dispute_exact: undefined,
       c_reference_status: false,
       counsel_instructed: false,
       counsel_name: '',
@@ -538,44 +569,136 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
           <div style={premiumSectionStyle}>
             <div style={premiumBannerStyle}>
               <Icon iconName="Contact" style={{ fontSize: '1rem' }} />
-              Case Details
+              {formData.context_type === 'C' ? 'Matter Details' : 'Prospect / Enquiry Details'}
             </div>
             <Stack tokens={{ childrenGap: 20 }}>
+              {/* Context Type Selection */}
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="radio"
+                    id="ctx-client"
+                    name="contextType"
+                    checked={formData.context_type === 'C'}
+                    onChange={() => handleInputChange('context_type', 'C')}
+                  />
+                  <label htmlFor="ctx-client" style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Client Matter</label>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="radio"
+                    id="ctx-prospect"
+                    name="contextType"
+                    checked={formData.context_type === 'P'}
+                    onChange={() => handleInputChange('context_type', 'P')}
+                  />
+                  <label htmlFor="ctx-prospect" style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Prospect / Enquiry</label>
+                </div>
+              </div>
               {/* Matter Reference Field */}
-              <div ref={matterFieldRef} style={{ position: 'relative', width: '100%' }}>
-                <label style={{
-                  fontWeight: '600',
-                  fontSize: '14px',
-                  color: '#374151',
-                  marginBottom: '6px',
-                  display: 'block',
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                }}>
-                  File Reference *
-                </label>
-                <div style={{
-                  borderRadius: '8px',
-                  border: '1px solid rgba(229, 231, 235, 0.4)',
-                  background: 'transparent',
-                  minHeight: '48px',
-                  fontSize: '16px',
-                  transition: 'all 0.2s ease',
-                  position: 'relative',
-                }}>
+              {formData.context_type === 'C' ? (
+                <div ref={matterFieldRef} style={{ position: 'relative', width: '100%' }}>
+                  <label style={{
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    color: '#374151',
+                    marginBottom: '6px',
+                    display: 'block',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                  }}>
+                    File Reference *
+                  </label>
+                  <div style={{
+                    borderRadius: '8px',
+                    border: '1px solid rgba(229, 231, 235, 0.4)',
+                    background: 'transparent',
+                    minHeight: '48px',
+                    fontSize: '16px',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                  }}>
+                    <input
+                      type="text"
+                      value={matterSearchTerm}
+                      onChange={(e) => {
+                        setMatterSearchTerm(e.target.value);
+                        setFormData(prev => ({ ...prev, display_number: e.target.value }));
+                        setMatterDropdownOpen(true);
+                      }}
+                      onFocus={() => setMatterDropdownOpen(true)}
+                      placeholder="Search and select a matter..."
+                      style={{
+                        width: '100%',
+                        height: '48px',
+                        border: 'none',
+                        background: 'transparent',
+                        padding: '0 16px',
+                        fontSize: '16px',
+                        color: '#374151',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                  {matterDropdownOpen && filteredMatters.length > 0 && (
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.98)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(229, 231, 235, 0.6)',
+                      borderRadius: '8px',
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
+                      marginTop: '4px',
+                    }}>
+                      {filteredMatters.map((matter: any, index: number) => {
+                        const displayNumber = matter.displayNumber || '';
+                        const clientName = matter.clientName || '';
+                        const description = matter.description || '';
+                        return (
+                          <div
+                            key={displayNumber + index}
+                            onClick={() => handleMatterSelect(matter)}
+                            style={{
+                              padding: '12px',
+                              cursor: 'pointer',
+                              borderBottom: index < filteredMatters.length - 1 ? '1px solid rgba(229, 231, 235, 0.3)' : 'none',
+                              transition: 'background-color 0.1s ease',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(54, 144, 206, 0.1)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                          >
+                            <div style={{ fontWeight: '600', fontSize: '14px', color: '#374151' }}>{displayNumber}</div>
+                            {clientName && <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>{clientName}</div>}
+                            {description && <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>{description}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ width: '100%' }}>
+                  <label style={{
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    color: '#374151',
+                    marginBottom: '6px',
+                    display: 'block',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                  }}>
+                    Prospect / Enquiry ID *
+                  </label>
                   <input
                     type="text"
-                    value={matterSearchTerm}
-                    onChange={(e) => {
-                      setMatterSearchTerm(e.target.value);
-                      setFormData(prev => ({ ...prev, display_number: e.target.value }));
-                      setMatterDropdownOpen(true);
-                    }}
-                    onFocus={() => setMatterDropdownOpen(true)}
-                    placeholder="Search and select a matter..."
+                    value={formData.prospect_id}
+                    onChange={(e) => handleInputChange('prospect_id', e.target.value)}
+                    placeholder="Enter prospect or enquiry reference"
                     style={{
                       width: '100%',
                       height: '48px',
-                      border: 'none',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(229, 231, 235, 0.4)',
                       background: 'transparent',
                       padding: '0 16px',
                       fontSize: '16px',
@@ -585,59 +708,30 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
                     }}
                   />
                 </div>
-                
-                {/* Custom Dropdown */}
-                {matterDropdownOpen && filteredMatters.length > 0 && (
-                  <div style={{
-                    background: 'rgba(255, 255, 255, 0.98)',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(229, 231, 235, 0.6)',
-                    borderRadius: '8px',
-                    maxHeight: '300px',
-                    overflowY: 'auto',
-                    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
-                    marginTop: '4px',
-                  }}>
-                    {filteredMatters.map((matter: any, index: number) => {
-                      const displayNumber = matter.displayNumber || '';
-                      const clientName = matter.clientName || '';
-                      const description = matter.description || '';
-                      
-                      return (
-                        <div
-                          key={displayNumber + index}
-                          onClick={() => handleMatterSelect(matter)}
-                          style={{
-                            padding: '12px',
-                            cursor: 'pointer',
-                            borderBottom: index < filteredMatters.length - 1 ? '1px solid rgba(229, 231, 235, 0.3)' : 'none',
-                            transition: 'background-color 0.1s ease',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(54, 144, 206, 0.1)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                          }}
-                        >
-                          <div style={{ fontWeight: '600', fontSize: '14px', color: '#374151' }}>
-                            {displayNumber}
-                          </div>
-                          {clientName && (
-                            <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
-                              {clientName}
-                            </div>
-                          )}
-                          {description && (
-                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
-                              {description}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+              )}
+
+              {/* PR Justification Field */}
+              <div>
+                <label style={{
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: '#374151',
+                  marginBottom: '6px',
+                  display: 'block',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                }}>
+                  Summarise in a few sentences why you think this might merit press and/or PR attention
+                </label>
+                <textarea
+                  style={premiumTextAreaStyle}
+                  value={formData.merit_press}
+                  onChange={(e) => handleInputChange('merit_press', e.target.value)}
+                  placeholder="Explain potential press / PR merit"
+                  rows={3}
+                  disabled={isSubmitting}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#3690CE'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(54, 144, 206, 0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(229, 231, 235, 0.4)'; e.currentTarget.style.boxShadow = 'none'; }}
+                />
               </div>
 
               {/* Summary Field */}
@@ -650,7 +744,8 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
                   display: 'block',
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                 }}>
-                  Brief Summary of Case *
+                  {formData.context_type === 'C' ? 'Brief Summary of Matter *' : 'Brief Summary of Enquiry *'}
+                  <span title="Please include here who we act for, who we act against, the central issues in dispute, value, the firm of solicitors and counsel instructed or likely to be instructed, and an overview of next steps. Bullet points are fine" style={{ marginLeft: '6px', cursor: 'help', color: '#2563eb', fontWeight: 400 }}>ⓘ</span>
                 </label>
                 <textarea
                   style={premiumTextAreaStyle}
@@ -690,7 +785,7 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
           <div style={premiumSectionStyle}>
             <div style={premiumBannerStyle}>
               <Icon iconName="Money" style={{ fontSize: '1rem' }} />
-              Case Valuation
+              {formData.context_type === 'C' ? 'Matter Valuation' : 'Potential Value'}
             </div>
             
             {/* Custom Value Dropdown */}
@@ -779,6 +874,26 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
                 </div>
               )}
             </div>
+            {formData.value_in_dispute === '£500,001 or more' && (
+              <div style={{ marginTop: '1rem' }}>
+                <label style={{
+                  fontWeight: '600', fontSize: '14px', color: '#374151', marginBottom: '6px', display: 'block',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                }}>
+                  Exact Value (optional, greater than £500,000)
+                </label>
+                <input
+                  type="text"
+                  value={formData.value_in_dispute_exact || ''}
+                  onChange={(e) => handleInputChange('value_in_dispute_exact', e.target.value)}
+                  placeholder="e.g. 2000000 or £2,000,000"
+                  style={{
+                    width: '100%', height: '48px', borderRadius: '8px', border: '1px solid rgba(229,231,235,0.4)',
+                    background: 'transparent', padding: '0 16px', fontSize: '16px', color: '#374151', outline: 'none'
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Additional Information Section */}
@@ -790,7 +905,7 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
             <Stack tokens={{ childrenGap: 20 }}>
               <div>
                 <Toggle
-                  label="Is Client Prepared to Provide a Reference?"
+                  label={formData.context_type === 'C' ? 'Is Client Prepared to Provide a Reference?' : 'Is Prospect Prepared to Provide a Reference?'}
                   checked={formData.c_reference_status}
                   onChange={(_, checked) => handleInputChange('c_reference_status', checked || false)}
                   disabled={isSubmitting}
@@ -801,25 +916,28 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
                 </div>
               </div>
 
-              <div>
-                <Toggle
-                  label="Is Counsel Instructed?"
-                  checked={formData.counsel_instructed}
-                  onChange={(_, checked) => handleInputChange('counsel_instructed', checked || false)}
-                  disabled={isSubmitting}
-                  styles={premiumToggleStyle}
-                />
-              </div>
-
-              {formData.counsel_instructed && (
-                <TextField
-                  label="Counsel Name"
-                  value={formData.counsel_name}
-                  onChange={(_, value) => handleInputChange('counsel_name', value || '')}
-                  placeholder="Enter counsel name"
-                  disabled={isSubmitting}
-                  styles={premiumInputStyle}
-                />
+              {formData.context_type === 'C' && (
+                <>
+                  <div>
+                    <Toggle
+                      label="Is Counsel Instructed?"
+                      checked={formData.counsel_instructed}
+                      onChange={(_, checked) => handleInputChange('counsel_instructed', checked || false)}
+                      disabled={isSubmitting}
+                      styles={premiumToggleStyle}
+                    />
+                  </div>
+                  {formData.counsel_instructed && (
+                    <TextField
+                      label="Counsel Name"
+                      value={formData.counsel_name}
+                      onChange={(_, value) => handleInputChange('counsel_name', value || '')}
+                      placeholder="Enter counsel name"
+                      disabled={isSubmitting}
+                      styles={premiumInputStyle}
+                    />
+                  )}
+                </>
               )}
             </Stack>
           </div>
