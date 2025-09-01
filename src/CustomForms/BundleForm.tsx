@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Stack, Dropdown, IDropdownOption, ComboBox, IComboBox, IComboBoxOption, TextField, DatePicker, PrimaryButton, DefaultButton, IButtonStyles, IDropdownStyles, IComboBoxStyles, ITextFieldStyles, Icon, Text } from '@fluentui/react';
+import { colours } from '../app/styles/colours';
+import { Stack, Dropdown, IDropdownOption, ComboBox, IComboBox, IComboBoxOption, TextField, DatePicker, PrimaryButton, DefaultButton, IButtonStyles, IDropdownStyles, IComboBoxStyles, ITextFieldStyles, Icon, Text, Label } from '@fluentui/react';
 import { Matter, UserData, NormalizedMatter } from '../app/functionality/types';
 
 // Add spinning animation CSS
@@ -308,8 +309,50 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
     const [name, setName] = useState<string>(users.length > 0 ? users[0].FullName || users[0].Nickname || users[0].Initials || 'Current User' : 'Current User');
     const [matterRef, setMatterRef] = useState<string>('');
     const [bundleLink, setBundleLink] = useState<string>('');
-    const [posted, setPosted] = useState<boolean>(false);
+    const [posted, setPosted] = useState<string[]>([]);
+    interface PostedRecipient { recipient: string; addressee: string; email: string; }
+    const [postedRecipients, setPostedRecipients] = useState<PostedRecipient[]>([]);
+
+    // Theme detection: only dark if explicit class/attribute or stored theme is 'dark'. Defaults to light.
+    const computeIsDark = () => {
+        if (typeof document === 'undefined') return false;
+        if (document.documentElement.classList.contains('dark') || document.body.classList.contains('dark')) return true;
+        const attr = document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme');
+        if (attr === 'dark') return true;
+        try { if (localStorage.getItem('theme') === 'dark') return true; } catch { /* ignore */ }
+        return false; // do NOT auto-follow prefers-color-scheme to avoid mismatch with app light mode
+    };
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(computeIsDark());
+    useEffect(() => {
+        const observer = new MutationObserver(() => setIsDarkMode(computeIsDark()));
+        if (typeof document !== 'undefined') {
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class','data-theme'] });
+            observer.observe(document.body, { attributes: true, attributeFilter: ['class','data-theme'] });
+        }
+        return () => observer.disconnect();
+    }, []);
+    const branchCardStyle = (dark: boolean): React.CSSProperties => ({
+        background: dark ? colours.dark.cardBackground : colours.light.cardBackground,
+        border: `1px solid ${dark ? colours.dark.borderColor : colours.light.borderColor}`,
+        borderRadius: 12,
+        padding: '18px 20px',
+        boxShadow: dark ? '0 4px 10px rgba(0,0,0,0.35)' : '0 4px 10px rgba(0,0,0,0.06)',
+        marginBottom: 20,
+        position: 'relative',
+        transition: 'box-shadow 120ms ease, border-color 120ms ease'
+    });
+    const branchHeaderStyle: React.CSSProperties = {
+        fontSize: 14,
+        fontWeight: 600,
+        marginBottom: 14,
+        paddingBottom: 6,
+        borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+        letterSpacing: '0.35px'
+    };
+    const fieldRowStyle: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 20 };
+    const subtleHelpText: React.CSSProperties = { color: '#6b7280', fontStyle: 'italic', fontSize: 12 };
     const [leftInOffice, setLeftInOffice] = useState<boolean>(false);
+    const [newDestination, setNewDestination] = useState<string>('');
     const [arrivalDate, setArrivalDate] = useState<Date | null>(null);
     const [officeDate, setOfficeDate] = useState<Date | null>(null);
     const [coverLetter, setCoverLetter] = useState<CoverLetter>({ link: '', copies: 1 });
@@ -399,8 +442,8 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
     // Validation function
     const isValid = () => {
         if (!name || !matterRef || !bundleLink) return false;
-        if (!posted && !leftInOffice) return false;
-        if (posted) {
+        if (posted.length === 0 && !leftInOffice) return false;
+        if (posted.length > 0) {
             if (!arrivalDate) return false;
             if (!coverLetter.link || coverLetter.copies < 1) return false;
         }
@@ -435,12 +478,12 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
             matterReference: matterRef,
             bundleLink,
             deliveryOptions: {
-                posted,
+                posted: posted,
                 leftInOffice,
             },
-            arrivalDate: posted ? arrivalDate?.toISOString() : null,
+            arrivalDate: posted.length > 0 ? arrivalDate?.toISOString() : null,
             officeReadyDate: leftInOffice ? officeDate?.toISOString() : null,
-            coveringLetter: posted ? coverLetter : undefined,
+            coveringLetter: posted.length > 0 ? coverLetter : undefined,
             copiesInOffice: leftInOffice ? copiesInOffice : undefined,
             notes: notes || undefined,
         };
@@ -637,14 +680,24 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                             <Icon iconName="DeliveryTruck" style={{ fontSize: '1rem' }} />
                             Delivery Method
                         </div>
-                        <Stack horizontal tokens={{ childrenGap: 12 }}>
+                        
+                        {/* Main Delivery Toggles */}
+                        <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginBottom: '20px' }}>
                             <DefaultButton
                                 text="Posted"
-                                checked={posted}
-                                onClick={() => setPosted(!posted)}
+                                checked={posted.length > 0}
+                                onClick={() => {
+                                    if (posted.length > 0) {
+                                        setPosted([]);
+                                        setPostedRecipients([]);
+                                    } else {
+                                        setPostedRecipients([{ recipient: '', addressee: '', email: '' }]);
+                                        setPosted(['']);
+                                    }
+                                }}
                                 disabled={submitting}
                                 iconProps={{ iconName: 'Send' }}
-                                styles={posted ? { ...toggleStyles, rootChecked: toggleStyles.rootChecked } : toggleStyles}
+                                styles={posted.length > 0 ? { ...toggleStyles, rootChecked: toggleStyles.rootChecked } : toggleStyles}
                             />
                             <DefaultButton
                                 text="Left in office"
@@ -655,74 +708,177 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                                 styles={leftInOffice ? { ...toggleStyles, rootChecked: toggleStyles.rootChecked } : toggleStyles}
                             />
                         </Stack>
+
+                        {/* Posted branch */}
+                        {posted.length > 0 && (
+                            <div style={branchCardStyle(isDarkMode)}>
+                                <div style={branchHeaderStyle}>Posted</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                                    <div>
+                                        <Label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.85 }}>Recipients</Label>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                            {postedRecipients.map((rec, idx) => (
+                                                <div key={idx} style={{
+                                                    display: 'flex',
+                                                    gap: 8,
+                                                    flexWrap: 'wrap',
+                                                    alignItems: 'flex-start',
+                                                    background: isDarkMode ? colours.dark.inputBackground : colours.light.inputBackground,
+                                                    padding: '10px 12px',
+                                                    borderRadius: 10,
+                                                    border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`
+                                                }}>
+                                                    <TextField
+                                                        placeholder="Recipient"
+                                                        value={rec.recipient}
+                                                        onChange={(_, v) => {
+                                                            const next = [...postedRecipients];
+                                                            next[idx] = { ...next[idx], recipient: v || '' };
+                                                            setPostedRecipients(next);
+                                                            setPosted(next.map(x => `${x.recipient}${x.addressee? ' ('+x.addressee+')': ''}${x.email? ' <'+x.email+'>': ''}`.trim()).filter(x => x));
+                                                        }}
+                                                        styles={{ root: { minWidth: 140, flex: 1 } }}
+                                                        disabled={submitting}
+                                                    />
+                                                    <TextField
+                                                        placeholder="Addressee"
+                                                        value={rec.addressee}
+                                                        onChange={(_, v) => {
+                                                            const next = [...postedRecipients];
+                                                            next[idx] = { ...next[idx], addressee: v || '' };
+                                                            setPostedRecipients(next);
+                                                            setPosted(next.map(x => `${x.recipient}${x.addressee? ' ('+x.addressee+')': ''}${x.email? ' <'+x.email+'>': ''}`.trim()).filter(x => x));
+                                                        }}
+                                                        styles={{ root: { minWidth: 140, flex: 1 } }}
+                                                        disabled={submitting}
+                                                    />
+                                                    <TextField
+                                                        placeholder="Email"
+                                                        value={rec.email}
+                                                        onChange={(_, v) => {
+                                                            const next = [...postedRecipients];
+                                                            next[idx] = { ...next[idx], email: v || '' };
+                                                            setPostedRecipients(next);
+                                                            setPosted(next.map(x => `${x.recipient}${x.addressee? ' ('+x.addressee+')': ''}${x.email? ' <'+x.email+'>': ''}`.trim()).filter(x => x));
+                                                        }}
+                                                        styles={{ root: { minWidth: 180, flex: 1 } }}
+                                                        disabled={submitting}
+                                                    />
+                                                    <DefaultButton
+                                                        text="Remove"
+                                                        onClick={() => {
+                                                            const next = postedRecipients.filter((_, i) => i !== idx);
+                                                            setPostedRecipients(next);
+                                                            const formatted = next.map(x => `${x.recipient}${x.addressee? ' ('+x.addressee+')': ''}${x.email? ' <'+x.email+'>': ''}`.trim()).filter(x => x);
+                                                            setPosted(formatted);
+                                                            if (next.length === 0) setPosted([]);
+                                                        }}
+                                                        styles={{
+                                                            root: {
+                                                                fontSize: 11,
+                                                                height: 30,
+                                                                background: isDarkMode ? colours.dark.inputBackground : colours.light.inputBackground,
+                                                                border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
+                                                                color: isDarkMode ? colours.dark.text : colours.light.text,
+                                                                borderRadius: 6,
+                                                                padding: '0 10px'
+                                                            },
+                                                            rootHovered: {
+                                                                background: isDarkMode ? colours.dark.cardHover : colours.light.cardHover
+                                                            }
+                                                        }}
+                                                        disabled={submitting}
+                                                    />
+                                                </div>
+                                            ))}
+                                            <DefaultButton
+                                                text="Add recipient"
+                                                onClick={() => setPostedRecipients([...postedRecipients, { recipient: '', addressee: '', email: '' }])}
+                                                styles={{
+                                                    root: {
+                                                        fontSize: 12,
+                                                        height: 34,
+                                                        alignSelf: 'flex-start',
+                                                        background: isDarkMode ? colours.dark.buttonBackground : colours.light.buttonBackground,
+                                                        color: isDarkMode ? colours.dark.buttonText : colours.light.buttonText,
+                                                        borderRadius: 8,
+                                                        border: 'none',
+                                                        padding: '0 16px',
+                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                                                        transform: 'translateY(0)',
+                                                        transition: 'transform 120ms ease, box-shadow 120ms ease'
+                                                    },
+                                                    rootHovered: {
+                                                        background: isDarkMode ? colours.dark.hoverBackground : colours.light.hoverBackground,
+                                                        transform: 'translateY(-1px)',
+                                                        boxShadow: '0 3px 6px rgba(0,0,0,0.25)'
+                                                    }
+                                                }}
+                                                disabled={submitting}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={fieldRowStyle}>
+                                        <div style={{ minWidth: 200, flex: 1 }}>
+                                            <DatePicker 
+                                                label="Arrival date" 
+                                                value={arrivalDate || undefined} 
+                                                onSelectDate={(date) => setArrivalDate(date ?? null)} 
+                                                styles={premiumDatePickerStyle}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 2, minWidth: 240 }}>
+                                            <TextField
+                                                label="Covering letter link"
+                                                value={coverLetter.link}
+                                                onChange={(_, v) => setCoverLetter((c) => ({ ...c, link: v || '' }))}
+                                                styles={premiumInputStyle}
+                                                placeholder="Link"
+                                            />
+                                        </div>
+                                        <div style={{ width: 140 }}>
+                                            <TextField
+                                                label="Copies"
+                                                type="number"
+                                                value={coverLetter.copies.toString()}
+                                                onChange={(_, v) => setCoverLetter((c) => ({ ...c, copies: Number(v) || 1 }))}
+                                                styles={premiumInputStyle}
+                                            />
+                                        </div>
+                                    </div>
+                                    <Text variant="small" style={subtleHelpText}>Copies to the address on the covering letter</Text>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Left in office branch */}
+                        {leftInOffice && (
+                            <div style={branchCardStyle(isDarkMode)}>
+                                <div style={branchHeaderStyle}>Left in office</div>
+                                <div style={fieldRowStyle}>
+                                    <div style={{ minWidth: 200, flex: 1 }}>
+                                        <DatePicker 
+                                            label="Office-ready date" 
+                                            value={officeDate || undefined} 
+                                            onSelectDate={(date) => setOfficeDate(date ?? null)} 
+                                            styles={premiumDatePickerStyle}
+                                        />
+                                    </div>
+                                    <div style={{ width: 160 }}>
+                                        <TextField
+                                            label="Copies in office"
+                                            type="number"
+                                            value={copiesInOffice.toString()}
+                                            onChange={(_, v) => setCopiesInOffice(Number(v) || 1)}
+                                            styles={premiumInputStyle}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Posted Details */}
-                    {posted && (
-                        <div style={premiumSectionStyle}>
-                            <div style={premiumBannerStyle}>
-                                <Icon iconName="Calendar" style={{ fontSize: '1rem' }} />
-                                Postal Details
-                            </div>
-                            <Stack tokens={{ childrenGap: 20 }}>
-                                <DatePicker 
-                                    label="Arrival date" 
-                                    value={arrivalDate || undefined} 
-                                    onSelectDate={(date) => setArrivalDate(date ?? null)} 
-                                    isRequired 
-                                    styles={premiumDatePickerStyle}
-                                />
-                                <Stack horizontal tokens={{ childrenGap: 20 }}>
-                                    <TextField
-                                        label="Covering letter link"
-                                        value={coverLetter.link}
-                                        onChange={(_, v) => setCoverLetter((c) => ({ ...c, link: v || '' }))}
-                                        required
-                                        styles={{ ...premiumInputStyle, root: { flex: 1 } }}
-                                        placeholder="Enter covering letter link"
-                                    />
-                                    <TextField
-                                        label="No. of copies to address"
-                                        type="number"
-                                        value={coverLetter.copies.toString()}
-                                        onChange={(_, v) => setCoverLetter((c) => ({ ...c, copies: Number(v) || 1 }))}
-                                        required
-                                        styles={{ ...premiumInputStyle, root: { minWidth: '180px' } }}
-                                    />
-                                </Stack>
-                                <Text variant="small" style={{ color: '#6b7280', fontStyle: 'italic' }}>
-                                    This should be to the address on the covering letter uploaded
-                                </Text>
-                            </Stack>
-                        </div>
-                    )}
-
-                    {/* Office Details */}
-                    {leftInOffice && (
-                        <div style={premiumSectionStyle}>
-                            <div style={premiumBannerStyle}>
-                                <Icon iconName="Building" style={{ fontSize: '1rem' }} />
-                                Office Drop-off
-                            </div>
-                            <Stack tokens={{ childrenGap: 20 }}>
-                                <DatePicker 
-                                    label="Office-ready date" 
-                                    value={officeDate || undefined} 
-                                    onSelectDate={(date) => setOfficeDate(date ?? null)} 
-                                    isRequired 
-                                    styles={premiumDatePickerStyle}
-                                />
-                                <TextField
-                                    label="No. of copies in office"
-                                    type="number"
-                                    value={copiesInOffice.toString()}
-                                    onChange={(_, v) => setCopiesInOffice(Number(v) || 1)}
-                                    required
-                                    styles={premiumInputStyle}
-                                />
-                            </Stack>
-                        </div>
-                    )}
+                    {/* Removed separate posted/office detail sections - consolidated above */}
 
                     {/* Additional Notes Section */}
                     <div style={premiumSectionStyle}>
@@ -739,6 +895,32 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
                             styles={premiumInputStyle}
                             placeholder="Enter any additional notes or special instructions..."
                         />
+                    </div>
+
+                    {/* Notification Information Section */}
+                    <div style={{
+                        ...premiumSectionStyle,
+                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%)',
+                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        padding: '16px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                            <Icon iconName="Info" style={{ 
+                                fontSize: '1rem', 
+                                color: '#059669',
+                            }} />
+                            <Text style={{ fontSize: '14px', color: '#374151', fontWeight: '600' }}>
+                                Automatic Notifications
+                            </Text>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '28px' }}>
+                            <Text style={{ fontSize: '13px', color: '#6b7280' }}>
+                                • Asana task created in Bundle project
+                            </Text>
+                            <Text style={{ fontSize: '13px', color: '#6b7280' }}>
+                                • Email sent to <span style={{ fontWeight: '600', color: '#059669' }}>operations@helix-law.com</span>
+                            </Text>
+                        </div>
                     </div>
 
                     {/* Status Feedback Section */}

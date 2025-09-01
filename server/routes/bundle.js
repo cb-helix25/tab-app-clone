@@ -47,6 +47,7 @@ router.post('/', async (req, res) => {
         copiesInOffice,
         notes,
         user,
+        simulate,
     } = req.body || {};
 
     if (!name || !matterReference || !bundleLink) {
@@ -81,8 +82,10 @@ router.post('/', async (req, res) => {
     tokenBody.append('refresh_token', refreshToken);
 
     try {
-        let accessToken = 'mock';
-        if (!inLocalMode()) {
+    let accessToken = 'mock';
+    const usingTestCreds = (clientId && (clientId === 'x' || clientId.startsWith('test'))) || (refreshToken && refreshToken.startsWith('test'));
+    const forceSimulate = simulate === true;
+    if (!inLocalMode() && !usingTestCreds && !forceSimulate) {
             const tokenResp = await fetch('https://app.asana.com/-/oauth_token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -125,8 +128,8 @@ router.post('/', async (req, res) => {
             descriptionParts.push('', `📝 Notes: ${notes}`);
         }
         
-        if (deliveryOptions.posted) {
-            descriptionParts.push('', '📮 POSTED TO OPPONENT');
+        if (deliveryOptions.posted && Array.isArray(deliveryOptions.posted) && deliveryOptions.posted.length > 0) {
+            descriptionParts.push('', `📮 POSTED TO: ${deliveryOptions.posted.join(', ')}`);
             if (arrivalDate) {
                 const formattedDate = formatDate(arrivalDate);
                 descriptionParts.push(`📅 Arrival date: ${formattedDate}`);
@@ -155,7 +158,7 @@ router.post('/', async (req, res) => {
             }
         };
 
-        if (!inLocalMode()) {
+    if (!inLocalMode() && !usingTestCreds && !forceSimulate) {
             const resp = await fetch('https://app.asana.com/api/1.0/tasks', {
                 method: 'POST',
                 headers: {
@@ -170,10 +173,83 @@ router.post('/', async (req, res) => {
                 return res.status(500).json({ error: 'Asana task creation failed' });
             }
             const data = await resp.json();
-            return res.json({ ok: true, task: data.data });
+
+            // Send email notification to operations@helix-law.com
+            try {
+                const emailSubject = `New Bundle Task: ${matterReference}`;
+                const emailContent = `
+                    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                            <h2 style="margin: 0; font-size: 24px;">📋 Bundle Task Created</h2>
+                        </div>
+                        <div style="padding: 20px;">
+                            <div style="background: #f8fafc; border-left: 4px solid #0078d4; padding: 15px; margin-bottom: 20px;">
+                                <strong>Matter:</strong> ${matterReference}<br>
+                                <strong>Bundle Name:</strong> ${name}
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <strong>Bundle Link:</strong><br>
+                                <a href="${bundleLink}" style="color: #0078d4; text-decoration: none;">${bundleLink}</a>
+                            </div>
+
+                            ${deliveryOptions.posted && Array.isArray(deliveryOptions.posted) && deliveryOptions.posted.length > 0 ? `
+                            <div style="background: #e8f4fd; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                                <strong>📮 Posted to:</strong> ${deliveryOptions.posted.join(', ')}<br>
+                                ${arrivalDate ? `<strong>📅 Arrival date:</strong> ${formatDate(arrivalDate)}<br>` : ''}
+                                ${coveringLetter && coveringLetter.link ? `<strong>📄 Covering letter:</strong> <a href="${coveringLetter.link}" style="color: #0078d4;">${coveringLetter.link}</a> (${coveringLetter.copies} ${coveringLetter.copies === 1 ? 'copy' : 'copies'})<br>` : ''}
+                            </div>
+                            ` : ''}
+
+                            ${deliveryOptions.leftInOffice ? `
+                            <div style="background: #fff4e6; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                                <strong>🏢 Copies left in office</strong><br>
+                                ${officeReadyDate ? `<strong>📅 Office-ready date:</strong> ${formatDate(officeReadyDate)}<br>` : ''}
+                                ${copiesInOffice ? `<strong>📋 Number of copies:</strong> ${copiesInOffice}<br>` : ''}
+                            </div>
+                            ` : ''}
+
+                            ${notes ? `
+                            <div style="margin-bottom: 15px;">
+                                <strong>📝 Notes:</strong><br>
+                                ${notes}
+                            </div>
+                            ` : ''}
+
+                            <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; margin-top: 20px;">
+                                <strong>ℹ️ This bundle task has been automatically created in Asana.</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Re-use existing Azure Function /api/sendEmail (proxied) to send operations notification
+                const emailPayload = {
+                    user_email: 'operations@helix-law.com',
+                    subject: emailSubject,
+                    email_contents: emailContent,
+                    from_email: 'automations@helix-law.com'
+                };
+                const emailResp = await fetch(`${process.env.PUBLIC_BASE_URL || ''}/api/sendEmail`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(emailPayload)
+                });
+                if (!emailResp.ok) {
+                    const errText = await emailResp.text();
+                    console.warn('Bundle notification email failed', errText);
+                } else {
+                    console.log('Bundle notification email sent');
+                }
+            } catch (emailErr) {
+                console.warn('Email notification error:', emailErr);
+                // Don't fail the whole request if email fails
+            }
+
+            return res.json({ ok: true, task: data.data, mode: 'live' });
         } else {
-            console.log('Local mode - skipping Asana task creation');
-            return res.json({ ok: true, simulated: true });
+            console.log('Simulated mode - skipping Asana task creation and email notification');
+            return res.json({ ok: true, simulated: true, mode: forceSimulate ? 'forced' : (usingTestCreds ? 'test-credentials' : (inLocalMode() ? 'local' : 'auto-skip')) });
         }
     } catch (err) {
         console.error('Bundle submission failed', err);
