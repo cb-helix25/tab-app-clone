@@ -200,6 +200,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [useNewData, setUseNewData] = useState<boolean>(false);
   // Admin-only: control visibility of Deal Capture (Scope & Quote Description + Amount)
   const [showDealCapture, setShowDealCapture] = useState<boolean>(false);
+  
+  // Auto-refresh state
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [nextRefreshIn, setNextRefreshIn] = useState<number>(30 * 60); // 30 minutes in seconds
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   // Admin check (match Matters logic) – be robust to spaced keys and fallbacks
   const userRec: any = (userData && userData[0]) ? userData[0] : {};
@@ -483,6 +490,81 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       }
     }
   }, [displayEnquiries, handleSelectEnquiry]);
+
+  // Auto-refresh functionality
+  const handleManualRefresh = useCallback(async () => {
+    console.log('🔄 Manual refresh triggered');
+    console.log('isRefreshing:', isRefreshing);
+    console.log('onRefreshEnquiries available:', !!onRefreshEnquiries);
+    
+    if (isRefreshing) {
+      console.log('❌ Already refreshing, skipping');
+      return;
+    }
+    
+    if (!onRefreshEnquiries) {
+      console.log('❌ No onRefreshEnquiries function provided');
+      alert('Refresh function not available. Please check the parent component.');
+      return;
+    }
+    
+    setIsRefreshing(true);
+    console.log('✅ Starting refresh...');
+    
+    try {
+      await onRefreshEnquiries();
+      setLastRefreshTime(new Date());
+      setNextRefreshIn(30 * 60); // Reset to 30 minutes
+      console.log('✅ Refresh completed successfully');
+    } catch (error) {
+      console.error('❌ Failed to refresh enquiries:', error);
+      alert(`Refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsRefreshing(false);
+      console.log('🏁 Refresh process finished');
+    }
+  }, [isRefreshing, onRefreshEnquiries]);
+
+  // Auto-refresh timer (30 minutes)
+  useEffect(() => {
+    const startAutoRefresh = () => {
+      // Clear existing intervals
+      if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+
+      // Set up 30-minute auto-refresh
+      refreshIntervalRef.current = setInterval(() => {
+        handleManualRefresh();
+      }, 30 * 60 * 1000); // 30 minutes
+
+      // Set up countdown timer (updates every minute)
+      countdownIntervalRef.current = setInterval(() => {
+        setNextRefreshIn(prev => {
+          const newValue = prev - 60;
+          return newValue <= 0 ? 30 * 60 : newValue;
+        });
+      }, 60 * 1000); // 1 minute
+    };
+
+    startAutoRefresh();
+
+    return () => {
+      if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, [handleManualRefresh]);
+
+  // Format time remaining for display
+  const formatTimeRemaining = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${remainingMinutes}m`;
+    }
+    return `${remainingMinutes}m`;
+  };
 
   const handleRate = useCallback((id: string) => {
     setRatingEnquiryId(id);
@@ -960,6 +1042,19 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   // Global Navigator: list vs detail
   useEffect(() => {
+    // Add CSS animation for spinning refresh icon
+    if (typeof document !== 'undefined' && !document.getElementById('refreshSpinAnimation')) {
+      const style = document.createElement('style');
+      style.id = 'refreshSpinAnimation';
+      style.textContent = `
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     // List mode: filter/search bar in Navigator (like Matters list state)
     if (!selectedEnquiry) {
       setContent(
@@ -1008,6 +1103,89 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             />
           </div>
           <div style={{ flex: 1 }} />
+          
+          {/* Refresh indicator and manual refresh button */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 14px',
+            borderRadius: 8,
+            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+            border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
+            fontSize: 12,
+            color: isDarkMode ? colours.dark.subText : colours.light.subText
+          }}>
+            <Icon 
+              iconName={isRefreshing ? "Sync" : "Clock"} 
+              style={{ 
+                fontSize: 14, 
+                color: isRefreshing ? colours.blue : (isDarkMode ? colours.dark.subText : colours.light.subText),
+                animation: isRefreshing ? 'spin 1s linear infinite' : 'none'
+              }} 
+            />
+            <span style={{ fontSize: 11, fontWeight: 500 }}>
+              {isRefreshing ? 'Refreshing...' : `Next: ${formatTimeRemaining(nextRefreshIn)}`}
+            </span>
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              title="Refresh now"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '4px 8px',
+                border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                borderRadius: 4,
+                backgroundColor: isRefreshing 
+                  ? (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)')
+                  : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+                color: isRefreshing 
+                  ? (isDarkMode ? colours.dark.subText : colours.light.subText)
+                  : (isDarkMode ? colours.dark.text : colours.light.text),
+                fontSize: 11,
+                fontWeight: 500,
+                fontFamily: 'Raleway, sans-serif',
+                cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s ease',
+                opacity: isRefreshing ? 0.5 : 0.8
+              }}
+              onMouseEnter={(e) => {
+                if (!isRefreshing) {
+                  e.currentTarget.style.opacity = '1';
+                  e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isRefreshing) {
+                  e.currentTarget.style.opacity = '0.8';
+                  e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+                }
+              }}
+            >
+              <Icon 
+                iconName={isRefreshing ? "Sync" : "Refresh"} 
+                style={{ 
+                  fontSize: 12,
+                  animation: isRefreshing ? 'spin 1s linear infinite' : 'none'
+                }} 
+              />
+              <span>{isRefreshing ? 'Updating...' : 'Update Now'}</span>
+            </button>
+          </div>
+          
+          {/* Column toggle for production */}
+          <ToggleSwitch 
+            id="enquiries-column-toggle" 
+            checked={twoColumn} 
+            onChange={setTwoColumn} 
+            size="sm" 
+            onText="2-col" 
+            offText="1-col" 
+            ariaLabel="Toggle two column layout" 
+          />
+          
           {(isAdmin || isLocalhost) && (
             <div
               style={{
@@ -1029,7 +1207,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               />
               <ToggleSwitch id="enquiries-new-data-toggle" checked={useNewData} onChange={setUseNewData} size="sm" onText="New" offText="Legacy" ariaLabel="Toggle dataset between legacy and new" />
               <ToggleSwitch id="enquiries-scope-toggle" checked={showMineOnly} onChange={setShowMineOnly} size="sm" onText="Mine" offText="All" ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries" />
-              <ToggleSwitch id="enquiries-two-column-toggle" checked={twoColumn} onChange={setTwoColumn} size="sm" onText="2-col" offText="1-col" ariaLabel="Toggle two column layout" />
             </div>
           )}
         </div>
@@ -1106,9 +1283,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     showMineOnly,
     twoColumn,
     activeSubTab,
-  showDealCapture,
+    showDealCapture,
     handleSubTabChange,
     handleBackToList,
+    isRefreshing,
+    nextRefreshIn,
+    formatTimeRemaining,
+    handleManualRefresh,
   ]);
 
   return (

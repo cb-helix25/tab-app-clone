@@ -220,44 +220,67 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, userEmail
 
       {/* Actions */}
       <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8,
-        maxHeight: showActions || selected ? 60 : 0,
+        display: 'flex', 
+        flexDirection: 'column', 
+        marginTop: 8,
+        transition: 'max-height 0.35s cubic-bezier(.4,0,.2,1), padding 0.35s cubic-bezier(.4,0,.2,1)',
+        maxHeight: showActions || selected ? 70 : 0,
         paddingTop: showActions || selected ? 4 : 0,
         paddingBottom: showActions || selected ? 8 : 0,
         overflow: 'hidden',
       }}>
-        {(() => {
-          const buttons = [
-            { key: 'claim', label: 'Claim', colourType: 'primary', disabled: false },
-            { key: 'delegate', label: 'Delegate', colourType: 'blue', disabled: true },
-            { key: 'triage', label: 'Triage', colourType: 'blue', disabled: true },
-            { key: 'redirect', label: 'Redirect', colourType: 'yellow', disabled: true },
-            { key: 'cant', label: "Can't Assist", colourType: 'red', disabled: true },
-          ] as const;
-          return buttons.map(btn => {
-            const baseColour = btn.key === 'claim' ? colours.blue : btn.colourType === 'yellow' ? '#FFD600' : btn.colourType === 'red' ? colours.cta : colours.blue;
-            const isClaim = btn.key === 'claim';
-            return (
-              <button
-                key={btn.key}
-                onClick={btn.disabled ? undefined : (btn.key === 'claim' ? handleClaim : (e => { e.stopPropagation(); handleSelect(); }))}
-                disabled={btn.disabled || (btn.key === 'claim' && isLoading)}
-                className={mergeStyles({
-                  background: isClaim && selected ? baseColour : 'transparent',
-                  color: btn.disabled || (btn.key === 'claim' && isLoading) ? '#9aa4b1' : (isClaim ? (selected ? '#fff' : baseColour) : colours.greyText),
-                  border: `1.5px solid ${isClaim ? baseColour : 'transparent'}`,
-                  padding: '6px 14px',
-                  borderRadius: 20,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: btn.disabled || (btn.key === 'claim' && isLoading) ? 'not-allowed' : 'pointer',
-                  boxShadow: 'none',
-                  transition: 'background .25s, color .25s, border .25s',
-                })}
-              >{btn.key === 'claim' && isLoading ? 'Claiming...' : btn.label}</button>
-            );
-          });
-        })()}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {(() => {
+            const buttons = [
+              { key: 'claim', label: 'Claim', colourType: 'primary', disabled: false },
+              { key: 'delegate', label: 'Delegate', colourType: 'blue', disabled: true },
+              { key: 'triage', label: 'Triage', colourType: 'blue', disabled: true },
+              { key: 'redirect', label: 'Redirect', colourType: 'yellow', disabled: true },
+              { key: 'cant', label: "Can't Assist", colourType: 'red', disabled: true },
+            ] as const;
+            return buttons.map((btn, idx) => {
+              const delay = (showActions || selected) ? 120 + idx * 70 : (buttons.length - 1 - idx) * 65;
+              const baseColour = btn.key === 'claim' ? colours.blue : btn.colourType === 'yellow' ? '#FFD600' : btn.colourType === 'red' ? colours.cta : colours.blue;
+              const isClaim = btn.key === 'claim';
+              return (
+                <button
+                  key={btn.key}
+                  onClick={btn.disabled ? undefined : (btn.key === 'claim' ? handleClaim : (e => { e.stopPropagation(); handleSelect(); }))}
+                  disabled={btn.disabled || (btn.key === 'claim' && isLoading)}
+                  className={mergeStyles({
+                    background: isClaim && selected ? baseColour : 'transparent',
+                    color: btn.disabled || (btn.key === 'claim' && isLoading) ? '#9aa4b1' : (isClaim ? (selected ? '#fff' : baseColour) : colours.greyText),
+                    border: `1.5px solid ${isClaim ? baseColour : 'transparent'}`,
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: btn.disabled || (btn.key === 'claim' && isLoading) ? 'not-allowed' : 'pointer',
+                    opacity: showActions || selected ? 1 : 0,
+                    transform: showActions || selected ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
+                    transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s, border-radius .35s cubic-bezier(.4,0,.2,1)',
+                    transitionDelay: `${delay}ms`,
+                    selectors: {
+                      ':hover': !btn.disabled && btn.key !== 'claim' ? { 
+                        background: '#f4f6f8', 
+                        color: colours.blue, 
+                        borderRadius: 6 
+                      } : btn.key === 'claim' && !btn.disabled ? {
+                        background: colours.blue,
+                        color: '#fff',
+                        borderRadius: 6
+                      } : {},
+                      ':active': !btn.disabled ? { 
+                        transform: 'scale(0.95)',
+                        borderRadius: 6 
+                      } : {},
+                    },
+                  })}
+                >{btn.key === 'claim' && isLoading ? 'Claiming...' : btn.label}</button>
+              );
+            });
+          })()}
+        </div>
       </div>
     </div>
   );
