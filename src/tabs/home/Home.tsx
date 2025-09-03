@@ -987,18 +987,6 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   }, [isActionsLoading]);
 
   // DEBUG: Log state transitions for diagnosing hanging immediate actions
-  React.useEffect(() => {
-    // Only log when something relevant changes
-    /* eslint-disable no-console */
-    console.log('[ImmediateActions] states', {
-      isLoadingAttendance,
-      isLoadingAnnualLeave,
-      isActionsLoading,
-      immediateActionsReady,
-    });
-    /* eslint-enable no-console */
-  }, [isLoadingAttendance, isLoadingAnnualLeave, isActionsLoading, immediateActionsReady]);
-
   // Show immediate actions overlay (and Dismiss button) only on the first
   // home load for the session when immediate actions exist 
   const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(false);
@@ -1215,9 +1203,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
   setAnnualLeaveAllData((prevAllData) =>
     prevAllData.filter(record => record.id !== updatedRequestId)
   );
-
-  // You may also add any notifications or logging here.
-  console.log(`Approval with ID ${updatedRequestId} has been marked as ${newStatus}.`);
 };
 
   // ADDED: userInitials logic - store in ref so it doesn't reset on re-render.
@@ -1312,19 +1297,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         Call_Taker: enq.Call_Taker || enq.rep,
       }));
 
-      const DEBUG_ENQUIRY_METRICS = false;
-      if (DEBUG_ENQUIRY_METRICS) {
-        console.log('[Enquiry Metrics Debug] Raw enquiries count:', enquiries.length);
-        console.log('[Enquiry Metrics Debug] Normalized enquiries count:', normalizedEnquiries.length);
-        console.log('[Enquiry Metrics Debug] currentUserEmail:', currentUserEmail);
-        console.log('[Enquiry Metrics Debug] userInitials:', userInitials);
-        console.log('[Enquiry Metrics Debug] Sample raw data:', enquiries.slice(0, 3).map(e => ({
-          original_poc: e.poc,
-          Point_of_Contact: e.Point_of_Contact
-        })));
-        console.log('[Enquiry Metrics Debug] Sample normalized POC:', normalizedEnquiries.slice(0, 3).map(e => e.Point_of_Contact));
-      }
-
       // Choose conversion subject: Sam Packwood in local, or when prod user is LZ; otherwise current user
       const isLocalhost = window.location.hostname === 'localhost';
       const isConversionUseSP = (process.env.REACT_APP_USE_LOCAL_DATA === 'true') || ((userInitials || '').toUpperCase() === 'LZ');
@@ -1350,11 +1322,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
           matchesUser(enquiry.Point_of_Contact)
         );
       }).length;
-
-      if (DEBUG_ENQUIRY_METRICS) {
-        console.log('[Enquiry Metrics Debug] Conversion subject is SP:', isConversionUseSP);
-        console.log('[Enquiry Metrics Debug] Today count:', todayCount);
-      }
 
   const weekToDateCount = normalizedEnquiries.filter((enquiry: any) => {
         if (!enquiry.Touchpoint_Date) return false;
@@ -1936,7 +1903,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       }
       // Use cached data if available
       if (cachedTransactions) {
-        console.log("Using cached transactions:", cachedTransactions);
         setTransactions(cachedTransactions); // Update local state
         if (onTransactionsFetched) {
           onTransactionsFetched(cachedTransactions);
@@ -1970,7 +1936,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     const storedData = localStorage.getItem('outstandingBalancesData');
     if (storedData) {
       const parsedData = JSON.parse(storedData);
-      console.log("Loaded outstanding balances from localStorage:", parsedData.length, "items");
       if (onOutstandingBalancesFetched) {
         onOutstandingBalancesFetched(parsedData);
       }
@@ -2016,7 +1981,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     async function loadOutstandingBalances() {
       // Optional: Use in-memory cache if available
       if (cachedOutstandingBalances) {
-        console.log("Using cached outstanding balances:", cachedOutstandingBalances);
         if (onOutstandingBalancesFetched) {
           onOutstandingBalancesFetched(cachedOutstandingBalances);
         }
@@ -2028,7 +1992,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         const data = await fetchOutstandingBalances();
         if (data) {
           cachedOutstandingBalances = data; // Cache in-memory for subsequent calls
-          console.log("Fetched outstanding balances:", data.length, "items");
           localStorage.setItem('outstandingBalancesData', JSON.stringify(data));
           if (onOutstandingBalancesFetched) {
             onOutstandingBalancesFetched(data);
@@ -2374,10 +2337,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     }, [outstandingBalancesData, userMatterIDs, myOutstandingBalances]);
 
     useEffect(() => {
-      if (userMatterIDs.length && outstandingBalancesData) {
-        console.log("After update - User Matter IDs:", userMatterIDs.length, "matters");
-        console.log("After update - Outstanding Balances Data:", outstandingBalancesData.length, "items");
-      }
     }, [userMatterIDs, outstandingBalancesData]);
 
   const metricsData = useMemo(() => {
@@ -2663,10 +2622,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       ),
     [annualLeaveRecords, futureLeaveRecords, userInitials]
   );
-
-  useEffect(() => {
-    console.log('Approvals Needed:', approvalsNeeded);
-  }, [approvalsNeeded]);
 
   // Quick action button styles
   const approveButtonStyles = {

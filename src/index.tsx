@@ -132,17 +132,9 @@ async function fetchEnquiries(
   userAow: string = '',
   userInitials: string = '',
 ): Promise<Enquiry[]> {
-  console.log('🚀 FETCHENQUIRIES CALLED WITH:');
-  console.log('   📧 email:', email);
-  console.log('   📅 dateFrom:', dateFrom);
-  console.log('   📅 dateTo:', dateTo);
-  console.log('   🏢 userAow:', userAow);
-  console.log('   👤 userInitials:', userInitials);
-
   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}-${userAow}`;
   const cached = getCachedData<Enquiry[]>(cacheKey);
   if (cached) {
-    console.log('📦 Returning cached data:', cached.length);
     return cached;
   }
 
@@ -151,23 +143,13 @@ async function fetchEnquiries(
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const isLZUser = userInitials.toUpperCase() === 'LZ';
   
-  console.log('🔍 ENVIRONMENT CHECK:');
-  console.log('   🖥️  isLocalDev:', isLocalDev);
-  console.log('   👤 isLZUser:', isLZUser);
-  console.log('   🌐 window.location.hostname:', window.location.hostname);
-  
   if (isLocalDev || isLZUser) {
     try {
-      console.log('🔵 Attempting to fetch NEW enquiries data...');
-      console.log('📍 Local dev:', isLocalDev, '| LZ user:', isLZUser);
-      
       // Call the decoupled function via Express route (local) or directly (production)
       // NEW decoupled function expects simple GET with no params to return ALL data
       const newDataUrl = isLocalDev 
         ? `/api/enquiries` // Express route for local dev - simple GET, no params
         : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData`; // Direct call for production - simple GET, no params
-      
-      console.log('🌐 Calling NEW enquiries URL:', newDataUrl);
       
       const newResponse = await fetch(newDataUrl, {
         method: 'GET',
@@ -175,9 +157,7 @@ async function fetchEnquiries(
       });
       
       if (newResponse.ok) {
-        console.log('✅ NEW enquiries response OK, processing data...');
         const newData = await newResponse.json();
-        console.log('📦 Raw NEW data count:', Array.isArray(newData) ? newData.length : newData.enquiries?.length || 0);
         
         let rawNewEnquiries: any[] = [];
         if (Array.isArray(newData)) {
@@ -191,11 +171,6 @@ async function fetchEnquiries(
         const userEmail = email.toLowerCase();
         const userInitialsUpper = userInitials.toUpperCase();
         
-        console.log('🎯 FILTERING CRITERIA:');
-        console.log('   📧 userEmail:', userEmail);
-        console.log('   👤 userInitialsUpper:', userInitialsUpper);
-        console.log('   📦 rawNewEnquiries count:', rawNewEnquiries.length);
-        
         const filteredNewEnquiries = rawNewEnquiries.filter(enq => {
           const pocInitials = (enq.Point_of_Contact || enq.poc || '').toUpperCase();
           const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
@@ -205,15 +180,6 @@ async function fetchEnquiries(
           // Only treat enquiries sent to the team inbox as unclaimed
           const unclaimedEmails = ['team@helix-law.com'];
           const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocInitials === 'TEAM';
-
-          console.log(`   📋 Enquiry ${enq.ID}:`, {
-            pocInitials,
-            pocEmail,
-            matchesInitials,
-            matchesEmail,
-            isUnclaimed,
-            willKeep: matchesInitials || matchesEmail || isUnclaimed
-          });
 
           return matchesInitials || matchesEmail || isUnclaimed;
         });
@@ -237,27 +203,20 @@ async function fetchEnquiries(
           // Add any other fields as needed
           ...enq
         })) as Enquiry[];
-        
-        console.log('✅ Successfully fetched and filtered NEW enquiries data:', newEnquiries.length);
-        console.log('📊 NEW ENQUIRIES SAMPLE:', newEnquiries.slice(0, 2));
-        
+
         // Add the NEW enquiries to the beginning of the array
         enquiries = [...newEnquiries, ...enquiries];
         
       } else {
-        console.warn('❌ NEW enquiries data not available:', newResponse.status, newResponse.statusText);
         const errorText = await newResponse.text().catch(() => 'Could not read error response');
-        console.warn('Error details:', errorText);
       }
     } catch (error) {
-      console.warn('❌ Error fetching NEW enquiries data (non-blocking):', error);
+      // Error is expected when NEW API is not available
     }
   }
 
   // Always attempt to fetch LEGACY enquiries so existing data continues to load
   try {
-    console.log('🔵 Attempting to fetch LEGACY enquiries data (via proxy)...');
-
 
     // Use local Express server proxy when developing, otherwise call production proxy
     const legacyBaseUrl = isLocalDev
@@ -266,9 +225,6 @@ async function fetchEnquiries(
     const legacyPath = process.env.REACT_APP_GET_ENQUIRIES_PATH;
     const legacyCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;
     const legacyDataUrl = `${legacyBaseUrl}/${legacyPath}?code=${legacyCode}`;
-
-    // Add debug log to confirm the call is being attempted
-    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email, dateFrom, dateTo });
 
     // The proxy expects POST with JSON body containing email, dateFrom, dateTo
     // Use 'anyone' to retrieve all enquiries and filter client-side
@@ -282,13 +238,8 @@ async function fetchEnquiries(
       }),
     });
 
-    console.log('📋 LEGACY response status:', legacyResponse.status, legacyResponse.statusText);
-
     if (legacyResponse.ok) {
-      console.log('✅ LEGACY enquiries response OK, processing data...');
       const legacyData = await legacyResponse.json();
-      console.log('📦 Raw LEGACY data:', legacyData);
-      console.log('📦 Raw LEGACY data count:', Array.isArray(legacyData) ? legacyData.length : legacyData.enquiries?.length || 0);
 
       let rawLegacyEnquiries: any[] = [];
       if (Array.isArray(legacyData)) {
@@ -297,14 +248,8 @@ async function fetchEnquiries(
         rawLegacyEnquiries = legacyData.enquiries;
       }
 
-      console.log('📊 Raw LEGACY enquiries before filtering:', rawLegacyEnquiries.length);
-
       // Filter legacy enquiries based on email matching (legacy system)
       const userEmail = email.toLowerCase();
-
-      console.log('🔍 LEGACY filtering debug:');
-      console.log('   User email for filtering:', userEmail);
-      console.log('   Sample LEGACY record Point_of_Contact:', rawLegacyEnquiries[0]?.Point_of_Contact);
 
       const filteredLegacyEnquiries = rawLegacyEnquiries.filter(enq => {
         const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
@@ -335,19 +280,14 @@ async function fetchEnquiries(
         ...enq
       })) as Enquiry[];
 
-      console.log('✅ Successfully fetched and filtered LEGACY enquiries data:', legacyEnquiries.length);
-
       // Append LEGACY enquiries to the end (after NEW enquiries)
       enquiries = [...enquiries, ...legacyEnquiries];
 
     } else {
-      console.warn('❌ LEGACY enquiries data not available:', legacyResponse.status, legacyResponse.statusText);
       const errorText = await legacyResponse.text().catch(() => 'Could not read error response');
-      console.warn('Error details:', errorText);
-      console.warn('Response headers:', Array.from(legacyResponse.headers.entries()));
     }
   } catch (error) {
-    console.warn('❌ Error fetching LEGACY enquiries data (non-blocking):', error);
+    // Legacy enquiries error is non-blocking
   }
 
   // Apply area-of-work filtering based on user's AOW (only for unclaimed enquiries)
@@ -375,12 +315,6 @@ async function fetchEnquiries(
       });
     }
   }
-
-  console.log('🎯 FINAL ENQUIRIES SUMMARY:');
-  console.log('   Total before AOW filtering:', enquiries.length);
-  console.log('   Total after AOW filtering:', filteredEnquiries.length);
-  console.log('   User AOW:', userAow);
-  console.log('   📊 FINAL ENQUIRIES SAMPLE:', filteredEnquiries.slice(0, 2));
 
   setCachedData(cacheKey, filteredEnquiries);
   return filteredEnquiries;
@@ -467,7 +401,6 @@ async function fetchAllMatters(): Promise<Matter[]> {
     const getAllMattersUrl = isLocalDev 
       ? `http://localhost:8080/getAllMatters${getAllMattersCode ? `?code=${getAllMattersCode}` : ''}` 
       : `${proxyBaseUrl}/${process.env.REACT_APP_GET_ALL_MATTERS_PATH}?code=${getAllMattersCode}`;
-    console.log('🔍 Fetching ALL matters from:', getAllMattersUrl.replace(/code=[^&]+/, 'code=***'));
     
     const response = await fetch(getAllMattersUrl, {
       method: "GET",
@@ -477,12 +410,9 @@ async function fetchAllMatters(): Promise<Matter[]> {
     if (response.ok) {
       const data = await response.json();
       allMatters = Array.isArray(data) ? data : data.matters || [];
-      console.log('✅ Successfully fetched ALL matters, count:', allMatters.length);
-    } else {
-      console.warn('❌ Failed to fetch all matters:', response.status, response.statusText);
     }
   } catch (err) {
-    console.warn('❌ Error fetching all matters:', err);
+    // All matters fetch error is non-blocking
   }
 
   const mappedMatters = mapLegacyMatters(allMatters);
@@ -553,10 +483,7 @@ async function fetchVNetMatters(fullName?: string): Promise<any[]> {
     if (resNew.ok) {
       const data = await resNew.json();
       vnetData = Array.isArray(data) ? data : data.matters || [];
-      console.log('✅ VNet matters fetch successful:', {
-        count: vnetData.length,
-        sample: vnetData.slice(0, 2)
-      });
+      
     } else {
       console.warn('❌ VNet matters fetch failed:', resNew.status, resNew.statusText);
     }
@@ -574,8 +501,6 @@ async function fetchAllMatterSources(fullName: string): Promise<NormalizedMatter
   const cached = getCachedData<NormalizedMatter[]>(cacheKey);
   if (cached) return cached;
 
-  console.log('🔍 Fetching matters from all sources for:', fullName);
-
   try {
     // Fetch from all sources in parallel (legacy all, legacy user, vnet user, vnet all)
     const [allMatters, userMatters, vnetUserMatters, vnetAllMatters] = await Promise.all([
@@ -584,13 +509,6 @@ async function fetchAllMatterSources(fullName: string): Promise<NormalizedMatter
       fetchVNetMatters(fullName),
       fetchVNetMatters(),
     ]);
-
-    console.log('📊 Matter sources fetched (post-separation):', {
-      legacyAll: allMatters.length,
-      legacyUser: userMatters.length,
-      vnetUser: vnetUserMatters.length,
-      vnetAll: vnetAllMatters.length
-    });
 
     // Merge and normalize all sources
     const normalizedMatters = mergeMattersFromSources(
@@ -602,12 +520,9 @@ async function fetchAllMatterSources(fullName: string): Promise<NormalizedMatter
       fullName
     );
 
-    console.log('✅ Normalized matters total:', normalizedMatters.length);
-
     setCachedData(cacheKey, normalizedMatters);
     return normalizedMatters;
   } catch (err) {
-    console.error('❌ Error fetching matter sources:', err);
     // Fallback to legacy data only
     const fallbackMatters = await fetchMatters(fullName);
     const fallbackNormalized = mergeMattersFromSources(
@@ -658,6 +573,24 @@ const AppWithContext: React.FC = () => {
   // Local development state for area selection
   const [localSelectedAreas, setLocalSelectedAreas] = useState<string[]>(['Commercial', 'Construction', 'Property']);
 
+  // Refresh enquiries function - can be called after claiming an enquiry
+  const refreshEnquiries = async () => {
+    if (!userData || !userData[0]) return;
+    
+    try {
+      const { dateFrom, dateTo } = getDateRange();
+      const userEmail = userData[0].Email || "";
+      const userAow = userData[0].AOW || "";
+      const userInitials = userData[0].Initials || "";
+
+      const enquiriesRes = await fetchEnquiries(userEmail, dateFrom, dateTo, userAow, userInitials);
+      setEnquiries(enquiriesRes);
+      
+    } catch (error) {
+      console.error('❌ Error refreshing enquiries:', error);
+    }
+  };
+
   // Update user data when local areas change
   const updateLocalUserData = (areas: string[]) => {
     setLocalSelectedAreas(areas);
@@ -691,7 +624,7 @@ const AppWithContext: React.FC = () => {
       setMatters(mattersRes);
       
       // Also fetch enquiries for new user
-      console.log('🔄 Fetching enquiries for switched user...');
+      
       const today = new Date();
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       const enquiriesRes = await fetchEnquiries(
@@ -700,7 +633,6 @@ const AppWithContext: React.FC = () => {
         today.toISOString().split('T')[0]
       );
       setEnquiries(enquiriesRes);
-      console.log(`✅ Fetched ${enquiriesRes.length} enquiries for switched user`);
       
     } catch (err) {
       console.error('Error fetching data for switched user:', err);
@@ -754,11 +686,7 @@ const AppWithContext: React.FC = () => {
         }
       } else {
         console.log("Using local sample data for development.");
-        console.log('🔧 LOCAL DEV MODE DETECTED');
-        console.log('   🏠 useLocalData:', useLocalData);
-        console.log('   📱 inTeams:', inTeams);
-        console.log('   🌐 hostname:', window.location.hostname);
-        
+
         setTeamsContext({
           userObjectId: "local",
           userPrincipalName: "lz@helix-law.com",
@@ -770,23 +698,15 @@ const AppWithContext: React.FC = () => {
           ...localUserData[0],
           AOW: localSelectedAreas.join(', ')
         }];
-        
-        console.log('👤 LOCAL USER DATA SET:', initialUserData[0]);
-        
+
         setUserData(initialUserData as UserData[]);
         
         // For local development, also test the dual enquiries fetching
         const { dateFrom, dateTo } = getDateRange();
         const fullName = `${initialUserData[0].First} ${initialUserData[0].Last}`.trim();
-        
-        console.log('🔍 ATTEMPTING LOCAL DEV API CALLS...');
-        console.log('   📅 dateFrom:', dateFrom);
-        console.log('   📅 dateTo:', dateTo);
-        console.log('   👤 fullName:', fullName);
-        
+
         try {
-          console.log('🚀 MAKING LOCAL DEV API CALLS...');
-          
+
           // Try to fetch enquiries independently first
           let enquiriesRes: Enquiry[] = [];
           try {
@@ -797,7 +717,7 @@ const AppWithContext: React.FC = () => {
               initialUserData[0].AOW || "",
               initialUserData[0].Initials || "",
             );
-            console.log('✅ Enquiries API call successful:', enquiriesRes?.length || 0);
+            
           } catch (enquiriesError) {
             console.warn('⚠️ Enquiries API failed, using fallback:', enquiriesError);
             enquiriesRes = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
@@ -807,7 +727,7 @@ const AppWithContext: React.FC = () => {
           let normalizedMatters: NormalizedMatter[] = [];
           try {
             normalizedMatters = await fetchAllMatterSources(fullName);
-            console.log('✅ Normalized matters fetch successful:', normalizedMatters?.length || 0);
+            
           } catch (mattersError) {
             console.warn('⚠️ Matters API failed, using fallback:', mattersError);
             // Create fallback normalized matters from local data
@@ -816,23 +736,18 @@ const AppWithContext: React.FC = () => {
           }
 
           // ALSO TEST fetchAllMatters for local development
-          console.log('🚀 About to call fetchAllMatters...');
+          
           const allMattersRes = await fetchAllMatters();
-          console.log('✅ ALL Matters API call successful:', allMattersRes?.length || 0);
-          
-          console.log('✅ LOCAL DEV API CALLS COMPLETED:');
-          console.log('   📊 enquiriesRes count:', enquiriesRes?.length || 0);
-          console.log('   🏢 normalizedMatters count:', normalizedMatters?.length || 0);
-          
+
           setEnquiries(enquiriesRes);
           setMatters(normalizedMatters);
         } catch (err) {
           console.error('❌ Unexpected error in local dev:', err);
-          console.log('🔄 FALLING BACK TO LOCAL SAMPLE DATA...');
+          
           // Fallback to local sample data with normalization
           const fallbackEnquiries = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
           const fallbackMatters = mergeMattersFromSources([], localMatters as unknown as Matter[], [], fullName);
-          console.log('📦 Fallback enquiries count:', fallbackEnquiries?.length || 0);
+          
           setEnquiries(fallbackEnquiries);
           setMatters(fallbackMatters);
         }
@@ -858,6 +773,7 @@ const AppWithContext: React.FC = () => {
         isLocalDev={useLocalData}
         onAreaChange={updateLocalUserData}
         onUserChange={switchUser}
+        onRefreshEnquiries={refreshEnquiries}
       />
     </>
   );

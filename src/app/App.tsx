@@ -37,6 +37,7 @@ interface AppProps {
   isLocalDev?: boolean;
   onAreaChange?: (areas: string[]) => void;
   onUserChange?: (user: UserData) => void;
+  onRefreshEnquiries?: () => Promise<void>;
 }
 
 const App: React.FC<AppProps> = ({
@@ -50,6 +51,7 @@ const App: React.FC<AppProps> = ({
   isLocalDev = false,
   onAreaChange,
   onUserChange,
+  onRefreshEnquiries,
 }) => {
   const [activeTab, setActiveTab] = useState('home');
   const isDarkMode = teamsContext?.theme === 'dark';
@@ -173,14 +175,12 @@ const App: React.FC<AppProps> = ({
 
   const handlePOID6YearsFetched = (data: any[]) => {
     // Don't override the local POID data with POID6Years data
-    console.log('POID6Years data received:', data ? data.length : 0);
     // We should store this separately but never use it for the main POID list
     // NEVER DO: setPoidData(data);
     
     // Since POID data should only come from localIdVerifications.json,
     // we'll reset poidData to initialPoidData if it's been corrupted
     if (poidData.length !== initialPoidData.length) {
-      console.log('Resetting POID data to initial values from localIdVerifications.json');
       setPoidData(initialPoidData);
     }
   };
@@ -395,6 +395,7 @@ const App: React.FC<AppProps> = ({
             teamData={teamData}
             poidData={poidData}
             setPoidData={setPoidData}
+            onRefreshEnquiries={onRefreshEnquiries}
           />
         );
       case 'instructions':

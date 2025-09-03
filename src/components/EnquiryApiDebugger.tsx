@@ -222,52 +222,7 @@ const EnquiryApiDebugger: React.FC<EnquiryApiDebuggerProps> = ({ currentEnquirie
   };
 
   const analyzeCurrentData = () => {
-    console.log('CURRENT ENQUIRIES ANALYSIS:');
-    console.log('Total enquiries received:', currentEnquiries.length);
-    
-    if (currentEnquiries.length > 0) {
-      console.log('Sample enquiry structure:', Object.keys(currentEnquiries[0]));
-      
-      // Analyze Point of Contact distribution
-      const pocCounts: { [key: string]: number } = {};
-      currentEnquiries.forEach(enq => {
-        const poc = enq.Point_of_Contact || (enq as any).poc || 'Unknown';
-        pocCounts[poc] = (pocCounts[poc] || 0) + 1;
-      });
-      console.log('Point of Contact distribution:', pocCounts);
-      
-      // Check both Point_of_Contact and poc fields
-      console.log('Raw POC fields check:');
-      currentEnquiries.slice(0, 3).forEach((enq, i) => {
-        console.log(`Enquiry ${i}: Point_of_Contact="${enq.Point_of_Contact}", poc="${(enq as any).poc}"`);
-      });
-      
-      // Analyze Area of Work distribution
-      const aowCounts: { [key: string]: number } = {};
-      currentEnquiries.forEach(enq => {
-        const aow = enq.Area_of_Work || 'Unknown';
-        aowCounts[aow] = (aowCounts[aow] || 0) + 1;
-      });
-      console.log('Area of Work distribution:', aowCounts);
-      
-      // Check for LZ-specific enquiries
-      const lzEnquiries = currentEnquiries.filter(enq => {
-        const poc = (enq.Point_of_Contact || (enq as any).poc || '').toLowerCase();
-        return poc === 'lz@helix-law.com' || poc.includes('lz');
-      });
-      console.log('LZ-specific enquiries:', lzEnquiries.length, lzEnquiries);
-      
-      // Check for team enquiries (unclaimed)
-      const teamEnquiries = currentEnquiries.filter(enq => {
-        const poc = (enq.Point_of_Contact || (enq as any).poc || '').toLowerCase();
-        return poc === 'team@helix-law.com' || poc.includes('team');
-      });
-      console.log('Team/unclaimed enquiries:', teamEnquiries.length, teamEnquiries);
-      
-      console.log('First 3 enquiries for inspection:', currentEnquiries.slice(0, 3));
-    } else {
-      console.log('No enquiries data available');
-    }
+    // Analysis data available but console output removed for performance
   };
 
   const clearResponses = () => {

@@ -149,6 +149,7 @@ interface EnquiriesProps {
   poidData: POID[];
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
   teamData?: TeamData[] | null;
+  onRefreshEnquiries?: () => Promise<void>;
 }
 
 const Enquiries: React.FC<EnquiriesProps> = ({
@@ -158,8 +159,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   poidData,
   setPoidData,
   teamData,
+  onRefreshEnquiries,
 }) => {
-
 
   // Use only real enquiries data
   // All normalized enquiries (union of legacy + new) retained irrespective of toggle
@@ -168,15 +169,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [displayEnquiries, setDisplayEnquiries] = useState<(Enquiry & { __sourceType: 'new' | 'legacy' })[]>([]);
 
   // Debug logging
-  console.log('Enquiries component - enquiries prop:', enquiries);
-  console.log('Enquiries component - displayEnquiries state:', displayEnquiries);
-  console.log('Enquiries component - userData:', userData);
 
   // Navigation state variables  
   // (declaration moved below, only declare once)
 
   // ...existing code...
-
 
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigatorActions();
@@ -245,7 +242,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       setDisplayEnquiries([]);
       return;
     }
-    console.log('🔄 Normalizing enquiries data, count:', enquiries.length);
+    
     const normalised: (Enquiry & { __sourceType: 'new' | 'legacy'; [k: string]: unknown })[] = enquiries.map((raw: any) => {
       const sourceType = detectSourceType(raw);
       const rec: Enquiry & { __sourceType: 'new' | 'legacy'; [k: string]: unknown } = {
@@ -269,7 +266,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     });
     const newCount = normalised.filter(r => r.__sourceType === 'new').length;
     const legacyCount = normalised.length - newCount;
-    console.log(`📊 Source type distribution -> new: ${newCount}, legacy: ${legacyCount}`);
     setAllEnquiries(normalised);
   }, [enquiries]);
 
@@ -292,10 +288,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       let filtered = allEnquiries.filter(e => useNewData ? e.__sourceType === 'new' : e.__sourceType === 'legacy');
       // Fallback: if toggle selected new but zero new detected, show legacy + emit warning for debug panel
       if (useNewData && filtered.length === 0) {
-        console.warn('⚠️ No enquiries classified as new. Falling back to all for visibility.');
         filtered = allEnquiries;
       }
-      console.log('✅ Applied dataset toggle: useNewData=', useNewData, 'result count=', filtered.length);
+      
       setDisplayEnquiries(filtered);
     } else {
       setDisplayEnquiries(allEnquiries);
@@ -534,11 +529,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const filteredEnquiries = useMemo(() => {
     let filtered = enquiriesInSliderRange;
 
-    console.log('🔍 FILTERING DEBUG - START');
-    console.log('📊 enquiriesInSliderRange count:', enquiriesInSliderRange.length);
-    console.log('🎯 activeState:', activeState);
-    console.log('👤 userData:', userData);
-
     const userEmail = userData && userData[0] && userData[0].Email
       ? userData[0].Email.toLowerCase()
       : '';
@@ -551,38 +541,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       ? 'ac@helix-law.com' 
       : userEmail;
 
-    console.log('📧 User email for filtering:', userEmail);
-    console.log('🏠 Local mode enabled:', useLocalData && isLocalhost);
-    console.log('✅ Effective user email:', effectiveUserEmail);
-
-    // DETAILED POC VALUE ANALYSIS
-    console.log('🔬 DETAILED POC ANALYSIS:');
-    enquiriesInSliderRange.forEach((enq, index) => {
-      const pocOld = enq.Point_of_Contact || '';
-      const pocNew = (enq as any).poc || '';
-      console.log(`  Enquiry ${index + 1}:`, {
-        id: enq.ID,
-        Point_of_Contact: pocOld,
-        poc: pocNew,
-        finalPoc: pocOld || pocNew,
-        userEmail: userEmail,
-        effectiveUserEmail: effectiveUserEmail,
-        matches: (pocOld || pocNew).toLowerCase() === effectiveUserEmail
-      });
-    });
-
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
       if (showMineOnly) {
-        console.log('🎯 Filtering for CLAIMED (Mine only)');
+        
         filtered = filtered.filter(enquiry => {
           const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
           const matches = effectiveUserEmail ? poc === effectiveUserEmail : false;
-          console.log(`  Enquiry ${enquiry.ID}: poc="${poc}" vs effectiveUserEmail="${effectiveUserEmail}" → ${matches}`);
           return matches;
         });
       } else {
-        console.log('🎯 Filtering for CLAIMED (All claimed)');
+        
         filtered = filtered.filter(enquiry => {
           const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
           // Exclude unclaimed placeholder emails
@@ -598,12 +567,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       });
     }
 
-    console.log('Filtering - after state filter:', filtered);
-
     // Area-based access control - only applies for unclaimed enquiries
     if (activeState === 'Claimable' && userData && userData.length > 0 && userData[0].AOW) {
       const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
-      console.log('Filtering - userAOW:', userAOW);
 
       const hasFullAccess = userAOW.some(
         area => area.includes('operations') || area.includes('tech')
@@ -637,7 +603,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       });
     }
 
-    console.log('Filtering - after area filter:', filtered);
     
     // Apply search term filter
     if (searchTerm.trim()) {
@@ -652,7 +617,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       );
     }
     
-    console.log('Filtering - final filtered:', filtered);
     
     return filtered;
   }, [
@@ -765,8 +729,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       zIndex: 999,
     });
   }
-
-
 
   const ratingOptions = [
     {
@@ -1281,7 +1243,12 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                             let userAOW: string[] = [];
                             if (userData && userData.length > 0 && userData[0].AOW) {
                               userAOW = userData[0].AOW.split(',').map((a) => a.trim().toLowerCase());
-                    }
+                            }
+
+                            // Get user email for claim functionality
+                            const currentUserEmail = userData && userData[0] && userData[0].Email
+                              ? userData[0].Email.toLowerCase()
+                              : '';
 
                             if (isGroupedEnquiry(item)) {
                               // Render grouped enquiry card
@@ -1308,6 +1275,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                                     onSelect={() => {}} // Prevent click-through to pitch builder
                                     onRate={handleRate}
                                     isLast={isLast}
+                                    userEmail={currentUserEmail}
+                                    onClaimSuccess={onRefreshEnquiries}
                                   />
                                 );
                               }
@@ -1432,7 +1401,5 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     </div>
   );
 }
-
-
 
 export default Enquiries;

@@ -29,7 +29,6 @@ export const TeamsProvider: React.FC<TeamsProviderProps> = ({ children }) => {
     if (isInTeams()) {
       microsoftTeams.initialize();
       microsoftTeams.getContext((teamsContext) => {
-        console.log('Teams Context:', teamsContext); // Debugging Statement
         setContext(teamsContext);
         setIsLoading(false); // Set loading to false once context is retrieved
       });

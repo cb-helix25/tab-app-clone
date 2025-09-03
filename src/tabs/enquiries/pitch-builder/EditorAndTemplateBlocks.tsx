@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from
 import { createPortal } from 'react-dom';
 import { Stack, Text, Icon, Pivot, PivotItem, TextField } from '@fluentui/react';
 import { FaBolt, FaEdit, FaFileAlt, FaEraser, FaCopy, FaEye, FaInfoCircle, FaThumbtack, FaCalculator, FaExclamationTriangle, FaEnvelope, FaCheck, FaPaperPlane, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import DealCapture from './DealCapture';
 import { colours } from '../../../app/styles/colours';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 import SnippetEditPopover from './SnippetEditPopover';
@@ -895,7 +896,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   subject,
   setSubject,
   // Deal capture props
-  showDealCapture = false,
+  showDealCapture = true,
   initialScopeDescription,
   onScopeDescriptionChange,
   amount,
@@ -915,7 +916,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
   // Deal capture state
   const [scopeDescription, setScopeDescription] = useState(initialScopeDescription || '');
-  const [amountValue, setAmountValue] = useState(amount || '');
+  // Default amount now 1500 if not supplied
+  const [amountValue, setAmountValue] = useState(amount && amount.trim() !== '' ? amount : '1500');
   const [amountError, setAmountError] = useState<string | null>(null);
   // Removed PIC placeholder insertion feature per user request
   const [isNotesPinned, setIsNotesPinned] = useState(false);
@@ -2281,334 +2283,14 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               </div>
             )}
 
-            {/* Deal Capture Section (admin-gated) */}
-            {showDealCapture && (
-            <div style={{
-              background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
-              borderRadius: '16px',
-              padding: '32px',
-              border: '1px solid #E2E8F0',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-              marginTop: initialNotes ? 16 : 0,
-              fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-              position: 'relative'
-            }}>
-              {/* Subtle accent border */}
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '60px',
-                height: '3px',
-                background: 'linear-gradient(90deg, #3690CE, #60A5FA)',
-                borderRadius: '0 0 8px 8px'
-              }}></div>
-              
-              <div style={{
-                fontSize: '18px',
-                fontWeight: 600,
-                color: '#0F172A',
-                marginBottom: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 20px',
-                background: 'rgba(255, 255, 255, 0.7)',
-                borderRadius: '12px',
-                border: '1px solid rgba(54, 144, 206, 0.1)'
-              }}>
-                <Icon iconName="Clock" styles={{ root: { fontSize: 16, color: '#3690CE' } }} />
-                Scope & Quote Description
-              </div>
-              
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{
-                  marginBottom: '20px',
-                  padding: '20px',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(226, 232, 240, 0.8)'
-                }}>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#1E293B',
-                    marginBottom: '12px',
-                    display: 'block'
-                  }}>
-                    Quick Templates
-                  </label>
-                  
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                    gap: '12px'
-                  }}>
-                    {[
-                      {
-                        title: 'Commercial/Shareholder Dispute',
-                        template: `Advice and representation in relation to a commercial, shareholder or partnership dispute.\n\nOur service includes:\n- Initial review of relevant agreements and correspondence\n- Assessment of legal position and available remedies\n- Strategic advice on next steps and resolution options\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`
-                      },
-                      {
-                        title: 'Construction Dispute',
-                        template: `Advice and representation for construction disputes, including adjudication.\n\nOur service includes:\n- Review of contract documents and payment history\n- Assessment of breach, termination or payment issues\n- Guidance on adjudication or court process\n- Practical advice to protect your position\n\nEstimated fee: [AMOUNT]`
-                      },
-                      {
-                        title: 'Property Dispute',
-                        template: `Advice and representation in relation to property disputes or evictions.\n\nOur service includes:\n- Review of lease, tenancy or title documents\n- Assessment of grounds for possession or dispute\n- Guidance on process and timescales\n- Practical steps to protect your interests\n\nEstimated fee: [AMOUNT]`
-                      },
-                      {
-                        title: 'Debt Recovery',
-                        template: `Advice and action in relation to debt recovery or statutory demands.\n\nOur service includes:\n- Review of debt and supporting documents\n- Assessment of recovery options and risks\n- Preparation and service of statutory demand or claim\n- Guidance on defended claims and court process\n\nEstimated fee: [AMOUNT]`
-                      },
-                      {
-                        title: 'Other',
-                        template: `Advice and representation in relation to other commercial disputes.\n\nOur service includes:\n- Initial review and assessment of your issue\n- Guidance on process, options and likely outcomes\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`
-                      }
-                    ].map((item, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          setScopeDescription(item.template);
-                          onScopeDescriptionChange?.(item.template);
-                        }}
-                        style={{
-                          padding: '12px 16px',
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          color: '#475569',
-                          background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                          border: '1px solid #CBD5E1',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          textAlign: 'left',
-                          minHeight: '48px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          fontFamily: 'inherit',
-                          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
-                          e.currentTarget.style.borderColor = '#3690CE';
-                          e.currentTarget.style.color = '#3690CE';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px 0 rgba(54, 144, 206, 0.25)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                          e.currentTarget.style.borderColor = '#CBD5E1';
-                          e.currentTarget.style.color = '#475569';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
-                        }}
-                        title={`Insert ${item.title.toLowerCase()} template`}
-                      >
-                        {item.title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                <div style={{ 
-                  marginBottom: '24px',
-                  padding: '20px',
-                  background: 'rgba(255, 255, 255, 0.9)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(203, 213, 225, 0.6)'
-                }}>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#1E293B',
-                    marginBottom: '8px',
-                    display: 'block'
-                  }}>
-                    Service Description
-                  </label>
-                  
-                  <TextField
-                    multiline
-                    autoAdjustHeight
-                    rows={4}
-                    value={scopeDescription}
-                    onChange={handleScopeDescriptionChange}
-                    placeholder="Describe what we will be doing and charging..."
-                    styles={{
-                      field: { 
-                        fontSize: '14px',
-                        lineHeight: '1.5',
-                        backgroundColor: '#FFFFFF',
-                        color: '#0F172A',
-                        resize: 'vertical',
-                        fontFamily: 'inherit',
-                        padding: '12px 16px'
-                      },
-                      fieldGroup: { 
-                        border: '1px solid #CBD5E1',
-                        borderRadius: '8px',
-                        '&:hover': {
-                          borderColor: '#3690CE'
-                        },
-                        '&.is-focused': {
-                          borderColor: '#3690CE',
-                          borderWidth: '2px',
-                          boxShadow: '0 0 0 3px rgba(54, 144, 206, 0.1)'
-                        }
-                      }
-                    }}
-                  />
-                </div>
-                
-                {/* Premium Amount Section */}
-                <div style={{
-                  background: 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)',
-                  border: '1px solid #94A3B8',
-                  borderRadius: '12px',
-                  padding: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '20px',
-                  flexWrap: 'wrap',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}>
-                  {/* Subtle pattern overlay */}
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    width: '100px',
-                    height: '100px',
-                    background: 'radial-gradient(circle, rgba(54, 144, 206, 0.05) 0%, transparent 70%)',
-                    borderRadius: '50%',
-                    transform: 'translate(30px, -30px)'
-                  }}></div>
-                  
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    flex: '1',
-                    minWidth: '200px',
-                    position: 'relative',
-                    zIndex: 1
-                  }}>
-                    <div style={{
-                      padding: '8px',
-                      background: 'rgba(54, 144, 206, 0.1)',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <FaCalculator style={{ fontSize: 16, color: '#3690CE', flexShrink: 0 }} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        color: '#1E293B',
-                        marginBottom: '4px',
-                        display: 'block'
-                      }}>
-                        Estimated Fee (£)
-                      </label>
-                      <TextField
-                        value={amountValue}
-                        onChange={handleAmountChange}
-                        placeholder="5000"
-                        errorMessage={amountError || undefined}
-                        styles={{
-                          field: { 
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            backgroundColor: '#FFFFFF',
-                            color: '#0F172A',
-                            fontFamily: 'inherit'
-                          },
-                          fieldGroup: { 
-                            border: '1px solid #94A3B8',
-                            borderRadius: '6px',
-                            minWidth: '120px',
-                            '&:hover': {
-                              borderColor: '#3690CE'
-                            },
-                            '&.is-focused': {
-                              borderColor: '#3690CE',
-                              borderWidth: '2px',
-                              boxShadow: '0 0 0 3px rgba(54, 144, 206, 0.1)'
-                            }
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* VAT Calculation Display */}
-                  {(() => {
-                    const amt = parseFloat(amountValue);
-                    if (!amountValue || isNaN(amt)) return null;
-                    const vatRate = 0.2;
-                    const vat = +(amt * vatRate).toFixed(2);
-                    const total = +(amt + vat).toFixed(2);
-                    const fmt = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    return (
-                      <div style={{
-                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                        border: '1px solid #CBD5E1',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        minWidth: '240px',
-                        position: 'relative',
-                        zIndex: 1,
-                        boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.05)'
-                      }}>
-                        <div style={{
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          color: '#3690CE',
-                          marginBottom: '12px',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
-                        }}>
-                          Cost Breakdown
-                        </div>
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'auto 1fr',
-                          gap: '8px 12px',
-                          alignItems: 'center'
-                        }}>
-                          <span style={{ fontSize: '13px', color: '#64748B' }}>Ex VAT:</span>
-                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>{fmt(amt)}</span>
-                          
-                          <span style={{ fontSize: '13px', color: '#64748B' }}>VAT (20%):</span>
-                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>{fmt(vat)}</span>
-                          
-                          <div style={{ gridColumn: '1 / -1', height: '1px', background: 'linear-gradient(90deg, #E2E8F0, #CBD5E1, #E2E8F0)', margin: '8px 0' }}></div>
-                          
-                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>Total inc VAT:</span>
-                          <span style={{ 
-                            fontSize: '16px', 
-                            fontWeight: 700, 
-                            color: '#3690CE', 
-                            textAlign: 'right',
-                            background: 'linear-gradient(135deg, #3690CE, #60A5FA)',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent'
-                          }}>{fmt(total)}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
-            )}
+            <DealCapture
+              isDarkMode={isDarkMode}
+              scopeDescription={scopeDescription}
+              onScopeChange={(v) => { setScopeDescription(v); onScopeDescriptionChange?.(v); }}
+              amount={amountValue}
+              onAmountChange={(v) => { setAmountValue(v); onAmountChange?.(v); }}
+              amountError={amountError}
+            />
 
           {/* Template blocks removed in simplified flow */}
           </div>

@@ -13,17 +13,7 @@ const InstructionApiDebugger: React.FC<InstructionApiDebuggerProps> = ({ current
   const { isDarkMode } = useTheme();
 
   const analyzeCurrentData = () => {
-    console.log('CURRENT INSTRUCTIONS ANALYSIS:');
-    console.log('Total instructions:', currentInstructions.length);
-    if (currentInstructions.length) {
-      console.log('Sample keys:', Object.keys(currentInstructions[0]));
-      const claimCounts: Record<string, number> = {};
-      currentInstructions.forEach(i => {
-        const claimed = i.InstructionRef ? 'claimed' : 'unclaimed';
-        claimCounts[claimed] = (claimCounts[claimed] || 0) + 1;
-      });
-      console.log('Claim distribution:', claimCounts);
-    }
+    // Analysis data available but console output removed for performance
   };
 
   useEffect(() => { analyzeCurrentData(); }, [currentInstructions]);

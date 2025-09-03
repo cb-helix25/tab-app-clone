@@ -49,16 +49,12 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
 
   // Debug the incoming matters
   if (DEBUG_MATTERS_FILTERING) {
-    console.log('🔍 Matters received:', matters.length);
-    console.log('🔍 First matter sample:', matters[0]);
-    console.log('🔍 User info:', { userFullName, userRole, isAdmin });
   }
 
   // Apply all filters in sequence
   const filtered = useMemo(() => {
     let result = matters;
     if (DEBUG_MATTERS_FILTERING) {
-      console.log('🔍 Filter Debug - Starting with matters:', result.length);
     }
 
     // Decide dataset and scope to construct allowed sources
@@ -69,14 +65,12 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
     if (allowedSources.size > 0) {
       result = result.filter((m) => allowedSources.has(m.dataSource));
       if (DEBUG_MATTERS_FILTERING) {
-        console.log('🔍 After source filter:', result.length, 'sources:', Array.from(allowedSources));
-        // console.log('🔍 Sample after source filter:', result.slice(0,3).map(m => ({id: m.matterId, ds: m.dataSource, originalStatus: m.originalStatus, status: m.status, role: m.role})));
+        //
       }
     } else {
       // If no sources selected, show nothing
       result = [];
       if (DEBUG_MATTERS_FILTERING) {
-        console.log('🔍 After source filter: 0 (no sources selected)');
       }
     }
 
@@ -86,7 +80,6 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   const effectiveShowEveryone = scope === 'all' && isAdmin;
   result = applyAdminFilter(result, effectiveShowEveryone, userFullName || '', userRole || '');
   if (DEBUG_MATTERS_FILTERING) {
-    console.log('🔍 After admin filter:', result.length, 'showEveryone:', effectiveShowEveryone);
   }
 
     // For New data + Mine, restrict to Responsible solicitor only
@@ -94,7 +87,6 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
       const before = result.length;
       result = result.filter(m => m.role === 'responsible' || m.role === 'both');
       if (DEBUG_MATTERS_FILTERING) {
-        console.log('🔍 New+Mine responsible-only filter:', { before, after: result.length });
       }
     }
 
@@ -104,23 +96,19 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
       const before = result.length;
       result = result.filter(m => (m.originalStatus || '').toLowerCase() === 'matterrequest');
       if (DEBUG_MATTERS_FILTERING) {
-        console.log('🔍 Matter Requests filter applied:', { before, after: result.length });
       }
     } else if (activeFilter !== 'All') {
       result = filterMattersByStatus(result, activeFilter.toLowerCase() as any);
       if (DEBUG_MATTERS_FILTERING) {
-        console.log('🔍 After status filter:', result.length, 'activeFilter:', activeFilter);
       }
     } else {
       if (DEBUG_MATTERS_FILTERING) {
-        console.log('🔍 Status filter skipped (All selected):', result.length);
       }
     }
 
     // Apply area filter
     result = filterMattersByArea(result, activeAreaFilter);
     if (DEBUG_MATTERS_FILTERING) {
-      console.log('🔍 After area filter:', result.length, 'activeAreaFilter:', activeAreaFilter);
     }
 
     // Apply role filter
@@ -130,7 +118,6 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                           ['responsible', 'originating'];
       result = filterMattersByRole(result, allowedRoles as any);
       if (DEBUG_MATTERS_FILTERING) {
-        console.log('🔍 After role filter:', result.length, 'activeRoleFilter:', activeRoleFilter);
       }
     }
 
@@ -144,12 +131,10 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
         m.practiceArea?.toLowerCase().includes(term)
       );
       if (DEBUG_MATTERS_FILTERING) {
-        console.log('🔍 After search filter:', result.length, 'searchTerm:', searchTerm);
       }
     }
 
     if (DEBUG_MATTERS_FILTERING) {
-      console.log('🔍 Final filtered result:', result.length);
     }
     return result;
   }, [

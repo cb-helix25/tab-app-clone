@@ -5,12 +5,15 @@ import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import EnquiryBadge from './EnquiryBadge';
+import { useClaimEnquiry } from '../../utils/claimEnquiry';
 
 interface Props {
   enquiry: Enquiry & { __sourceType?: 'new' | 'legacy' };
   onSelect: (enquiry: Enquiry) => void;
   onRate: (id: string) => void;
   isLast: boolean;
+  userEmail?: string;
+  onClaimSuccess?: () => void;
 }
 
 /**
@@ -97,10 +100,11 @@ const getAreaColour = (area?: string) => {
   }
 };
 
-const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect }) => {
+const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, userEmail, onClaimSuccess }) => {
   const { isDarkMode } = useTheme();
   const [selected, setSelected] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const { claimEnquiry, isLoading, error } = useClaimEnquiry();
 
   const areaColor = getAreaColour(enquiry.Area_of_Work);
 
@@ -137,6 +141,29 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect }) => {
     setSelected(true);
     setShowActions(true);
     onSelect(enquiry);
+  };
+
+  const handleClaim = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userEmail || !enquiry.ID) {
+      console.error('Missing userEmail or enquiry ID for claim');
+      return;
+    }
+    
+    try {
+      const result = await claimEnquiry(enquiry.ID, userEmail);
+      if (result.success) {
+        console.log('✅ Enquiry claimed successfully');
+        // Trigger refresh to move enquiry from unclaimed to claimed list
+        if (onClaimSuccess) {
+          onClaimSuccess();
+        }
+      } else {
+        console.error('❌ Failed to claim enquiry:', result.error);
+      }
+    } catch (err) {
+      console.error('❌ Error claiming enquiry:', err);
+    }
   };
 
   return (
@@ -213,21 +240,21 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect }) => {
             return (
               <button
                 key={btn.key}
-                onClick={btn.disabled ? undefined : (e => { e.stopPropagation(); handleSelect(); })}
-                disabled={btn.disabled}
+                onClick={btn.disabled ? undefined : (btn.key === 'claim' ? handleClaim : (e => { e.stopPropagation(); handleSelect(); }))}
+                disabled={btn.disabled || (btn.key === 'claim' && isLoading)}
                 className={mergeStyles({
                   background: isClaim && selected ? baseColour : 'transparent',
-                  color: btn.disabled ? '#9aa4b1' : (isClaim ? (selected ? '#fff' : baseColour) : colours.greyText),
+                  color: btn.disabled || (btn.key === 'claim' && isLoading) ? '#9aa4b1' : (isClaim ? (selected ? '#fff' : baseColour) : colours.greyText),
                   border: `1.5px solid ${isClaim ? baseColour : 'transparent'}`,
                   padding: '6px 14px',
                   borderRadius: 20,
                   fontSize: 11,
                   fontWeight: 600,
-                  cursor: btn.disabled ? 'not-allowed' : 'pointer',
+                  cursor: btn.disabled || (btn.key === 'claim' && isLoading) ? 'not-allowed' : 'pointer',
                   boxShadow: 'none',
                   transition: 'background .25s, color .25s, border .25s',
                 })}
-              >{btn.label}</button>
+              >{btn.key === 'claim' && isLoading ? 'Claiming...' : btn.label}</button>
             );
           });
         })()}

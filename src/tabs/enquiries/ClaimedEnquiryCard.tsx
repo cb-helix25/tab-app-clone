@@ -74,6 +74,7 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
       case 'construction': return colours.orange;
       case 'property': return colours.green;
       case 'employment': return colours.yellow;
+      case 'claim': return colours.accent;
       default: return colours.cta;
     }
   })();

@@ -113,7 +113,7 @@ function getFeeEarnerEmail(pitchedBy: string): string | null {
  * of the deal that was captured and the email metadata.
  * Also CC the fee earner who pitched the deal.
  */
-async function sendTestDealEmail(context: InvocationContext, dealInfo: any) {
+async function sendDealCapturedEmail(context: InvocationContext, dealInfo: any) {
   try {
     const tenantId = "7fbc252f-3ce5-460f-9740-4e1cb8bf78b8";
     const kvUri = "https://helix-keys.vault.azure.net/";
@@ -171,14 +171,25 @@ async function sendTestDealEmail(context: InvocationContext, dealInfo: any) {
 
     const emailHtml = `
       <div style="font-family:Segoe UI,Arial,sans-serif;color:#111">
-        <h2>Admin monitor: Deal captured</h2>
-        <p>This is an admin preview sent only to the monitoring address. It shows the deal and prospect snapshot and the email metadata.</p>
+        <h2>🎯 Deal Captured Successfully</h2>
+        <p><strong>Status:</strong> <span style="color:#22c55e;font-weight:600;">CAPTURED</span> - Deal saved to database and available for instructions app</p>
+        
         <h3>Deal snapshot</h3>
         <table style="border-collapse:collapse;border:1px solid #ddd">${htmlRows(dealSnapshot)}</table>
-        <h3 style="margin-top:12px">Original payload (JSON)</h3>
+        
+        <h3 style="margin-top:16px">Next Steps</h3>
+        <ul style="line-height:1.6">
+          <li>Client will access: <a href="${instructionsUrl}" style="color:#0066cc">${instructionsUrl}</a></li>
+          <li>Deal data will be automatically loaded into instructions app</li>
+          <li>Fee earner ${dealInfo.pitchedBy || 'N/A'} will receive notification when client completes process</li>
+        </ul>
+        
+        <h3 style="margin-top:16px">Original payload (JSON)</h3>
         <pre style="background:#f6f6f6;padding:8px;border-radius:4px;max-height:220px;overflow:auto">${JSON.stringify(dealInfo, null, 2)}</pre>
-        <p style="margin-top:12px">Instructions URL: <a href="${instructionsUrl}">${instructionsUrl}</a></p>
-        <p style="color:#666;font-size:12px">Delivered to: lz@helix-law.com${feeEarnerEmail ? ` | CC: ${feeEarnerEmail}` : ''} — this message is for monitoring only.</p>
+        
+        <p style="margin-top:12px;color:#666;font-size:12px">
+          📧 Delivered to: lz@helix-law.com${feeEarnerEmail ? ` | CC: ${feeEarnerEmail}` : ''} — this message is for monitoring only.
+        </p>
       </div>`;
 
     // Build recipients list
@@ -194,7 +205,7 @@ async function sendTestDealEmail(context: InvocationContext, dealInfo: any) {
 
     const emailContent = {
       message: {
-        subject: `Admin: Deal captured for ${dealInfo.serviceDescription ?? 'unknown'}`,
+        subject: `✅ Deal Captured: ${dealInfo.serviceDescription ?? 'unknown service'} (£${dealInfo.amount})`,
         body: { contentType: 'HTML', content: emailHtml },
         toRecipients,
         ccRecipients,
@@ -209,7 +220,7 @@ async function sendTestDealEmail(context: InvocationContext, dealInfo: any) {
       { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    context.error('Failed to send admin test email', err);
+    context.error('Failed to send deal captured notification email', err);
   }
 }
 
@@ -440,7 +451,7 @@ if (looksLikeEmailOrMessage(serviceDescription)) {
     dealId: upstreamDealId,
   };
 
-  await sendTestDealEmail(context, dealInfo);
+  await sendDealCapturedEmail(context, dealInfo);
       return {
         status: 200,
         body: JSON.stringify({

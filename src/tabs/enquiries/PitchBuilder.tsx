@@ -553,7 +553,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
   document.head.appendChild(style);
 }
 
-const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDealCapture = false }) => {
+const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDealCapture = true }) => {
   // Local helper: reveals value + copy on hover; shows only icon by default
   const RevealCopyField: React.FC<{ iconName: string; value: string; color: string; label: string }> = ({ iconName, value, color, label }) => {
     const [copied, setCopied] = useState(false);
@@ -741,7 +741,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   // Renamed: serviceDescription -> initialScopeDescription for clarity with new brief
   const [initialScopeDescription, setInitialScopeDescription] = useState<string>(initialOption?.text || '');
   const [selectedOption, setSelectedOption] = useState<IDropdownOption | undefined>(initialOption);
-  const [amount, setAmount] = useState<string>('');
+  // Default estimated fee now set to 1,500 per request
+  const [amount, setAmount] = useState<string>('1500');
   function handleAmountChange(val?: string) {
     setAmount(val ?? '');
   }
@@ -2825,6 +2826,18 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     }
     if (!body.trim()) {
       setErrorMessage('Email body cannot be empty.');
+      setIsErrorVisible(true);
+      return false;
+    }
+    // New mandatory deal capture fields
+    if (!initialScopeDescription.trim()) {
+      setErrorMessage('Service description is required.');
+      setIsErrorVisible(true);
+      return false;
+    }
+    const numericAmt = parseFloat(amount.replace(/[^0-9.]/g, ''));
+    if (!amount.trim() || isNaN(numericAmt) || numericAmt <= 0) {
+      setErrorMessage('Estimated fee is required (enter a positive number).');
       setIsErrorVisible(true);
       return false;
     }

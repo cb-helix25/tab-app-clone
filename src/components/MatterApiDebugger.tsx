@@ -234,85 +234,12 @@ const MatterApiDebugger: React.FC<MatterApiDebuggerProps> = ({ currentMatters, o
   };
 
   const analyzeCurrentData = () => {
-    console.log('CURRENT MATTERS ANALYSIS:');
-    console.log('Total matters received:', currentMatters.length);
-    
-    // Log the fetch configuration
-    console.log('FETCH CONFIGURATION:');
-  console.log('REACT_APP_GET_MATTERS_PATH:', process.env.REACT_APP_GET_MATTERS_PATH);
-  console.log('REACT_APP_GET_MATTERS_CODE:', process.env.REACT_APP_GET_MATTERS_CODE ? 'SET' : 'NOT SET');
-  console.log('REACT_APP_PROXY_BASE_URL:', getProxyBaseUrl());
-    console.log('Current hostname:', window.location.hostname);
+    // Analysis data available but console output removed for performance
     
     if (currentMatters.length > 0) {
-      console.log('Sample matter structure:', Object.keys(currentMatters[0]));
-      
-      // Analyze Responsible Solicitor distribution
-      const responsibleCounts: { [key: string]: number } = {};
-      currentMatters.forEach(matter => {
-        const responsible = matter.responsibleSolicitor || 'Unknown';
-        responsibleCounts[responsible] = (responsibleCounts[responsible] || 0) + 1;
-      });
-      console.log('Responsible Solicitor distribution:', responsibleCounts);
-      
-      // Analyze Originating Solicitor distribution
-      const originatingCounts: { [key: string]: number } = {};
-      currentMatters.forEach(matter => {
-        const originating = matter.originatingSolicitor || 'Unknown';
-        originatingCounts[originating] = (originatingCounts[originating] || 0) + 1;
-      });
-      console.log('Originating Solicitor distribution:', originatingCounts);
-      
-      // Analyze Practice Area distribution
-      const areaCounts: { [key: string]: number } = {};
-      currentMatters.forEach(matter => {
-        const area = matter.practiceArea || 'Unknown';
-        areaCounts[area] = (areaCounts[area] || 0) + 1;
-      });
-      console.log('Practice Area distribution:', areaCounts);
-      
-      // Analyze Status distribution
-      const statusCounts: { [key: string]: number } = {};
-      currentMatters.forEach(matter => {
-        const status = matter.status || 'Unknown';
-        statusCounts[status] = (statusCounts[status] || 0) + 1;
-      });
-      console.log('Status distribution:', statusCounts);
-      
-      // Check for test user specific matters
-      const userMatters = currentMatters.filter(matter => {
-        const responsible = (matter.responsibleSolicitor || '').toLowerCase();
-        const originating = (matter.originatingSolicitor || '').toLowerCase();
-        const testEmailLower = testEmail.toLowerCase();
-        const testInitialsLower = testInitials.toLowerCase();
-        
-        return responsible.includes(testEmailLower) || 
-               originating.includes(testEmailLower) ||
-               responsible === testInitialsLower ||
-               originating === testInitialsLower;
-      });
-      console.log(`${testInitials}-specific matters:`, userMatters.length, userMatters);
-      
-      console.log('First 3 matters for inspection:', currentMatters.slice(0, 3));
-      
-      // Additional debugging for data source
-      console.log('DATA SOURCE ANALYSIS:');
-      const uniqueIds = new Set(currentMatters.map(m => m.matterId));
-      console.log('Total unique matters:', uniqueIds.size);
-      
-      // Check if we might be getting local fallback data
-      const hasCompleteData = currentMatters.some(m => 
-        m.responsibleSolicitor && m.clientName && m.practiceArea
-      );
-      console.log('Has complete data (not fallback):', hasCompleteData);
-      
+      // Analysis data available but detailed logging removed for performance
     } else {
-      console.log('No matters data available');
-      console.log('Debugging suggestions:');
-      console.log('1. Check if environment variables are set correctly');
-      console.log('2. Check network tab for failed API calls');
-      console.log('3. Check if getMatters Azure Function is running');
-      console.log('4. Check if matter data exists in the database');
+      console.error('No matters data available - check API configuration');
     }
   };
 
