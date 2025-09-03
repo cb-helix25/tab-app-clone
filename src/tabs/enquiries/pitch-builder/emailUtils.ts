@@ -403,8 +403,15 @@ export function applyDynamicSubstitutions(
   const instructAnchor = `<a href="${finalInstructionsLink}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`;
 
   return text
-  // Support explicit marker syntax used in editor content
-  .replace(/\[\[INSTRUCT_LINK::[^\]]*\]\]/gi, instructAnchor)
+  // Support explicit marker syntax used in editor content - extract URL from within marker
+  .replace(/\[\[INSTRUCT_LINK::([^\]]*)\]\]/gi, (match, url) => {
+    const cleanUrl = url.trim();
+    // If the marker contains the base URL without passcode, use the passcode-based URL instead
+    if (cleanUrl === `${baseUrl}/pitch` && passcode) {
+      return `<a href="${baseUrl}/pitch/${passcode}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`;
+    }
+    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`;
+  })
     .replace(/\[FE\]/g, userInitials)
     .replace(/\[ACID\]/g, enquiryID)
     .replace(/\[Position\]/g, userRole)

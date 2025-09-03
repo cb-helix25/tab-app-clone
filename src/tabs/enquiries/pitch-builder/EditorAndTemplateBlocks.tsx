@@ -45,15 +45,7 @@ function htmlToPlainText(html: string): string {
     .trim();
 }
 
-// Deterministic short passcode generator from an enquiry ID (used as fallback when real passcode is missing)
-function computeLocalPasscode(id: string) {
-  if (!id) return '';
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < id.length; i++) {
-    h = Math.imul(h ^ id.charCodeAt(i), 16777619) >>> 0;
-  }
-  return (h >>> 0).toString(36);
-}
+// Removed local fallback passcode generation: must use ONLY server-issued passcode.
 
 // Find placeholder tokens like [TOKEN]
 function findPlaceholders(text: string): string[] {
@@ -764,10 +756,9 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
               // Use outline (doesn't affect layout) for dashed box appearance and avoid padding which would change width.
               html += `<span style="display:inline;background:#e0f0ff;outline:1px dashed #8bbbe8;padding:0;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${escapeHtml(segment)}</span>`;
             } else if (mark.type === 'instructLink') {
-              // Use the new instruct.helix-law.com domain for pitch links
-              const href = 'https://instruct.helix-law.com/pitch';
+              // Preserve the original marker href (includes passcode when available) instead of hardcoding base URL
+              const href = (mark.href || 'https://instruct.helix-law.com/pitch').trim();
               const safe = escapeHtml(href);
-              // Show the friendly label instead of the raw URL, keep link styling prominent and bold
               html += `<a href="${safe}" style="color:#174ea6;font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
             } else {
               // Updated edited highlight: subtle green background only (no border/box), accessible text color
@@ -778,9 +769,9 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           pushPlain(value.length);
           // Render any [[INSTRUCT_LINK::href]] markers as visible link text in the overlay
           try {
-            const replaced = html.replace(/\[\[INSTRUCT_LINK::([^\]]+)\]\]/g, (_m, _href) => {
-              // Use new instruct domain for instruct links
-              const safeHref = escapeHtml('https://instruct.helix-law.com/pitch');
+            const replaced = html.replace(/\[\[INSTRUCT_LINK::([^\]]+)\]\]/g, (_m, href) => {
+              // Use the actual href from the marker, not a hardcoded URL
+              const safeHref = escapeHtml(href.trim());
               // Render a friendly, bold blue anchor label for instruct links in the overlay
               return `<a href="${safeHref}" style="color:#174ea6;font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
             });
@@ -951,7 +942,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     if (roleStr) out = out.replace(/\[ROLE\]/gi, roleStr);
     // Also apply dynamic substitutions so [InstructLink] renders in the editor
     // For editor, compute an effective passcode (use provided passcode or a deterministic local one derived from enquiry ID)
-    const effectivePass = passcode || ((enquiry as any)?.ID ? computeLocalPasscode(String((enquiry as any).ID)) : undefined);
+  const effectivePass = passcode || undefined; // no fallback
     let substituted = applyDynamicSubstitutions(
       out,
       userData,
@@ -977,7 +968,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
   // When passcode becomes available, re-process the editor content to update [InstructLink] tokens
   useEffect(() => {
-    const effective = passcode || ((enquiry as any)?.ID ? computeLocalPasscode(String((enquiry as any).ID)) : undefined);
+  const effective = passcode || undefined; // no fallback
     if (effective && effective !== lastPasscodeRef.current && body) {
       const processedBody = applyRateRolePlaceholders(body);
       if (processedBody !== body) {
@@ -1948,22 +1939,21 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     const userDataLocal = (typeof userData !== 'undefined') ? userData : undefined;
                     const enquiryLocal = (typeof enquiry !== 'undefined') ? enquiry : undefined;
                     const sanitized = withoutAutoBlocks.replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
-                    // Use new instruct domain for preview links
-                    const checkoutPreviewUrl = 'https://instruct.helix-law.com/pitch';
+                    // Use passcode in preview URL if available
                     const substituted = applyDynamicSubstitutions(
                       sanitized,
                       userDataLocal,
                       enquiryLocal,
                       amount,
-                      undefined,
-                      checkoutPreviewUrl
+                      passcode || undefined,
+                      undefined // Let applyDynamicSubstitutions construct URL with passcode
                     );
                     const unresolvedBody = findPlaceholders(substituted);
                     const finalBody = convertDoubleBreaksToParagraphs(substituted);
                     const finalHighlighted = highlightPlaceholdersHtml(finalBody);
-                    // Normalize any Instruct Helix Law anchors to use the project's highlight colour and new domain
-                    const styledFinalHighlighted = finalHighlighted.replace(/<a\s+href="([^"]+)"[^>]*>\s*Instruct\s+Helix\s+Law\s*<\/a>/gi, (_m, _href) => {
-                      const safe = escapeHtml('https://instruct.helix-law.com/pitch');
+                    // Normalize any Instruct Helix Law anchors to use the project's highlight colour but preserve original href
+                    const styledFinalHighlighted = finalHighlighted.replace(/<a\s+href="([^"]+)"[^>]*>\s*Instruct\s+Helix\s+Law\s*<\/a>/gi, (m, href) => {
+                      const safe = escapeHtml(href);
                       return `<a href="${safe}" style="color:${colours.highlight};font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
                     });
                     return (
@@ -2008,7 +1998,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       // Subject is independent; treat it directly
                       const unresolvedSubject = findPlaceholders(subject || '');
                       const sanitized = stripDashDividers(body || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
-                      const effective = passcode || (enquiryLocal?.ID ? computeLocalPasscode(String(enquiryLocal.ID)) : undefined);
+                      const effective = passcode || undefined; // no fallback
                       const checkoutPreviewUrl = 'https://instruct.helix-law.com/pitch';
                       const substitutedBody = applyDynamicSubstitutions(sanitized, userDataLocal, enquiryLocal, amount, effective, checkoutPreviewUrl);
                       const unresolvedBody = findPlaceholders(substitutedBody);

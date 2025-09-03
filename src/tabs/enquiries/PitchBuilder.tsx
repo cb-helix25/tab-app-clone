@@ -554,6 +554,26 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
 }
 
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDealCapture = true }) => {
+  /**
+   * Ensure any raw passcode (api or fallback) is converted to a 5‑digit numeric string.
+   * Rules:
+   * 1. If already exactly 5 digits, keep.
+   * 2. Else if it contains >=5 digits anywhere, take first 5 digits.
+   * 3. Else derive deterministic 5‑digit from FNV-1a hash of (raw+seed).
+   */
+  function normalizePasscode(raw: string | undefined | null, seed?: string | number): string | null {
+    if (!raw) return null;
+    if (/^\d{5}$/.test(raw)) return raw;
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length >= 5) return digits.slice(0, 5);
+    const source = `${raw}|${seed ?? ''}`;
+    let h = 2166136261 >>> 0; // FNV-1a 32-bit
+    for (let i = 0; i < source.length; i++) {
+      h = Math.imul(h ^ source.charCodeAt(i), 16777619) >>> 0;
+    }
+    const five = (h % 90000) + 10000; // 10000-99999
+    return String(five);
+  }
   // Local helper: reveals value + copy on hover; shows only icon by default
   const RevealCopyField: React.FC<{ iconName: string; value: string; color: string; label: string }> = ({ iconName, value, color, label }) => {
     const [copied, setCopied] = useState(false);
@@ -1395,18 +1415,38 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   const [toast, setToast] = useState<{
     message: string;
-    type: 'success' | 'error' | 'info';
+    type: 'success' | 'error' | 'info' | 'warning';
     loading?: boolean;
+    details?: string;
+    progress?: number;
+    icon?: string;
   } | null>(null);
 
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
   const showToast = (
     msg: string,
-    type: 'success' | 'error' | 'info'
+    type: 'success' | 'error' | 'info' | 'warning',
+    options?: {
+      loading?: boolean;
+      details?: string;
+      progress?: number;
+      icon?: string;
+      duration?: number;
+    }
   ) => {
-    setToast({ message: msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setToast({ 
+      message: msg, 
+      type, 
+      loading: options?.loading,
+      details: options?.details,
+      progress: options?.progress,
+      icon: options?.icon
+    });
+    const duration = options?.duration ?? 3000;
+    if (duration > 0) {
+      setTimeout(() => setToast(null), duration);
+    }
   };
 
   // Tab state to switch between email details and deals
@@ -1415,6 +1455,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   // IDs returned after saving a deal
   const [dealId, setDealId] = useState<number | null>(null);
   const [dealPasscode, setDealPasscode] = useState<string>('');
+  const [dealStatus, setDealStatus] = useState<'idle' | 'processing' | 'ready' | 'error'>('idle');
   const [clientIds, setClientIds] = useState<number[]>([]);
   const [dealClients, setDealClients] = useState<ClientInfo[]>([]);
   const [isMultiClientFlag, setIsMultiClientFlag] = useState<boolean>(false);
@@ -2846,10 +2887,25 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     return true;
   }
 
-  async function insertDealIfNeeded(options?: { background?: boolean }) {
+  async function insertDealIfNeeded(options?: { background?: boolean }): Promise<string | null> {
     try {
+      if (!options?.background) {
+        setDealStatus('processing');
+      }
+
       const numericAmount = options?.background ? 0 : parseFloat(amount.replace(/,/g, '')) || 0;
       const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
+      
+      // Show initial loading state (only for foreground operations)
+      if (!options?.background) {
+        showToast('Preparing deal capture...', 'info', {
+          loading: true,
+          details: 'Validating enquiry data and formatting request',
+          progress: 10,
+          duration: 0
+        });
+      }
+      
       // Ensure we always send a non-empty description. If the user hasn't set one,
       // derive a short, plain-text fallback from the editor body so upstream validation passes.
       const fallbackDescription = (() => {
@@ -2883,27 +2939,99 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           })),
         }),
       };
+
+      // Update progress
+      if (!options?.background) {
+        showToast('Connecting to deal capture service...', 'info', {
+          loading: true,
+          details: `Sending deal data for ${enquiry.Point_of_Contact || 'client'}`,
+          progress: 30,
+          duration: 0
+        });
+      }
+
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
+      console.log('🔌 Deal creation response:', { 
+        ok: response.ok, 
+        status: response.status, 
+        statusText: response.statusText 
+      });
+
+      if (!options?.background) {
+        showToast('Processing deal data...', 'info', {
+          loading: true,
+          details: 'Server is generating passcode and instruction reference',
+          progress: 70,
+          duration: 0
+        });
+      }
+
       if (response.ok) {
         const data = await response.json();
+        console.log('📦 Deal creation data:', data);
         if (data?.passcode) {
-          setDealPasscode(data.passcode);
+          const norm = normalizePasscode(data.passcode, enquiry?.ID);
+          console.log('🎫 Setting deal passcode (normalized):', data.passcode, '->', norm);
+          if (norm) setDealPasscode(norm);
+          
+          if (!options?.background) {
+            setDealStatus('ready');
+          }
+          
+          // ✅ Enhanced success feedback
+          if (!options?.background) {
+            showToast('Deal captured successfully!', 'success', {
+              details: `Passcode ${norm} created • Instruction link ready`,
+              icon: 'CompletedSolid',
+              duration: 4000
+            });
+          }
+          
+          // ✅ Trigger same confirmation message as draft/send
+          setIsDraftConfirmed(true);
+          setTimeout(() => setIsDraftConfirmed(false), 3000);
+          return norm || data.passcode; // Return normalized (or raw fallback)
+        } else {
+          console.warn('⚠️ No passcode in response data');
+          if (!options?.background) {
+            setDealStatus('error');
+            showToast('Deal saved with warning', 'warning', {
+              details: 'Deal created but passcode generation failed',
+              icon: 'WarningSolid',
+              duration: 5000
+            });
+          }
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Deal creation failed:', errorText);
+        if (!options?.background) {
+          setDealStatus('error');
+          showToast('Deal capture failed', 'error', {
+            details: `Server error: ${response.status} ${response.statusText}`,
+            icon: 'ErrorBadge',
+            duration: 6000
+          });
         }
       }
 
-      // ✅ Trigger same confirmation message as draft/send
-      setIsDraftConfirmed(true);
-      setTimeout(() => setIsDraftConfirmed(false), 3000);
-
-      return true;
+      return null;
     } catch (e) {
       console.error('Failed to insert deal:', e);
-      return false;
+      if (!options?.background) {
+        setDealStatus('error');
+        showToast('Connection error', 'error', {
+          details: 'Unable to reach deal capture service',
+          icon: 'PlugDisconnected',
+          duration: 5000
+        });
+      }
+      return null;
     }
   }
 
@@ -2912,7 +3040,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   useEffect(() => {
     async function ensureDeal() {
       try {
+        console.log('🔍 Checking deal passcode:', { dealPasscode, enquiryId: enquiry?.ID });
         if (!dealPasscode && enquiry?.ID) {
+          console.log('⚙️ Creating deal in background...');
           await insertDealIfNeeded({ background: true });
         }
       } catch (e) {
@@ -2933,17 +3063,30 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
    */
   async function sendEmail() {
     if (validateForm()) {
-      setToast({ message: 'Saving deal...', type: 'info', loading: true });
-      const dealOk = await insertDealIfNeeded();
-      if (dealOk) {
-        setToast({ message: 'Deal saved', type: 'success' });
-      } else {
-        setToast({ message: 'Failed to save deal', type: 'error' });
-        setTimeout(() => setToast(null), 3000);
+      showToast('Preparing to send email...', 'info', {
+        loading: true,
+        details: 'Validating form data and deal information',
+        progress: 10,
+        duration: 0
+      });
+
+      const dealPasscode = await insertDealIfNeeded();
+      if (!dealPasscode) {
+        showToast('Failed to save deal', 'error', {
+          details: 'Cannot send email without valid deal reference',
+          duration: 5000
+        });
         return;
       }
-      await delay(800);
-      setToast({ message: 'Sending email...', type: 'info', loading: true });
+
+      await delay(600);
+      showToast('Sending email...', 'info', {
+        loading: true,
+        details: `Delivering to ${enquiry.Point_of_Contact || 'recipient'}`,
+        progress: 80,
+        duration: 0
+      });
+
       console.log('Email Sent:', {
         to,
         cc,
@@ -2953,10 +3096,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         attachments,
         followUp,
       });
-      setToast({ message: 'Email sent', type: 'success' });
+
+      showToast('Email sent successfully!', 'success', {
+        details: 'Message delivered and deal captured',
+        icon: 'MailSolid',
+        duration: 4000
+      });
+
       setIsSuccessVisible(true);
       resetForm();
-      setTimeout(() => setToast(null), 3000);
     }
   }
 
@@ -2995,28 +3143,45 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       );
       setBody(bodyEditorRef.current.innerHTML);
     }
-    setToast({ message: 'Saving deal...', type: 'info', loading: true });
-    const dealOk = await insertDealIfNeeded();
-    if (dealOk) {
-      setToast({ message: 'Deal saved', type: 'success' });
-    } else {
-      setToast({ message: 'Failed to save deal', type: 'error' });
-      setTimeout(() => setToast(null), 3000);
+
+    // Step 1: Deal capture with enhanced feedback
+    showToast('Starting email draft process...', 'info', {
+      loading: true,
+      details: 'Saving deal and generating passcode',
+      progress: 15,
+      duration: 0
+    });
+
+    const currentPasscode = await insertDealIfNeeded();
+    if (!currentPasscode) {
+      showToast('Failed to save deal', 'error', {
+        details: 'Cannot proceed without valid deal reference',
+        duration: 5000
+      });
       return;
     }
-    await delay(800);
-    setToast({ message: 'Drafting email...', type: 'info', loading: true });
+
+    // Step 2: Content processing
+    showToast('Processing email content...', 'info', {
+      loading: true,
+      details: 'Applying substitutions and formatting',
+      progress: 40,
+      duration: 0
+    });
+
+    await delay(400); // Brief pause to show progress
 
     // Remove highlight spans
     let rawHtml = removeHighlightSpans(body);
 
     // Apply dynamic substitutions such as amount just before sending
+    // Use the fresh passcode from the API call, not the state variable
     rawHtml = applyDynamicSubstitutions(
       rawHtml,
       userData,
       enquiry,
       amount,
-      dealPasscode,
+      normalizePasscode(currentPasscode, enquiry?.ID) || currentPasscode,
       undefined // Let applyDynamicSubstitutions construct URL with passcode
     );
 
@@ -3025,6 +3190,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
     // After removing leftover placeholders/highlights in handleDraftEmail():
     const finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
+
+    // Step 3: Email composition
+    showToast('Generating email draft...', 'info', {
+      loading: true,
+      details: 'Creating formatted email with signature',
+      progress: 70,
+      duration: 0
+    });
 
     const fullEmailHtml = ReactDOMServer.renderToStaticMarkup(
       <EmailSignature bodyHtml={finalHtml} userData={userData} />
@@ -3043,14 +3216,24 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     if (!userEmailAddress || userEmailAddress.trim() === '') {
       setErrorMessage('Cannot draft email: sender email address is not available.');
       setIsErrorVisible(true);
-      setToast({ message: 'Failed to draft email', type: 'error' });
-      setTimeout(() => setToast(null), 3000);
+      showToast('Failed to draft email', 'error', {
+        details: 'Sender email address not configured',
+        duration: 5000
+      });
       return;
     }
 
     try {
       setErrorMessage('');
       setIsErrorVisible(false);
+
+      // Step 4: Sending to Outlook
+      showToast('Opening Outlook draft...', 'info', {
+        loading: true,
+        details: 'Launching email application',
+        progress: 90,
+        duration: 0
+      });
       const response = await fetch(
         `${getProxyBaseUrl()}/sendEmail?code=${process.env.REACT_APP_SEND_EMAIL_CODE}`,
         {
@@ -3063,19 +3246,28 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         const errorText = await response.text();
         throw new Error(errorText || 'Failed to draft email.');
       }
-      setToast({ message: 'Email drafted', type: 'success' });
+
+      // Success feedback with completion details
+      showToast('Email draft created!', 'success', {
+        details: `Opened in Outlook for ${enquiry.Point_of_Contact || 'client'}`,
+        icon: 'MailSolid',
+        duration: 4000
+      });
+
       setIsSuccessVisible(true);
       setIsDraftConfirmed(true); // **Set confirmation state**
       setTimeout(() => {
         setIsDraftConfirmed(false);
       }, 3000);
-      setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
       console.error('Error drafting email:', error);
       setErrorMessage(error.message || 'An unknown error occurred.');
       setIsErrorVisible(true);
-      setToast({ message: 'Failed to draft email', type: 'error' });
-      setTimeout(() => setToast(null), 3000);
+      showToast('Failed to draft email', 'error', {
+        details: error.message || 'Unable to create email draft',
+        icon: 'MailSolid',
+        duration: 5000
+      });
     }
   }
 
@@ -4357,6 +4549,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           message={toast?.message || ''}
           type={toast?.type || 'info'}
           loading={toast?.loading}
+          details={toast?.details}
+          progress={toast?.progress}
+          icon={toast?.icon}
         />
       </main>
 

@@ -378,16 +378,30 @@ if (looksLikeEmailOrMessage(serviceDescription)) {
 
     const url = `${DEAL_CAPTURE_BASE_URL}?code=${code}`;
 
-    // Normalize prospect IDs (upstream expects numeric ProspectId)
-    const normalizeId = (raw?: string | number | undefined): number | null => {
+    // ProspectId handling: do NOT strip digits or alter formatting beyond validation.
+    // Accept only wholly numeric strings (may include leading zeros) or numbers.
+    // Preserve the original digit sequence for references; derive numeric for DB bounds check only.
+    const toNumericIfValid = (raw?: string | number | undefined): { raw: string; num: number } | null => {
       if (raw === undefined || raw === null) return null;
-      const s = String(raw).replace(/[^0-9]/g, "");
-      if (!s) return null;
-      const n = Number(s);
-      return Number.isFinite(n) ? n : null;
+      const rawStr = String(raw).trim();
+      if (!/^\d+$/.test(rawStr)) return null; // reject if any non-digit
+      // Keep leading zeros in rawStr; convert to number separately (leading zeros dropped, fine for bounds)
+      const num = Number(rawStr);
+      if (!Number.isSafeInteger(num)) return null;
+      return { raw: rawStr, num };
     };
 
-  const normalizedProspectId = normalizeId(prospectId as unknown as string | number);
+    const prospectMeta = toNumericIfValid(prospectId as unknown as string | number);
+    if (!prospectMeta) {
+      return {
+        status: 400,
+        body: JSON.stringify({ error: "Invalid prospectId", detail: "prospectId must be all digits" }),
+        headers: { "Content-Type": "application/json" },
+      };
+    }
+
+  const normalizedProspectId = prospectMeta.num;
+  const rawProspectId = prospectMeta.raw; // preserve for instructionRef / auditing
     if (normalizedProspectId === null) {
       return {
         status: 400,
@@ -400,14 +414,22 @@ if (looksLikeEmailOrMessage(serviceDescription)) {
   // Examples: HLX-27367-49674 or HLX-00016-16093
   const pad = (v: number | string, width = 5) => String(v).padStart(width, "0");
   const passcodeStr = String(passcode).padStart(5, "0");
-  const instructionRef = `HLX-${pad(normalizedProspectId)}-${passcodeStr}`;
+  // Use rawProspectId (with its original leading zeros) when forming InstructionRef for better traceability
+  const instructionRef = `HLX-${pad(rawProspectId)}-${passcodeStr}`;
 
-    const normalizedClients = (clients || []).map(c => ({
-      clientId: c.clientId,
-      prospectId: normalizeId(c.prospectId as unknown as string | number),
-      clientEmail: c.clientEmail,
-      isLeadClient: c.isLeadClient ?? false,
-    }));
+    const normalizedClients = (clients || []).map(c => {
+      if (c.prospectId === undefined || c.prospectId === null) {
+        return { ...c, prospectId: null };
+      }
+      const meta = toNumericIfValid(c.prospectId as unknown as string | number);
+      return {
+        clientId: c.clientId,
+        prospectId: meta ? meta.num : null,
+        clientEmail: c.clientEmail,
+        isLeadClient: c.isLeadClient ?? false,
+        rawProspectId: meta ? meta.raw : undefined,
+      };
+    });
 
     // If any client prospectId was present but couldn't be normalized, reject
     const badClient = normalizedClients.find(c => c.prospectId === null && c.clientId !== undefined);
@@ -424,6 +446,7 @@ if (looksLikeEmailOrMessage(serviceDescription)) {
       amount,
       areaOfWork,
       prospectId: normalizedProspectId,
+  rawProspectId,
   instructionRef,
       passcode,
       pitchedBy,

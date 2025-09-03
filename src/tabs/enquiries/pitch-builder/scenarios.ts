@@ -59,19 +59,9 @@ Transparently we charge for our time on an hourly rate basis. My hourly rate is 
 
 If you wish to go ahead please send me core documents such as [INSERT the contracts, notices, demands, accounts, relevant correspondence set out below] so that we can be as clear as possible on the factual position. I then anticipate confirming my advice on your best next steps.
 
-To confirm our instructions please:
+To confirm our instructions please click [InstructLink]. This single link will verify your identity, request core documents and allow you to pay our funds on account.
 
-1. Pay £[INSERT] on account of our estimate of costs to:
-
-  Helix Law General Client Account
-  Barclays Bank, Eastbourne
-  Sort code: 20-27-91
-  Account: 93472434
-  Ref: 27311
-
-2. Complete the proof of ID at this link: [InstructLink]. This single link will verify your identity and request core documents.
-
-As soon as you have completed these steps we will be able to open a file and move this forward immediately. A retainer will be created with us when we send you our Client Care Letter in due course and it is only at that point that your instructions will be confirmed.
+As soon as you have completed this step we will be able to open a file and move this forward immediately. A retainer will be created with us when we send you our Client Care Letter in due course and it is only at that point that your instructions will be confirmed.
 
 I hope the above is helpful and look forward to assisting you with this.`
   },
@@ -91,17 +81,7 @@ One approach you might now consider taking is [INSERT]. This might be a cost eff
 
 For reasons we discussed in our call now may not be an appropriate time for you to instruct us but I have set out further details below in case you want to proceed. You should always keep in mind the cost; benefit, proportionality and timing of instructing us and incurring costs. For our part we are happy to assist you but transparently we charge for our work and time. I am a [ROLE] and my hourly rate is [RATE]. In terms of an initial review and advice you will need to budget [INSERT] which is a cost estimate and not a fixed fee. Further steps and time will incur additional cost.
 
-If you wish to confirm our instructions notwithstanding the above please:
-
-1. Pay £[INSERT] on account of our estimate of costs to:
-
-  Helix Law General Client Account
-  Barclays Bank, Eastbourne
-  Sort code: 20-27-91
-  Account: 93472434
-  Ref: 27311
-
-2. Complete the proof of ID at this link: [InstructLink]. This single link will verify your identity and request core documents.
+If you wish to confirm our instructions notwithstanding the above please confirm your instructions by clicking [InstructLink]. This link will verify your identity, enable you to provide key documents and provide funds on account of costs in a quick and straightforward process.
 
 On receipt of the above from you I will review the position and will confirm our cost estimate and we will then open a file and take it from there.
 
@@ -137,17 +117,7 @@ Ideally it would be helpful if you can please provide core documents including [
 
 In terms of costs I am a [ROLE] and my hourly rate is [RATE]. We charge on a time recorded basis in 6minute units for all steps and work including emails in and out and telephone attendances. Here I have advised that you will need to budget [INSERT] for an initial review and advice. This is an estimate and not a fixed fee, but my hope and expectation is that at this stage you will be clear on where you stand. We can then discuss next steps at that stage. Further work will incur additional cost.
 
-Please confirm your instructions by:
-
-1. Pay £[INSERT] on account of our estimate of costs to:
-
-    Helix Law General Client Account
-    Barclays Bank, Eastbourne
-    Sort code: 20-27-91
-    Account: 93472434
-    Ref: 27311
-
-2. Completing the proof of ID at this link: [InstructLink]. This single link will verify your identity and request core documents.
+Please confirm your instructions by clicking [InstructLink]. This single link will allow you to verify your identity, provide the key documents needed and provide funds on account of costs in a quick and transparent checkout process.
 
 Once provided I will briefly review this to confirm our time and cost estimate is accurate and we will then open a file. At that stage you will receive our Client Care Letter formally confirming the terms of our retainer.
 
