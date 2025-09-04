@@ -263,6 +263,7 @@ const App: React.FC<AppProps> = ({
       const isAdmin = isAdminUser(currentUser);
 
       if (useLocalData) {
+        console.log('🔧 Using local test instruction data for development');
         // Merge local instruction data with ID verification data
         const instructionsWithIdVerifications = (localInstructionData as InstructionData[]).map(prospect => ({
           ...prospect,
@@ -286,51 +287,111 @@ const App: React.FC<AppProps> = ({
         return;
       }
 
-      const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
-      const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
-      if (!path || !code) {
-        console.error("Missing env variables for instruction data");
-        return;
-      }
-
       try {
-        // Request all instruction data; we'll filter client-side
-        const url = `${proxyBaseUrl}/${path}?code=${code}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          const all = Array.isArray(data) ? data : [data];
-          
-          // For admins, store the complete dataset
-          if (isAdmin) {
-            setAllInstructionData(all);
-          }
-          
-          // Filter for current user's instructions (preserves existing behavior)
-          const filtered = all.reduce<InstructionData[]>((acc, prospect) => {
-            const instructions = (prospect.instructions ?? []).filter(
-              (inst: any) => inst.HelixContact === targetInitials,
-            );
-            if (instructions.length > 0) {
-              const refSet = new Set(
-                instructions.map((i: any) => i.InstructionRef),
-              );
-              acc.push({
-                ...prospect,
-                instructions,
-                deals: (prospect.deals ?? []).filter((d: any) =>
-                  refSet.has(d.InstructionRef),
-                ),
-              });
-            }
-            return acc;
-          }, []);
-          setInstructionData(filtered);
+        console.log('🔵 Fetching instruction data from unified server endpoint');
+        
+        // Call our new unified server endpoint
+        const params = new URLSearchParams();
+        if (!isAdmin) {
+          params.append('initials', targetInitials);
         } else {
-          console.error("Failed to fetch instructions");
+          params.append('includeAll', 'true');
         }
+        
+        const url = `/api/instructions?${params.toString()}`;
+        console.log('🌐 Calling unified endpoint:', url);
+        
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        console.log('✅ Received clean instruction data:', {
+          count: data.count,
+          computedServerSide: data.computedServerSide,
+          timestamp: data.timestamp
+        });
+
+        // Transform the clean server data into the expected frontend format
+        const transformedData: InstructionData[] = data.instructions.map((item: any) => ({
+          prospectId: item.instruction.InstructionRef, // Use instruction ref as prospect ID
+          instructions: [item.instruction],
+          deals: item.deals || [],
+          documents: item.documents || [],
+          idVerifications: item.idVerifications || [],
+          electronicIDChecks: item.idVerifications || [], // Alias for compatibility
+          riskAssessments: item.riskAssessments || [],
+          compliance: item.riskAssessments || [], // Alias for compatibility
+          jointClients: item.jointClients || [],
+          matters: item.matters || [],
+          
+          // Include computed business logic from server
+          verificationStatus: item.verificationStatus,
+          riskStatus: item.riskStatus,
+          nextAction: item.nextAction,
+          matterLinked: item.matterLinked,
+          paymentCompleted: item.paymentCompleted,
+          documentCount: item.documentCount
+        }));
+
+        // Set the data - no more complex client-side filtering needed!
+        setInstructionData(transformedData);
+        
+        if (isAdmin) {
+          setAllInstructionData(transformedData);
+        }
+        
+        console.log('✅ Clean instruction data loaded successfully');
+
       } catch (err) {
-        console.error("Error fetching instructions", err);
+        console.error("❌ Error fetching instruction data from unified endpoint:", err);
+        
+        // Fallback: try the legacy endpoint as backup
+        console.log('🔄 Attempting legacy endpoint as fallback...');
+        const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
+        const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
+        if (path && code) {
+          try {
+            const url = `${proxyBaseUrl}/${path}?code=${code}`;
+            const res = await fetch(url);
+            if (res.ok) {
+              const data = await res.json();
+              const all = Array.isArray(data) ? data : [data];
+              
+              if (isAdmin) {
+                setAllInstructionData(all);
+              }
+              
+              const filtered = all.reduce<InstructionData[]>((acc, prospect) => {
+                const instructions = (prospect.instructions ?? []).filter(
+                  (inst: any) => inst.HelixContact === targetInitials,
+                );
+                if (instructions.length > 0) {
+                  const refSet = new Set(
+                    instructions.map((i: any) => i.InstructionRef),
+                  );
+                  acc.push({
+                    ...prospect,
+                    instructions,
+                    deals: (prospect.deals ?? []).filter((d: any) =>
+                      refSet.has(d.InstructionRef),
+                    ),
+                  });
+                }
+                return acc;
+              }, []);
+              setInstructionData(filtered);
+              console.log('✅ Legacy endpoint worked as fallback');
+            } else {
+              console.error("Failed to fetch instructions from legacy endpoint");
+            }
+          } catch (legacyErr) {
+            console.error("Legacy endpoint error:", legacyErr);
+          }
+        } else {
+          console.error("Missing env variables for legacy instruction data endpoint");
+        }
       }
     }
 

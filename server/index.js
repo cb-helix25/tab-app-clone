@@ -27,6 +27,7 @@ const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 const enquiriesRouter = require('./routes/enquiries');
 const enquiryEmailsRouter = require('./routes/enquiryEmails');
 const pitchesRouter = require('./routes/pitches');
+const instructionsRouter = require('./routes/instructions');
 const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 
 const app = express();
@@ -58,7 +59,26 @@ app.use('/api/ccl', cclRouter);
 app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 app.use('/api/pitches', pitchesRouter);
+app.use('/api/instructions', instructionsRouter);
 app.use('/ccls', express.static(CCL_DIR));
+
+console.log('📋 Server routes registered:');
+console.log('  ✅ /api/keys');
+console.log('  ✅ /api/refresh'); 
+console.log('  ✅ /api/matter-requests');
+console.log('  ✅ /api/opponents');
+console.log('  ✅ /api/risk-assessments');
+console.log('  ✅ /api/bundle');
+console.log('  ✅ /api/clio-contacts');
+console.log('  ✅ /api/clio-matters');
+console.log('  ✅ /api/matters');
+console.log('  ✅ /api/getMatters');
+console.log('  ✅ /api/getAllMatters');
+console.log('  ✅ /api/ccl');
+console.log('  ✅ /api/enquiries');
+console.log('  ✅ /api/enquiry-emails');
+console.log('  ✅ /api/pitches');
+console.log('  🆕 /api/instructions (UNIFIED ENDPOINT)');
 
 // Proxy routes to Azure Functions - these handle requests without /api/ prefix
 app.use('/', proxyToAzureFunctionsRouter);

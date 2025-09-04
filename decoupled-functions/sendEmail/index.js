@@ -28,6 +28,7 @@ module.exports = async function (context, req) {
   const userEmail = body.user_email;
   const subject = body.subject || 'Your Enquiry from Helix';
   const fromEmail = body.from_email || 'automations@helix-law.com';
+  const bccEmail = body.bcc_email; // Optional BCC field
 
   if (!emailContents || !userEmail) {
     context.res = { status: 400, body: 'Missing email_contents or user_email' };
@@ -59,7 +60,8 @@ module.exports = async function (context, req) {
           content: emailContents
         },
         toRecipients: [{ emailAddress: { address: userEmail } }],
-        from: { emailAddress: { address: fromEmail } }
+        from: { emailAddress: { address: fromEmail } },
+        ...(bccEmail ? { bccRecipients: [{ emailAddress: { address: bccEmail } }] } : {})
       },
       saveToSentItems: 'false'
     };

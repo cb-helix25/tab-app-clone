@@ -104,7 +104,7 @@ const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   Cancel: { outline: FaRegTimesCircle, filled: FaTimesCircle },
   Document: { outline: FaRegFile, filled: FaFile },
   FileTemplate: { outline: FaRegFileAlt, filled: FaFileAlt },
-  // Use a real folder icon for Finalise Matter (was FaRegFileAlt/FaFileAlt, which is a file/contract icon)
+  // Use a real folder icon for Open Matter (was FaRegFileAlt/FaFileAlt, which is a file/contract icon)
   OpenFile: { outline: FaRegFolder, filled: FaFolder },
   IdCheck: { outline: FaRegIdBadge, filled: FaIdBadge },
   Assessment: { outline: MdOutlineAssessment, filled: MdAssessment },
@@ -227,8 +227,8 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     attendanceIconStyle = mergeStyles(attendanceIconStyle, {
       color: colours.cta,
     });
-  } else if (title === 'Finalise Matter') {
-    // Always use the original folder icon (OpenFile) for Finalise Matter, no green pulse
+  } else if (title === 'Open Matter') {
+  // Always use the original folder icon (OpenFile) for Open Matter, no green pulse
     attendanceIconName = 'OpenFile';
     attendanceIconStyle = mergeStyles(attendanceIconStyle, {
       color: colours.cta,

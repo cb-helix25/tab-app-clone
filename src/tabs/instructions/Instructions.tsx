@@ -1447,6 +1447,12 @@ const Instructions: React.FC<InstructionsProps> = ({
     return overviewItemsWithNextAction.filter(i => i.nextAction === clientsActionFilter || (clientsActionFilter==='Complete' && i.nextAction==='Complete'));
   }, [overviewItemsWithNextAction, clientsActionFilter]);
 
+  // Local dev helper: detect instructions whose next required action is Matter Opening
+  const isLocalhostEnv = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const openMatterCandidates = useMemo(() => {
+    return filteredOverviewItems.filter((i: any) => i.nextAction === 'Open Matter');
+  }, [filteredOverviewItems]);
+
   // Filter deals by claim & stage
   const filteredDeals = useMemo(()=> deals.filter(d => {
     if (pitchStageFilter === 'Active' && String(d.Status).toLowerCase()==='closed') return false;
@@ -1981,6 +1987,46 @@ const Instructions: React.FC<InstructionsProps> = ({
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className={sectionContainerStyle(isDarkMode)}>
+        {/* Local development immediate Matter Opening CTA */}
+        {isLocalhostEnv && activeTab === 'clients' && !showNewMatterPage && openMatterCandidates.length > 0 && (
+          <div style={{
+            position: 'fixed',
+            bottom: '96px',
+            right: '32px',
+            zIndex: 1200,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}>
+            {openMatterCandidates.slice(0,3).map((c:any) => (
+              <button
+                key={`matter-cta-${c.instruction.InstructionRef}`}
+                onClick={() => {
+                  setSelectedInstruction(c.instruction);
+                  setTimeout(()=> handleGlobalOpenMatter(), 50);
+                }}
+                style={{
+                  background: 'linear-gradient(135deg,#2563EB 0%,#1D4ED8 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  minWidth: '220px'
+                }}
+                title="Quick open matter (local only)"
+              >
+                <FaFolder /> Open Matter: {c.instruction.InstructionRef}
+              </button>
+            ))}
+          </div>
+        )}
       {activeTab === "clients" && (
               <div className={overviewGridStyle} ref={overviewGridRef}>
                 {twoColumn && typeof document !== 'undefined' && !document.getElementById('instructionsTwoColStyles') && (

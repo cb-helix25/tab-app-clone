@@ -381,7 +381,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
 
 const quickActionOrder: Record<string, number> = {
   'Confirm Attendance': 1,
-  'Finalise Matter': 2,
+  'Open Matter': 2,
   'Review Instructions': 3,
   'Create a Task': 4,
   'Request CollabSpace': 5,
@@ -2870,7 +2870,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         }
         return; // Navigate without opening panel
         break;
-      case 'Finalise Matter':
+  case 'Open Matter':
         // Navigate directly to Instructions tab and trigger matter opening
         localStorage.setItem('openMatterOpening', 'true');
         // Use a custom event to signal the navigation
@@ -2944,10 +2944,31 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     }
     if (hasActiveMatter && (userInitials === 'LZ' || isLocalhost)) {
       actions.push({
-        title: 'Finalise Matter',
+  title: 'Open Matter',
         icon: 'OpenFolderHorizontal',
-        onClick: () => handleActionClick({ title: 'Finalise Matter', icon: 'OpenFolderHorizontal' }),
+  onClick: () => handleActionClick({ title: 'Open Matter', icon: 'OpenFolderHorizontal' }),
       });
+    }
+    // Local dev immediate Matter Opening: surface when any instruction is ready
+    if (isLocalhost) {
+      try {
+        const candidates = (instructionData || []).flatMap((p: any) => (p.instructions || []).map((inst: any) => {
+          const paymentOk = (inst.PaymentResult || '').toLowerCase() === 'successful';
+          const eidResult = (inst.eid?.EIDOverallResult || inst.EIDOverallResult || '').toLowerCase();
+          const poidPassed = eidResult === 'passed' || eidResult === 'approved';
+          const hasMatter = Boolean(inst.MatterId || (inst.matters && inst.matters.length));
+            // Accept also if user forced open via draft flag (optional future logic)
+          const ready = paymentOk && poidPassed && !hasMatter;
+          return ready ? inst : null;
+        }).filter(Boolean));
+        if (candidates.length > 0) {
+          actions.push({
+            title: candidates.length === 1 ? 'Open Matter' : 'Open Matters',
+            icon: 'FolderHorizontal',
+            onClick: () => handleActionClick({ title: 'Open a Matter', icon: 'FolderHorizontal' }),
+          });
+        }
+      } catch { /* swallow */ }
     }
     if (hasActivePitch) {
       actions.push({
@@ -2982,6 +3003,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     isLoadingAttendance,
     currentUserConfirmed,
     hasActiveMatter,
+  instructionData,
     actionableSummaries,
     instructionsActionDone,
     instructionData,

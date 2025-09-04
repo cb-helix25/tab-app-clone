@@ -3191,7 +3191,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       email_contents: fullEmailHtml,
       user_email: to, // Client's email as recipient
       subject: subject, // Use 'subject' not 'subject_line' for decoupled function
-      from_email: senderEmail // Send from fee earner's email
+      from_email: senderEmail, // Send from fee earner's email
+      bcc_email: senderEmail // BCC the fee earner on client emails
     };
 
     // Guard: ensure we have a valid recipient email
