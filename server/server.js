@@ -56,7 +56,7 @@ const client = new SecretClient(vaultUrl, credential);
 // client files are one level up. However after deployment the build script
 // copies `index.js` to the site root alongside the compiled client assets.
 // Using `__dirname` directly works for both cases.
-const buildPath = path.join(__dirname);
+const buildPath = path.join(__dirname, '../build');
 
 // basic request logging
 app.use(morgan('dev'));
@@ -102,7 +102,7 @@ app.use('/api/keys', keysRouter);
 app.use('/api/refresh', refreshRouter);
 
 // serve the built React files
-// app.use(express.static(buildPath)); // Temporarily disabled to test API routes
+app.use(express.static(buildPath));
 
 // simple liveness probe
 app.get('/health', (_req, res) => {
@@ -132,8 +132,7 @@ app.get('/process', (req, res) => {
 
 // fallback to index.html for client-side routes
 app.get('*', (_req, res) => {
-    res.status(404).json({ error: 'Route not found', path: _req.path });
-    // res.sendFile(path.join(buildPath, 'index.html')); // Temporarily disabled
+    res.sendFile(path.join(buildPath, 'index.html'));
 });
 
 app.listen(PORT, () => {
