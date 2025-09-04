@@ -1,3 +1,4 @@
 [submodule "instruct-pitch"]
 	path = instruct-pitch
 	url = https://github.com/HelixAutomations/instruct-pitch.git
+	ignore = dirty
