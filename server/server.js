@@ -67,7 +67,7 @@ const client = new SecretClient(vaultUrl, credential);
 // client files are one level up. However after deployment the build script
 // copies `index.js` to the site root alongside the compiled client assets.
 // Using `__dirname` directly works for both cases.
-const buildPath = path.join(__dirname, '../build');
+const buildPath = path.join(__dirname);
 
 // basic request logging
 app.use(morgan('dev'));
