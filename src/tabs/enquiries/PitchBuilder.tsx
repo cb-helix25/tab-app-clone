@@ -51,7 +51,6 @@ import {
   sharedEditorStyle,
   sharedOptionsDropdownStyles,
 } from '../../app/styles/FilterStyles';
-import ReactDOMServer from 'react-dom/server';
 import { PitchDebugPanel, useLocalFetchLogger } from './pitch-builder';
 import EmailSignature from './EmailSignature';
 // EmailPreview panel deprecated in favour of inline preview
@@ -65,7 +64,7 @@ import SnippetEditPopover from './pitch-builder/SnippetEditPopover';
 
 
 
-
+import ReactDOMServer from 'react-dom/server';
 import { placeholderSuggestions } from '../../app/customisation/InsertSuggestions';
 import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import { isInTeams } from '../../app/functionality/isInTeams';
@@ -1280,11 +1279,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   }, []);
 
   // Default subject
-  const [subject, setSubject] = useState<string>(
-    enquiry.Area_of_Work
-      ? `Your ${capitalizeWords(enquiry.Area_of_Work)} Enquiry`
-      : 'Your Enquiry'
-  );
+  const [subject, setSubject] = useState<string>('Your Enquiry');
 
   // Default recipient fields
   const [to, setTo] = useState<string>(enquiry.Email || '');
@@ -1456,6 +1451,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   const [dealId, setDealId] = useState<number | null>(null);
   const [dealPasscode, setDealPasscode] = useState<string>('');
   const [dealStatus, setDealStatus] = useState<'idle' | 'processing' | 'ready' | 'error'>('idle');
+  const [dealCreationInProgress, setDealCreationInProgress] = useState<boolean>(false);
   const [clientIds, setClientIds] = useState<number[]>([]);
   const [dealClients, setDealClients] = useState<ClientInfo[]>([]);
   const [isMultiClientFlag, setIsMultiClientFlag] = useState<boolean>(false);
@@ -2816,7 +2812,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
    */
   function resetForm() {
     suppressSaveRef.current = true;
-    setSubject('Your Practice Area Enquiry');
+    setSubject('Your Enquiry');
     setTo(enquiry.Email || '');
     setCc('');
     setBcc('2day@followupthen.com');
@@ -2889,6 +2885,19 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   async function insertDealIfNeeded(options?: { background?: boolean }): Promise<string | null> {
     try {
+      // Check if deal creation is already in progress or if we already have a passcode
+      if (dealCreationInProgress) {
+        console.log('⏸️ Deal creation already in progress, skipping duplicate call');
+        return null;
+      }
+
+      if (dealPasscode) {
+        console.log('✅ Deal passcode already exists:', dealPasscode);
+        return dealPasscode;
+      }
+
+      setDealCreationInProgress(true);
+
       if (!options?.background) {
         setDealStatus('processing');
       }
@@ -2923,15 +2932,64 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         return 'Draft created via Pitch Builder';
       })();
 
+      // Resolve a usable numeric prospect id. Accept (in priority order): acid, ID, id.
+      // Reject non-digit values and placeholder/zero ids.
+      const rawCandidates = [
+        // @ts-ignore (runtime objects may have acid/id even if not in primary interface)
+        enquiry?.acid,
+        enquiry?.ID,
+        // @ts-ignore
+        enquiry?.id
+      ].map(v => (v === undefined || v === null ? '' : String(v).trim()));
+      const resolvedProspectId = rawCandidates.find(v => /^\d+$/.test(v) && v !== '' && v !== '0' && v !== '00000');
+
+      if (!resolvedProspectId) {
+        if (options?.background) {
+          console.log('⏳ Skipping background deal insert: no valid numeric prospect id yet', rawCandidates);
+          return null;
+        }
+        // Foreground: allow one short retry window in case acid arrives milliseconds later.
+        const retryWindowMs = 1200;
+        const start = Date.now();
+        let retryId: string | undefined;
+        while ((Date.now() - start) < retryWindowMs && !retryId) {
+          await new Promise(r => setTimeout(r, 150));
+          const lateCandidates = [
+            // @ts-ignore
+            enquiry?.acid,
+            enquiry?.ID,
+            // @ts-ignore
+            enquiry?.id
+          ].map(v => (v === undefined || v === null ? '' : String(v).trim()));
+          retryId = lateCandidates.find(v => /^\d+$/.test(v) && v !== '' && v !== '0' && v !== '00000');
+          if (retryId) {
+            console.log('✅ Prospect id appeared after brief wait', { retryId, lateCandidates });
+          }
+        }
+        if (!retryId) {
+          setDealStatus('error');
+          showToast('Missing prospect id', 'error', {
+            details: 'Cannot capture deal until enquiry ID/acid is loaded',
+            duration: 5000
+          });
+          return null;
+        }
+        // Use the newly found id
+        console.log('🆔 Using late-resolved prospect id', retryId);
+        return await insertDealIfNeeded(options); // restart with id now present
+      }
+
       const payload = {
         // when background=true, override description to make it obvious these were auto-created
         initialScopeDescription: fallbackDescription,
         amount: numericAmount,
         areaOfWork: enquiry.Area_of_Work,
-        prospectId: enquiry.ID,
+        prospectId: resolvedProspectId,
         pitchedBy: userInitials,
         isMultiClient: isMultiClientFlag,
         leadClientEmail: enquiry.Email,
+        // LeadClientId must mirror prospectId for single-client deals
+        leadClientId: resolvedProspectId,
         ...(isMultiClientFlag && {
           clients: dealClients.map((c) => ({
             clientEmail: c.email,
@@ -2939,6 +2997,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           })),
         }),
       };
+      console.log('🆔 Deal ID resolution', { rawCandidates, resolvedProspectId, sendingPayload: payload });
 
       // Update progress
       if (!options?.background) {
@@ -3032,79 +3091,169 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         });
       }
       return null;
+    } finally {
+      setDealCreationInProgress(false);
     }
   }
 
   // Auto-create deal/passcode in background when PitchBuilder mounts and no passcode exists.
-  // This runs silently so the Instructions app can load even if deal UI is hidden.
+  // DISABLED: This was creating unwanted placeholder deals. Real deals are created when users send/draft emails.
   useEffect(() => {
-    async function ensureDeal() {
-      try {
-        console.log('🔍 Checking deal passcode:', { dealPasscode, enquiryId: enquiry?.ID });
-        if (!dealPasscode && enquiry?.ID) {
-          console.log('⚙️ Creating deal in background...');
-          await insertDealIfNeeded({ background: true });
-        }
-      } catch (e) {
-        // swallow errors; background creation should not block UI
-        // but log for dev visibility
-        // eslint-disable-next-line no-console
-        console.warn('Background insertDealIfNeeded failed', e);
-      }
-    }
-    ensureDeal();
-    // We intentionally omit insertDealIfNeeded/dealPasscode to avoid duplicate inserts
+    // Background deal creation disabled to prevent duplicate placeholder deals
+    console.log('🔍 Background deal creation disabled - real deals created on send/draft');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enquiry?.ID]);
 
   /**
-   * If user hits "Send Email" in the preview, we might do something else.
-   * For now, just console.log and reset.
+   * Send email directly to client from fee earner's email address
    */
   async function sendEmail() {
-    if (validateForm()) {
-      showToast('Preparing to send email...', 'info', {
-        loading: true,
-        details: 'Validating form data and deal information',
-        progress: 10,
-        duration: 0
+    if (!validateForm()) {
+      return;
+    }
+
+    if (!body || !enquiry.Point_of_Contact) {
+      setErrorMessage('Email contents and recipient email are required.');
+      setIsErrorVisible(true);
+      return;
+    }
+
+    showToast('Preparing to send email...', 'info', {
+      loading: true,
+      details: 'Validating form data and deal information',
+      progress: 10,
+      duration: 0
+    });
+
+    const dealPasscode = await insertDealIfNeeded();
+    if (!dealPasscode) {
+      showToast('Failed to save deal', 'error', {
+        details: 'Cannot send email without valid deal reference',
+        duration: 5000
       });
+      return;
+    }
 
-      const dealPasscode = await insertDealIfNeeded();
-      if (!dealPasscode) {
-        showToast('Failed to save deal', 'error', {
-          details: 'Cannot send email without valid deal reference',
-          duration: 5000
-        });
-        return;
-      }
+    // Ensure template blocks are inserted before sending
+    if (bodyEditorRef.current) {
+      Object.entries(selectedTemplateOptions).forEach(
+        ([blockTitle, selectedOption]) => {
+          const block = templateBlocks.find((b) => b.title === blockTitle);
+          if (block && !insertedBlocks[block.title] && selectedOption) {
+            insertTemplateBlock(block, selectedOption as any, false);
+          }
+        }
+      );
+      setBody(bodyEditorRef.current.innerHTML);
+    }
 
-      await delay(600);
+    // Step 2: Content processing
+    showToast('Processing email content...', 'info', {
+      loading: true,
+      details: 'Applying substitutions and formatting',
+      progress: 40,
+      duration: 0
+    });
+
+    await delay(400);
+
+    // Remove highlight spans and apply dynamic substitutions
+    let rawHtml = removeHighlightSpans(body);
+    rawHtml = applyDynamicSubstitutions(
+      rawHtml,
+      userData,
+      enquiry,
+      amount,
+      normalizePasscode(dealPasscode, enquiry?.ID) || dealPasscode,
+      undefined
+    );
+
+    // Remove leftover placeholders and format paragraphs
+    const noPlaceholders = removeUnfilledPlaceholders(rawHtml, templateBlocks);
+    const finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
+
+    // Step 3: Email composition with signature
+    showToast('Generating final email...', 'info', {
+      loading: true,
+      details: 'Creating formatted email with signature',
+      progress: 70,
+      duration: 0
+    });
+
+    const fullEmailHtml = ReactDOMServer.renderToStaticMarkup(
+      <EmailSignature bodyHtml={finalHtml} userData={userData} />
+    );
+
+    // Use fee earner's email as sender, fallback to automations
+    const senderEmail = userEmailAddress || 'automations@helix-law.com';
+    
+    const requestBody = {
+      email_contents: fullEmailHtml,
+      user_email: to, // Client's email as recipient
+      subject: subject, // Use 'subject' not 'subject_line' for decoupled function
+      from_email: senderEmail // Send from fee earner's email
+    };
+
+    // Guard: ensure we have a valid recipient email
+    if (!to || to.trim() === '') {
+      setErrorMessage('Cannot send email: recipient email address is not available.');
+      setIsErrorVisible(true);
+      showToast('Failed to send email', 'error', {
+        details: 'Recipient email address not configured',
+        duration: 5000
+      });
+      return;
+    }
+
+    try {
+      setErrorMessage('');
+      setIsErrorVisible(false);
+
+      // Step 4: Send email via API
       showToast('Sending email...', 'info', {
         loading: true,
-        details: `Delivering to ${enquiry.Point_of_Contact || 'recipient'}`,
-        progress: 80,
+        details: `Delivering to ${enquiry.Point_of_Contact || to}`,
+        progress: 90,
         duration: 0
       });
 
-      console.log('Email Sent:', {
-        to,
-        cc,
-        bcc,
-        subject,
-        body,
-        attachments,
-        followUp,
-      });
+      const response = await fetch(
+        `${getProxyBaseUrl()}/sendEmail${process.env.REACT_APP_SEND_EMAIL_CODE ? `?code=${process.env.REACT_APP_SEND_EMAIL_CODE}` : ''}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        }
+      );
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to send email.');
+      }
 
+      // Success feedback
       showToast('Email sent successfully!', 'success', {
-        details: 'Message delivered and deal captured',
+        details: `Message delivered to ${enquiry.Point_of_Contact || to}`,
         icon: 'MailSolid',
         duration: 4000
       });
 
       setIsSuccessVisible(true);
-      resetForm();
+      // Don't reset form after sending - users may want to send follow-ups or make edits
+      setIsDraftConfirmed(true);
+      setTimeout(() => setIsDraftConfirmed(false), 3000);
+
+    } catch (error: any) {
+      const errorMsg = error?.message || 'Failed to send email';
+      console.error('Email send error:', error);
+      
+      setErrorMessage(`Failed to send email: ${errorMsg}`);
+      setIsErrorVisible(true);
+      
+      showToast('Failed to send email', 'error', {
+        details: errorMsg,
+        duration: 8000
+      });
     }
   }
 

@@ -140,6 +140,7 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
             </button>
             {expanded && (
                 <InstructionCard
+                    index={0}
                     instruction={instruction as any}
                     deal={deal}
                     deals={deals}

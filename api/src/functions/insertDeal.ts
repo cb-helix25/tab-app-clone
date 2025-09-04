@@ -157,6 +157,7 @@ async function sendDealCapturedEmail(context: InvocationContext, dealInfo: any) 
       InstructionRef: dealInfo.instructionRef ?? '',
       DealId: dealInfo.dealId ?? '',
       ProspectId: dealInfo.prospectId ?? '',
+  LeadClientId: dealInfo.leadClientId ?? '',
       Passcode: dealInfo.passcode ?? '',
       ServiceDescription: dealInfo.serviceDescription ?? '',
       Amount: dealInfo.amount ?? '',
@@ -452,6 +453,7 @@ if (looksLikeEmailOrMessage(serviceDescription)) {
       pitchedBy,
       isMultiClient,
       leadClientEmail,
+  leadClientId: leadClientId ?? normalizedProspectId,
       clients: normalizedClients,
     };
 
@@ -470,6 +472,7 @@ if (looksLikeEmailOrMessage(serviceDescription)) {
     pitchedBy: pitchedBy || null,
     isMultiClient: Array.isArray(clients) && clients.length > 1,
     leadClientEmail: leadClientEmail || null,
+  leadClientId: leadClientId ?? normalizedProspectId,
     clients: clients || [],
     dealId: upstreamDealId,
   };

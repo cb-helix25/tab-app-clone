@@ -105,6 +105,7 @@ const App: React.FC<AppProps> = ({
     );
   const [poidData, setPoidData] = useState<POID[]>(initialPoidData);
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+  const [allInstructionData, setAllInstructionData] = useState<InstructionData[]>([]); // Admin: all users' instructions
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
   const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
   const [transactions, setTransactions] = useState<Transaction[] | undefined>(undefined);
@@ -258,6 +259,8 @@ const App: React.FC<AppProps> = ({
     async function fetchInstructionData() {
       const pilotUsers = ["AC", "JW", "KW", "BL", "LZ"];
       const targetInitials = pilotUsers.includes(userInitials) ? "LZ" : userInitials;
+      const currentUser = userData?.[0];
+      const isAdmin = isAdminUser(currentUser);
 
       if (useLocalData) {
         // Merge local instruction data with ID verification data
@@ -277,6 +280,9 @@ const App: React.FC<AppProps> = ({
         }));
         
         setInstructionData(instructionsWithIdVerifications);
+        if (isAdmin) {
+          setAllInstructionData(instructionsWithIdVerifications); // Admin gets all local data
+        }
         return;
       }
 
@@ -294,8 +300,13 @@ const App: React.FC<AppProps> = ({
         if (res.ok) {
           const data = await res.json();
           const all = Array.isArray(data) ? data : [data];
-          // Narrow down to the current user's instructions to preserve existing
-          // behaviour while still retrieving the full data set.
+          
+          // For admins, store the complete dataset
+          if (isAdmin) {
+            setAllInstructionData(all);
+          }
+          
+          // Filter for current user's instructions (preserves existing behavior)
           const filtered = all.reduce<InstructionData[]>((acc, prospect) => {
             const instructions = (prospect.instructions ?? []).filter(
               (inst: any) => inst.HelixContact === targetInitials,
@@ -326,7 +337,7 @@ const App: React.FC<AppProps> = ({
     if (userInitials) {
       fetchInstructionData();
     }
-  }, [userInitials]);
+  }, [userInitials, userData]);
 
   // Tabs visible to all users start with the Enquiries tab.
   // Only show the Instructions tab to admins or when developing locally (hostname === 'localhost').
@@ -404,6 +415,7 @@ const App: React.FC<AppProps> = ({
             userInitials={userInitials}
             instructionData={instructionData}
             setInstructionData={setInstructionData}
+            allInstructionData={allInstructionData}
             teamData={teamData}
             userData={userData}
             matters={allMattersFromHome || []}

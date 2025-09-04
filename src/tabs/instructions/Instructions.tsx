@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from "react";
+import { flushSync } from "react-dom";
 import {
   Stack,
   mergeStyles,
@@ -36,6 +37,7 @@ import DealCard from "./DealCard";
 import type { DealSummary } from "./JointClientCard";
 import { InstructionData, POID, TeamData, UserData, Matter } from "../../app/functionality/types";
 import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
+import { isAdminUser } from "../../app/admin";
 import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
@@ -54,6 +56,7 @@ interface InstructionsProps {
   userInitials: string;
   instructionData: InstructionData[];
   setInstructionData: React.Dispatch<React.SetStateAction<InstructionData[]>>;
+  allInstructionData?: InstructionData[]; // Admin: all users' instructions
   poidData: POID[];
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
   teamData?: TeamData[] | null;
@@ -66,6 +69,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   userInitials,
   instructionData,
   setInstructionData,
+  allInstructionData = [],
   poidData,
   setPoidData,
   teamData,
@@ -186,14 +190,37 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
   const [selectedDealRef, setSelectedDealRef] = useState<string | null>(null);
   const [showOnlyMyDeals, setShowOnlyMyDeals] = useState<boolean>(false);
+  const [showAllInstructions, setShowAllInstructions] = useState<boolean>(false); // Admin toggle
   
   // Debug toggles for admin/localhost
   const [useNewData, setUseNewData] = useState<boolean>(false);
   const [twoColumn, setTwoColumn] = useState<boolean>(false);
   
   const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
-  const isAdmin = !!currentUser?.Role && /admin/i.test(currentUser.Role);
+  // Admin detection using proper utility
+  const isAdmin = isAdminUser(userData?.[0] || null);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  
+  // Debug logging for admin status
+  React.useEffect(() => {
+    console.log('Admin Detection Debug:', {
+      userData: userData?.[0],
+      userInitials: userData?.[0]?.Initials,
+      isAdmin,
+      showAllInstructions,
+      allInstructionDataLength: allInstructionData.length,
+      effectiveDataLength: instructionData.length
+    });
+  }, [isAdmin, userData, showAllInstructions, allInstructionData.length, instructionData.length]);
+  
+  // Get effective instruction data based on admin mode
+  const effectiveInstructionData = useMemo(() => {
+    if (isAdmin && showAllInstructions && allInstructionData.length > 0) {
+      return allInstructionData;
+    }
+    return instructionData;
+  }, [isAdmin, showAllInstructions, allInstructionData, instructionData]);
+  
   const showDraftPivot = true; // Allow all users to see Document editor
 
   // Unified filter configuration
@@ -770,6 +797,24 @@ const Instructions: React.FC<InstructionsProps> = ({
                       offText="1-col"
                       ariaLabel="Toggle two column layout"
                     />
+                    {isAdmin && (
+                      <ToggleSwitch
+                        key={`admin-toggle-${showAllInstructions}`}
+                        id="instructions-all-users-toggle"
+                        checked={showAllInstructions}
+                        onChange={(checked) => {
+                          console.log('Admin toggle changed:', checked ? 'All Instructions' : 'My Instructions');
+                          // Force synchronous state update
+                          flushSync(() => {
+                            setShowAllInstructions(checked);
+                          });
+                        }}
+                        size="sm"
+                        onText="All"
+                        offText="Mine"
+                        ariaLabel="Toggle between my instructions and all instructions"
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -782,7 +827,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, [
     setContent,
     isDarkMode,
-    instructionData,
+    effectiveInstructionData,
     activeTab,
     showNewMatterPage,
     showRiskPage,
@@ -827,7 +872,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
 
   const overviewItems = useMemo(() => {
-    const items = instructionData.flatMap((prospect) => {
+    const items = effectiveInstructionData.flatMap((prospect) => {
       const instructionItems = (prospect.instructions ?? []).map((inst) => {
         const dealsForInst = (prospect.deals ?? []).filter(
           (d) => d.InstructionRef === inst.InstructionRef,
@@ -943,7 +988,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       }
     });
     return Object.values(unique);
-  }, [instructionData]);
+  }, [effectiveInstructionData]);
 
   const selectedOverviewItem = useMemo(
     () =>
@@ -1001,7 +1046,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     if (!selectedInstruction) return false;
     
     // Find the prospect that contains this instruction
-    const prospect = instructionData.find(p => 
+    const prospect = effectiveInstructionData.find(p => 
       p.instructions?.some((inst: any) => inst.InstructionRef === selectedInstruction.InstructionRef)
     );
     
@@ -1015,7 +1060,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     );
     
     return !!hasMatter;
-  }, [selectedInstruction, instructionData]);
+  }, [selectedInstruction, effectiveInstructionData]);
   
   // Open Matter button should be enabled when:
   // 1. Both ID is verified AND payment is complete (normal flow), OR
@@ -1061,17 +1106,17 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const unlinkedDeals = useMemo(
     () =>
-      instructionData.flatMap((p) =>
+      effectiveInstructionData.flatMap((p) =>
         (p.deals ?? []).filter((d) => !d.InstructionRef),
       ),
-    [instructionData],
+    [effectiveInstructionData],
   );
 
   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const deals = useMemo(
     () =>
-      instructionData.flatMap((p) =>
+      effectiveInstructionData.flatMap((p) =>
         (p.deals ?? []).map((d) => {
           // Attempt to derive lead client name from available data
           let firstName = '';
@@ -1127,11 +1172,11 @@ const Instructions: React.FC<InstructionsProps> = ({
           };
         })
       ),
-    [instructionData],
+    [effectiveInstructionData],
   );
   const clients: ClientInfo[] = useMemo(() => {
     const map: Record<string, ClientInfo> = {};
-    instructionData.forEach((p) => {
+    effectiveInstructionData.forEach((p) => {
       const deals = p.deals ?? [];
       deals.forEach((d) => {
         if (d.LeadClientEmail) {
@@ -1189,11 +1234,11 @@ const Instructions: React.FC<InstructionsProps> = ({
       });
     });
     return Object.values(map);
-  }, [instructionData]);
+  }, [effectiveInstructionData]);
 
   const riskComplianceData = useMemo(
     () =>
-      instructionData.flatMap((p) => {
+      effectiveInstructionData.flatMap((p) => {
         const instructions = p.instructions ?? [];
         const deals = p.deals ?? [];
         const riskSource: any[] = [
@@ -1356,7 +1401,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           };
         });
       }),
-    [instructionData],
+    [effectiveInstructionData],
   );
 
   const filteredRiskComplianceData = useMemo(() => {
@@ -1416,7 +1461,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Create POID data for client address information
   const idVerificationOptions = useMemo(() => {
     const seen = new Set<string>();
-    return instructionData.flatMap((p) => {
+    return effectiveInstructionData.flatMap((p) => {
       const instructions = p.instructions ?? [];
       const all: any[] = [
         ...(p.electronicIDChecks ?? []),
@@ -1496,7 +1541,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         ];
       });
     });
-  }, [instructionData]);
+  }, [effectiveInstructionData]);
 
   // Group risk compliance data by instruction reference
   const groupedRiskComplianceData = useMemo(() => {
@@ -1548,7 +1593,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     // Now enhance each group with proper ID verification data from instructionData
     Array.from(grouped.values()).forEach(group => {
       // Find the corresponding instruction data for this instruction ref
-      const instructionItem = instructionData.find(p => 
+      const instructionItem = effectiveInstructionData.find(p => 
         p.instructions?.some((inst: any) => inst.InstructionRef === group.instructionRef)
       );
       
@@ -1671,7 +1716,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
 
     return Array.from(grouped.values());
-  }, [filteredRiskComplianceData, instructionData, idVerificationOptions]);
+  }, [filteredRiskComplianceData, effectiveInstructionData, idVerificationOptions]);
 
   const handleOpenMatter = (inst: any) => {
     if (hasActiveMatterOpening()) {
@@ -1952,8 +1997,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                   const col = idx % 4;
                   const animationDelay = row * 0.2 + col * 0.1;
                   return (
-                    <div key={idx} className={overviewItemStyle}>
+                    <div key={`instruction-${item.instruction.InstructionRef}-${selectedInstruction?.InstructionRef === item.instruction.InstructionRef ? 'selected' : 'unselected'}`} className={overviewItemStyle}>
                       <InstructionCard
+                        index={idx}
+                        key={`card-${item.instruction.InstructionRef}-${selectedInstruction?.InstructionRef === item.instruction.InstructionRef}`}
                         instruction={item.instruction as any}
                         deal={(item as any).deal}
                         deals={item.deals}
@@ -1970,11 +2017,13 @@ const Instructions: React.FC<InstructionsProps> = ({
                         selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
                         onSelect={() => {
                           // Toggle selection: if already selected, unselect; otherwise select
-                          if (selectedInstruction?.InstructionRef === item.instruction.InstructionRef) {
-                            setSelectedInstruction(null);
-                          } else {
-                            setSelectedInstruction(item.instruction);
-                          }
+                          flushSync(() => {
+                            if (selectedInstruction?.InstructionRef === item.instruction.InstructionRef) {
+                              setSelectedInstruction(null);
+                            } else {
+                              setSelectedInstruction(item.instruction);
+                            }
+                          });
                         }}
                         onToggle={handleCardToggle}
                         onProofOfIdClick={() =>

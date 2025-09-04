@@ -1,0 +1,176 @@
+/* Premium overrides for InstructionCard – reuse existing DOM, no structural changes */
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@500;600;700&display=swap');
+
+:root {
+  --premium-navy: #061733;
+  --premium-blue: #3690CE;
+  --premium-blue-dark: #054b87;
+  --premium-bg-soft: linear-gradient(135deg,#f8fafc 0%, #f1f5f9 100%);
+  --premium-border: #e5e7eb;
+  --premium-shadow: 0 2px 6px rgba(6,23,51,0.06);
+  --premium-shadow-hover: 0 6px 18px rgba(6,23,51,0.12);
+  --premium-radius: 12px;
+  --premium-success-grad: linear-gradient(135deg,#14B07A 0%,#129869 100%);
+  --premium-warning-bg: #fff8e1;
+  --premium-warning-border: #fbbf24;
+  --premium-draft: #9ca3af;
+}
+
+/* Container enhancements */
+.instruction-card-container.premium {
+  border: 1px solid var(--premium-border);
+  background: #fff;
+  border-radius: var(--premium-radius) !important;
+  box-shadow: var(--premium-shadow);
+  transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
+  overflow: hidden;
+}
+.instruction-card-container.premium:hover {
+  box-shadow: var(--premium-shadow-hover);
+  transform: translateY(-2px);
+}
+.instruction-card-container.premium.selected {
+  border-color: var(--premium-blue);
+  box-shadow: 0 0 0 1px rgba(54,144,206,0.25), 0 4px 18px -2px rgba(54,144,206,0.28);
+}
+
+/* Inner card body */
+.instruction-card-container.premium .instructionCard {
+  background: transparent !important;
+  font-family: 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 20px 20px 16px 20px;
+  border-radius: var(--premium-radius) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Header rows */
+.instruction-card-container.premium .instructionCard .premium-header-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--premium-navy, #061733);
+  transition: color .25s ease;
+}
+.instruction-card-container.premium:hover .premium-header-name,
+.instruction-card-container.premium.selected .premium-header-name { color: var(--premium-blue); }
+
+ .instruction-card-container.premium .premium-ref-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: .5px;
+  background: var(--premium-bg-soft);
+  color: #1f2937;
+  padding: 3px 6px;
+  border-radius: 6px;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+
+/* Timeline mini progress */
+.instruction-card-container.premium .premium-timeline span { font-family: 'Raleway'; }
+.instruction-card-container.premium .premium-timeline .step-dot {
+  width:10px; height:10px; border-radius:50%; background:#ddd; position:relative; flex-shrink:0; box-shadow:0 0 0 1px #fff; transition:background .35s ease, transform .4s;
+}
+.instruction-card-container.premium .premium-timeline .step-dot.complete { background: #14B07A; }
+.instruction-card-container.premium .premium-timeline .step-dot.active { background: var(--premium-blue); animation: premiumPulse 2s infinite; }
+.instruction-card-container.premium .premium-timeline .connector { width:20px; height:2px; background:#e5e7eb; flex-shrink:0; transition:background .35s ease; }
+.instruction-card-container.premium .premium-timeline .connector.complete { background: #14B07A; }
+.instruction-card-container.premium .premium-timeline .step-label { font-size:.68rem; font-weight:600; color:#9ca3af; letter-spacing:.03em; }
+.instruction-card-container.premium .premium-timeline .step-label.complete { color:#14B07A; }
+.instruction-card-container.premium .premium-timeline .step-label.active { color: var(--premium-blue); }
+.instruction-card-container.premium .premium-timeline .step-dot.flagged, 
+.instruction-card-container.premium .premium-timeline .step-label.flagged { background: var(--premium-warning-border); color: var(--premium-warning-border); }
+
+@keyframes premiumPulse { 0%{opacity:1} 50%{opacity:.55} 100%{opacity:1} }
+/* Status blocks expanded */
+.instruction-card-container.premium .premium-section-box { background:#fff; border:1px solid var(--premium-border); border-radius:8px; padding:12px; box-shadow:0 1px 2px rgba(6,23,51,0.04); }
+.instruction-card-container.premium .premium-section-heading { font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color: var(--premium-blue); margin:0 0 6px 0; display:flex; align-items:center; gap:6px; }
+
+/* Badges for statuses */
+.instruction-card-container.premium .status-badge { display:inline-flex; align-items:center; padding:2px 8px; font-size:.65rem; font-weight:600; letter-spacing:.5px; border-radius:999px; background:#f1f5f9; color:#374151; border:1px solid #e5e7eb; }
+.instruction-card-container.premium .status-badge.complete { background: var(--premium-success-grad); color:#fff; border:none; box-shadow:0 2px 6px rgba(20,176,122,0.35); }
+.instruction-card-container.premium .status-badge.warning { background: var(--premium-warning-bg); color:#92400e; border:1px solid var(--premium-warning-border); }
+.instruction-card-container.premium .status-badge.draft { background:#f1f5f9; color:#6b7280; }
+
+/* Contact row refinements */
+.instruction-card-container.premium .premium-contact a, 
+.instruction-card-container.premium .premium-contact div { color: var(--premium-blue) !important; font-weight:500; }
+
+/* Amount emphasis */
+.instruction-card-container.premium .premium-amount { font-family:'Raleway'; font-size:1rem; font-weight:600; color:var(--premium-blue); }
+
+/* Expanded panels */
+.instruction-card-container.premium .expanded-panel { 
+  background: var(--premium-bg-soft); 
+  border: 1px solid var(--premium-border); 
+  border-radius: 12px; 
+  padding: 16px; 
+  margin-top: 14px; 
+  position: relative;
+}
+
+/* Sub-cards inside expanded area */
+.instruction-card-container.premium .expanded-panel .sub-card { 
+  background: #fff; 
+  border: 1px solid var(--premium-border); 
+  border-radius: 10px; 
+  padding: 12px 14px; 
+  box-shadow: 0 1px 3px rgba(6,23,51,0.04);
+  transition: box-shadow 0.2s ease;
+}
+
+.instruction-card-container.premium .expanded-panel .sub-card:hover {
+  box-shadow: 0 2px 8px rgba(6,23,51,0.08);
+}
+
+/* Next action banner */
+.instruction-card-container.premium .next-action-banner {
+  background: linear-gradient(135deg, #f0f7ff 0%, #e6f3ff 100%);
+  border: 1px solid var(--premium-blue);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.instruction-card-container.premium .next-action-banner::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--premium-blue);
+}
+
+/* Enhanced typography hierarchy */
+.instruction-card-container.premium .premium-header-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--premium-navy, #061733);
+  transition: color .25s ease;
+  line-height: 1.3;
+}
+
+/* Utility classes for mapping existing inline styles without heavy refactor */
+.instruction-card-container.premium .mute { color:#64748b !important; }
+.instruction-card-container.premium .small-label { font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; font-weight:600; color:#64748b; }
+
+/* Remove legacy forced radius stripping (scoped override) */
+.instruction-card-container.premium .instructionCard * { border-radius:inherit; }
+
+/* High contrast adjustments */
+@media (prefers-contrast: more) {
+  .instruction-card-container.premium { border-color:#8696a7; }
+  .instruction-card-container.premium .premium-amount { text-shadow:0 0 0 currentColor; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .instruction-card-container.premium:hover { transform:none; }
+  .instruction-card-container.premium .premium-timeline .step-dot.active { animation:none; }
+}

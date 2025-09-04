@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { format } from 'date-fns';
+import '../../app/styles/InstructionCard.premium.css';
+import { format, formatDistanceToNow } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
+import { colours } from '../../app/styles/colours';
 import { 
   FaUser, 
   FaUsers, 
@@ -22,72 +24,78 @@ import {
   FaCopy,
   FaPoundSign,
   FaShieldAlt,
-  FaBuilding
+  FaBuilding,
+  FaFolder,
+  FaClipboardCheck,
+  FaIdCard
 } from 'react-icons/fa';
-import { colours } from '../../app/styles/colours';
-import { ClientInfo } from './JointClientCard';
 
-// Utility for copying text and showing feedback - same as enquiry cards
-function useCopyToClipboard(timeout = 1200): [boolean, (text: string) => void] {
+// Move interface to separate file
+export interface InstructionCardProps {
+  instruction: any;
+  index: number;
+  selected?: boolean;
+  onSelect?: () => void;
+  onToggle?: () => void;
+  expanded?: boolean;
+  innerRef?: React.RefObject<HTMLDivElement>;
+  isResizing?: boolean;
+  onDocumentClick?: (document: any) => void;
+  documentCount?: number;
+  deal?: {
+    ServiceDescription?: string;
+    Amount?: number;
+  };
+  prospectId?: number;
+  eid?: any;
+  eids?: any[] | any;
+  compliance?: any;
+  deals?: any[];
+  clients?: any[];
+  risk?: any;
+  documents?: any[];
+  style?: React.CSSProperties;
+  onClick?: () => void;
+  onProofOfIdClick?: () => void;
+  animationDelay?: number;
+}
+
+// Component definition with CopyableText
+const CopyableText: React.FC<{ value: string; label?: string; className?: string }> = ({ value, label, className }) => {
   const [copied, setCopied] = useState(false);
-  const copy = (text: string) => {
-    if (navigator && navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), timeout);
-      });
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
     }
   };
-  return [copied, copy];
-}
 
-interface CopyableTextProps {
-  value: string;
-  className?: string;
-  label?: string;
-  noHoverEffects?: boolean; // Add option to disable hover enlargement
-  iconHovered?: boolean; // Add option to track icon hover state
-}
-
-const CopyableText: React.FC<CopyableTextProps> = ({ value, className, label, noHoverEffects = false, iconHovered = false }) => {
-  const [copied, copy] = useCopyToClipboard();
-  const [isHovered, setIsHovered] = useState(false);
-  
   return (
-    <span
+    <span 
       className={className}
-      title={copied ? `${label || 'Value'} copied!` : `Click to copy ${label || 'value'}`}
-      onClick={e => {
-        e.stopPropagation();
-        copy(value);
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={{ 
-        display: 'inline-block', 
-        position: 'relative', 
-        cursor: 'copy',
-        padding: isHovered && !noHoverEffects ? '2px 4px' : '0',
-        backgroundColor: isHovered && !noHoverEffects ? 'rgba(54, 144, 206, 0.08)' : 'transparent',
-        borderRadius: isHovered && !noHoverEffects ? '3px' : '0',
-        transition: 'all 0.2s ease',
-        color: isHovered ? '#3690CE' : 'inherit',
-      }}
+      onClick={handleCopy}
+      style={{ cursor: 'pointer', position: 'relative' }}
+      title={`Click to copy ${label || 'text'}`}
     >
       {value}
       {copied && (
         <span style={{
           position: 'absolute',
-          left: '100%',
-          top: 0,
-          marginLeft: 8,
-          fontSize: 12,
-          color: '#43a047',
-          background: '#fff',
-          borderRadius: 3,
+          top: '-25px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: colours.darkBlue,
+          color: 'white',
           padding: '2px 6px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-          zIndex: 10,
+          borderRadius: '4px',
+          fontSize: '0.7rem',
+          whiteSpace: 'nowrap',
+          zIndex: 1000
         }}>
           Copied!
         </span>
@@ -96,915 +104,1056 @@ const CopyableText: React.FC<CopyableTextProps> = ({ value, className, label, no
   );
 };
 
-// File type icon mapping
-const iconMap: Record<string, JSX.Element> = {
-  pdf: <FaFilePdf style={{ fontSize: '20px' }} />,
-  doc: <FaFileWord style={{ fontSize: '20px' }} />,
-  docx: <FaFileWord style={{ fontSize: '20px' }} />,
-  xls: <FaFileExcel style={{ fontSize: '20px' }} />,
-  xlsx: <FaFileExcel style={{ fontSize: '20px' }} />,
-  ppt: <FaFilePowerpoint style={{ fontSize: '20px' }} />,
-  pptx: <FaFilePowerpoint style={{ fontSize: '20px' }} />,
-  txt: <FaFileAlt style={{ fontSize: '20px' }} />,
-  zip: <FaFileArchive style={{ fontSize: '20px' }} />,
-  rar: <FaFileArchive style={{ fontSize: '20px' }} />,
-  jpg: <FaFileImage style={{ fontSize: '20px' }} />,
-  jpeg: <FaFileImage style={{ fontSize: '20px' }} />,
-  png: <FaFileImage style={{ fontSize: '20px' }} />,
-  mp3: <FaFileAudio style={{ fontSize: '20px' }} />,
-  mp4: <FaFileVideo style={{ fontSize: '20px' }} />,
-};
-
-// Get file type-specific icon
-const getFileIcon = (filename?: string): JSX.Element => {
-  if (!filename) return <FaFileUpload style={{ fontSize: '20px' }} />;
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  return iconMap[ext] || <FaFileAlt style={{ fontSize: '20px' }} />;
-};
-
-// Smart document handler - preview for PDFs/images, download for others
-const handleDocumentClick = (doc: any) => {
-  if (!doc.BlobUrl && !doc.DocumentUrl) return;
-  
-  const url = doc.BlobUrl || doc.DocumentUrl;
-  const filename = doc.FileName || '';
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  
-  // Previewable file types
-  const previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
-  
-  if (previewableTypes.includes(ext)) {
-    // Open in new tab for preview
-    window.open(url, '_blank', 'noopener,noreferrer');
-  } else {
-    // Force download for non-previewable files
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-};
-
-interface InstructionInfo {
-    InstructionRef: string;
-    Stage?: string;
-    FirstName?: string;
-    LastName?: string;
-    CompanyName?: string;
-    Email?: string;
-    Phone?: string;
-    SubmissionDate?: string;
-    ClientType?: string;
-    PassportNumber?: string;
-    DriversLicenseNumber?: string;
-    PaymentResult?: string;
-    [key: string]: any;
-}
-
-interface DealInfo {
-    InstructionRef?: string;
-    ServiceDescription?: string;
-    Amount?: number;
-    IsMultiClient?: boolean;
-    jointClients?: ClientInfo[];
-    [key: string]: any;
-}
-
-interface InstructionCardProps {
-    instruction: InstructionInfo;
-    deal?: DealInfo;
-    deals?: DealInfo[];
-    clients?: ClientInfo[];
-    prospectId?: number;
-    risk?: {
-        MatterId: string;
-        RiskAssessmentResult?: string;
-        RiskScore?: number;
-    } | null;
-    eid?: { EIDStatus?: string; EIDOverallResult?: string } | null;
-    eids?: any[];
-    compliance?: any | null;
-    documentCount?: number;
-    documents?: any[];
-    animationDelay?: number;
-    innerRef?: React.Ref<HTMLDivElement>;
-    expanded?: boolean;
-    onToggle?: () => void;
-    selected?: boolean;
-    onSelect?: () => void;
-    onProofOfIdClick?: (ref: string) => void;
-}
-
 const InstructionCard: React.FC<InstructionCardProps> = ({
-    instruction,
-    deal,
-    deals,
-    clients,
-    prospectId,
-    risk,
-    eid,
-    eids,
-    compliance,
-    documentCount,
-    documents,
-    animationDelay = 0,
-    innerRef,
-    expanded = false,
-    onToggle,
-    selected = false,
-    onSelect,
-    onProofOfIdClick,
+  instruction,
+  index,
+  selected = false,
+  onSelect,
+  onToggle,
+  expanded = false,
+  innerRef,
+  isResizing = false,
+  onDocumentClick,
+  documentCount,
+  deal,
+  prospectId,
+  eid,
+  eids,
+  compliance,
+  deals,
+  clients,
+  risk,
+  documents,
+  style,
+  onClick,
+  animationDelay = 0
 }) => {
-    const stage = instruction.Stage?.toLowerCase();
-    const isCompleted = stage === 'completed';
+  const [isHovered, setIsHovered] = useState(false);
+  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
 
-    // Check if the instruction has an associated matter
-    const hasAssociatedMatter = instruction && (
-        instruction.MatterId || 
-        (instruction as any).matters?.length > 0
-    );
-
-    // Get client name
-    const firstName = instruction.FirstName || '';
-    const lastName = instruction.LastName || '';
-    const fullName = firstName && lastName 
-        ? `${firstName} ${lastName}`
-        : firstName || lastName || instruction.CompanyName || '';
-
-    // Determine if multi-client
-    const isMultiClient = (deal && (deal.IsMultiClient || (deal.jointClients && deal.jointClients.length > 1)))
-        || (instruction.ClientType && instruction.ClientType.toLowerCase().includes('joint'));
-
-    // Get status information
-    const proofOfIdComplete = Boolean(instruction.PassportNumber || instruction.DriversLicenseNumber);
-    const paymentComplete = instruction.PaymentResult?.toLowerCase() === 'successful';
-    const paymentFailed = instruction.PaymentResult?.toLowerCase() === 'failed';
-    const documentsComplete = (documents?.length ?? documentCount ?? 0) > 0;
-
-    const eidStatus = (eid?.EIDStatus || '').toLowerCase();
-    const eidResult = (eid as any)?.EIDOverallResult?.toLowerCase();
-    const eidPassed = eidResult === 'passed' || eidResult === 'pass';
-    
-    let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
-    if (!eid || eidStatus === 'pending') {
-        verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
-    } else if (eidPassed) {
-        verifyIdStatus = 'complete';
+  const toggleStepExpanded = (stepId: string) => {
+    const newExpanded = new Set(expandedSteps);
+    if (newExpanded.has(stepId)) {
+      newExpanded.delete(stepId);
     } else {
-        verifyIdStatus = 'review';
+      newExpanded.add(stepId);
     }
+    setExpandedSteps(newExpanded);
+  };
 
-    const riskResultRaw = risk?.MatterId === instruction.InstructionRef ? (risk as any)?.RiskAssessmentResult?.toString().toLowerCase() : undefined;
-    const riskStatus = riskResultRaw
-        ? ['low', 'low risk', 'pass', 'approved'].includes(riskResultRaw)
-            ? 'complete'
-            : 'flagged'
-        : 'pending';
+  // Status logic - match the logic used in global actions
+  // ID Verification status based on EID data
+  const eidResult = (eid?.EIDOverallResult || eids?.[0]?.EIDOverallResult)?.toLowerCase() ?? "";
+  const eidStatus = (eid?.EIDStatus || eids?.[0]?.EIDStatus)?.toLowerCase() ?? "";
+  const poidPassed = eidResult === "passed" || eidResult === "approved";
+  const proofOfIdComplete = Boolean(instruction.PassportNumber || instruction.DriversLicenseNumber);
+  
+  let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
+  if (!eid && !eids?.length || eidStatus === 'pending') {
+    verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
+  } else if (poidPassed) {
+    verifyIdStatus = 'complete';
+  } else {
+    verifyIdStatus = 'review';
+  }
 
-    // Matter status - recognize if matter exists
-    const matterStatus = hasAssociatedMatter ? 'complete' : 'pending';
-    // CCL status - currently always pending until we have data to determine completion
-    const cclStatus = 'pending' as 'pending' | 'complete';
-    
-    // Timeline progression logic - risk must be complete before matter/CCL can be considered "next"
-    const riskComplete = riskStatus === 'complete' || riskStatus === 'flagged';
-    
-    // Determine which step should pulse (next action needed)
-    const getNextActionStep = () => {
-        // If ID not complete, that's next
-        if (verifyIdStatus === 'pending') return 'id';
-        // If payment not complete, that's next
-        if (!paymentComplete && !paymentFailed) return 'payment';
-        // If documents not complete, that's next
-        if (!documentsComplete) return 'documents';
-        // If risk not complete, that's next (this takes priority over matter)
-        if (!riskComplete) return 'risk';
-        // If matter not complete and risk is complete, that's next
-        if (matterStatus === 'pending' && riskComplete) return 'matter';
-        // If all above complete, CCL is next
-        return 'ccl';
-    };
-    
-    const nextActionStep = getNextActionStep();
+  // Payment status based on PaymentResult
+  const paymentResult = instruction.PaymentResult?.toLowerCase();
+  const paymentStatus = paymentResult === "successful" ? 'complete' : 'pending';
 
-    // Format submission date
-    const formattedDate = instruction.SubmissionDate
-        ? format(new Date(instruction.SubmissionDate), 'd MMM yyyy')
-        : undefined;
+  // Documents status - check if documents exist
+  const documentStatus = (documents && documents.length > 0) ? 'complete' : 'pending';
 
-    const [isHovered, setIsHovered] = useState(false);
+  // Risk status based on risk assessment result
+  const riskResultRaw = risk?.RiskAssessmentResult?.toString().toLowerCase() ?? "";
+  const riskStatus = riskResultRaw
+    ? ['low', 'low risk', 'pass', 'approved'].includes(riskResultRaw) ? 'complete' : 'review'
+    : 'pending';
 
-    const cardClass = mergeStyles('instructionCard', {
-        backgroundColor: colours.light.sectionBackground,
-        borderRadius: '0px',
-        padding: '16px',
-        color: colours.light.text,
-        cursor: 'pointer',
-        position: 'relative',
-        border: selected 
-            ? '2px solid #3690CE' 
-            : '1px solid #e1e4e8',
-        boxShadow: selected
-            ? '0 0 0 1px #3690CE20, 0 4px 16px rgba(54, 144, 206, 0.15)'
-            : '0 2px 8px rgba(0,0,0,0.08)',
-        opacity: isCompleted ? 0.6 : 1,
-        transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
-        flex: '1' as const, // Add flex to expand within parent
-        selectors: {
-            ':hover': {
-                boxShadow: selected
-                    ? '0 0 0 1px #3690CE30, 0 6px 20px rgba(54, 144, 206, 0.2)'
-                    : '0 4px 16px rgba(0,0,0,0.12)',
-                transform: 'translateY(-1px) scale(1.01)',
-            },
-        },
+  // Matter status - check if matter exists
+  const matterStatus = (instruction.MatterId || (instruction as any).matters?.length > 0) ? 'complete' : 'pending';
+
+  // CCL status - assume pending unless explicitly complete
+  const cclStatus = instruction.CCLSubmitted ? 'complete' : 'pending';
+
+  const isCompleted = cclStatus === 'complete';
+
+  // Determine next action step
+  const nextActionStep = 
+    verifyIdStatus !== 'complete' ? 'id' :
+    paymentStatus !== 'complete' ? 'payment' :
+    documentStatus !== 'complete' ? 'documents' :
+    riskStatus !== 'complete' ? 'risk' :
+    matterStatus !== 'complete' ? 'matter' :
+    cclStatus !== 'complete' ? 'ccl' : null;
+
+  // Debug logging to see what's going wrong
+  React.useEffect(() => {
+    console.log(`InstructionCard ${instruction.InstructionRef} Status Debug:`, {
+      fullInstruction: instruction, // Log the entire instruction object
+      IdVerified: instruction.IdVerified,
+      IdSubmitted: instruction.IdSubmitted,
+      PaymentReceived: instruction.PaymentReceived,
+      DocumentsReceived: instruction.DocumentsReceived,
+      RiskAssessmentComplete: instruction.RiskAssessmentComplete,
+      MatterCreated: instruction.MatterCreated,
+      CCLSubmitted: instruction.CCLSubmitted,
+      verifyIdStatus,
+      paymentStatus,
+      documentStatus,
+      riskStatus,
+      matterStatus,
+      cclStatus,
+      nextActionStep
     });
+  }, [instruction.InstructionRef, verifyIdStatus, paymentStatus, documentStatus, riskStatus, matterStatus, cclStatus, nextActionStep]);
 
-    // Add CSS animation for pulsing
-    const pulseAnimation = `
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-    `;
-    
-    // Inject the animation styles if not already present
-    if (!document.querySelector('#timeline-pulse-animation')) {
-        const style = document.createElement('style');
-        style.id = 'timeline-pulse-animation';
-        style.textContent = pulseAnimation;
-        document.head.appendChild(style);
+  // Debug selection state
+  React.useEffect(() => {
+    console.log(`InstructionCard ${instruction.InstructionRef} Selection:`, {
+      selected,
+      expanded,
+      isCompleted
+    });
+  }, [instruction.InstructionRef, selected, expanded, isCompleted]);
+
+  const cardClass = mergeStyles({
+    background: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
+    border: selected ? `2px solid ${colours.blue}` : `1px solid ${colours.light.border}`,
+    borderRadius: '12px',
+    padding: '20px',
+    cursor: 'pointer',
+    position: 'relative',
+    overflow: 'hidden',
+    boxShadow: selected
+      ? `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`
+      : '0 2px 8px rgba(0,0,0,0.08)',
+    opacity: isCompleted ? 0.6 : 1,
+    transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
+    flex: '1' as const,
+    selectors: {
+      ':hover': {
+        boxShadow: selected
+          ? `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`
+          : '0 4px 16px rgba(0,0,0,0.12)',
+        transform: 'translateY(-1px) scale(1.01)',
+      },
+    },
+  });
+
+  const wrapperClass = mergeStyles({
+    background: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
+    border: selected ? `2px solid ${colours.blue}` : `1px solid ${colours.light.border}`,
+    borderRadius: '12px',
+    padding: '20px',
+    cursor: 'pointer',
+    position: 'relative',
+    overflow: 'hidden',
+    boxShadow: selected
+      ? `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`
+      : '0 2px 8px rgba(0,0,0,0.08)',
+    opacity: isCompleted ? 0.6 : 1,
+    transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
+    flex: '1' as const,
+    selectors: {
+      ':hover': {
+        boxShadow: selected
+          ? `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`
+          : '0 4px 16px rgba(0,0,0,0.12)',
+        transform: 'translateY(-1px) scale(1.01)',
+      },
+    },
+  });
+
+  const style_: React.CSSProperties = {
+    '--animation-delay': `${animationDelay}s`,
+  } as React.CSSProperties;
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onSelect) {
+      onSelect();
+    } else if (onToggle) {
+      onToggle();
     }
+  };
 
-    const style: React.CSSProperties = {
-        '--animation-delay': `${animationDelay}s`,
-    } as React.CSSProperties;
-
-    const handleCardClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (onSelect) {
-            // Let the parent component handle the selection/unselection logic
-            onSelect();
-        } else if (onToggle) {
-            onToggle();
-        }
-    };
-
-    return (
-        <div 
-            className={cardClass} 
-            style={style} 
-            onClick={handleCardClick} 
-            ref={innerRef}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-        >
-            {/* CARD HEADER */}
-            <div>
-                {/* Header Row 1: Client Name and Ref */}
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '8px'
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                    }}>
-                        {isMultiClient ? (
-                            <FaUsers style={{ 
-                                fontSize: '14px', 
-                                color: selected || isHovered ? '#3690CE' : '#666',
-                                transition: 'color 0.3s ease'
-                            }} />
-                        ) : (
-                            <FaUser style={{ 
-                                fontSize: '14px', 
-                                color: selected || isHovered ? '#3690CE' : '#666',
-                                transition: 'color 0.3s ease'
-                            }} />
-                        )}
-                        <div>
-                            <span style={{
-                                fontSize: '1rem',
-                                fontWeight: 600,
-                                color: selected || isHovered ? '#3690CE' : '#24292f',
-                                transition: 'color 0.3s ease'
-                            }}>
-                                {fullName || 'Client Name'}
-                            </span>
-                            {instruction.CompanyName && (firstName || lastName) && (
-                                <span style={{
-                                    fontSize: '0.9rem',
-                                    color: '#666',
-                                    marginLeft: '8px'
-                                }}>
-                                    - {instruction.CompanyName}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                        {instruction.InstructionRef && (
-                            <div style={{
-                                fontSize: '0.75rem',
-                                fontFamily: 'monospace',
-                                fontWeight: 600,
-                                color: '#24292f',
-                                backgroundColor: 'rgba(0,0,0,0.03)',
-                                padding: '2px 6px',
-                                borderRadius: '3px',
-                                border: '1px solid rgba(0,0,0,0.1)',
-                                marginBottom: '4px'
-                            }}>
-                                {instruction.InstructionRef}
-                            </div>
-                        )}
-                        {formattedDate && (
-                            <div style={{
-                                fontSize: '0.75rem',
-                                color: '#666'
-                            }}>
-                                {formattedDate}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Header Row 2: Contact Details */}
-                <div style={{
-                    display: 'flex',
-                    gap: '16px',
-                    marginBottom: '8px',
-                    fontSize: '0.8rem'
-                }}>
-                    {instruction.Email && (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            color: '#3690CE',
-                            cursor: 'pointer'
-                        }}
-                        onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            window.location.href = `mailto:${instruction.Email}`;
-                        }}>
-                            <FaEnvelope style={{ fontSize: '10px' }} />
-                            <span>{instruction.Email}</span>
-                        </div>
-                    )}
-                    {instruction.Phone && (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            color: '#3690CE',
-                            cursor: 'pointer'
-                        }}
-                        onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            window.location.href = `tel:${instruction.Phone}`;
-                        }}>
-                            <FaPhone style={{ fontSize: '10px' }} />
-                            <span>{instruction.Phone}</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Header Row 3: Service Description and Amount */}
-                {deal && (deal.ServiceDescription || typeof deal.Amount === 'number') && (
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '8px'
-                    }}>
-                        <div style={{
-                            fontSize: '0.85rem',
-                            color: '#333',
-                            flex: 1
-                        }}>
-                            {deal.ServiceDescription || 'Legal Service'}
-                        </div>
-                        {typeof deal.Amount === 'number' && (
-                            <div style={{
-                                fontSize: '0.9rem',
-                                fontWeight: 600,
-                                color: '#3690CE',
-                                fontFamily: 'Raleway'
-                            }}>
-                                £{deal.Amount.toLocaleString()}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* TIMELINE PROGRESS */}
-            <div>
-                {/* Timeline Row */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                }}>
-                    {/* Step 1: ID Verification */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <div style={{ 
-                            width: '8px', 
-                            height: '8px', 
-                            borderRadius: '4px', 
-                            backgroundColor: verifyIdStatus === 'complete' || verifyIdStatus === 'review' || verifyIdStatus === 'received' ? '#20b26c' : '#ddd',
-                            flexShrink: 0,
-                            overflow: 'hidden',
-                            ...(nextActionStep === 'id' ? {
-                                animation: 'pulse 2s infinite',
-                                backgroundColor: colours.cta
-                            } : {})
-                        }}></div>
-                        <span style={{ 
-                            fontSize: '0.7rem', 
-                            fontWeight: 600,
-                            color: (verifyIdStatus === 'complete' || verifyIdStatus === 'review' || verifyIdStatus === 'received') ? '#20b26c' : 
-                                   nextActionStep === 'id' ? colours.cta : '#999'
-                        }}>
-                            ID
-                        </span>
-                    </div>
-                    
-                    {/* Connector Line */}
-                    <div style={{
-                        width: '16px',
-                        height: '2px',
-                        backgroundColor: paymentComplete || paymentFailed ? '#20b26c' : '#ddd'
-                    }}></div>
-                    
-                    {/* Step 2: Payment */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <div style={{ 
-                            width: '8px', 
-                            height: '8px', 
-                            borderRadius: '4px', 
-                            backgroundColor: paymentComplete || paymentFailed ? '#20b26c' : '#ddd',
-                            flexShrink: 0,
-                            overflow: 'hidden',
-                            ...(nextActionStep === 'payment' ? {
-                                animation: 'pulse 2s infinite',
-                                backgroundColor: colours.cta
-                            } : {})
-                        }}></div>
-                        <span style={{ 
-                            fontSize: '0.7rem', 
-                            fontWeight: 600,
-                            color: (paymentComplete || paymentFailed) ? '#20b26c' : 
-                                   nextActionStep === 'payment' ? colours.cta : '#999'
-                        }}>
-                            Pay
-                        </span>
-                    </div>
-                    
-                    {/* Connector Line */}
-                    <div style={{
-                        width: '16px',
-                        height: '2px',
-                        backgroundColor: documentsComplete ? '#20b26c' : '#ddd'
-                    }}></div>
-                    
-                    {/* Step 3: Documents */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <div style={{ 
-                            width: '8px', 
-                            height: '8px', 
-                            borderRadius: '4px', 
-                            backgroundColor: documentsComplete ? '#20b26c' : '#ddd',
-                            flexShrink: 0,
-                            overflow: 'hidden',
-                            ...(nextActionStep === 'documents' ? {
-                                animation: 'pulse 2s infinite',
-                                backgroundColor: colours.cta
-                            } : {})
-                        }}></div>
-                        <span style={{ 
-                            fontSize: '0.7rem', 
-                            fontWeight: 600,
-                            color: documentsComplete ? '#20b26c' : 
-                                   nextActionStep === 'documents' ? colours.cta : '#999'
-                        }}>
-                            Docs
-                        </span>
-                    </div>
-                    
-                    {/* Connector Line */}
-                    <div style={{
-                        width: '16px',
-                        height: '2px',
-                        backgroundColor: riskStatus === 'complete' || riskStatus === 'flagged' ? '#20b26c' : '#ddd'
-                    }}></div>
-                    
-                    {/* Step 4: Risk Assessment */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <div style={{ 
-                            width: '8px', 
-                            height: '8px', 
-                            borderRadius: '4px', 
-                            backgroundColor: riskStatus === 'complete' || riskStatus === 'flagged' ? '#20b26c' : '#ddd',
-                            flexShrink: 0,
-                            overflow: 'hidden',
-                            ...(nextActionStep === 'risk' ? {
-                                animation: 'pulse 2s infinite',
-                                backgroundColor: colours.cta
-                            } : {})
-                        }}></div>
-                        <span style={{ 
-                            fontSize: '0.7rem', 
-                            fontWeight: 600,
-                            color: (riskStatus === 'complete' || riskStatus === 'flagged') ? '#20b26c' : 
-                                   nextActionStep === 'risk' ? colours.cta : '#999'
-                        }}>
-                            Risk
-                        </span>
-                    </div>
-                    
-                    {/* Connector Line */}
-                    <div style={{
-                        width: '16px',
-                        height: '2px',
-                        backgroundColor: matterStatus === 'complete' ? '#20b26c' : '#ddd'
-                    }}></div>
-                    
-                    {/* Step 5: Matter */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <div style={{ 
-                            width: '8px', 
-                            height: '8px', 
-                            borderRadius: '4px', 
-                            backgroundColor: matterStatus === 'complete' ? '#20b26c' : '#ddd',
-                            flexShrink: 0,
-                            overflow: 'hidden',
-                            ...(nextActionStep === 'matter' ? {
-                                animation: 'pulse 2s infinite',
-                                backgroundColor: colours.cta
-                            } : {})
-                        }}></div>
-                        <span style={{ 
-                            fontSize: '0.7rem', 
-                            fontWeight: 600,
-                            color: matterStatus === 'complete' ? '#20b26c' : 
-                                   nextActionStep === 'matter' ? colours.cta : '#999'
-                        }}>
-                            Matter
-                        </span>
-                    </div>
-                    
-                    {/* Connector Line */}
-                    <div style={{
-                        width: '16px',
-                        height: '2px',
-                        backgroundColor: cclStatus === 'complete' ? '#20b26c' : '#ddd'
-                    }}></div>
-                    
-                    {/* Step 6: CCL */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <div style={{ 
-                            width: '8px', 
-                            height: '8px', 
-                            borderRadius: '4px', 
-                            backgroundColor: cclStatus === 'complete' ? '#20b26c' : '#ddd',
-                            flexShrink: 0,
-                            overflow: 'hidden',
-                            ...(nextActionStep === 'ccl' ? {
-                                animation: 'pulse 2s infinite',
-                                backgroundColor: colours.cta
-                            } : {})
-                        }}></div>
-                        <span style={{ 
-                            fontSize: '0.7rem', 
-                            fontWeight: 600,
-                            color: cclStatus === 'complete' ? '#20b26c' : 
-                                   nextActionStep === 'ccl' ? colours.cta : '#999'
-                        }}>
-                            CCL
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Expanded Sections */}
-            {(expanded || selected) && (
-                <div>
-                    {/* ID Verification Section */}
-                    {(verifyIdStatus !== 'pending' || (instruction.PassportNumber || instruction.DriversLicenseNumber)) && (
-                        <div style={{
-                            marginBottom: '16px',
-                            padding: '16px',
-                            backgroundColor: 'rgba(54, 144, 206, 0.03)',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(54, 144, 206, 0.1)'
-                        }}>
-                            <div style={{
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                color: '#3690CE',
-                                marginBottom: '12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
-                                <FaUser /> ID Verification
-                            </div>
-                            <div style={{
-                                display: 'grid',
-                                gap: '8px',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))'
-                            }}>
-                                <div style={{
-                                    padding: '12px',
-                                    backgroundColor: 'white',
-                                    borderRadius: '4px',
-                                    border: '1px solid #e1e4e8'
-                                }}>
-                                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Status</div>
-                                    <div style={{
-                                        fontSize: '0.85rem',
-                                        fontWeight: 600,
-                                        color: verifyIdStatus === 'complete' ? colours.green : 
-                                               verifyIdStatus === 'review' ? colours.cta :
-                                               verifyIdStatus === 'received' ? colours.blue : '#666'
-                                    }}>
-                                        {verifyIdStatus === 'complete' ? 'Verified' : 
-                                         verifyIdStatus === 'review' ? 'Under Review' :
-                                         verifyIdStatus === 'received' ? 'Received' : 'Pending'}
-                                    </div>
-                                </div>
-                                {instruction.PassportNumber && (
-                                    <div style={{
-                                        padding: '12px',
-                                        backgroundColor: 'white',
-                                        borderRadius: '4px',
-                                        border: '1px solid #e1e4e8'
-                                    }}>
-                                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Passport</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                                            {instruction.PassportNumber}
-                                        </div>
-                                    </div>
-                                )}
-                                {instruction.DriversLicenseNumber && (
-                                    <div style={{
-                                        padding: '12px',
-                                        backgroundColor: 'white',
-                                        borderRadius: '4px',
-                                        border: '1px solid #e1e4e8'
-                                    }}>
-                                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Driver's License</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                                            {instruction.DriversLicenseNumber}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Payment Section */}
-                    {instruction.PaymentResult && (
-                        <div style={{
-                            marginBottom: '16px',
-                            padding: '16px',
-                            backgroundColor: 'rgba(54, 144, 206, 0.03)',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(54, 144, 206, 0.1)'
-                        }}>
-                            <div style={{
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                color: '#3690CE',
-                                marginBottom: '12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
-                                <FaPoundSign /> Payment
-                            </div>
-                            <div style={{
-                                padding: '12px',
-                                backgroundColor: 'white',
-                                borderRadius: '4px',
-                                border: '1px solid #e1e4e8'
-                            }}>
-                                <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Status</div>
-                                <div style={{
-                                    fontSize: '0.85rem',
-                                    fontWeight: 600,
-                                    color: paymentComplete ? colours.green : paymentFailed ? colours.red : '#666'
-                                }}>
-                                    {instruction.PaymentResult}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Risk Assessment Section */}
-                    {risk && risk.MatterId === instruction.InstructionRef && (
-                        <div style={{
-                            marginBottom: '16px',
-                            padding: '16px',
-                            backgroundColor: 'rgba(54, 144, 206, 0.03)',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(54, 144, 206, 0.1)'
-                        }}>
-                            <div style={{
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                color: '#3690CE',
-                                marginBottom: '12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
-                                <FaShieldAlt /> Risk Assessment
-                            </div>
-                            <div style={{
-                                display: 'grid',
-                                gap: '8px',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))'
-                            }}>
-                                <div style={{
-                                    padding: '12px',
-                                    backgroundColor: 'white',
-                                    borderRadius: '4px',
-                                    border: '1px solid #e1e4e8'
-                                }}>
-                                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Result</div>
-                                    <div style={{
-                                        fontSize: '0.85rem',
-                                        fontWeight: 600,
-                                        color: riskStatus === 'complete' ? colours.green : 
-                                               riskStatus === 'flagged' ? colours.cta : '#666'
-                                    }}>
-                                        {(risk as any)?.RiskAssessmentResult || 'Pending'}
-                                    </div>
-                                </div>
-                                {typeof risk.RiskScore === 'number' && (
-                                    <div style={{
-                                        padding: '12px',
-                                        backgroundColor: 'white',
-                                        borderRadius: '4px',
-                                        border: '1px solid #e1e4e8'
-                                    }}>
-                                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Score</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                                            {risk.RiskScore}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Documents Section */}
-                    {documents && documents.length > 0 && (
-                        <div style={{
-                            padding: '16px',
-                            backgroundColor: 'rgba(54, 144, 206, 0.03)',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(54, 144, 206, 0.1)'
-                        }}>
-                            <div style={{
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                color: '#3690CE',
-                                marginBottom: '12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
-                                <FaFileAlt /> Documents
-                            </div>
-                            
-                            <div style={{
-                                display: 'grid',
-                                gap: '8px',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'
-                            }}>
-                                {documents.map((doc: any, docIndex: number) => (
-                                    <div key={docIndex} style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '12px 14px',
-                                        backgroundColor: 'white',
-                                        borderRadius: '4px',
-                                        border: '1px solid #e1e4e8',
-                                        fontSize: '0.75rem',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                                    }}>
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            flex: 1
-                                        }}>
-                                            <div style={{
-                                                marginRight: '12px',
-                                                fontSize: '1.1rem',
-                                                color: '#3690CE'
-                                            }}>
-                                                {getFileIcon(doc.FileName)}
-                                            </div>
-                                            <div>
-                                                <div style={{
-                                                    fontWeight: 500,
-                                                    color: '#24292f',
-                                                    marginBottom: '4px'
-                                                }}>
-                                                    {doc.FileName || 'Unnamed document'}
-                                                </div>
-                                                {doc.FileSizeBytes && (
-                                                    <div style={{
-                                                        color: '#666',
-                                                        fontSize: '0.7rem'
-                                                    }}>
-                                                        {Math.round(doc.FileSizeBytes / 1024)}KB
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {(doc.BlobUrl || doc.DocumentUrl) && (
-                                            <button
-                                                onClick={() => handleDocumentClick(doc)}
-                                                style={{
-                                                    color: '#3690CE',
-                                                    textDecoration: 'none',
-                                                    fontSize: '0.72rem',
-                                                    fontWeight: 500,
-                                                    padding: '6px 10px',
-                                                    borderRadius: '4px',
-                                                    border: '1px solid #3690CE',
-                                                    backgroundColor: 'transparent',
-                                                    transition: 'all 0.2s ease',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px'
-                                                }}
-                                                onMouseOver={(e) => {
-                                                    e.currentTarget.style.backgroundColor = '#3690CE';
-                                                    e.currentTarget.style.color = 'white';
-                                                }}
-                                                onMouseOut={(e) => {
-                                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                                    e.currentTarget.style.color = '#3690CE';
-                                                }}
-                                            >
-                                                <FaDownload style={{ fontSize: '0.65rem' }} /> 
-                                                {(() => {
-                                                    const filename = doc.FileName || '';
-                                                    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-                                                    const previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
-                                                    return previewableTypes.includes(ext) ? 'Preview' : 'Download';
-                                                })()}
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
+  return (
+    <div className={wrapperClass} style={style_} onClick={handleCardClick} ref={innerRef}
+      onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+      <div className={cardClass} style={{ background: 'transparent', boxShadow: 'none' }}>
+      
+      {/* PRIMARY HEADER - Client Identity & Reference */}
+      <div className="card-primary-header" style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: '16px',
+        paddingBottom: '12px',
+        borderBottom: `1px solid ${colours.light.border}`,
+        position: 'relative',
+        background: `url("data:image/svg+xml,${encodeURIComponent(`
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" opacity="0.03">
+            <path fill="${colours.darkBlue}" d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/>
+            <path fill="${colours.darkBlue}" d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/>
+            <path fill="${colours.darkBlue}" d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/>
+          </svg>
+        `)}")`,
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'top right',
+        backgroundSize: '20px 35px'
+      }}>
+        
+        <div className="client-identity" style={{ flex: 1 }}>
+          <div className="client-name" style={{
+            fontSize: '1.1rem',
+            fontWeight: 700,
+            color: colours.darkBlue,
+            marginBottom: '6px',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.3
+          }}>
+            <CopyableText 
+              value={(() => {
+                // Try different possible name combinations
+                const firstName = instruction.Forename || instruction.FirstName || instruction.forename || instruction.firstName || '';
+                const lastName = instruction.Surname || instruction.LastName || instruction.surname || instruction.lastName || '';
+                const fullName = instruction.FullName || instruction.fullName || instruction.Name || instruction.name || '';
+                
+                if (fullName) return fullName;
+                if (firstName && lastName) return `${firstName} ${lastName}`;
+                if (firstName) return firstName;
+                if (lastName) return lastName;
+                return 'Client Name';
+              })()}
+              className="client-name-text"
+            />
+          </div>
+          <div className="reference-line" style={{
+            fontSize: '0.75rem',
+            color: colours.greyText,
+            fontWeight: 600
+          }}>
+            <CopyableText 
+              value={instruction.InstructionRef || instruction.instructionRef || instruction.ref || instruction.Ref || 'No Reference'}
+              label="Ref"
+            />
+          </div>
         </div>
-    );
+        <div className="status-indicators" style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: '4px'
+        }}>
+          {isCompleted && (
+            <div className="completed-badge" style={{
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              padding: '4px 8px',
+              backgroundColor: colours.green,
+              color: 'white',
+              borderRadius: '12px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Complete
+            </div>
+          )}
+          {nextActionStep && !isCompleted && (
+            <div className="action-required-badge" style={{
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              padding: '4px 8px',
+              backgroundColor: colours.blue,
+              color: 'white',
+              borderRadius: '12px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Action Required
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* LEGAL MATTER INFORMATION - Full Width */}
+      {deal && (
+        <div className="matter-section" style={{
+          padding: '16px',
+          background: `linear-gradient(135deg, ${colours.light.sectionBackground} 0%, ${colours.light.background} 100%)`,
+          borderRadius: '8px',
+          border: `1px solid ${colours.light.border}`,
+          marginBottom: '16px',
+          position: 'relative',
+          backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" opacity="0.05">
+              <path fill="${colours.blue}" d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/>
+              <path fill="${colours.blue}" d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/>
+              <path fill="${colours.blue}" d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/>
+            </svg>
+          `)}")`,
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'top right',
+          backgroundSize: '30px 52px'
+        }}>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px'
+          }}>
+            <div className="service-description" style={{
+              flex: 1
+            }}>
+              <div style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: colours.greyText,
+                textTransform: 'uppercase',
+                letterSpacing: '0.75px',
+                marginBottom: '6px'
+              }}>
+                Legal Matter
+              </div>
+              <div style={{
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                color: colours.darkBlue,
+                lineHeight: 1.4,
+                letterSpacing: '-0.01em'
+              }}>
+                {deal.ServiceDescription || 'Legal Service'}
+              </div>
+            </div>
+            {typeof deal.Amount === 'number' && (
+              <div className="fee-display" style={{
+                textAlign: 'right',
+                minWidth: '100px'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: colours.greyText,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.75px',
+                  marginBottom: '4px'
+                }}>
+                  Fee
+                </div>
+                <div className="premium-amount" style={{
+                  fontSize: '1.125rem',
+                  fontWeight: 700,
+                  color: colours.blue,
+                  letterSpacing: '-0.02em'
+                }}>
+                  £{deal.Amount.toLocaleString()}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CONNECTED WORKFLOW TIMELINE */}
+      <div className="workflow-timeline" style={{
+        marginBottom: '16px',
+        position: 'relative',
+        padding: '16px',
+        background: `linear-gradient(135deg, ${colours.light.background} 0%, ${colours.light.sectionBackground} 100%)`,
+        borderRadius: '8px',
+        border: `1px solid ${colours.light.border}`,
+        backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(`
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" opacity="0.04">
+            <path fill="${colours.greyText}" d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/>
+            <path fill="${colours.greyText}" d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/>
+            <path fill="${colours.greyText}" d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/>
+          </svg>
+        `)}")`,
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'bottom right',
+        backgroundSize: '25px 43px'
+      }}>
+        
+        {/* Sequential Timeline - Compact Steps */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
+        }}>
+          
+          {/* ID Verification - Compact */}
+          <div 
+            onClick={() => toggleStepExpanded('id')}
+            style={{
+              padding: '8px 12px',
+              background: 'white',
+              borderRadius: '6px',
+              border: `1px solid ${verifyIdStatus === 'complete' ? colours.green : 
+                                    verifyIdStatus === 'review' ? colours.red : 
+                                    nextActionStep === 'id' ? colours.blue : colours.light.border}`,
+              boxShadow: nextActionStep === 'id' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
+              cursor: 'pointer'
+            }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                background: verifyIdStatus === 'complete' ? colours.green : 
+                           verifyIdStatus === 'review' ? colours.red : 
+                           nextActionStep === 'id' ? colours.blue : colours.greyText,
+                color: 'white',
+                fontSize: '0.8rem',
+                flexShrink: 0
+              }}>
+                <FaIdCard />
+              </div>
+              
+              <span style={{
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: colours.darkBlue,
+                flex: 1
+              }}>
+                ID Verification
+              </span>
+              
+              <span style={{
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                padding: '2px 6px',
+                borderRadius: '10px',
+                background: verifyIdStatus === 'complete' ? colours.green : 
+                           verifyIdStatus === 'review' ? colours.red : colours.greyText,
+                color: 'white'
+              }}>
+                {verifyIdStatus === 'complete' ? 'Verified' : 
+                 verifyIdStatus === 'review' ? 'Review' : 'Pending'}
+              </span>
+              
+              {nextActionStep === 'id' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    color: colours.blue,
+                    background: 'white',
+                    border: `1px solid ${colours.blue}`,
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    marginLeft: '4px'
+                  }}
+                >
+                  Request
+                </button>
+              )}
+            </div>
+            
+            {/* Expandable Details */}
+            {expandedSteps.has('id') && (
+              <div style={{
+                marginTop: '8px',
+                padding: '8px',
+                background: colours.light.sectionBackground,
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+                color: colours.greyText
+              }}>
+                {(instruction.PassportNumber || instruction.DriversLicenseNumber) ? (
+                  <div>
+                    {instruction.PassportNumber && `Passport: ${instruction.PassportNumber}`}
+                    {instruction.PassportNumber && instruction.DriversLicenseNumber && ' • '}
+                    {instruction.DriversLicenseNumber && `License: ${instruction.DriversLicenseNumber}`}
+                  </div>
+                ) : (
+                  <div>No ID documents submitted</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Payment */}
+          <div className="timeline-step" style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            position: 'relative'
+          }}>
+            {/* Connection Line */}
+            <div style={{
+              position: 'absolute',
+              left: '19px',
+              top: '38px',
+              width: '2px',
+              height: '40px',
+              background: paymentStatus === 'complete' ? colours.green : colours.light.border,
+              zIndex: 1
+            }} />
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              background: 'white',
+              borderRadius: '8px',
+              border: `1px solid ${paymentStatus === 'complete' ? colours.green : 
+                                    nextActionStep === 'payment' ? colours.blue : colours.light.border}`,
+              boxShadow: nextActionStep === 'payment' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
+              width: '100%',
+              position: 'relative',
+              zIndex: 2
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                background: paymentStatus === 'complete' ? colours.green : 
+                           nextActionStep === 'payment' ? colours.blue : colours.greyText,
+                color: 'white',
+                fontSize: '1rem',
+                flexShrink: 0
+              }}>
+                <FaPoundSign />
+              </div>
+              
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px'
+                }}>
+                  <span style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    color: colours.darkBlue,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    Payment
+                  </span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    background: paymentStatus === 'complete' ? colours.green : colours.greyText,
+                    color: 'white'
+                  }}>
+                    {paymentStatus === 'complete' ? 'Paid' : 'Pending'}
+                  </span>
+                </div>
+                {deal && typeof deal.Amount === 'number' && (
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: colours.greyText,
+                    marginBottom: '6px'
+                  }}>
+                    Fee: £{deal.Amount.toLocaleString()}
+                  </div>
+                )}
+                {nextActionStep === 'payment' && !isCompleted && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginTop: '8px'
+                  }}>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        color: colours.blue,
+                        background: 'white',
+                        border: `1px solid ${colours.blue}`,
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Send Invoice
+                    </button>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        color: 'white',
+                        background: colours.blue,
+                        border: `1px solid ${colours.blue}`,
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Mark Paid
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Documents */}
+          <div className="timeline-step" style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            position: 'relative'
+          }}>
+            {/* Connection Line */}
+            <div style={{
+              position: 'absolute',
+              left: '19px',
+              top: '38px',
+              width: '2px',
+              height: '40px',
+              background: documentStatus === 'complete' ? colours.green : colours.light.border,
+              zIndex: 1
+            }} />
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              background: 'white',
+              borderRadius: '8px',
+              border: `1px solid ${documentStatus === 'complete' ? colours.green : 
+                                    nextActionStep === 'documents' ? colours.blue : colours.light.border}`,
+              boxShadow: nextActionStep === 'documents' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
+              width: '100%',
+              position: 'relative',
+              zIndex: 2
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                background: documentStatus === 'complete' ? colours.green : 
+                           nextActionStep === 'documents' ? colours.blue : colours.greyText,
+                color: 'white',
+                fontSize: '1rem',
+                flexShrink: 0
+              }}>
+                <FaFileAlt />
+              </div>
+              
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px'
+                }}>
+                  <span style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    color: colours.darkBlue,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    Documents
+                  </span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    background: documentStatus === 'complete' ? colours.green : colours.greyText,
+                    color: 'white'
+                  }}>
+                    {documentStatus === 'complete' ? 'Complete' : 'Pending'}
+                  </span>
+                </div>
+                {documentCount && (
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: colours.greyText,
+                    marginBottom: '6px'
+                  }}>
+                    {documentCount} document{documentCount !== 1 ? 's' : ''} received
+                  </div>
+                )}
+                {nextActionStep === 'documents' && !isCompleted && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginTop: '8px'
+                  }}>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        color: colours.blue,
+                        background: 'white',
+                        border: `1px solid ${colours.blue}`,
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Request Docs
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Risk Assessment */}
+          <div className="timeline-step" style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            position: 'relative'
+          }}>
+            {/* Connection Line */}
+            <div style={{
+              position: 'absolute',
+              left: '19px',
+              top: '38px',
+              width: '2px',
+              height: '40px',
+              background: riskStatus === 'complete' ? colours.green : colours.light.border,
+              zIndex: 1
+            }} />
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              background: 'white',
+              borderRadius: '8px',
+              border: `1px solid ${riskStatus === 'complete' ? colours.green : 
+                                    nextActionStep === 'risk' ? colours.blue : colours.light.border}`,
+              boxShadow: nextActionStep === 'risk' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
+              width: '100%',
+              position: 'relative',
+              zIndex: 2
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                background: riskStatus === 'complete' ? colours.green : 
+                           nextActionStep === 'risk' ? colours.blue : colours.greyText,
+                color: 'white',
+                fontSize: '1rem',
+                flexShrink: 0
+              }}>
+                <FaShieldAlt />
+              </div>
+              
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px'
+                }}>
+                  <span style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    color: colours.darkBlue,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    Risk Assessment
+                  </span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    background: riskStatus === 'complete' ? colours.green : colours.greyText,
+                    color: 'white'
+                  }}>
+                    {riskStatus === 'complete' ? 'Complete' : 'Pending'}
+                  </span>
+                </div>
+                {compliance && (
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: colours.greyText,
+                    marginBottom: '6px'
+                  }}>
+                    Compliance check required
+                  </div>
+                )}
+                {nextActionStep === 'risk' && !isCompleted && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginTop: '8px'
+                  }}>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        color: 'white',
+                        background: colours.blue,
+                        border: `1px solid ${colours.blue}`,
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Complete Assessment
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Matter Creation */}
+          <div className="timeline-step" style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            position: 'relative'
+          }}>
+            {/* Connection Line */}
+            <div style={{
+              position: 'absolute',
+              left: '19px',
+              top: '38px',
+              width: '2px',
+              height: '40px',
+              background: matterStatus === 'complete' ? colours.green : colours.light.border,
+              zIndex: 1
+            }} />
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              background: 'white',
+              borderRadius: '8px',
+              border: `1px solid ${matterStatus === 'complete' ? colours.green : 
+                                    nextActionStep === 'matter' ? colours.blue : colours.light.border}`,
+              boxShadow: nextActionStep === 'matter' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
+              width: '100%',
+              position: 'relative',
+              zIndex: 2
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                background: matterStatus === 'complete' ? colours.green : 
+                           nextActionStep === 'matter' ? colours.blue : colours.greyText,
+                color: 'white',
+                fontSize: '1rem',
+                flexShrink: 0
+              }}>
+                <FaFolder />
+              </div>
+              
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px'
+                }}>
+                  <span style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    color: colours.darkBlue,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    Matter Creation
+                  </span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    background: matterStatus === 'complete' ? colours.green : colours.greyText,
+                    color: 'white'
+                  }}>
+                    {matterStatus === 'complete' ? 'Created' : 'Pending'}
+                  </span>
+                </div>
+                {nextActionStep === 'matter' && !isCompleted && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginTop: '8px'
+                  }}>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        color: 'white',
+                        background: colours.blue,
+                        border: `1px solid ${colours.blue}`,
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Create Matter
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* CCL Submission - Final step (no connection line after) */}
+          <div className="timeline-step" style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            position: 'relative'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              background: 'white',
+              borderRadius: '8px',
+              border: `1px solid ${cclStatus === 'complete' ? colours.green : 
+                                    nextActionStep === 'ccl' ? colours.blue : colours.light.border}`,
+              boxShadow: nextActionStep === 'ccl' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
+              width: '100%',
+              position: 'relative',
+              zIndex: 2
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                background: cclStatus === 'complete' ? colours.green : 
+                           nextActionStep === 'ccl' ? colours.blue : colours.greyText,
+                color: 'white',
+                fontSize: '1rem',
+                flexShrink: 0
+              }}>
+                <FaClipboardCheck />
+              </div>
+              
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px'
+                }}>
+                  <span style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    color: colours.darkBlue,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    CCL Submission
+                  </span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    background: cclStatus === 'complete' ? colours.green : colours.greyText,
+                    color: 'white'
+                  }}>
+                    {cclStatus === 'complete' ? 'Complete' : 'Pending'}
+                  </span>
+                </div>
+                {nextActionStep === 'ccl' && !isCompleted && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginTop: '8px'
+                  }}>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        color: 'white',
+                        background: colours.blue,
+                        border: `1px solid ${colours.blue}`,
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Submit to CCL
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+        </div> {/* End Sequential Timeline */}
+        
+      </div> {/* End Workflow Timeline */}
+
+      {/* CLEAN CONTACT INFORMATION */}
+      <div className="subtle-contact-info" style={{
+        marginTop: '16px',
+        padding: '12px 16px',
+        background: `linear-gradient(135deg, ${colours.light.background} 0%, ${colours.light.sectionBackground} 100%)`,
+        borderRadius: '8px',
+        border: `1px solid ${colours.light.border}`,
+        fontSize: '0.75rem',
+        color: colours.greyText,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+        flexWrap: 'wrap'
+      }}>
+        <span style={{ fontWeight: 500 }}>{instruction.Email || instruction.email || 'N/A'}</span>
+        <span style={{ opacity: 0.4 }}>•</span>
+        <span style={{ fontWeight: 500 }}>{instruction.Phone || instruction.phone || 'N/A'}</span>
+        <span style={{ opacity: 0.4 }}>•</span>
+        <span style={{ fontWeight: 500 }}>
+          {instruction.DateOfEnquiry ? (
+            (() => {
+              try {
+                const date = new Date(instruction.DateOfEnquiry);
+                return isNaN(date.getTime()) ? 'Invalid date' : formatDistanceToNow(date, { addSuffix: true });
+              } catch {
+                return 'Invalid date';
+              }
+            })()
+          ) : 'N/A'}
+        </span>
+      </div>
+      </div>
+    </div>
+  );
 };
 
 export default InstructionCard;

@@ -53,6 +53,27 @@ module.exports = async function (context, req) {
     await ensureDbPassword();
     const pool = await getSqlPool();
 
+    // Check for recent duplicate deals (same ProspectId, similar ServiceDescription, within last 5 minutes)
+    const duplicateCheck = await pool.request()
+      .input('ProspectId', sql.Int, prospectId || null)
+      .input('ServiceDescription', sql.NVarChar(255), serviceDescription)
+      .query(`
+        SELECT TOP 1 DealId, Passcode
+        FROM Deals 
+        WHERE ProspectId = @ProspectId 
+          AND ServiceDescription = @ServiceDescription
+          AND PitchedDate = CAST(GETDATE() AS DATE)
+          AND DATEDIFF(MINUTE, CAST(PitchedDate AS DATETIME) + CAST(PitchedTime AS DATETIME), GETDATE()) < 5
+        ORDER BY DealId DESC
+      `);
+
+    if (duplicateCheck.recordset.length > 0) {
+      const existingDeal = duplicateCheck.recordset[0];
+      context.log('Returning existing deal to prevent duplicate:', { dealId: existingDeal.DealId, passcode: existingDeal.Passcode });
+      context.res = { status: 200, body: { ok: true, dealId: existingDeal.DealId, passcode: existingDeal.Passcode } };
+      return;
+    }
+
     const now = new Date();
     const pitchValidUntil = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
