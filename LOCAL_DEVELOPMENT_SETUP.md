@@ -1,165 +1,250 @@
-# Local Development Setup
+# Local Development Setup (Updated September 2025)
 
-This document explains how to set up and run the Helix Hub application locally with all required services.
+This document explains how to set up and run the Helix Hub application locally with the unified instruction data architecture.
+
+## Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Configure environment for production data access
+cp .env.example .env.local
+# Edit .env.local to set REACT_APP_USE_LOCAL_DATA=false
+
+# Start all services
+npm run dev:all
+```
 
 ## Architecture Overview
 
-The application consists of multiple services that need to run simultaneously:
+The application now uses a **unified API architecture** for instruction data:
+
+1. **React Frontend** (port 3000) - Single API calls to unified endpoints  
+2. **Express Server** (port 8080) - Proxies to VNet functions, handles business logic
+3. **VNet Azure Functions** - Production database access within Azure Virtual Network
+4. **Production Database** - Azure SQL Database with all instruction data
+
+## Environment Configuration
+
+### Production Data Access (.env.local)
+```env
+# Force production data instead of local test data
+REACT_APP_USE_LOCAL_DATA=false
+
+# VNet function authentication  
+INSTRUCTIONS_FUNC_CODE=<your-azure-function-key>
+INSTRUCTIONS_FUNC_BASE_URL=https://instructions-vnet-functions.azurewebsites.net/api/fetchInstructionData
+
+# Azure Key Vault for secret management
+KEY_VAULT_URL=https://helix-keys.vault.azure.net/
+USE_LOCAL_SECRETS=false
+
+# Production database connection (for VNet functions)
+SQL_CONNECTION_STRING=Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-core-data;...
+```
+
+### Local Test Data (.env.local)
+```env
+# Use local test data for development
+REACT_APP_USE_LOCAL_DATA=true
+
+# Local secrets (optional for offline development)
+USE_LOCAL_SECRETS=true
+```
+
+## Data Flow Architecture
+
+### Unified Instruction Loading
+```
+Frontend Request: GET /api/instructions?includeAll=true
+    ↓
+Express Server: server/routes/instructions.js
+    ↓  
+VNet Function: instructions-vnet-functions.azurewebsites.net/api/fetchInstructionData
+    ↓
+Production Database: helix-database-server.database.windows.net
+```
+
+**Benefits:**
+- ✅ Single API call replaces multiple separate requests
+- ✅ Eliminates N+1 query problems and race conditions  
+- ✅ Luke Test instruction (HLX-27367-94842) consistently visible
+- ✅ Faster page loads and better performance
+
+### Legacy Service Architecture (Still Available)
+
+For other functionality, these services still run:
 
 1. **Azurite** - Local Azure storage emulator (ports 10000-10002)
-2. **Decoupled Functions** - Azure Functions for data operations (port 7071)
+2. **Decoupled Functions** - Azure Functions for non-instruction operations (port 7071)
 3. **API Functions** - Legacy Azure Functions (port 7072)
-4. **Express Server** - Backend API proxy and routing (port 8080)
-5. **React Dev Server** - Frontend application (port 3000)
 
 ## Service Details
 
-### Azurite (Storage Emulator)
-- **Purpose**: Provides local Azure storage services (blob, queue, table)
-- **Ports**: 10000 (blob), 10001 (queue), 10002 (table)
-- **Required for**: Azure Functions host lock and storage operations
-
-### Decoupled Functions (Port 7071)
-- **Location**: `./decoupled-functions/`
-- **Functions**: `fetchMattersData`, `fetchEnquiriesData`, etc.
-- **Purpose**: Modern Azure Functions for database operations
-- **Authentication**: Function keys from Azure Key Vault
-
-### API Functions (Port 7072)
-- **Location**: `./api/`
-- **Functions**: `getMatters.ts`, `getMatterSpecificActivities.ts`, etc.
-- **Purpose**: Legacy Azure Functions (TypeScript-based)
-- **Authentication**: Function keys from Azure Key Vault
-
-### Express Server (Port 8080)
+### Express Server (Port 8080) - MAIN SERVICE
 - **Location**: `./server/`
-- **Purpose**: Proxy requests between frontend and Azure Functions
-- **Routes**: `/api/getMatters`, `/api/enquiries`, `/api/matters/:id`, etc.
+- **Key Routes**: 
+  - `/api/instructions` - **Unified instruction endpoint** (NEW)
+  - `/api/getMatters`, `/api/enquiries` - Legacy endpoints
+- **Authentication**: VNet function codes, Azure Key Vault integration
+- **Purpose**: Single point of entry for frontend, handles VNet function authentication
 
 ### React Dev Server (Port 3000)
 - **Location**: `./src/`
-- **Purpose**: Frontend development server with hot reload
-- **Proxies**: Configured to route API calls to Express server
+- **Data Loading**: Environment-driven (`REACT_APP_USE_LOCAL_DATA`)
+- **Proxy Configuration**: Routes API calls to Express server (port 8080)
+- **Unified Endpoint**: Calls `/api/instructions?includeAll=true` for all instruction data
 
-## Request Flow Example
+### Supporting Services (Legacy)
 
-### Successful Flow (After Fix)
-Frontend GET to `/getSnippetEdits?code=xxx`:
-1. React Dev Server (3000) → Express Server (8080)
-2. Express Server receives request with function code in query parameter
-3. Express Server → API Functions (7072) `/api/getSnippetEdits?code=xxx`
-4. API Function returns data (empty array if no data)
-5. Express Server returns 200 status with data to frontend
+#### Azurite (Storage Emulator)
+- **Purpose**: Local Azure storage services (blob, queue, table)
+- **Ports**: 10000 (blob), 10001 (queue), 10002 (table)
+- **Required for**: Azure Functions host lock and storage operations
 
-### Matters Data Flow
-Frontend POST to `/api/getMatters`:
-1. React Dev Server (3000) → Express Server (8080)
-2. Express Server extracts `fullName` from POST body
-3. Express Server → Decoupled Functions (7071) `/api/fetchMattersData?fullName=...&code=...`
-4. Decoupled Function queries database and returns data
-5. Express Server returns data to frontend
+#### Decoupled Functions (Port 7071)
+- **Location**: `./decoupled-functions/`
+- **Functions**: `fetchEnquiriesData`, `fetchMattersData`, etc.
+- **Purpose**: Non-instruction data operations
+- **Note**: Instruction data now goes through unified endpoint
 
-## Fixed Issues
+#### API Functions (Port 7072)  
+- **Location**: `./api/`
+- **Functions**: Legacy TypeScript-based functions
+- **Purpose**: Backward compatibility for existing integrations
 
-✅ **404 Errors**: Added comprehensive proxy routes for all Azure Functions
-✅ **Port Routing**: Express server now correctly routes to ports 7071 and 7072
-✅ **Function Keys**: Proxy uses codes provided by frontend instead of Key Vault lookup
-✅ **CORS Headers**: Proper cross-origin headers configured
+## Startup Instructions
 
-## Environment Requirements
-
-- Node.js (version 16+)
-- Azure Functions Core Tools v4
-- Azure CLI (for authentication)
-- Access to Azure Key Vault for function keys
-
-## Manual Setup (for reference)
-
-1. Start Azurite:
-   ```bash
-   npx azurite
-   ```
-
-2. Start Decoupled Functions:
-   ```bash
-   cd decoupled-functions
-   func start --port 7071
-   ```
-
-3. Start API Functions:
-   ```bash
-   cd api
-   func start --port 7072
-   ```
-
-4. Start Express Server:
-   ```bash
-   node server.js
-   ```
-
-5. Start React Dev Server:
-   ```bash
-   npm start
-   ```
-
-## Automated Setup
-
-Use the provided npm scripts for easy startup:
-
+### Automated Setup (Recommended)
 ```bash
-# Start all services (recommended)
+# Start all services including unified architecture
 npm run dev:all
+```
 
-# Start only backend services
-npm run dev:backend
+This starts:
+- Azurite storage emulator  
+- Decoupled Functions (port 7071)
+- API Functions (port 7072) 
+- Express Server with unified endpoints (port 8080)
+- React Dev Server (port 3000)
 
-# Start individual services
-npm run dev:azurite
-npm run dev:functions
-npm run dev:api
-npm run dev:server
+### Manual Setup (for debugging)
+```bash
+# 1. Start Azurite
+npx azurite
+
+# 2. Start Decoupled Functions  
+cd decoupled-functions && func start --port 7071
+
+# 3. Start API Functions
+cd api && func start --port 7072
+
+# 4. Start Express Server  
+node server/index.js
+
+# 5. Start React Dev Server
+npm start
+```
+
+### Individual Services
+```bash
+npm run dev:azurite      # Storage emulator only
+npm run dev:functions    # Decoupled functions only  
+npm run dev:api         # API functions only
+npm run dev:server      # Express server only
 ```
 
 ## Troubleshooting
 
+### Environment Variable Issues
+**Problem**: Luke Test instruction not appearing, showing local test data
+**Solution**: 
+```bash
+# Check environment variable precedence
+echo $REACT_APP_USE_LOCAL_DATA  # Should be 'false' for production data
+
+# Restart all Node processes to pick up environment changes
+taskkill /F /IM node.exe  # Windows
+pkill node                # macOS/Linux
+npm run dev:all
+```
+
+### VNet Function Authentication Errors
+**Problem**: 401 errors from `/api/instructions` endpoint
+**Solution**:
+```bash
+# Test VNet function directly
+curl "https://instructions-vnet-functions.azurewebsites.net/api/fetchInstructionData?code=YOUR_FUNCTION_CODE"
+
+# If 401 error, function code has expired - get new code from Azure portal
+# Update INSTRUCTIONS_FUNC_CODE in .env.local
+```
+
+### Database Connection Issues  
+**Problem**: VNet functions can't reach database
+**Cause**: Only resources in Azure Virtual Network can access production database
+**Solution**: Use VNet-enabled functions, not local decoupled functions
+
 ### Port Conflicts
-- If ports are in use, kill existing processes:
-  ```bash
-  npx kill-port 7071 7072 8080 10000 10001 10002
-  ```
+```bash
+# Kill processes using required ports
+npx kill-port 3000 7071 7072 8080 10000 10001 10002
 
-### Azure Functions Host Errors
-- Ensure you're in the correct directory with `host.json`
-- Check that Azurite is running before starting Functions
-- Verify Azure authentication: `az login`
+# Or on Windows:
+netstat -ano | findstr :8080
+taskkill /PID <PID> /F
+```
 
-### Function Key Errors
-- Ensure you have access to the Azure Key Vault
-- Check that the correct function key names are used in code
-- Verify Key Vault permissions
+## Development Workflow
 
-### Database Connection Issues
-- Check that environment variables or Key Vault secrets contain valid DB credentials
-- Ensure database server is accessible from your network
+### Making Changes
+1. **Frontend Changes**: Hot reload automatically updates browser
+2. **Express Server Changes**: Restart manually - no hot reload
+3. **Function Changes**: Azure Functions host reloads automatically
+4. **Environment Changes**: Restart all Node processes
 
-## Development Notes
+### Testing Luke Test Instruction
+Luke Test instruction (HLX-27367-94842) serves as a key indicator:
+- ✅ **Visible**: Production data access working correctly
+- ❌ **Missing**: Using local test data or authentication failing
 
-- **Hot Reload**: React dev server supports hot reload for frontend changes
-- **Function Reload**: Azure Functions host automatically reloads on code changes
-- **Express Reload**: Manual restart required for Express server changes
-- **Port Assignment**: Keep port assignments consistent to avoid proxy issues
+### Debugging Data Flow
+Check browser console for unified endpoint debugging:
+```
+🔵 Fetching instruction data from unified server endpoint
+🌐 Calling unified endpoint: /api/instructions?includeAll=true  
+✅ Received clean instruction data: {count: 201, computedServerSide: true}
+🔍 Debug: Luke Test found in instructions: true
+```
 
 ## Production Differences
 
-In production:
-- Azurite is replaced with actual Azure Storage
-- Functions run in Azure Functions service
-- Express server may run in Azure App Service or Container Apps
-- React app is built and served statically
+- **Database Access**: Production uses actual Azure SQL Database
+- **VNet Functions**: Run in Azure Functions service with VNet integration
+- **Express Server**: Deployed to Azure App Service or Container Apps  
+- **Authentication**: Uses managed identity instead of function codes
+- **React App**: Built and served statically from Express server
 
-## Debugging
+## Key Files for Next Developer
 
-- **Frontend Issues**: Check browser dev tools and React dev server terminal
-- **Express Issues**: Check Express server terminal output
-- **Function Issues**: Check Azure Functions host terminal output
-- **Database Issues**: Check function logs for SQL connection errors
+### Configuration Files
+- `.env.local` - Environment variables for local development
+- `server/routes/instructions.js` - **Unified instruction endpoint**
+- `src/app/App.tsx` - Frontend data loading logic
+- `decoupled-functions/fetchInstructionData/index.js` - VNet database function
+
+### Documentation
+- `ARCHITECTURE_ANALYSIS.md` - **Architecture overview and implementation details**
+- `docs/INSTRUCTIONS_VNET.md` - VNet integration requirements
+- `README.md` - General project setup
+
+### Critical Environment Variables
+```env
+REACT_APP_USE_LOCAL_DATA=false           # Forces production data
+INSTRUCTIONS_FUNC_CODE=<current-code>    # VNet function authentication  
+KEY_VAULT_URL=https://helix-keys.vault.azure.net/
+SQL_CONNECTION_STRING=<production-db>    # For VNet functions only
+```
+
+The unified architecture eliminates the "patchy" loading behavior and ensures consistent instruction data access. Focus on the `/api/instructions` endpoint for any instruction-related development work.

@@ -470,10 +470,10 @@ const NotableCaseInfoForm: React.FC<NotableCaseInfoFormProps> = ({
       const result = await response.json();
       console.log('Insert Notable Case Info Successful:', result);
       
-  setSubmitStatus('success');
-  setSubmitMessage(`Notable case information submitted successfully. ${result.emailSent ? 'Notification email dispatched.' : 'Note: Email notification failed.'}`);
+      setSubmitStatus('success');
+      setSubmitMessage(`Notable case information submitted successfully. ${result.emailSent ? 'Notification email sent to lz@helix-law.com.' : 'Note: Email notification failed.'}`);
       
-  onSubmitSuccess?.(`Notable case information submitted successfully. ${result.emailSent ? 'Notification email dispatched.' : 'Note: Email notification failed.'}`);
+      onSubmitSuccess?.(`Notable case information submitted successfully. ${result.emailSent ? 'Notification email sent.' : 'Note: Email notification failed.'}`);
       
       // Reset form after showing success message
       setTimeout(() => {

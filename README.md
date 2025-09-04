@@ -1,11 +1,29 @@
-# Overview of the React with Fluent UI template
-# invisible change
+# Helix Hub v1 - Teams App
+*Legal Services Platform for Microsoft Teams*
 
-This app showcases how to craft a visually appealing web page that can be embedded in Microsoft Teams, Outlook and the Microsoft 365 app with React and Fluent UI. The app also enhances the end-user experiences with built-in single sign-on and data from Microsoft Graph.
+## 🚀 Quick Start for New Agents
 
-This repository is being refactored to support responsive design so that pages adapt gracefully on devices ranging from desktop browsers to tablets and mobile phones.
+**PRIORITY**: Execute database cleanup to remove 67% test data noise.  
+**See**: [`docs/AGENT_ONBOARDING_GUIDE.md`](docs/AGENT_ONBOARDING_GUIDE.md) for 5-minute setup.
 
-This app has adopted [On-Behalf-Of flow](https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) to implement SSO, and uses Azure Functions as middle-tier service, and make authenticated requests to call Graph from Azure Functions.
+### Current State (Sept 4, 2025)
+- ✅ **Unified API**: Instructions loading optimized via `/api/instructions` endpoint
+- ✅ **Architecture**: Documented and stable (see `/docs` folder)
+- ⚠️ **Database**: 45 records with 30 test noise records ready for cleanup
+- ⚠️ **Luke Test**: Health indicator preserved at `HLX-27367-94842`
+
+## Overview
+
+Helix Hub v1 is a comprehensive legal services platform built as a Microsoft Teams app. It provides client instruction management, enquiry processing, and workflow automation for legal professionals. The app integrates React with Fluent UI, Azure Functions, and Azure SQL Database to deliver a seamless Teams experience.
+
+### Key Features
+- **Instructions Management**: Unified endpoint for client instruction data
+- **Enquiry Processing**: Automated enquiry capture and routing  
+- **Document Handling**: Secure document storage and management
+- **Workflow Automation**: Streamlined legal processes
+- **Teams Integration**: Native Microsoft Teams experience
+
+This app uses [On-Behalf-Of flow](https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) for SSO and Azure Functions as middleware for authenticated Microsoft Graph requests.
 
 ## Get started with the React with Fluent UI template
 
@@ -80,26 +98,26 @@ Following documentation will help you to extend the React with Fluent UI templat
 - [Enable the app for multi-tenant](https://github.com/OfficeDev/TeamsFx/wiki/Multi-tenancy-Support-for-Azure-AD-app)
 - [Preview the app on mobile clients](https://github.com/OfficeDev/TeamsFx/wiki/Run-and-debug-your-Teams-application-on-iOS-or-Android-client)
 
-## Server-side processing
+## Architecture Overview
 
-This project now includes a lightweight Express server located in the `server` directory.
-Start it locally with:
+This application uses a unified API architecture to efficiently serve instruction data:
 
-```bash
-npm run start:server
-```
+### Data Flow
+1. **Frontend** (React on port 3000) requests instruction data
+2. **Express Server** (port 8080) receives requests and routes to appropriate services
+3. **VNet Azure Functions** (in Azure Virtual Network) access production database
+4. **Production Database** (Azure SQL) stores all instruction, deal, and document data
 
-When using Teams Toolkit for local debugging, the server starts automatically as
-part of `npm run dev:teamsfx`.
+### Key Features
+- **Unified Instruction Endpoint**: Single API call (`/api/instructions`) replaces multiple separate calls
+- **VNet Integration**: Database access through Azure Virtual Network for security
+- **Environment-Driven Configuration**: Use `REACT_APP_USE_LOCAL_DATA=false` to access production data
+- **Server-Side Processing**: Business logic and data transformation handled by Express server
 
-The server exposes a `/health` endpoint for liveness checks and a `/process` endpoint
-that streams basic progress events using Server-Sent Events. This provides a foundation
-for adding real-time workflow updates after the "Submit Matter" button is pressed.
-
-Token refresh endpoints for ActiveCampaign, Clio and Asana are documented in
-[`docs/token-refresh.md`](docs/token-refresh.md).
-Documentation for the Clio contact synchronisation step is available in
-[`docs/clio-contact-sync.md`](docs/clio-contact-sync.md).
+### Environment Configuration
+- Production data: `REACT_APP_USE_LOCAL_DATA=false` (default)
+- Local test data: `REACT_APP_USE_LOCAL_DATA=true`
+- VNet function authentication via `INSTRUCTIONS_FUNC_CODE` environment variable
 ## Deployment
 
 When deploying to Azure Web Apps on Windows, build the project first so that the root directory contains `index.js` and the compiled React files. The provided [build-and-deploy.ps1](build-and-deploy.ps1) script automates this by running the build, copying the server files and their dependencies along with `web.config`, and then zipping the result for deployment. Deploying the repository directly without building will result in a 500 error because IIS cannot locate `index.js` or the required Node modules.
