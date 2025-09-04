@@ -5,21 +5,10 @@ const path = require('path');
 // runtime ReferenceError failures that surface as HTTP 500 responses
 // when routes attempt to call `fetch`.
 if (typeof fetch === 'undefined') {
-    try {
-        global.fetch = require('node-fetch');
-        console.log('Using node-fetch for fetch polyfill');
-    } catch (error) {
-        console.warn('node-fetch not available, fetch may not work:', error.message);
-    }
+    global.fetch = require('node-fetch');
 }
 
-// Load environment variables - handle missing .env.local gracefully
-try {
-    require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
-    console.log('Loaded .env.local file');
-} catch (error) {
-    console.log('No .env.local file found, using system environment variables');
-}
+require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
 const express = require('express');
 const morgan = require('morgan');
 const { DefaultAzureCredential } = require('@azure/identity');
@@ -48,14 +37,14 @@ const PORT = process.env.PORT || 8080;
 
 // Enable CORS for local development
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
 });
 
 // Set up Key Vault client for retrieving secrets
@@ -88,11 +77,6 @@ app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/matters', mattersRouter);
-// Test route for debugging
-app.get('/api/instructions-test', (req, res) => {
-  res.json({ status: 'success', message: 'Direct test route working' });
-});
-
 app.use('/api/instructions', instructionsRouter);
 
 // Proxy routes to Azure Functions
