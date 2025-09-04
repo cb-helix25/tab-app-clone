@@ -254,7 +254,7 @@ const App: React.FC<AppProps> = ({
   useEffect(() => {
     const useLocalData =
       process.env.REACT_APP_USE_LOCAL_DATA === "true" ||
-      window.location.hostname === "localhost";
+      (process.env.REACT_APP_USE_LOCAL_DATA !== "false" && window.location.hostname === "localhost");
 
     async function fetchInstructionData() {
       const pilotUsers = ["AC", "JW", "KW", "BL", "LZ"];
@@ -313,30 +313,42 @@ const App: React.FC<AppProps> = ({
           timestamp: data.timestamp
         });
 
-        // Transform the clean server data into the expected frontend format
-        const transformedData: InstructionData[] = data.instructions.map((item: any) => ({
-          prospectId: item.instruction.InstructionRef, // Use instruction ref as prospect ID
-          instructions: [item.instruction],
-          deals: item.deals || [],
-          documents: item.documents || [],
-          idVerifications: item.idVerifications || [],
-          electronicIDChecks: item.idVerifications || [], // Alias for compatibility
-          riskAssessments: item.riskAssessments || [],
-          compliance: item.riskAssessments || [], // Alias for compatibility
-          jointClients: item.jointClients || [],
-          matters: item.matters || [],
+        // Debug: Check if Luke Test instruction is in the response
+        console.log('🔍 Debug: Instructions in API response:', data.instructions?.length || 0);
+        const lukeTest = data.instructions?.find((i: any) => i.InstructionRef?.includes('27367-94842'));
+        console.log('🔍 Debug: Luke Test found in instructions:', !!lukeTest, lukeTest?.FirstName, lukeTest?.LastName);
+        
+        // The VNet function already returns properly structured data with nested relationships
+        // Each instruction already has its documents, idVerifications, riskAssessments, etc. nested
+        // We just need to convert to the frontend format
+        const transformedData: InstructionData[] = data.instructions.map((instruction: any) => ({
+          prospectId: instruction.InstructionRef, // Use instruction ref as prospect ID
+          instructions: [instruction], // Single instruction per group
+          deals: instruction.deal ? [instruction.deal] : [], // Nested deal if exists
+          documents: instruction.documents || [], // Nested documents
+          idVerifications: instruction.idVerifications || [], // Nested ID verifications
+          electronicIDChecks: instruction.idVerifications || [], // Alias for compatibility
+          riskAssessments: instruction.riskAssessments || [], // Nested risk assessments
+          compliance: instruction.riskAssessments || [], // Alias for compatibility
+          jointClients: instruction.deal?.jointClients || [], // Joint clients from nested deal
+          matters: instruction.matters || [], // Nested matters if any
           
-          // Include computed business logic from server
-          verificationStatus: item.verificationStatus,
-          riskStatus: item.riskStatus,
-          nextAction: item.nextAction,
-          matterLinked: item.matterLinked,
-          paymentCompleted: item.paymentCompleted,
-          documentCount: item.documentCount
+          // Add computed properties for UI
+          verificationStatus: (instruction.idVerifications?.length || 0) > 0 ? 'completed' : 'pending',
+          riskStatus: (instruction.riskAssessments?.length || 0) > 0 ? 'assessed' : 'pending',
+          nextAction: instruction.Stage || 'review',
+          matterLinked: !!instruction.MatterId,
+          paymentCompleted: instruction.InternalStatus === 'paid',
+          documentCount: instruction.documents?.length || 0
         }));
 
-        // Set the data - no more complex client-side filtering needed!
+        // Set the data - now properly structured from the VNet function!
         setInstructionData(transformedData);
+        
+        // Debug: Check what was actually set
+        console.log('🔍 Debug: Transformed data count:', transformedData.length);
+        const lukeTransformed = transformedData.find(item => item.instructions?.[0]?.InstructionRef?.includes('27367-94842'));
+        console.log('🔍 Debug: Luke Test in transformed data:', !!lukeTransformed);
         
         if (isAdmin) {
           setAllInstructionData(transformedData);

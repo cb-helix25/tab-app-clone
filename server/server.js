@@ -77,6 +77,11 @@ app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/matters', mattersRouter);
+// Test route for debugging
+app.get('/api/instructions-test', (req, res) => {
+  res.json({ status: 'success', message: 'Direct test route working' });
+});
+
 app.use('/api/instructions', instructionsRouter);
 
 // Proxy routes to Azure Functions
@@ -97,7 +102,7 @@ app.use('/api/keys', keysRouter);
 app.use('/api/refresh', refreshRouter);
 
 // serve the built React files
-app.use(express.static(buildPath));
+// app.use(express.static(buildPath)); // Temporarily disabled to test API routes
 
 // simple liveness probe
 app.get('/health', (_req, res) => {
@@ -127,7 +132,8 @@ app.get('/process', (req, res) => {
 
 // fallback to index.html for client-side routes
 app.get('*', (_req, res) => {
-    res.sendFile(path.join(buildPath, 'index.html'));
+    res.status(404).json({ error: 'Route not found', path: _req.path });
+    // res.sendFile(path.join(buildPath, 'index.html')); // Temporarily disabled
 });
 
 app.listen(PORT, () => {

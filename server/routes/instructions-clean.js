@@ -1,5 +1,4 @@
 const express = require('express');
-const { getSecret } = require('../utils/getSecret');
 const router = express.Router();
 
 // Generate unique request ID for logging
@@ -38,22 +37,17 @@ router.get('/', async (req, res) => {
     
     let functionCode = process.env.INSTRUCTIONS_FUNC_CODE;
     if (!functionCode) {
-      console.log(`[${requestId}] No direct function code, attempting Key Vault lookup...`);
-      try {
-        const secretName = process.env.INSTRUCTIONS_FUNC_CODE_SECRET || 'fetchInstructionData-code';
-        functionCode = await getSecret(secretName);
-        console.log(`[${requestId}] Successfully retrieved function code from Key Vault`);
-      } catch (error) {
-        console.log(`[${requestId}] Failed to retrieve function code from Key Vault:`, error.message);
-        return res.status(500).json({
-          error: 'VNet function code not configured',
-          detail: 'INSTRUCTIONS_FUNC_CODE environment variable or Key Vault secret required',
-          instructions: [],
-          count: 0,
-          requestId,
-          timestamp: new Date().toISOString()
-        });
-      }
+      console.log(`[${requestId}] No direct function code, trying Key Vault...`);
+      // For now, we'll need the function code to be provided directly
+      // In production, this would use Key Vault like the API function does
+      return res.status(500).json({
+        error: 'VNet function code not configured',
+        detail: 'INSTRUCTIONS_FUNC_CODE environment variable required',
+        instructions: [],
+        count: 0,
+        requestId,
+        timestamp: new Date().toISOString()
+      });
     }
     
     const params = new URLSearchParams({ code: functionCode });
@@ -89,20 +83,23 @@ router.get('/', async (req, res) => {
       idVerifications: data.idVerifications?.length || 0
     });
     
-    // Transform the data for frontend with server-side business logic
+    // Transform the data to match our frontend expectations with server-side business logic
     const transformedData = {
-      ...data, // Pass through all data from VNet function
+      instructions: data.instructions || [],
+      deals: data.deals || [],
+      documents: data.documents || [],
+      idVerifications: data.idVerifications || [],
       count: (data.instructions?.length || 0) + (data.deals?.length || 0),
       computedServerSide: true,
       requestId,
       timestamp: new Date().toISOString()
     };
     
-    console.log(`[${requestId}] Full response:`, {
-      instructionCount: data.instructions?.length || 0,
-      dealCount: data.deals?.length || 0,
-      documentCount: data.documents?.length || 0,
-      idVerificationCount: data.idVerifications?.length || 0
+    console.log(`[${requestId}] Transformed response:`, {
+      instructionCount: transformedData.instructions.length,
+      dealCount: transformedData.deals.length,
+      documentCount: transformedData.documents.length,
+      idVerificationCount: transformedData.idVerifications.length
     });
     
     res.json(transformedData);
