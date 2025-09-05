@@ -88,7 +88,7 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
   const card = mergeStyles({
     position: 'relative',
     borderRadius: 5,
-    padding: '14px 18px 14px 22px',
+    padding: '10px 16px 10px 18px',
     background: `${bgColorToken}`,
     '::after': {
       content: '""',

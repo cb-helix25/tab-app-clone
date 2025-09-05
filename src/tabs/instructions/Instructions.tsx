@@ -94,8 +94,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [forceNewMatter, setForceNewMatter] = useState(false);
   const [showCclDraftPage, setShowCclDraftPage] = useState(false);
 
-  // Flat tab navigation: default to Clients (order displayed will be pitches, clients, risk)
-  const [activeTab, setActiveTab] = useState<'clients' | 'pitches' | 'risk'>('clients');
+  // Flat tab navigation: default to Clients
+  const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('pitches');
 
   const handleRiskAssessmentSave = (risk: any) => {
     setInstructionData(prev =>
@@ -172,15 +172,15 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, []); // Only run on mount
   
   // Filter states
-  const [pitchStageFilter, setPitchStageFilter] = useState<'Active' | 'Closed' | 'All'>('Active');
   const [clientsActionFilter, setClientsActionFilter] = useState<'All' | 'Verify ID' | 'Assess Risk' | 'Open Matter' | 'Draft CCL' | 'Complete'>('All');
+  const [pitchesStatusFilter, setPitchesStatusFilter] = useState<'All' | 'Open' | 'Closed'>('All');
   const [riskStatusFilter, setRiskStatusFilter] = useState<'All' | 'Outstanding' | 'Completed'>('All');
   
   // Unified secondary filter state - tracks the secondary filter value for each tab
   const [secondaryFilter, setSecondaryFilter] = useState<string>(() => {
     switch (activeTab) {
       case 'clients': return clientsActionFilter;
-      case 'pitches': return pitchStageFilter;
+      case 'pitches': return pitchesStatusFilter;
       case 'risk': return riskStatusFilter;
       default: return 'All';
     }
@@ -188,8 +188,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   
   const [showApiDebugger, setShowApiDebugger] = useState(false);
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
-  const [selectedDealRef, setSelectedDealRef] = useState<string | null>(null);
-  const [showOnlyMyDeals, setShowOnlyMyDeals] = useState<boolean>(false);
   const [showAllInstructions, setShowAllInstructions] = useState<boolean>(false); // Admin toggle
   
   // Debug toggles for admin/localhost
@@ -200,18 +198,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Admin detection using proper utility
   const isAdmin = isAdminUser(userData?.[0] || null);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  
-  // Debug logging for admin status
-  React.useEffect(() => {
-    console.log('Admin Detection Debug:', {
-      userData: userData?.[0],
-      userInitials: userData?.[0]?.Initials,
-      isAdmin,
-      showAllInstructions,
-      allInstructionDataLength: allInstructionData.length,
-      effectiveDataLength: instructionData.length
-    });
-  }, [isAdmin, userData, showAllInstructions, allInstructionData.length, instructionData.length]);
   
   // Get effective instruction data based on admin mode
   const effectiveInstructionData = useMemo(() => {
@@ -229,13 +215,9 @@ const Instructions: React.FC<InstructionsProps> = ({
       key: 'pitches',
       label: 'Pitches',
       subOptions: [
-        { key: 'Active', label: 'Active' },
-        { key: 'Closed', label: 'Closed' },
         { key: 'All', label: 'All' },
-        ...(isAdmin ? [
-          { key: 'Mine', label: 'Mine' },
-          { key: 'Everyone', label: 'Everyone' }
-        ] : [])
+        { key: 'Open', label: 'Open' },
+        { key: 'Closed', label: 'Closed' }
       ]
     },
     {
@@ -243,10 +225,12 @@ const Instructions: React.FC<InstructionsProps> = ({
       label: 'Clients',
       subOptions: [
         { key: 'All', label: 'All' },
-        { key: 'Verify ID', label: 'Verify ID' },
-        { key: 'Assess Risk', label: 'Assess Risk' },
-        { key: 'Open Matter', label: 'Open Matter' },
-        { key: 'Draft CCL', label: 'Draft CCL' },
+        { key: 'Initialised', label: 'Initialised' },
+        { key: 'Instructed', label: 'Instructed' },
+        { key: 'Pending ID', label: 'Pending ID' },
+        { key: 'Pending Payment', label: 'Pending Payment' },
+        { key: 'Pending Documents', label: 'Pending Documents' },
+        { key: 'Paid', label: 'Paid' },
         { key: 'Complete', label: 'Complete' }
       ]
     },
@@ -263,14 +247,14 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   // Unified filter handlers
   const handlePrimaryFilterChange = (key: string) => {
-    setActiveTab(key as 'clients' | 'pitches' | 'risk');
+    setActiveTab(key as 'pitches' | 'clients' | 'risk');
     // Reset secondary filter to the default for the new tab
     switch (key) {
       case 'clients':
         setSecondaryFilter(clientsActionFilter);
         break;
       case 'pitches':
-        setSecondaryFilter(pitchStageFilter);
+        setSecondaryFilter(pitchesStatusFilter);
         break;
       case 'risk':
         setSecondaryFilter(riskStatusFilter);
@@ -286,12 +270,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         setClientsActionFilter(key as any);
         break;
       case 'pitches':
-        // Handle special case for pitches - admin scope vs stage filter
-        if (key === 'Mine' || key === 'Everyone') {
-          setShowOnlyMyDeals(key === 'Mine');
-        } else {
-          setPitchStageFilter(key as any);
-        }
+        setPitchesStatusFilter(key as any);
         break;
       case 'risk':
         setRiskStatusFilter(key as any);
@@ -306,19 +285,13 @@ const Instructions: React.FC<InstructionsProps> = ({
         setSecondaryFilter(clientsActionFilter);
         break;
       case 'pitches':
-        // For pitches, check if we have a valid stage filter value, otherwise use scope
-        if (isAdmin && ['Mine', 'Everyone'].includes(secondaryFilter)) {
-          // Keep the scope filter if it's already set
-          setSecondaryFilter(showOnlyMyDeals ? 'Mine' : 'Everyone');
-        } else {
-          setSecondaryFilter(pitchStageFilter);
-        }
+        setSecondaryFilter(pitchesStatusFilter);
         break;
       case 'risk':
         setSecondaryFilter(riskStatusFilter);
         break;
     }
-  }, [activeTab, clientsActionFilter, pitchStageFilter, riskStatusFilter, showOnlyMyDeals, isAdmin, secondaryFilter]);
+  }, [activeTab, clientsActionFilter, pitchesStatusFilter, riskStatusFilter, isAdmin, secondaryFilter]);
 
   // Clear selection when leaving overview tab
   // Clear selection when leaving clients tab
@@ -331,13 +304,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   useEffect(() => {
     if (activeTab !== "risk") {
       setRiskFilterRef(null);
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (activeTab !== "pitches") {
-      setSelectedDealRef(null);
-      setShowOnlyMyDeals(false);
     }
   }, [activeTab]);
 
@@ -519,110 +485,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                 Back
               </span>
             </div>
-            
-            <style>{`
-              .nav-back-button:hover .back-text {
-                opacity: 1 !important;
-              }
-              .nav-back-button:hover svg {
-                opacity: 0 !important;
-              }
-            `}</style>
-          </div>
-        ) : selectedDealRef ? (
-          <div className={detailNavStyle(isDarkMode)}>
-            <div 
-              className="nav-back-button"
-              onClick={() => setSelectedDealRef(null)}
-              style={{
-                background: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
-                border: '1px solid #e1dfdd',
-                borderRadius: '0',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                position: 'relative',
-                overflow: 'hidden',
-                marginRight: 8,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#e7f1ff';
-                e.currentTarget.style.border = '1px solid #3690CE';
-                e.currentTarget.style.width = '120px';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = isDarkMode ? colours.dark.sectionBackground : "#f3f3f3";
-                e.currentTarget.style.border = '1px solid #e1dfdd';
-                e.currentTarget.style.width = '32px';
-                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
-              }}
-              title="Back to Deals"
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  setSelectedDealRef(null);
-                }
-              }}
-            >
-              {/* ChevronLeft Icon */}
-              <svg 
-                width="16" 
-                height="16" 
-                viewBox="0 0 16 16" 
-                fill="none"
-                style={{
-                  transition: 'color 0.3s, opacity 0.3s',
-                  color: isDarkMode ? '#ffffff' : '#666666',
-                  position: 'absolute',
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                }}
-              >
-                <path 
-                  d="M10 12L6 8L10 4" 
-                  stroke="currentColor" 
-                  strokeWidth="1.5" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-              </svg>
-              
-              {/* Expandable Text */}
-              <span 
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: '#3690CE',
-                  opacity: 0,
-                  transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  whiteSpace: 'nowrap',
-                }}
-                className="back-text"
-              >
-                Back to Deals
-              </span>
-            </div>
-            
-            <span style={{ 
-              fontSize: '14px', 
-              fontWeight: 600, 
-              color: isDarkMode ? colours.dark.text : colours.light.text,
-              marginLeft: '8px'
-            }}>
-              Deal: {selectedDealRef}
-            </span>
             
             <style>{`
               .nav-back-button:hover .back-text {
@@ -834,13 +696,10 @@ const Instructions: React.FC<InstructionsProps> = ({
     showEIDPage,
     selectedInstruction,
     hasActiveMatter,
-    selectedDealRef,
     riskFilterRef,
-    pitchStageFilter,
     clientsActionFilter,
     riskStatusFilter,
     secondaryFilter,
-    showOnlyMyDeals,
     showApiDebugger,
   ]);
 
@@ -977,14 +836,73 @@ const Instructions: React.FC<InstructionsProps> = ({
         };
       });
 
-      return instructionItems;
+      // Also process standalone deals that don't have instructions yet (Pitched stage)
+      const standaloneDeals = (prospect.deals ?? []).filter(
+        (deal) => !deal.InstructionRef || 
+        !(prospect.instructions ?? []).some(inst => inst.InstructionRef === deal.InstructionRef)
+      ).map((deal) => {
+        const clientsForDeal: ClientInfo[] = [];
+        const dealClients = [
+          ...(prospect.jointClients ?? prospect.joinedClients ?? []),
+          ...(deal.jointClients ?? []),
+        ];
+        
+        dealClients.forEach((jc) => {
+          if (jc.DealId === deal.DealId) {
+            clientsForDeal.push({
+              ClientEmail: jc.ClientEmail,
+              HasSubmitted: jc.HasSubmitted,
+              Lead: false,
+              deals: [{
+                DealId: deal.DealId,
+                InstructionRef: deal.InstructionRef,
+                ServiceDescription: deal.ServiceDescription,
+                Status: deal.Status,
+              }],
+            });
+          }
+        });
+        
+        if (deal.LeadClientEmail) {
+          clientsForDeal.push({
+            ClientEmail: deal.LeadClientEmail,
+            Lead: true,
+            deals: [{
+              DealId: deal.DealId,
+              InstructionRef: deal.InstructionRef,
+              ServiceDescription: deal.ServiceDescription,
+              Status: deal.Status,
+            }],
+          });
+        }
+
+        return {
+          instruction: null, // No instruction yet for pitched deals
+          deal,
+          deals: [deal],
+          clients: clientsForDeal,
+          risk: null,
+          eid: null,
+          eids: [],
+          documents: deal.documents ?? [],
+          prospectId: prospect.prospectId,
+          documentCount: deal.documents?.length ?? 0,
+        };
+      });
+
+      return [...instructionItems, ...standaloneDeals];
     });
 
     const unique: Record<string, typeof items[number]> = {};
     items.forEach((item) => {
       const ref = item.instruction?.InstructionRef as string | undefined;
-      if (ref && !unique[ref]) {
-        unique[ref] = item;
+      const dealId = item.deal?.DealId as string | undefined;
+      
+      // Use InstructionRef if available, otherwise use DealId for standalone deals
+      const key = ref || (dealId ? `deal-${dealId}` : null);
+      
+      if (key && !unique[key]) {
+        unique[key] = item;
       }
     });
     return Object.values(unique);
@@ -1452,17 +1370,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   const openMatterCandidates = useMemo(() => {
     return filteredOverviewItems.filter((i: any) => i.nextAction === 'Open Matter');
   }, [filteredOverviewItems]);
-
-  // Filter deals by claim & stage
-  const filteredDeals = useMemo(()=> deals.filter(d => {
-    if (pitchStageFilter === 'Active' && String(d.Status).toLowerCase()==='closed') return false;
-    if (pitchStageFilter === 'Closed' && String(d.Status).toLowerCase()!=='closed') return false;
-    if (!isAdmin && showOnlyMyDeals && currentUser?.Email) {
-      const em = currentUser.Email.toLowerCase();
-      if (!((d.LeadClientEmail||'').toLowerCase()===em || (d.Email||'').toLowerCase()===em || (d.assignedTo||'').toLowerCase()===em)) return false;
-    }
-    return true;
-  }), [deals, pitchStageFilter, showOnlyMyDeals, isAdmin, currentUser]);
 
   // Create POID data for client address information
   const idVerificationOptions = useMemo(() => {
@@ -1971,15 +1878,8 @@ const Instructions: React.FC<InstructionsProps> = ({
 
 
   function handleOpenInstruction(ref: string): void {
-    // For deals, don't change filtering - cards should expand inline instead
-    if (activeTab === "pitches") {
-      // No longer filtering to single deal view - cards handle their own expansion
-      return;
-    } else {
-      // Navigate to the risk compliance view for this specific instruction
-      setRiskFilterRef(ref);
-      setActiveTab('risk');
-    }
+    // For instructions, set the selected instruction to show details
+    setSelectedInstruction(ref);
   }
 
   return (
@@ -2027,6 +1927,72 @@ const Instructions: React.FC<InstructionsProps> = ({
             ))}
           </div>
         )}
+      {activeTab === "pitches" && (
+              <div className={overviewGridStyle} ref={overviewGridRef}>
+                {twoColumn && typeof document !== 'undefined' && !document.getElementById('instructionsTwoColStyles') && (
+                  (() => {
+                    const styleEl = document.createElement('style');
+                    styleEl.id = 'instructionsTwoColStyles';
+                    styleEl.textContent = '@media (max-width: 860px){.two-col-grid{grid-template-columns:1fr!important;}}';
+                    document.head.appendChild(styleEl);
+                    return null;
+                  })()
+                )}
+        {filteredOverviewItems.filter(item => 
+          // Show only pitched deals (items without instructions)
+          !item.instruction && item.deal
+        ).filter(item => {
+          // Apply pitches status filter
+          if (pitchesStatusFilter === 'All') return true;
+          if (pitchesStatusFilter === 'Open') return String(item.deal?.Status).toLowerCase() !== 'closed';
+          if (pitchesStatusFilter === 'Closed') return String(item.deal?.Status).toLowerCase() === 'closed';
+          return true;
+        }).map((item, idx) => {
+                  const row = Math.floor(idx / 4);
+                  const col = idx % 4;
+                  const animationDelay = row * 0.2 + col * 0.1;
+                  const itemKey = `deal-${item.deal?.DealId}` || idx;
+                  return (
+                    <div key={`instruction-${itemKey}-${selectedInstruction?.InstructionRef === item.instruction?.InstructionRef ? 'selected' : 'unselected'}`} className={overviewItemStyle}>
+                      <InstructionCard
+                        index={idx}
+                        key={`card-${itemKey}-${selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}`}
+                        instruction={item.instruction as any}
+                        deal={(item as any).deal}
+                        deals={item.deals}
+                        clients={item.clients}
+                        risk={(item as any).risk}
+                        eid={(item as any).eid}
+                        eids={(item as any).eids}
+                        compliance={undefined}
+                        documents={item.documents}
+                        payments={(item as any).payments}
+                        prospectId={item.prospectId}
+                        documentCount={item.documentCount ?? 0}
+                        animationDelay={animationDelay}
+                        expanded={overviewItems.length === 1 || selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
+                        selected={selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
+                        onSelect={() => {
+                          // Toggle selection: if already selected, unselect; otherwise select
+                          flushSync(() => {
+                            if (selectedInstruction?.InstructionRef === item.instruction?.InstructionRef) {
+                              setSelectedInstruction(null);
+                            } else {
+                              setSelectedInstruction(item.instruction);
+                            }
+                          });
+                        }}
+                        onToggle={handleCardToggle}
+                        onProofOfIdClick={() =>
+                          handleOpenRiskCompliance(item.instruction?.InstructionRef)
+                        }
+                      />
+                    </div>
+
+                  );
+                })}
+            </div>
+          )}
       {activeTab === "clients" && (
               <div className={overviewGridStyle} ref={overviewGridRef}>
                 {twoColumn && typeof document !== 'undefined' && !document.getElementById('instructionsTwoColStyles') && (
@@ -2038,15 +2004,19 @@ const Instructions: React.FC<InstructionsProps> = ({
                     return null;
                   })()
                 )}
-        {filteredOverviewItems.map((item, idx) => {
+        {filteredOverviewItems.filter(item => 
+          // Show only items with instructions (exclude pitched deals)
+          item.instruction
+        ).map((item, idx) => {
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const animationDelay = row * 0.2 + col * 0.1;
+                  const itemKey = item.instruction?.InstructionRef || idx;
                   return (
-                    <div key={`instruction-${item.instruction.InstructionRef}-${selectedInstruction?.InstructionRef === item.instruction.InstructionRef ? 'selected' : 'unselected'}`} className={overviewItemStyle}>
+                    <div key={`instruction-${itemKey}-${selectedInstruction?.InstructionRef === item.instruction?.InstructionRef ? 'selected' : 'unselected'}`} className={overviewItemStyle}>
                       <InstructionCard
                         index={idx}
-                        key={`card-${item.instruction.InstructionRef}-${selectedInstruction?.InstructionRef === item.instruction.InstructionRef}`}
+                        key={`card-${itemKey}-${selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}`}
                         instruction={item.instruction as any}
                         deal={(item as any).deal}
                         deals={item.deals}
@@ -2056,15 +2026,16 @@ const Instructions: React.FC<InstructionsProps> = ({
                         eids={(item as any).eids}
                         compliance={undefined}
                         documents={item.documents}
+                        payments={(item as any).payments}
                         prospectId={item.prospectId}
                         documentCount={item.documentCount ?? 0}
                         animationDelay={animationDelay}
-                        expanded={overviewItems.length === 1 || selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
-                        selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
+                        expanded={overviewItems.length === 1 || selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
+                        selected={selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
                         onSelect={() => {
                           // Toggle selection: if already selected, unselect; otherwise select
                           flushSync(() => {
-                            if (selectedInstruction?.InstructionRef === item.instruction.InstructionRef) {
+                            if (selectedInstruction?.InstructionRef === item.instruction?.InstructionRef) {
                               setSelectedInstruction(null);
                             } else {
                               setSelectedInstruction(item.instruction);
@@ -2073,30 +2044,13 @@ const Instructions: React.FC<InstructionsProps> = ({
                         }}
                         onToggle={handleCardToggle}
                         onProofOfIdClick={() =>
-                          handleOpenRiskCompliance(item.instruction.InstructionRef)
+                          handleOpenRiskCompliance(item.instruction?.InstructionRef)
                         }
                       />
                     </div>
 
                   );
                 })}
-            </div>
-          )}
-      {activeTab === "pitches" && (
-            <div>
-              {/* Deals Section - Joint clients appear as pins within each deal card */}
-              <DealsPivot
-        deals={filteredDeals}
-                handleOpenInstruction={handleOpenInstruction}
-                selectedDealRef={selectedDealRef}
-                onClearSelection={() => setSelectedDealRef(null)}
-                onSelectDeal={(ref: string) => setSelectedDealRef(ref)}
-                showOnlyMyDeals={showOnlyMyDeals}
-                onToggleMyDeals={() => setShowOnlyMyDeals(!showOnlyMyDeals)}
-                currentUser={currentUser}
-                teamData={teamData || []}
-                userInitials={userInitials || ''}
-              />
             </div>
           )}
           {activeTab === "risk" && (
@@ -2366,7 +2320,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         hidden={!isResumeDialogOpen}
         onDismiss={() => setIsResumeDialogOpen(false)}
         dialogContentProps={{
-          type: DialogType.normal,
+          type: 'normal' as any, // Temporary fix for DialogType.normal issue
           title: 'Resume Matter Opening?',
           subText:
             'An unfinished matter opening was detected. Would you like to resume it or start a new one?'

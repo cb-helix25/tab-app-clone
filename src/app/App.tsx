@@ -332,6 +332,7 @@ const App: React.FC<AppProps> = ({
           compliance: instruction.riskAssessments || [], // Alias for compatibility
           jointClients: instruction.deal?.jointClients || [], // Joint clients from nested deal
           matters: instruction.matters || [], // Nested matters if any
+          payments: instruction.payments || [], // Add payments data from instruction
           
           // Add computed properties for UI
           verificationStatus: (instruction.idVerifications?.length || 0) > 0 ? 'completed' : 'pending',
@@ -342,16 +343,45 @@ const App: React.FC<AppProps> = ({
           documentCount: instruction.documents?.length || 0
         }));
 
+        // Also process standalone deals (those without instructions)
+        const standaloneDeals: InstructionData[] = (data.deals || [])
+          .filter((deal: any) => !deal.InstructionRef) // Only deals without instructions
+          .map((deal: any) => ({
+            prospectId: `deal-${deal.DealId}`, // Use deal ID as prospect ID for standalone deals
+            instructions: [], // No instruction yet
+            deals: [deal], // Single deal
+            documents: deal.documents || [],
+            idVerifications: [],
+            electronicIDChecks: [],
+            riskAssessments: [],
+            compliance: [],
+            jointClients: deal.jointClients || [],
+            matters: [],
+            
+            // Add computed properties for UI
+            verificationStatus: 'pending',
+            riskStatus: 'pending',
+            nextAction: deal.Status || 'pitched',
+            matterLinked: false,
+            paymentCompleted: false,
+            documentCount: deal.documents?.length || 0
+          }));
+
+        // Combine instructions and standalone deals
+        const allTransformedData = [...transformedData, ...standaloneDeals];
+
         // Set the data - now properly structured from the VNet function!
-        setInstructionData(transformedData);
+        setInstructionData(allTransformedData);
         
         // Debug: Check what was actually set
-        console.log('🔍 Debug: Transformed data count:', transformedData.length);
-        const lukeTransformed = transformedData.find(item => item.instructions?.[0]?.InstructionRef?.includes('27367-94842'));
+        console.log('🔍 Debug: Transformed data count:', allTransformedData.length);
+        console.log('🔍 Debug: Instructions count:', transformedData.length);
+        console.log('🔍 Debug: Standalone deals count:', standaloneDeals.length);
+        const lukeTransformed = allTransformedData.find(item => item.instructions?.[0]?.InstructionRef?.includes('27367-94842'));
         console.log('🔍 Debug: Luke Test in transformed data:', !!lukeTransformed);
         
         if (isAdmin) {
-          setAllInstructionData(transformedData);
+          setAllInstructionData(allTransformedData);
         }
         
         console.log('✅ Clean instruction data loaded successfully');

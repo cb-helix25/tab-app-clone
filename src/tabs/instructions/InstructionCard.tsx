@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import '../../app/styles/InstructionCard.premium.css';
 import { format, formatDistanceToNow } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
+import { useTheme } from '../../app/functionality/ThemeContext';
 import { 
   FaUser, 
   FaUsers, 
@@ -27,12 +27,13 @@ import {
   FaBuilding,
   FaFolder,
   FaClipboardCheck,
-  FaIdCard
+  FaIdCard,
+  FaPlayCircle
 } from 'react-icons/fa';
 
 // Move interface to separate file
 export interface InstructionCardProps {
-  instruction: any;
+  instruction: any | null;
   index: number;
   selected?: boolean;
   onSelect?: () => void;
@@ -43,8 +44,12 @@ export interface InstructionCardProps {
   onDocumentClick?: (document: any) => void;
   documentCount?: number;
   deal?: {
+    DealId?: number;
     ServiceDescription?: string;
     Amount?: number;
+    PitchedDate?: string;
+    PitchedTime?: string;
+    AreaOfWork?: string;
   };
   prospectId?: number;
   eid?: any;
@@ -54,6 +59,7 @@ export interface InstructionCardProps {
   clients?: any[];
   risk?: any;
   documents?: any[];
+  payments?: any[];
   style?: React.CSSProperties;
   onClick?: () => void;
   onProofOfIdClick?: () => void;
@@ -63,6 +69,7 @@ export interface InstructionCardProps {
 // Component definition with CopyableText
 const CopyableText: React.FC<{ value: string; label?: string; className?: string }> = ({ value, label, className }) => {
   const [copied, setCopied] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -79,25 +86,49 @@ const CopyableText: React.FC<{ value: string; label?: string; className?: string
     <span 
       className={className}
       onClick={handleCopy}
-      style={{ cursor: 'pointer', position: 'relative' }}
-      title={`Click to copy ${label || 'text'}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ 
+        cursor: 'pointer', 
+        position: 'relative',
+        padding: '2px 4px',
+        borderRadius: '4px',
+        transition: 'all 0.2s ease',
+        backgroundColor: copied ? 'rgba(67, 160, 71, 0.1)' : (isHovered ? 'rgba(54, 144, 206, 0.1)' : 'transparent'),
+        color: copied ? '#43a047' : (isHovered ? colours.cta : 'inherit'),
+        border: `1px solid ${copied ? '#43a047' : (isHovered ? colours.cta : 'transparent')}`
+      }}
+      title={copied ? `Copied "${value}"!` : `Click to copy ${label || 'text'}`}
     >
       {value}
       {copied && (
         <span style={{
           position: 'absolute',
-          top: '-25px',
+          top: '-30px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: colours.darkBlue,
+          background: '#43a047',
           color: 'white',
-          padding: '2px 6px',
+          padding: '4px 8px',
           borderRadius: '4px',
-          fontSize: '0.7rem',
+          fontSize: '12px',
           whiteSpace: 'nowrap',
-          zIndex: 1000
+          zIndex: 1000,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          animation: 'fadeInScale 0.2s ease-out'
         }}>
-          Copied!
+          ✓ Copied!
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 0,
+            height: 0,
+            borderLeft: '4px solid transparent',
+            borderRight: '4px solid transparent',
+            borderTop: '4px solid #43a047'
+          }} />
         </span>
       )}
     </span>
@@ -124,29 +155,57 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   clients,
   risk,
   documents,
+  payments,
   style,
   onClick,
   animationDelay = 0
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
-
-  const toggleStepExpanded = (stepId: string) => {
-    const newExpanded = new Set(expandedSteps);
-    if (newExpanded.has(stepId)) {
-      newExpanded.delete(stepId);
-    } else {
-      newExpanded.add(stepId);
+  const [showDetails, setShowDetails] = useState(false);
+  const [activeStep, setActiveStep] = useState<string>('');
+  const { isDarkMode } = useTheme();
+  // Inject keyframes once for pulse effect
+  React.useEffect(() => {
+    if (typeof document !== 'undefined' && !document.getElementById('instructioncard-pulse')) {
+      const styleTag = document.createElement('style');
+      styleTag.id = 'instructioncard-pulse';
+      styleTag.innerHTML = `
+        @keyframes pulseGlow {
+          0%{box-shadow:0 0 0 0 rgba(54,144,206,0.55);}
+          60%{box-shadow:0 0 0 10px rgba(54,144,206,0);}
+          100%{box-shadow:0 0 0 0 rgba(54,144,206,0);}
+        }
+        @keyframes fadeInScale {
+          0% {
+            opacity: 0;
+            transform: translateX(-50%) scale(0.8);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+          }
+        }
+        @keyframes fadeIn {
+          0% {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `;
+      document.head.appendChild(styleTag);
     }
-    setExpandedSteps(newExpanded);
-  };
+  }, []);
 
   // Status logic - match the logic used in global actions
   // ID Verification status based on EID data
   const eidResult = (eid?.EIDOverallResult || eids?.[0]?.EIDOverallResult)?.toLowerCase() ?? "";
   const eidStatus = (eid?.EIDStatus || eids?.[0]?.EIDStatus)?.toLowerCase() ?? "";
   const poidPassed = eidResult === "passed" || eidResult === "approved";
-  const proofOfIdComplete = Boolean(instruction.PassportNumber || instruction.DriversLicenseNumber);
+  const proofOfIdComplete = Boolean(instruction?.PassportNumber || instruction?.DriversLicenseNumber);
   
   let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
   if (!eid && !eids?.length || eidStatus === 'pending') {
@@ -157,12 +216,51 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     verifyIdStatus = 'review';
   }
 
-  // Payment status based on PaymentResult
-  const paymentResult = instruction.PaymentResult?.toLowerCase();
-  const paymentStatus = paymentResult === "successful" ? 'complete' : 'pending';
+  // Debug log to check instruction data
+  console.log('Instruction data:', {
+    ref: instruction?.InstructionRef,
+    status: instruction?.Status || instruction?.status,
+    stage: instruction?.Stage || instruction?.stage,
+    workflow: instruction?.Workflow || instruction?.workflow,
+    payments: instruction?.payments?.length,
+    paymentData: instruction?.payments?.[0],
+    allKeys: instruction ? Object.keys(instruction) : null
+  });
 
-  // Documents status - check if documents exist
-  const documentStatus = (documents && documents.length > 0) ? 'complete' : 'pending';
+  // Payment status based on payments array
+  const getPaymentStatus = () => {
+    console.log('Checking payment status for instruction:', instruction?.InstructionRef, payments);
+    
+    // Check if instruction itself is marked as paid (fallback)
+    if (instruction?.InternalStatus === 'paid' || instruction?.internalStatus === 'paid') {
+      console.log('Instruction marked as paid');
+      return 'complete';
+    }
+    
+    if (!payments || payments.length === 0) {
+      console.log('No payments found');
+      return 'pending';
+    }
+    
+    // Get the most recent payment
+    const latestPayment = payments[0]; // Already sorted by created_at DESC in API
+    console.log('Latest payment:', latestPayment);
+    
+    // A payment is complete if both payment_status is 'succeeded' AND internal_status is 'completed' or 'paid'
+    if (latestPayment.payment_status === 'succeeded' && 
+        (latestPayment.internal_status === 'completed' || latestPayment.internal_status === 'paid')) {
+      console.log('Payment is complete');
+      return 'complete';
+    }
+    
+    console.log('Payment is pending - payment_status:', latestPayment.payment_status, 'internal_status:', latestPayment.internal_status);
+    return 'pending';
+  };
+  
+  const paymentStatus = getPaymentStatus();
+
+  // Documents status - neutral if none required, green if at least one uploaded, pending if required but missing
+  const documentStatus = (documents && documents.length > 0) ? 'complete' : 'neutral';
 
   // Risk status based on risk assessment result
   const riskResultRaw = risk?.RiskAssessmentResult?.toString().toLowerCase() ?? "";
@@ -171,96 +269,223 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     : 'pending';
 
   // Matter status - check if matter exists
-  const matterStatus = (instruction.MatterId || (instruction as any).matters?.length > 0) ? 'complete' : 'pending';
+  const matterStatus = (instruction?.MatterId || (instruction as any)?.matters?.length > 0) ? 'complete' : 'pending';
 
   // CCL status - assume pending unless explicitly complete
-  const cclStatus = instruction.CCLSubmitted ? 'complete' : 'pending';
+  const cclStatus = instruction?.CCLSubmitted ? 'complete' : 'pending';
+
+  // New pre-ID step: Instruction/Pitch capture (integrated from pitches). Complete if a deal/service exists.
+  const hasDeal = !!(deal && (deal.ServiceDescription || typeof deal.Amount === 'number'));
+  const instructionCaptureStatus = hasDeal ? 'complete' : 'pending';
+
+  // Pitch date formatting (used for timeline status & detail)
+  let pitchWhen: string | null = null;
+
+  // Always try to calculate pitch date if we have submission data
+  if (instruction?.SubmissionDate) {
+    try {
+      const pitchDate = instruction.SubmissionDate;
+      const pitchTime = instruction.SubmissionTime;
+      
+      let d: Date;
+      if (pitchTime) {
+        // SQL TIME fields come as full datetime starting from 1970-01-01
+        // Extract just the time portion and combine with the submission date
+        const timeOnly = new Date(pitchTime);
+        const hours = timeOnly.getUTCHours();
+        const minutes = timeOnly.getUTCMinutes();
+        const seconds = timeOnly.getUTCSeconds();
+        
+        d = new Date(pitchDate);
+        d.setHours(hours, minutes, seconds);
+      } else {
+        d = new Date(pitchDate);
+      }
+      
+      if (!isNaN(d.getTime())) {
+        const now = new Date();
+        const sameDay = d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+        pitchWhen = sameDay ? format(d,'HH:mm') : format(d,'d MMM');
+      }
+    } catch {/* ignore */}
+  }
 
   const isCompleted = cclStatus === 'complete';
 
+  // Get area color (same logic as enquiry cards)
+  const getAreaColor = (area: string): string => {
+    switch (area?.toLowerCase()) {
+      case 'commercial':
+        return colours.blue;
+      case 'construction':
+        return colours.orange;
+      case 'property':
+        return colours.green;
+      case 'employment':
+        return colours.yellow;
+      default:
+        return colours.cta;
+    }
+  };
+
+  // Get area of work from deals (linked by InstructionRef)
+  const areaOfWork = 
+    // Try direct instruction field first
+    instruction?.AreaOfWork || instruction?.Area_of_Work || instruction?.areaOfWork || 
+    instruction?.area_of_work || instruction?.ServiceType || instruction?.serviceType || 
+    instruction?.Type || instruction?.type ||
+    // Try deal prop
+    deal?.AreaOfWork ||
+    // Try deals array (get first deal's area)
+    (deals && deals.length > 0 ? deals[0].AreaOfWork : '') ||
+    // Fallback to empty string
+    '';
+  
+  // Determine if this is a pitched deal (no instruction yet)
+  const isPitchedDeal = !instruction && deal;
+  
+  const areaColor = getAreaColor(areaOfWork);
+
   // Determine next action step
-  const nextActionStep = 
-    verifyIdStatus !== 'complete' ? 'id' :
+  // For pitched deals, use different logic
+  if (isPitchedDeal) {
+    // Pitched deals get pitch-specific actions
+  } else {
+    // Normal instruction workflow
+  }
+  
+  // Initialised status - if instruction exists but no other progress
+  const isInitialised = instruction?.InstructionRef && !hasDeal && !proofOfIdComplete && 
+                       (!instruction?.payments || instruction?.payments.length === 0) &&
+                       (!documents || documents.length === 0);
+
+  // Determine the pitch stage - one bubble that changes
+  const getPitchStage = () => {
+    // Instructed = proof-of-id-complete is true (instructions received)
+    if (proofOfIdComplete) {
+      return { key: 'instructed', label: 'Instructed', icon: <FaInfoCircle />, colour: colours.green };
+    }
+    // Initialised = instruction exists with stage "initialised" (client opened checkout)
+    else if (instruction?.InstructionRef && (instruction?.Stage === 'initialised' || instruction?.stage === 'initialised')) {
+      return { key: 'initialised', label: 'Initialised', icon: <FaPlayCircle />, colour: colours.blue };
+    }
+    // Pitched = deal exists (pitch sent)
+    else if (hasDeal) {
+      return { key: 'pitched', label: 'Pitched', icon: <FaEnvelope />, colour: colours.greyText };
+    }
+    // Default state
+    else {
+      return { key: 'pitched', label: 'Pitched', icon: <FaEnvelope />, colour: colours.greyText };
+    }
+  };
+
+  const pitchStage = getPitchStage();
+
+  const nextActionStep = isPitchedDeal 
+    ? null // Pitched deals don't have an auto-active next action
+    : isInitialised ? 'initialised' :
+    instructionCaptureStatus !== 'complete' ? 'instruction' :
     paymentStatus !== 'complete' ? 'payment' :
     documentStatus !== 'complete' ? 'documents' :
+    verifyIdStatus !== 'complete' ? 'id' :
     riskStatus !== 'complete' ? 'risk' :
     matterStatus !== 'complete' ? 'matter' :
     cclStatus !== 'complete' ? 'ccl' : null;
 
-  // Debug logging to see what's going wrong
-  React.useEffect(() => {
-    console.log(`InstructionCard ${instruction.InstructionRef} Status Debug:`, {
-      fullInstruction: instruction, // Log the entire instruction object
-      IdVerified: instruction.IdVerified,
-      IdSubmitted: instruction.IdSubmitted,
-      PaymentReceived: instruction.PaymentReceived,
-      DocumentsReceived: instruction.DocumentsReceived,
-      RiskAssessmentComplete: instruction.RiskAssessmentComplete,
-      MatterCreated: instruction.MatterCreated,
-      CCLSubmitted: instruction.CCLSubmitted,
-      verifyIdStatus,
-      paymentStatus,
-      documentStatus,
-      riskStatus,
-      matterStatus,
-      cclStatus,
-      nextActionStep
-    });
-  }, [instruction.InstructionRef, verifyIdStatus, paymentStatus, documentStatus, riskStatus, matterStatus, cclStatus, nextActionStep]);
+  // Get next action label and icon
+  const getNextActionDetails = (step: string) => {
+    const actionMap = {
+      'follow-up': { label: 'Follow Up', icon: <FaPhone /> },
+      'send-reminder': { label: 'Send Reminder', icon: <FaEnvelope /> },
+      'schedule-call': { label: 'Schedule Call', icon: <FaCalendarAlt /> },
+      'initialised': { label: 'Awaiting Instructions', icon: <FaInfoCircle /> },
+      'instruction': { label: 'Complete Instructions', icon: <FaFileAlt /> },
+      'id': { label: 'Verify Identity', icon: <FaIdCard /> },
+      'payment': { label: 'Process Payment', icon: <FaPoundSign /> },
+      'documents': { label: 'Upload Documents', icon: <FaFileUpload /> },
+      'risk': { label: 'Risk Assessment', icon: <FaShieldAlt /> },
+      'matter': { label: 'Create Matter', icon: <FaFolder /> },
+      'ccl': { label: 'Complete CCL', icon: <FaClipboardCheck /> }
+    };
+    return actionMap[step as keyof typeof actionMap] || null;
+  };
 
-  // Debug selection state
-  React.useEffect(() => {
-    console.log(`InstructionCard ${instruction.InstructionRef} Selection:`, {
-      selected,
-      expanded,
-      isCompleted
-    });
-  }, [instruction.InstructionRef, selected, expanded, isCompleted]);
+  const nextActionDetails = nextActionStep ? getNextActionDetails(nextActionStep) : null;
 
+  // Do not auto-open details; only highlight nextActionStep via pulse.
+
+  // Adopt enquiry card design language
+  const svgMark = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" preserveAspectRatio="xMidYMid meet"><g fill="currentColor" opacity="0.22"><path d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/></g></svg>');
+  // Visual styling - slightly different for pitched deals
+  const bgColorToken = isPitchedDeal 
+    ? (isDarkMode ? '#1a1f29' : '#fafbfc') // Slightly more muted background for pitched deals
+    : (isDarkMode ? '#1f2732' : '#ffffff');
+    
+  const markColor = isPitchedDeal
+    ? (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(6,23,51,0.06)') // More subtle mark for pitched deals
+    : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(6,23,51,0.11)');
+  
   const cardClass = mergeStyles({
-    background: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
-    border: selected ? `2px solid ${colours.blue}` : `1px solid ${colours.light.border}`,
-    borderRadius: '12px',
-    padding: '20px',
-    cursor: 'pointer',
     position: 'relative',
-    overflow: 'hidden',
-    boxShadow: selected
-      ? `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`
-      : '0 2px 8px rgba(0,0,0,0.08)',
-    opacity: isCompleted ? 0.6 : 1,
-    transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
-    flex: '1' as const,
-    selectors: {
-      ':hover': {
-        boxShadow: selected
-          ? `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`
-          : '0 4px 16px rgba(0,0,0,0.12)',
-        transform: 'translateY(-1px) scale(1.01)',
-      },
+    borderRadius: 5,
+    padding: (nextActionDetails || isPitchedDeal) ? '10px 18px' : '10px 18px',
+    background: `${bgColorToken}`,
+    // Subtle visual differences for pitched deals
+    opacity: isPitchedDeal ? 0.92 : 1,
+    '::after': {
+      content: '""',
+      position: 'absolute',
+      top: 10,
+      bottom: 10,
+      right: 12,
+      width: 160,
+      background: markColor,
+      maskImage: `url("data:image/svg+xml,${svgMark}")`,
+      WebkitMaskImage: `url("data:image/svg+xml,${svgMark}")`,
+      maskRepeat: 'no-repeat',
+      WebkitMaskRepeat: 'no-repeat',
+      maskPosition: 'center',
+      WebkitMaskPosition: 'center',
+      maskSize: 'contain',
+      WebkitMaskSize: 'contain',
+      opacity: 1,
+      mixBlendMode: isDarkMode ? 'screen' : 'multiply',
+      pointerEvents: 'none',
+      transition: 'opacity .3s',
+      filter: 'blur(.15px)',
+      zIndex: 0,
     },
-  });
-
-  const wrapperClass = mergeStyles({
-    background: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
-    border: selected ? `2px solid ${colours.blue}` : `1px solid ${colours.light.border}`,
-    borderRadius: '12px',
-    padding: '20px',
-    cursor: 'pointer',
-    position: 'relative',
+    border: `1px solid ${selected ? colours.blue : 
+      isPitchedDeal ? (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)') :
+      (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
+    boxShadow: isDarkMode
+      ? '0 4px 16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04)'
+      : '0 4px 14px rgba(33,56,82,0.10)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    fontFamily: 'Raleway, sans-serif',
+    cursor: (nextActionDetails || isPitchedDeal) ? 'pointer' : 'pointer',
+    transition: 'border-color .2s, transform .15s, box-shadow .3s',
+    marginBottom: 4,
     overflow: 'hidden',
-    boxShadow: selected
-      ? `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`
-      : '0 2px 8px rgba(0,0,0,0.08)',
-    opacity: isCompleted ? 0.6 : 1,
-    transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
-    flex: '1' as const,
+    borderLeftWidth: 2,
+    borderLeftStyle: 'solid',
+    borderLeftColor: areaColor,
     selectors: {
       ':hover': {
-        boxShadow: selected
-          ? `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`
-          : '0 4px 16px rgba(0,0,0,0.12)',
-        transform: 'translateY(-1px) scale(1.01)',
+        transform: nextActionDetails ? 'translateY(-3px)' : 'translateY(-2px)', 
+        borderColor: selected ? colours.blue : colours.highlight,
+        boxShadow: nextActionDetails 
+          ? (isDarkMode
+              ? '0 8px 25px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(54, 144, 206, 0.2)'
+              : '0 8px 25px rgba(54, 144, 206, 0.15)')
+          : (isDarkMode
+              ? '0 4px 16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04)'
+              : '0 4px 14px rgba(33,56,82,0.10)')
+      },
+      ':active': {
+        transform: nextActionDetails ? 'translateY(-1px)' : 'translateY(-1px)'
       },
     },
   });
@@ -279,879 +504,281 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   };
 
   return (
-    <div className={wrapperClass} style={style_} onClick={handleCardClick} ref={innerRef}
-      onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
-      <div className={cardClass} style={{ background: 'transparent', boxShadow: 'none' }}>
+    <div className={cardClass} style={style_} onClick={handleCardClick} ref={innerRef}
+      onMouseEnter={() => { setIsHovered(true); setShowDetails(true); }} 
+      onMouseLeave={() => { setIsHovered(false); if (!selected) setShowDetails(false); }}>
+      {/* Left accent bar */}
+      <span style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, background: areaColor, opacity: .95, pointerEvents: 'none' }} />
       
-      {/* PRIMARY HEADER - Client Identity & Reference */}
-      <div className="card-primary-header" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: '16px',
-        paddingBottom: '12px',
-        borderBottom: `1px solid ${colours.light.border}`,
-        position: 'relative',
-        background: `url("data:image/svg+xml,${encodeURIComponent(`
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" opacity="0.03">
-            <path fill="${colours.darkBlue}" d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/>
-            <path fill="${colours.darkBlue}" d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/>
-            <path fill="${colours.darkBlue}" d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/>
-          </svg>
-        `)}")`,
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'top right',
-        backgroundSize: '20px 35px'
-      }}>
-        
-        <div className="client-identity" style={{ flex: 1 }}>
-          <div className="client-name" style={{
-            fontSize: '1.1rem',
-            fontWeight: 700,
-            color: colours.darkBlue,
-            marginBottom: '6px',
-            letterSpacing: '-0.02em',
-            lineHeight: 1.3
-          }}>
-            <CopyableText 
-              value={(() => {
-                // Try different possible name combinations
-                const firstName = instruction.Forename || instruction.FirstName || instruction.forename || instruction.firstName || '';
-                const lastName = instruction.Surname || instruction.LastName || instruction.surname || instruction.lastName || '';
-                const fullName = instruction.FullName || instruction.fullName || instruction.Name || instruction.name || '';
-                
-                if (fullName) return fullName;
-                if (firstName && lastName) return `${firstName} ${lastName}`;
-                if (firstName) return firstName;
-                if (lastName) return lastName;
-                return 'Client Name';
-              })()}
-              className="client-name-text"
-            />
-          </div>
-          <div className="reference-line" style={{
-            fontSize: '0.75rem',
-            color: colours.greyText,
-            fontWeight: 600
-          }}>
-            <CopyableText 
-              value={instruction.InstructionRef || instruction.instructionRef || instruction.ref || instruction.Ref || 'No Reference'}
-              label="Ref"
-            />
-          </div>
-        </div>
-        <div className="status-indicators" style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: '4px'
-        }}>
-          {isCompleted && (
-            <div className="completed-badge" style={{
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              padding: '4px 8px',
-              backgroundColor: colours.green,
-              color: 'white',
-              borderRadius: '12px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              Complete
-            </div>
+      {/* Name + ID inline */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, paddingLeft: 0 }}>
+        <span style={{ fontWeight: 600, color: isDarkMode ? '#fff' : '#0d2538', lineHeight: 1.2, fontSize: '15px' }}>
+          {(() => {
+            const firstName = instruction?.Forename || instruction?.FirstName || instruction?.forename || instruction?.firstName || '';
+            const lastName = instruction?.Surname || instruction?.LastName || instruction?.surname || instruction?.lastName || '';
+            const fullName = instruction?.FullName || instruction?.fullName || instruction?.Name || instruction?.name || '';
+            const company = instruction?.Company || instruction?.CompanyName || instruction?.company || instruction?.companyName || '';
+            
+            if (fullName) return fullName;
+            if (firstName && lastName) return `${firstName} ${lastName}`;
+            if (firstName) return firstName;
+            if (lastName) return lastName;
+            if (company) return company;
+            
+            // For standalone deals without instructions, show prospect ID
+            if (isPitchedDeal) {
+              return (instruction as any)?.prospectId || prospectId;
+            }
+            
+            return 'Client';
+          })()}
+        </span>
+        <span style={{ fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9', fontWeight: 500, letterSpacing: 0.5, userSelect: 'all', fontFamily: 'Consolas, Monaco, monospace', padding: '1px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          ID {instruction?.InstructionRef || instruction?.instructionRef || instruction?.ref || instruction?.Ref || deal?.DealId || 'No Reference'}
+          {areaOfWork && (
+            <>
+              <span style={{ 
+                width: 2, 
+                height: 2, 
+                borderRadius: '50%', 
+                background: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'
+              }} />
+              <span style={{ 
+                color: areaColor, 
+                fontWeight: 600, 
+                fontSize: 10,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                {areaOfWork}
+              </span>
+            </>
           )}
-          {nextActionStep && !isCompleted && (
-            <div className="action-required-badge" style={{
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              padding: '4px 8px',
-              backgroundColor: colours.blue,
-              color: 'white',
-              borderRadius: '12px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              Action Required
-            </div>
-          )}
-        </div>
+        </span>
       </div>
 
-      {/* LEGAL MATTER INFORMATION - Full Width */}
-      {deal && (
-        <div className="matter-section" style={{
-          padding: '16px',
-          background: `linear-gradient(135deg, ${colours.light.sectionBackground} 0%, ${colours.light.background} 100%)`,
-          borderRadius: '8px',
-          border: `1px solid ${colours.light.border}`,
-          marginBottom: '16px',
-          position: 'relative',
-          backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" opacity="0.05">
-              <path fill="${colours.blue}" d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/>
-              <path fill="${colours.blue}" d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/>
-              <path fill="${colours.blue}" d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/>
-            </svg>
-          `)}")`,
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'top right',
-          backgroundSize: '30px 52px'
+      {/* Company & Contact details */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)', fontWeight: 500, marginTop: 6, marginLeft: 2 }}>
+        {(() => {
+          const company = instruction?.Company || instruction?.CompanyName || instruction?.company || instruction?.companyName;
+          const firstName = instruction?.Forename || instruction?.FirstName || '';
+          const lastName = instruction?.Surname || instruction?.LastName || '';
+          const hasPerson = firstName || lastName || instruction?.FullName || instruction?.fullName;
+          if (company && hasPerson) {
+            return <CopyableText value={company} label="Company" />;
+          }
+          return null;
+        })()}
+        {(() => {
+          const email = instruction?.Email || instruction?.email;
+          return email ? (
+            <CopyableText value={email} label="Email" />
+          ) : null;
+        })()}
+        {(() => {
+          const phone = instruction?.Phone || instruction?.phone;
+          return phone ? (
+            <CopyableText value={phone} label="Phone" />
+          ) : null;
+        })()}
+      </div>
+
+      {/* Deal Information Box - Service Description and Amount */}
+      {hasDeal && (
+        <div style={{
+          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
+          borderRadius: '3px',
+          padding: '8px 14px',
+          marginTop: '6px',
+          marginBottom: '2px'
         }}>
-          
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '16px'
+            gap: '12px'
           }}>
-            <div className="service-description" style={{
+            <div style={{
+              fontSize: '11px',
+              fontWeight: 500,
+              color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)',
+              lineHeight: 1.2,
               flex: 1
             }}>
-              <div style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: colours.greyText,
-                textTransform: 'uppercase',
-                letterSpacing: '0.75px',
-                marginBottom: '6px'
-              }}>
-                Legal Matter
-              </div>
-              <div style={{
-                fontSize: '0.95rem',
-                fontWeight: 600,
-                color: colours.darkBlue,
-                lineHeight: 1.4,
-                letterSpacing: '-0.01em'
-              }}>
-                {deal.ServiceDescription || 'Legal Service'}
-              </div>
+              {deal?.ServiceDescription || 'Legal Service'}
             </div>
-            {typeof deal.Amount === 'number' && (
-              <div className="fee-display" style={{
+            {typeof deal?.Amount === 'number' && (
+              <div style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                fontFamily: 'Raleway, sans-serif',
                 textAlign: 'right',
-                minWidth: '100px'
+                whiteSpace: 'nowrap'
               }}>
-                <div style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: colours.greyText,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.75px',
-                  marginBottom: '4px'
-                }}>
-                  Fee
-                </div>
-                <div className="premium-amount" style={{
-                  fontSize: '1.125rem',
-                  fontWeight: 700,
-                  color: colours.blue,
-                  letterSpacing: '-0.02em'
-                }}>
-                  £{deal.Amount.toLocaleString()}
-                </div>
+                £{deal.Amount.toLocaleString()}
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* CONNECTED WORKFLOW TIMELINE */}
-      <div className="workflow-timeline" style={{
-        marginBottom: '16px',
-        position: 'relative',
-        padding: '16px',
-        background: `linear-gradient(135deg, ${colours.light.background} 0%, ${colours.light.sectionBackground} 100%)`,
-        borderRadius: '8px',
-        border: `1px solid ${colours.light.border}`,
-        backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(`
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" opacity="0.04">
-            <path fill="${colours.greyText}" d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/>
-            <path fill="${colours.greyText}" d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/>
-            <path fill="${colours.greyText}" d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/>
-          </svg>
-        `)}")`,
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'bottom right',
-        backgroundSize: '25px 43px'
+      {/* Timeline bubbles (cascade) */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        marginTop: 6, 
+        transition: 'max-height 0.35s cubic-bezier(.4,0,.2,1), padding 0.35s cubic-bezier(.4,0,.2,1)', 
+        maxHeight: (showDetails || selected || !isPitchedDeal) ? 120 : 0, 
+        paddingTop: (showDetails || selected || !isPitchedDeal) ? 4 : 0, 
+        paddingBottom: (showDetails || selected || !isPitchedDeal) ? 8 : 0, 
+        overflow: 'hidden' 
       }}>
-        
-        {/* Sequential Timeline - Compact Steps */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8 
         }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+            {(isPitchedDeal ? 
+              // Pitch-specific workflow
+              [
+                { key: 'pitched', label: 'Pitched', icon: <FaEnvelope />, colour: colours.green },
+                { key: 'follow-up', label: 'Follow Up', icon: <FaPhone />, colour: colours.greyText }
+              ] : 
+              // Standard instruction workflow
+              [
+                pitchStage,
+                { key:'payment', label: paymentStatus === 'complete' ? 'Paid' : 'Pay', icon:<FaPoundSign />, colour: paymentStatus === 'complete' ? colours.green : (nextActionStep === 'payment' ? colours.blue : colours.greyText) },
+                { key:'documents', label:'Docs', icon:<FaFileAlt />, colour: documentStatus === 'complete' ? colours.green : documentStatus === 'neutral' ? colours.greyText : (nextActionStep === 'documents' ? colours.blue : colours.greyText) },
+                { key:'id', label:'ID', icon:<FaIdCard />, colour: verifyIdStatus === 'complete' ? colours.green : verifyIdStatus === 'review' ? colours.red : (nextActionStep === 'id' ? colours.blue : colours.greyText) },
+                { key:'risk', label:'Risk', icon:<FaShieldAlt />, colour: riskStatus === 'complete' ? colours.green : (nextActionStep === 'risk' ? colours.blue : (riskStatus === 'review' ? colours.red : colours.greyText)) },
+                { key:'matter', label:'Matter', icon:<FaFolder />, colour: matterStatus === 'complete' ? colours.green : (nextActionStep === 'matter' ? colours.blue : colours.greyText) },
+                { key:'ccl', label:'CCL', icon:<FaClipboardCheck />, colour: cclStatus === 'complete' ? colours.green : (nextActionStep === 'ccl' ? colours.blue : colours.greyText) }
+              ]
+            ).map((step, idx) => {
+              const isComplete = step.colour === colours.green;
+              const delay = (showDetails || selected || !isPitchedDeal) ? idx * 70 : (7 - 1 - idx) * 65;
+              return (
+                <button
+                  key={step.key}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    // For pitched deals, make actions clickable; for instruction cards, only nextActionStep is clickable
+                    if(isPitchedDeal || step.key === nextActionStep) {
+                      setActiveStep(prev => prev === step.key ? '' : step.key); 
+                    }
+                  }}
+                  className={mergeStyles({
+                    background: step.key === nextActionStep ? step.colour : 'transparent',
+                    color: step.key === nextActionStep ? '#fff' : step.colour,
+                    border: `1.5px solid ${step.colour}`,
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: (isPitchedDeal || step.key === nextActionStep) ? 'pointer' : 'default',
+                    opacity: (showDetails || selected || !isPitchedDeal) ? 1 : 0,
+                    transform: (showDetails || selected || !isPitchedDeal) ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
+                    transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s',
+                    transitionDelay: `${delay}ms`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    selectors: {
+                      ':hover': (isPitchedDeal || step.key === nextActionStep) ? { 
+                      background: colours.blue, 
+                      borderColor: colours.blue 
+                    } : {},
+                    ':active': (isPitchedDeal || step.key === nextActionStep) ? { 
+                      background: colours.blue, 
+                      transform: 'scale(0.95)' 
+                    } : {},
+                  },
+                })}
+              >
+                <span style={{ fontSize: 12 }}>{step.icon}</span>
+                {step.label}
+                {isComplete && <span style={{ fontSize: 10, marginLeft: 2 }}>✓</span>}
+              </button>
+            );
+          })}
+          </div>
           
-          {/* ID Verification - Compact */}
-          <div 
-            onClick={() => toggleStepExpanded('id')}
-            style={{
-              padding: '8px 12px',
-              background: 'white',
-              borderRadius: '6px',
-              border: `1px solid ${verifyIdStatus === 'complete' ? colours.green : 
-                                    verifyIdStatus === 'review' ? colours.red : 
-                                    nextActionStep === 'id' ? colours.blue : colours.light.border}`,
-              boxShadow: nextActionStep === 'id' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
-              cursor: 'pointer'
-            }}>
+          {/* Next Action Arrow - aligned on same row as timeline bubbles */}
+          {(nextActionDetails || isPitchedDeal) && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              opacity: isHovered ? 1 : 0.6,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              cursor: (nextActionDetails || isPitchedDeal) ? 'pointer' : 'default',
+              flexShrink: 0
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isPitchedDeal) {
+                console.log('Follow Up action for pitched deal:', instruction);
+              } else if (nextActionDetails && onClick) {
+                onClick();
+              }
             }}>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                background: verifyIdStatus === 'complete' ? colours.green : 
-                           verifyIdStatus === 'review' ? colours.red : 
-                           nextActionStep === 'id' ? colours.blue : colours.greyText,
-                color: 'white',
-                fontSize: '0.8rem',
-                flexShrink: 0
+                gap: 8
               }}>
-                <FaIdCard />
-              </div>
-              
-              <span style={{
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: colours.darkBlue,
-                flex: 1
-              }}>
-                ID Verification
-              </span>
-              
-              <span style={{
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                padding: '2px 6px',
-                borderRadius: '10px',
-                background: verifyIdStatus === 'complete' ? colours.green : 
-                           verifyIdStatus === 'review' ? colours.red : colours.greyText,
-                color: 'white'
-              }}>
-                {verifyIdStatus === 'complete' ? 'Verified' : 
-                 verifyIdStatus === 'review' ? 'Review' : 'Pending'}
-              </span>
-              
-              {nextActionStep === 'id' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '0.65rem',
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: 2
+                }}>
+                  <span style={{
+                    fontSize: '11px',
                     fontWeight: 600,
                     color: colours.blue,
-                    background: 'white',
-                    border: `1px solid ${colours.blue}`,
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    marginLeft: '4px'
-                  }}
-                >
-                  Request
-                </button>
-              )}
-            </div>
-            
-            {/* Expandable Details */}
-            {expandedSteps.has('id') && (
-              <div style={{
-                marginTop: '8px',
-                padding: '8px',
-                background: colours.light.sectionBackground,
-                borderRadius: '4px',
-                fontSize: '0.75rem',
-                color: colours.greyText
-              }}>
-                {(instruction.PassportNumber || instruction.DriversLicenseNumber) ? (
-                  <div>
-                    {instruction.PassportNumber && `Passport: ${instruction.PassportNumber}`}
-                    {instruction.PassportNumber && instruction.DriversLicenseNumber && ' • '}
-                    {instruction.DriversLicenseNumber && `License: ${instruction.DriversLicenseNumber}`}
-                  </div>
-                ) : (
-                  <div>No ID documents submitted</div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Payment */}
-          <div className="timeline-step" style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            position: 'relative'
-          }}>
-            {/* Connection Line */}
-            <div style={{
-              position: 'absolute',
-              left: '19px',
-              top: '38px',
-              width: '2px',
-              height: '40px',
-              background: paymentStatus === 'complete' ? colours.green : colours.light.border,
-              zIndex: 1
-            }} />
-            
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              background: 'white',
-              borderRadius: '8px',
-              border: `1px solid ${paymentStatus === 'complete' ? colours.green : 
-                                    nextActionStep === 'payment' ? colours.blue : colours.light.border}`,
-              boxShadow: nextActionStep === 'payment' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
-              width: '100%',
-              position: 'relative',
-              zIndex: 2
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '38px',
-                height: '38px',
-                borderRadius: '50%',
-                background: paymentStatus === 'complete' ? colours.green : 
-                           nextActionStep === 'payment' ? colours.blue : colours.greyText,
-                color: 'white',
-                fontSize: '1rem',
-                flexShrink: 0
-              }}>
-                <FaPoundSign />
-              </div>
-              
-              <div style={{ flex: 1 }}>
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    lineHeight: 1
+                  }}>
+                    Next Action
+                  </span>
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
+                    lineHeight: 1,
+                    textAlign: 'right'
+                  }}>
+                    {isPitchedDeal ? 'Follow Up' : nextActionDetails?.label}
+                  </span>
+                </div>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '4px'
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  background: colours.blue,
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 2px 6px rgba(52, 152, 219, 0.3)',
+                  transition: 'all 0.2s ease'
                 }}>
-                  <span style={{
-                    fontSize: '0.9rem',
-                    fontWeight: 700,
-                    color: colours.darkBlue,
-                    letterSpacing: '-0.01em'
-                  }}>
-                    Payment
-                  </span>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    background: paymentStatus === 'complete' ? colours.green : colours.greyText,
-                    color: 'white'
-                  }}>
-                    {paymentStatus === 'complete' ? 'Paid' : 'Pending'}
-                  </span>
+                  →
                 </div>
-                {deal && typeof deal.Amount === 'number' && (
-                  <div style={{
-                    fontSize: '0.75rem',
-                    color: colours.greyText,
-                    marginBottom: '6px'
-                  }}>
-                    Fee: £{deal.Amount.toLocaleString()}
-                  </div>
-                )}
-                {nextActionStep === 'payment' && !isCompleted && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    marginTop: '8px'
-                  }}>
-                    <button
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        color: colours.blue,
-                        background: 'white',
-                        border: `1px solid ${colours.blue}`,
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Send Invoice
-                    </button>
-                    <button
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        color: 'white',
-                        background: colours.blue,
-                        border: `1px solid ${colours.blue}`,
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Mark Paid
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
-          </div>
-
-          {/* Documents */}
-          <div className="timeline-step" style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            position: 'relative'
-          }}>
-            {/* Connection Line */}
-            <div style={{
-              position: 'absolute',
-              left: '19px',
-              top: '38px',
-              width: '2px',
-              height: '40px',
-              background: documentStatus === 'complete' ? colours.green : colours.light.border,
-              zIndex: 1
-            }} />
-            
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              background: 'white',
-              borderRadius: '8px',
-              border: `1px solid ${documentStatus === 'complete' ? colours.green : 
-                                    nextActionStep === 'documents' ? colours.blue : colours.light.border}`,
-              boxShadow: nextActionStep === 'documents' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
-              width: '100%',
-              position: 'relative',
-              zIndex: 2
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '38px',
-                height: '38px',
-                borderRadius: '50%',
-                background: documentStatus === 'complete' ? colours.green : 
-                           nextActionStep === 'documents' ? colours.blue : colours.greyText,
-                color: 'white',
-                fontSize: '1rem',
-                flexShrink: 0
-              }}>
-                <FaFileAlt />
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '4px'
-                }}>
-                  <span style={{
-                    fontSize: '0.9rem',
-                    fontWeight: 700,
-                    color: colours.darkBlue,
-                    letterSpacing: '-0.01em'
-                  }}>
-                    Documents
-                  </span>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    background: documentStatus === 'complete' ? colours.green : colours.greyText,
-                    color: 'white'
-                  }}>
-                    {documentStatus === 'complete' ? 'Complete' : 'Pending'}
-                  </span>
-                </div>
-                {documentCount && (
-                  <div style={{
-                    fontSize: '0.75rem',
-                    color: colours.greyText,
-                    marginBottom: '6px'
-                  }}>
-                    {documentCount} document{documentCount !== 1 ? 's' : ''} received
-                  </div>
-                )}
-                {nextActionStep === 'documents' && !isCompleted && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    marginTop: '8px'
-                  }}>
-                    <button
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        color: colours.blue,
-                        background: 'white',
-                        border: `1px solid ${colours.blue}`,
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Request Docs
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Risk Assessment */}
-          <div className="timeline-step" style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            position: 'relative'
-          }}>
-            {/* Connection Line */}
-            <div style={{
-              position: 'absolute',
-              left: '19px',
-              top: '38px',
-              width: '2px',
-              height: '40px',
-              background: riskStatus === 'complete' ? colours.green : colours.light.border,
-              zIndex: 1
-            }} />
-            
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              background: 'white',
-              borderRadius: '8px',
-              border: `1px solid ${riskStatus === 'complete' ? colours.green : 
-                                    nextActionStep === 'risk' ? colours.blue : colours.light.border}`,
-              boxShadow: nextActionStep === 'risk' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
-              width: '100%',
-              position: 'relative',
-              zIndex: 2
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '38px',
-                height: '38px',
-                borderRadius: '50%',
-                background: riskStatus === 'complete' ? colours.green : 
-                           nextActionStep === 'risk' ? colours.blue : colours.greyText,
-                color: 'white',
-                fontSize: '1rem',
-                flexShrink: 0
-              }}>
-                <FaShieldAlt />
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '4px'
-                }}>
-                  <span style={{
-                    fontSize: '0.9rem',
-                    fontWeight: 700,
-                    color: colours.darkBlue,
-                    letterSpacing: '-0.01em'
-                  }}>
-                    Risk Assessment
-                  </span>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    background: riskStatus === 'complete' ? colours.green : colours.greyText,
-                    color: 'white'
-                  }}>
-                    {riskStatus === 'complete' ? 'Complete' : 'Pending'}
-                  </span>
-                </div>
-                {compliance && (
-                  <div style={{
-                    fontSize: '0.75rem',
-                    color: colours.greyText,
-                    marginBottom: '6px'
-                  }}>
-                    Compliance check required
-                  </div>
-                )}
-                {nextActionStep === 'risk' && !isCompleted && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    marginTop: '8px'
-                  }}>
-                    <button
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        color: 'white',
-                        background: colours.blue,
-                        border: `1px solid ${colours.blue}`,
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Complete Assessment
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Matter Creation */}
-          <div className="timeline-step" style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            position: 'relative'
-          }}>
-            {/* Connection Line */}
-            <div style={{
-              position: 'absolute',
-              left: '19px',
-              top: '38px',
-              width: '2px',
-              height: '40px',
-              background: matterStatus === 'complete' ? colours.green : colours.light.border,
-              zIndex: 1
-            }} />
-            
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              background: 'white',
-              borderRadius: '8px',
-              border: `1px solid ${matterStatus === 'complete' ? colours.green : 
-                                    nextActionStep === 'matter' ? colours.blue : colours.light.border}`,
-              boxShadow: nextActionStep === 'matter' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
-              width: '100%',
-              position: 'relative',
-              zIndex: 2
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '38px',
-                height: '38px',
-                borderRadius: '50%',
-                background: matterStatus === 'complete' ? colours.green : 
-                           nextActionStep === 'matter' ? colours.blue : colours.greyText,
-                color: 'white',
-                fontSize: '1rem',
-                flexShrink: 0
-              }}>
-                <FaFolder />
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '4px'
-                }}>
-                  <span style={{
-                    fontSize: '0.9rem',
-                    fontWeight: 700,
-                    color: colours.darkBlue,
-                    letterSpacing: '-0.01em'
-                  }}>
-                    Matter Creation
-                  </span>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    background: matterStatus === 'complete' ? colours.green : colours.greyText,
-                    color: 'white'
-                  }}>
-                    {matterStatus === 'complete' ? 'Created' : 'Pending'}
-                  </span>
-                </div>
-                {nextActionStep === 'matter' && !isCompleted && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    marginTop: '8px'
-                  }}>
-                    <button
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        color: 'white',
-                        background: colours.blue,
-                        border: `1px solid ${colours.blue}`,
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Create Matter
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* CCL Submission - Final step (no connection line after) */}
-          <div className="timeline-step" style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            position: 'relative'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              background: 'white',
-              borderRadius: '8px',
-              border: `1px solid ${cclStatus === 'complete' ? colours.green : 
-                                    nextActionStep === 'ccl' ? colours.blue : colours.light.border}`,
-              boxShadow: nextActionStep === 'ccl' ? `0 2px 8px ${colours.blue}20` : '0 1px 3px rgba(0,0,0,0.05)',
-              width: '100%',
-              position: 'relative',
-              zIndex: 2
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '38px',
-                height: '38px',
-                borderRadius: '50%',
-                background: cclStatus === 'complete' ? colours.green : 
-                           nextActionStep === 'ccl' ? colours.blue : colours.greyText,
-                color: 'white',
-                fontSize: '1rem',
-                flexShrink: 0
-              }}>
-                <FaClipboardCheck />
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '4px'
-                }}>
-                  <span style={{
-                    fontSize: '0.9rem',
-                    fontWeight: 700,
-                    color: colours.darkBlue,
-                    letterSpacing: '-0.01em'
-                  }}>
-                    CCL Submission
-                  </span>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    background: cclStatus === 'complete' ? colours.green : colours.greyText,
-                    color: 'white'
-                  }}>
-                    {cclStatus === 'complete' ? 'Complete' : 'Pending'}
-                  </span>
-                </div>
-                {nextActionStep === 'ccl' && !isCompleted && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    marginTop: '8px'
-                  }}>
-                    <button
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        color: 'white',
-                        background: colours.blue,
-                        border: `1px solid ${colours.blue}`,
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Submit to CCL
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-        </div> {/* End Sequential Timeline */}
-        
-      </div> {/* End Workflow Timeline */}
-
-      {/* CLEAN CONTACT INFORMATION */}
-      <div className="subtle-contact-info" style={{
-        marginTop: '16px',
-        padding: '12px 16px',
-        background: `linear-gradient(135deg, ${colours.light.background} 0%, ${colours.light.sectionBackground} 100%)`,
-        borderRadius: '8px',
-        border: `1px solid ${colours.light.border}`,
-        fontSize: '0.75rem',
-        color: colours.greyText,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-        flexWrap: 'wrap'
-      }}>
-        <span style={{ fontWeight: 500 }}>{instruction.Email || instruction.email || 'N/A'}</span>
-        <span style={{ opacity: 0.4 }}>•</span>
-        <span style={{ fontWeight: 500 }}>{instruction.Phone || instruction.phone || 'N/A'}</span>
-        <span style={{ opacity: 0.4 }}>•</span>
-        <span style={{ fontWeight: 500 }}>
-          {instruction.DateOfEnquiry ? (
-            (() => {
-              try {
-                const date = new Date(instruction.DateOfEnquiry);
-                return isNaN(date.getTime()) ? 'Invalid date' : formatDistanceToNow(date, { addSuffix: true });
-              } catch {
-                return 'Invalid date';
-              }
-            })()
-          ) : 'N/A'}
-        </span>
+          )}
+        </div>
       </div>
-      </div>
+
+      {/* Contact banner removed per request; details now inline in header */}
     </div>
   );
 };

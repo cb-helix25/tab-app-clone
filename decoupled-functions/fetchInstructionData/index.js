@@ -169,6 +169,12 @@ module.exports = async function (context, req) {
         d.jointClients = jointRes.recordset || [];
         inst.deal = d;
       }
+
+      // Fetch payment data
+      const paymentRes = await pool.request()
+        .input('ref', sql.NVarChar, inst.InstructionRef)
+        .query('SELECT * FROM Payments WHERE instruction_ref=@ref ORDER BY created_at DESC');
+      inst.payments = paymentRes.recordset || [];
     }
 
     // ─── Single instruction by reference when requested ─────────────────
@@ -206,6 +212,12 @@ module.exports = async function (context, req) {
           d.jointClients = jointRes.recordset || [];
           instruction.deal = d;
         }
+
+        // Fetch payment data
+        const paymentRes = await pool.request()
+          .input('ref', sql.NVarChar, instructionRef)
+          .query('SELECT * FROM Payments WHERE instruction_ref=@ref ORDER BY created_at DESC');
+        instruction.payments = paymentRes.recordset || [];
       }
     }
 
