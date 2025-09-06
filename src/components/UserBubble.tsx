@@ -5,6 +5,8 @@ import { UserData } from '../app/functionality/types';
 import '../app/styles/UserBubble.css';
 import '../app/styles/personas.css';
 import { isAdminUser, isPowerUser } from '../app/admin';
+import { useTheme } from '../app/functionality/ThemeContext';
+import ToggleSwitch from './ToggleSwitch';
 
 interface UserBubbleProps {
     user: UserData;
@@ -35,6 +37,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
     const bubbleRef = useRef<HTMLButtonElement | null>(null);
     const popoverRef = useRef<HTMLDivElement | null>(null);
     const [pos, setPos] = useState({ top: 0, left: 0 });
+    const { isDarkMode, toggleTheme } = useTheme();
 
     const initials =
         user.Initials ||
@@ -611,7 +614,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
 
                             {/* Data Inspector */}
                             {isPowerUser(user) && (
-                                <div>
+                                <div style={{ marginBottom: '16px' }}>
                                     <button
                                         onClick={() => setShowDataInspector(true)}
                                         style={{
@@ -639,6 +642,46 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                     </button>
                                 </div>
                             )}
+
+                            {/* Dark Mode Settings */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <h4 style={{
+                                    margin: '0 0 8px 0',
+                                    fontSize: '11px',
+                                    fontWeight: '500',
+                                    color: '#6b7280',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Appearance
+                                </h4>
+                                <div style={{
+                                    background: '#fafbfc',
+                                    border: '1px solid #f1f3f4',
+                                    borderRadius: '4px',
+                                    padding: '8px 12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between'
+                                }}>
+                                    <span style={{
+                                        fontSize: '10px',
+                                        fontWeight: '500',
+                                        color: '#6b7280'
+                                    }}>
+                                        Dark Mode
+                                    </span>
+                                    <ToggleSwitch
+                                        id="dark-mode-toggle"
+                                        checked={isDarkMode}
+                                        onChange={toggleTheme}
+                                        size="sm"
+                                        onText="On"
+                                        offText="Off"
+                                        ariaLabel="Toggle dark mode"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </>

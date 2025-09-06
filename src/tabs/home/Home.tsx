@@ -33,7 +33,6 @@ import {
 } from '@fluentui/react';
 import { FaCheck } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
-import { initializeIcons } from '@fluentui/react/lib/Icons';
 import MetricCard from './MetricCard';
 import GreyHelixMark from '../../assets/grey helix mark.png';
 import InAttendanceImg from '../../assets/in_attendance.png';
@@ -143,7 +142,7 @@ const AnnualLeaveBookings = lazy(() => import('../../CustomForms/AnnualLeaveBook
 const BookSpaceForm = lazy(() => import('../../CustomForms/BookSpaceForm'));
 const SnippetEditsApproval = lazy(() => import('../../CustomForms/SnippetEditsApproval'));
 
-initializeIcons();
+// Icons initialized in index.tsx
 
 //////////////////////
 // Interfaces

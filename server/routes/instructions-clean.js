@@ -1,4 +1,5 @@
 const express = require('express');
+const sql = require('mssql');
 const router = express.Router();
 
 // Generate unique request ID for logging
@@ -19,7 +20,7 @@ router.get('/test', (req, res) => {
   });
 });
 
-// Main instructions endpoint - proxy to VNet fetchInstructionData function
+// Main instructions endpoint - query database directly
 router.get('/', async (req, res) => {
   const requestId = generateRequestId();
   console.log(`[${requestId}] Instructions request:`, {
@@ -29,77 +30,167 @@ router.get('/', async (req, res) => {
   });
 
   try {
-    const { initials, prospectId, instructionRef, dealId } = req.query;
+    const { initials, prospectId, instructionRef, dealId, includeAll } = req.query;
     
-    // Build the URL to the VNet fetchInstructionData function - match the API function pattern
-    const baseUrl = process.env.INSTRUCTIONS_FUNC_BASE_URL || 
-                   'https://instructions-vnet-functions.azurewebsites.net/api/fetchInstructionData';
+    console.log(`[${requestId}] Connecting to Instructions SQL database...`);
+    const pool = await sql.connect(process.env.INSTRUCTIONS_SQL_CONNECTION_STRING);
     
-    let functionCode = process.env.INSTRUCTIONS_FUNC_CODE;
-    if (!functionCode) {
-      console.log(`[${requestId}] No direct function code, trying Key Vault...`);
-      // For now, we'll need the function code to be provided directly
-      // In production, this would use Key Vault like the API function does
-      return res.status(500).json({
-        error: 'VNet function code not configured',
-        detail: 'INSTRUCTIONS_FUNC_CODE environment variable required',
-        instructions: [],
-        count: 0,
-        requestId,
-        timestamp: new Date().toISOString()
-      });
+    // Query deals
+    let dealsQuery = `
+      SELECT 
+        DealId, ProspectId, InstructionRef, ServiceDescription, Status, 
+        DeadlineDate, ValueEstimate, CreatedAt, UpdatedAt
+      FROM Deals
+    `;
+    let dealsParams = [];
+    
+    // Apply filters if provided
+    if (dealId) {
+      dealsQuery += ` WHERE DealId = @dealId`;
+      dealsParams.push({ name: 'dealId', type: sql.Int, value: dealId });
+    } else if (prospectId) {
+      dealsQuery += ` WHERE ProspectId = @prospectId`;
+      dealsParams.push({ name: 'prospectId', type: sql.Int, value: prospectId });
+    } else if (instructionRef) {
+      dealsQuery += ` WHERE InstructionRef = @instructionRef`;
+      dealsParams.push({ name: 'instructionRef', type: sql.NVarChar, value: instructionRef });
     }
     
-    const params = new URLSearchParams({ code: functionCode });
-    if (initials) params.append('initials', initials);
-    if (prospectId) params.append('prospectId', prospectId);
-    if (instructionRef) params.append('instructionRef', instructionRef);
-    if (dealId) params.append('dealId', dealId);
+    dealsQuery += ` ORDER BY DealId DESC`;
     
-    const url = `${baseUrl}?${params.toString()}`;
+    console.log(`[${requestId}] Executing deals query:`, dealsQuery);
     
-    console.log(`[${requestId}] Calling VNet fetchInstructionData:`, url.replace(functionCode, '[REDACTED]'));
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log(`[${requestId}] VNet fetchInstructionData error:`, response.status, errorText);
-      return res.status(500).json({
-        error: 'Failed to fetch instruction data from VNet',
-        detail: `fetchInstructionData returned ${response.status}: ${errorText}`,
-        instructions: [],
-        count: 0,
-        requestId,
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-    const data = await response.json();
-    console.log(`[${requestId}] VNet fetchInstructionData success:`, {
-      deals: data.deals?.length || 0,
-      instructions: data.instructions?.length || 0,
-      documents: data.documents?.length || 0,
-      idVerifications: data.idVerifications?.length || 0
+    const dealsRequest = pool.request();
+    dealsParams.forEach(param => {
+      dealsRequest.input(param.name, param.type, param.value);
     });
     
-    // Transform the data to match our frontend expectations with server-side business logic
+    const dealsResult = await dealsRequest.query(dealsQuery);
+    const deals = dealsResult.recordset;
+    
+    console.log(`[${requestId}] Found ${deals.length} deals`);
+    
+    // Query instructions
+    let instructionsQuery = `
+      SELECT 
+        InstructionRef, ProspectId, Stage, Status, ServiceDescription,
+        CreatedAt, UpdatedAt
+      FROM Instructions
+    `;
+    let instructionsParams = [];
+    
+    if (instructionRef) {
+      instructionsQuery += ` WHERE InstructionRef = @instructionRef`;
+      instructionsParams.push({ name: 'instructionRef', type: sql.NVarChar, value: instructionRef });
+    } else if (prospectId) {
+      instructionsQuery += ` WHERE ProspectId = @prospectId`;
+      instructionsParams.push({ name: 'prospectId', type: sql.Int, value: prospectId });
+    }
+    
+    instructionsQuery += ` ORDER BY CreatedAt DESC`;
+    
+    console.log(`[${requestId}] Executing instructions query:`, instructionsQuery);
+    
+    const instructionsRequest = pool.request();
+    instructionsParams.forEach(param => {
+      instructionsRequest.input(param.name, param.type, param.value);
+    });
+    
+    const instructionsResult = await instructionsRequest.query(instructionsQuery);
+    const instructions = instructionsResult.recordset;
+    
+    console.log(`[${requestId}] Found ${instructions.length} instructions`);
+    
+    // Query enquiries from instructions database for ProspectId → acid/name lookup
+    console.log(`[${requestId}] Querying enquiries for name lookup...`);
+    const enquiriesQuery = `SELECT id, acid, first, last, email FROM enquiries`;
+    const enquiriesResult = await pool.request().query(enquiriesQuery);
+    const enquiries = enquiriesResult.recordset;
+    
+    console.log(`[${requestId}] Found ${enquiries.length} enquiries for lookup`);
+    
+    // Create lookup map: ProspectId → client name
+    const prospectNameMap = new Map();
+    enquiries.forEach(enq => {
+      if (enq.id) {
+        const clientName = [enq.first, enq.last].filter(Boolean).join(' ').trim() || enq.email || `Client ${enq.id}`;
+        prospectNameMap.set(enq.id, clientName);
+      }
+    });
+    
+    // Transform the data to match what frontend expects
+    // Frontend expects all items (both instructions and deals) in the "instructions" array
+    
+    // Start with real instructions (these take priority)
+    const instructionsByRef = new Map();
+    instructions.forEach(inst => {
+      const dealForInst = deals.find(d => d.InstructionRef === inst.InstructionRef);
+      const clientName = prospectNameMap.get(inst.ProspectId) || `Prospect ${inst.ProspectId}`;
+      
+      instructionsByRef.set(inst.InstructionRef, {
+        ...inst,
+        deal: dealForInst || null,
+        clientName: clientName,
+        isRealInstruction: true
+      });
+    });
+    
+    // Add deals that don't have corresponding instructions
+    deals.forEach(deal => {
+      // Check if this deal has a corresponding instruction
+      const hasInstruction = deal.InstructionRef && 
+                           deal.InstructionRef.trim() !== '' && 
+                           instructionsByRef.has(deal.InstructionRef);
+      
+      if (!hasInstruction) {
+        // This deal doesn't have a corresponding instruction yet
+        const pseudoInstructionRef = (deal.InstructionRef && deal.InstructionRef.trim() !== '') 
+                                   ? deal.InstructionRef 
+                                   : `deal-${deal.DealId}`;
+        
+        if (!instructionsByRef.has(pseudoInstructionRef)) {
+          const clientName = prospectNameMap.get(deal.ProspectId) || `Prospect ${deal.ProspectId}`;
+          
+          instructionsByRef.set(pseudoInstructionRef, {
+            InstructionRef: pseudoInstructionRef,
+            ProspectId: deal.ProspectId,
+            Stage: deal.Status === 'pitched' ? 'pitched' : 'instructed',
+            Status: deal.Status,
+            ServiceDescription: deal.ServiceDescription,
+            CreatedAt: deal.CreatedAt,
+            UpdatedAt: deal.UpdatedAt,
+            deal: deal,
+            clientName: clientName,
+            documents: [],
+            idVerifications: [],
+            riskAssessments: [],
+            isRealInstruction: false
+          });
+        }
+      }
+    });
+
+    const allInstructions = Array.from(instructionsByRef.values());
+
     const transformedData = {
-      instructions: data.instructions || [],
-      deals: data.deals || [],
-      documents: data.documents || [],
-      idVerifications: data.idVerifications || [],
-      count: (data.instructions?.length || 0) + (data.deals?.length || 0),
+      instructions: allInstructions, // All unique items in instructions array as frontend expects
+      deals: deals, // Keep separate deals array for backward compatibility
+      documents: [], // Empty for now, can be added later if needed
+      idVerifications: [], // Empty for now, can be added later if needed
+      count: allInstructions.length,
       computedServerSide: true,
       requestId,
       timestamp: new Date().toISOString()
     };
     
-    console.log(`[${requestId}] Transformed response:`, {
-      instructionCount: transformedData.instructions.length,
-      dealCount: transformedData.deals.length,
-      documentCount: transformedData.documents.length,
-      idVerificationCount: transformedData.idVerifications.length
+    console.log(`[${requestId}] Direct DB query success:`, {
+      totalInstructionsInResponse: transformedData.instructions.length,
+      realInstructions: instructions.length,
+      totalDeals: transformedData.deals.length,
+      realInstructionsWithDeals: allInstructions.filter(i => i.isRealInstruction).length,
+      pitchedDealsOnly: allInstructions.filter(i => !i.isRealInstruction).length,
+      enquiriesForLookup: enquiries.length,
+      clientNamesResolved: allInstructions.filter(i => i.clientName && !i.clientName.startsWith('Prospect ')).length
     });
     
     res.json(transformedData);
@@ -107,14 +198,17 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.log(`[${requestId}] Instructions endpoint error:`, error.message);
     res.status(500).json({
-      error: 'Failed to fetch instruction data',
+      error: 'Failed to fetch instruction data from database',
       detail: error.message,
       instructions: [],
+      deals: [],
       count: 0,
       requestId,
       timestamp: new Date().toISOString()
     });
   }
 });
+
+module.exports = router;
 
 module.exports = router;

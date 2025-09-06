@@ -9,7 +9,6 @@ import {
   SearchBox,
   Link,
 } from '@fluentui/react';
-import { initializeIcons } from '@fluentui/react/lib/Icons';
 import { colours } from '../../app/styles/colours';
 import FormCard from './FormCard';
 import FormDetails from './FormDetails';
@@ -26,8 +25,7 @@ import { formSections } from './formsData';
 // Import types – note that FormItem is imported from your types file now
 import { NormalizedMatter, FormItem, UserData } from '../../app/functionality/types';
 
-// Initialize Fluent UI icons
-initializeIcons();
+// Icons initialized in index.tsx - no need to re-initialize
 
 // Define types for sections and links
 export type SectionName = 'Favorites' | 'Financial' | 'General_Processes' | 'Operations';

@@ -54,7 +54,7 @@ import AreaCountCard from './AreaCountCard';
 import 'rc-slider/assets/index.css';
 import Slider from 'rc-slider';
 
-initializeIcons();
+// Icons initialized in index.tsx
 
 interface TeamData {
   'Created Date'?: string;

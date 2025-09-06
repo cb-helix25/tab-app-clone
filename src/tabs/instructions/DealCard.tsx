@@ -38,8 +38,8 @@ const DealCard: React.FC<DealCardProps> = ({
 }) => {
     const [isHovered, setIsHovered] = useState(false);
 
-    // Get client name
-    const fullName = `${deal.FirstName || ''} ${deal.LastName || ''}`.trim();
+    // Get client name (support both field name formats)
+    const fullName = `${deal.FirstName || deal.firstName || ''} ${deal.LastName || deal.lastName || ''}`.trim();
     const isMultiClient = deal.jointClients && deal.jointClients.length > 0;
     const hasDocuments = deal.documents && deal.documents.length > 0;
 
@@ -486,7 +486,7 @@ const DealCard: React.FC<DealCardProps> = ({
                                             fontWeight: 600,
                                             marginBottom: '4px'
                                         }}>
-                                            {`${client.FirstName || ''} ${client.LastName || ''}`.trim() || 'Unnamed Client'}
+                                            {`${client.FirstName || client.firstName || ''} ${client.LastName || client.lastName || ''}`.trim() || 'Unnamed Client'}
                                         </div>
                                         {(client.Email || client.ClientEmail) && (
                                             <div style={{

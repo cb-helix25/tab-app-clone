@@ -6,7 +6,6 @@ import {
   Pivot,
   PivotItem,
   IPivotStyles,
-  initializeIcons,
 } from '@fluentui/react';
 import { AiOutlineHome, AiFillHome } from 'react-icons/ai';
 import { colours } from './colours';
@@ -18,7 +17,7 @@ import UserBubble from '../../components/UserBubble';
 import AnimatedPulsingDot from '../../components/AnimatedPulsingDot';
 import PulsingDot from '../../components/PulsingDot';
 
-initializeIcons();
+// Icons initialized in index.tsx
 
 interface CustomTabsProps {
   selectedKey: string;

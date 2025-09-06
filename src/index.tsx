@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import "./app/styles/index.css";
 import App from "./app/App";
 import { createTheme, ThemeProvider } from "@fluentui/react";
@@ -20,7 +20,12 @@ import Data from "./tabs/Data";
 import { getProxyBaseUrl } from "./utils/getProxyBaseUrl";
 
 import { initializeIcons } from "@fluentui/react";
-initializeIcons();
+
+// Initialize icons only once
+if (!(window as any).__iconsInitialized) {
+  initializeIcons();
+  (window as any).__iconsInitialized = true;
+}
 
 // Define the custom Fluent UI theme
 // invisible change 2
@@ -780,22 +785,22 @@ const AppWithContext: React.FC = () => {
 };
 
 const root = document.getElementById('root');
+const appRoot = createRoot(root!);
+
 if (window.location.pathname === '/data') {
-  ReactDOM.render(
+  appRoot.render(
     <React.StrictMode>
       <ThemeProvider theme={customTheme}>
         <Data />
       </ThemeProvider>
-    </React.StrictMode>,
-    root,
+    </React.StrictMode>
   );
 } else {
-  ReactDOM.render(
+  appRoot.render(
     <React.StrictMode>
       <ThemeProvider theme={customTheme}>
         <AppWithContext />
       </ThemeProvider>
-    </React.StrictMode>,
-    root,
+    </React.StrictMode>
   );
 }

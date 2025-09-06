@@ -11,7 +11,6 @@ import {
   SearchBox,
   Link as FluentLink, // Renamed to avoid confusion with resource Link
 } from '@fluentui/react';
-import { initializeIcons } from '@fluentui/react/lib/Icons';
 import { colours } from '../../app/styles/colours';
 import ResourceCard from './ResourceCard';
 import ResourceDetails from './ResourceDetails';
@@ -32,8 +31,7 @@ import lexisnexisIcon from '../../assets/lexisnexis.svg';
 import thompsonReutersIcon from '../../assets/thompson-reuters.svg';
 import landRegistryIcon from '../../assets/land-registry.svg';
 
-// Initialize Fluent UI Icons
-initializeIcons();
+// Icons initialized in index.tsx - no need to re-initialize
 
 // Define types for sections and resources
 export type SectionName = 'Favorites' | 'WithIcons' | 'WithoutIcons';

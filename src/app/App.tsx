@@ -318,70 +318,78 @@ const App: React.FC<AppProps> = ({
         const lukeTest = data.instructions?.find((i: any) => i.InstructionRef?.includes('27367-94842'));
         console.log('🔍 Debug: Luke Test found in instructions:', !!lukeTest, lukeTest?.FirstName, lukeTest?.LastName);
         
-        // The VNet function already returns properly structured data with nested relationships
-        // Each instruction already has its documents, idVerifications, riskAssessments, etc. nested
-        // We just need to convert to the frontend format
-        const transformedData: InstructionData[] = data.instructions.map((instruction: any) => ({
-          prospectId: instruction.InstructionRef, // Use instruction ref as prospect ID
-          instructions: [instruction], // Single instruction per group
-          deals: instruction.deal ? [instruction.deal] : [], // Nested deal if exists
-          documents: instruction.documents || [], // Nested documents
-          idVerifications: instruction.idVerifications || [], // Nested ID verifications
-          electronicIDChecks: instruction.idVerifications || [], // Alias for compatibility
-          riskAssessments: instruction.riskAssessments || [], // Nested risk assessments
-          compliance: instruction.riskAssessments || [], // Alias for compatibility
-          jointClients: instruction.deal?.jointClients || [], // Joint clients from nested deal
-          matters: instruction.matters || [], // Nested matters if any
-          payments: instruction.payments || [], // Add payments data from instruction
+        // Backend now returns all items (instructions + deals) in the instructions array
+        // Transform each item into our frontend format
+        const transformedData: InstructionData[] = data.instructions.map((item: any) => {
+          // Check if this is a real instruction or a standalone deal
+          const isRealInstruction = item.isRealInstruction !== false;
           
-          // Add computed properties for UI
-          verificationStatus: (instruction.idVerifications?.length || 0) > 0 ? 'completed' : 'pending',
-          riskStatus: (instruction.riskAssessments?.length || 0) > 0 ? 'assessed' : 'pending',
-          nextAction: instruction.Stage || 'review',
-          matterLinked: !!instruction.MatterId,
-          paymentCompleted: instruction.InternalStatus === 'paid',
-          documentCount: instruction.documents?.length || 0
-        }));
+          if (isRealInstruction) {
+            // This is a real instruction with embedded deal data
+            return {
+              prospectId: item.InstructionRef, // Use instruction ref as prospect ID
+              instructions: [item], // Single instruction
+              deals: item.deal ? [item.deal] : [], // Nested deal if exists
+              documents: item.documents || [], // Nested documents
+              idVerifications: item.idVerifications || [], // Nested ID verifications
+              electronicIDChecks: item.idVerifications || [], // Alias for compatibility
+              riskAssessments: item.riskAssessments || [], // Nested risk assessments
+              compliance: item.riskAssessments || [], // Alias for compatibility
+              jointClients: item.deal?.jointClients || [], // Joint clients from nested deal
+              matters: item.matters || [], // Nested matters if any
+              payments: item.payments || [], // Add payments data from instruction
+              
+              // Add computed properties for UI
+              verificationStatus: (item.idVerifications?.length || 0) > 0 ? 'completed' : 'pending',
+              riskStatus: (item.riskAssessments?.length || 0) > 0 ? 'assessed' : 'pending',
+              nextAction: item.Stage || 'review',
+              matterLinked: !!item.MatterId,
+              paymentCompleted: item.InternalStatus === 'paid',
+              documentCount: item.documents?.length || 0
+            };
+          } else {
+            // This is a standalone deal (pitched deal without instruction)
+            const deal = item.deal || item; // Deal data might be nested or at root level
+            return {
+              prospectId: item.InstructionRef || `deal-${deal.DealId}`, // Use instruction ref or deal ID
+              instructions: [], // No instruction yet for pitched deals
+              deals: [deal], // Single deal
+              documents: deal.documents || [],
+              idVerifications: [],
+              electronicIDChecks: [],
+              riskAssessments: [],
+              compliance: [],
+              jointClients: deal.jointClients || [],
+              matters: [],
+              
+              // Add computed properties for UI
+              verificationStatus: 'pending',
+              riskStatus: 'pending',
+              nextAction: deal.Status || 'pitched',
+              matterLinked: false,
+              paymentCompleted: false,
+              documentCount: deal.documents?.length || 0
+            };
+          }
+        });
 
-        // Also process standalone deals (those without instructions)
-        const standaloneDeals: InstructionData[] = (data.deals || [])
-          .filter((deal: any) => !deal.InstructionRef) // Only deals without instructions
-          .map((deal: any) => ({
-            prospectId: `deal-${deal.DealId}`, // Use deal ID as prospect ID for standalone deals
-            instructions: [], // No instruction yet
-            deals: [deal], // Single deal
-            documents: deal.documents || [],
-            idVerifications: [],
-            electronicIDChecks: [],
-            riskAssessments: [],
-            compliance: [],
-            jointClients: deal.jointClients || [],
-            matters: [],
-            
-            // Add computed properties for UI
-            verificationStatus: 'pending',
-            riskStatus: 'pending',
-            nextAction: deal.Status || 'pitched',
-            matterLinked: false,
-            paymentCompleted: false,
-            documentCount: deal.documents?.length || 0
-          }));
-
-        // Combine instructions and standalone deals
-        const allTransformedData = [...transformedData, ...standaloneDeals];
-
-        // Set the data - now properly structured from the VNet function!
-        setInstructionData(allTransformedData);
+        // Set the data - now properly structured!
+        setInstructionData(transformedData);
         
         // Debug: Check what was actually set
-        console.log('🔍 Debug: Transformed data count:', allTransformedData.length);
-        console.log('🔍 Debug: Instructions count:', transformedData.length);
-        console.log('🔍 Debug: Standalone deals count:', standaloneDeals.length);
-        const lukeTransformed = allTransformedData.find(item => item.instructions?.[0]?.InstructionRef?.includes('27367-94842'));
+        console.log('🔍 Debug: Transformed data count:', transformedData.length);
+        const instructionsCount = transformedData.filter(item => item.instructions.length > 0).length;
+        const pitchedDealsCount = transformedData.filter(item => item.instructions.length === 0).length;
+        console.log('🔍 Debug: Real instructions count:', instructionsCount);
+        console.log('🔍 Debug: Pitched deals count:', pitchedDealsCount);
+        const lukeTransformed = transformedData.find(item => 
+          item.instructions?.[0]?.InstructionRef?.includes('27367-94842') ||
+          String(item.prospectId)?.includes('27367-94842')
+        );
         console.log('🔍 Debug: Luke Test in transformed data:', !!lukeTransformed);
         
         if (isAdmin) {
-          setAllInstructionData(allTransformedData);
+          setAllInstructionData(transformedData);
         }
         
         console.log('✅ Clean instruction data loaded successfully');
@@ -525,7 +533,7 @@ const App: React.FC<AppProps> = ({
             hasActiveMatter={hasActiveMatter}
             setIsInMatterOpeningWorkflow={setIsInMatterOpeningWorkflow} poidData={[]} setPoidData={function (value: React.SetStateAction<POID[]>): void {
               throw new Error('Function not implemented.');
-            } }          />
+            } } enquiries={enquiries}          />
           );
       case 'matters':
         return (

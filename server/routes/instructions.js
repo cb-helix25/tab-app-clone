@@ -1,11 +1,101 @@
 const express = require('express');
 const { getSecret } = require('../utils/getSecret');
+const sql = require('mssql');
 const router = express.Router();
+
+// Database connection configuration
+let dbConfig = null;
+
+async function getDbConfig() {
+  if (dbConfig) return dbConfig;
+  
+  // Use the INSTRUCTIONS_SQL_CONNECTION_STRING from .env
+  const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
+  if (!connectionString) {
+    throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
+  }
+  
+  // Parse connection string into config object
+  const params = new URLSearchParams(connectionString.split(';').join('&'));
+  const server = params.get('Server').replace('tcp:', '').split(',')[0];
+  const database = params.get('Initial Catalog');
+  const user = params.get('User ID');
+  const password = params.get('Password');
+  
+  dbConfig = {
+    server,
+    database, 
+    user,
+    password,
+    options: {
+      encrypt: true,
+      trustServerCertificate: false,
+      connectTimeout: 30000,
+      requestTimeout: 30000
+    }
+  };
+  
+  return dbConfig;
+}
 
 // Generate unique request ID for logging
 function generateRequestId() {
   return Math.random().toString(36).substring(2, 10);
 }
+
+// Test direct database connection
+router.get('/test-db', async (req, res) => {
+  const requestId = generateRequestId();
+  console.log(`[${requestId}] Testing direct database connection`);
+
+  try {
+    const config = await getDbConfig();
+    console.log(`[${requestId}] Connecting to database:`, {
+      server: config.server,
+      database: config.database,
+      user: config.user
+    });
+
+    const pool = new sql.ConnectionPool(config);
+    await pool.connect();
+    
+    // Test query - get a few deals to verify connection
+    const result = await pool.request()
+      .query('SELECT TOP 3 DealId, ProspectId, ServiceDescription, InstructionRef FROM Deals ORDER BY DealId DESC');
+    
+    await pool.close();
+    
+    console.log(`[${requestId}] Database test successful:`, {
+      rowCount: result.recordset.length,
+      sampleData: result.recordset
+    });
+
+    res.json({
+      status: 'success',
+      message: 'Direct database connection working!',
+      data: {
+        rowCount: result.recordset.length,
+        sampleDeals: result.recordset,
+        connectionInfo: {
+          server: config.server,
+          database: config.database
+        }
+      },
+      requestId,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.log(`[${requestId}] Database test failed:`, error.message);
+    res.status(500).json({
+      status: 'error',
+      message: 'Direct database connection failed',
+      error: error.message,
+      requestId,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // Test endpoint
 router.get('/test', (req, res) => {
@@ -20,99 +110,300 @@ router.get('/test', (req, res) => {
   });
 });
 
-// Main instructions endpoint - proxy to VNet fetchInstructionData function
+// Main instructions endpoint - direct database access
 router.get('/', async (req, res) => {
   const requestId = generateRequestId();
-  console.log(`[${requestId}] Instructions request:`, {
+  console.log(`[${requestId}] Instructions request (direct DB):`, {
     query: req.query,
-    headers: req.headers['user-agent'],
     ip: req.ip
   });
 
   try {
-    const { initials, prospectId, instructionRef, dealId } = req.query;
-    
-    // Build the URL to the VNet fetchInstructionData function - match the API function pattern
-    const baseUrl = process.env.INSTRUCTIONS_FUNC_BASE_URL || 
-                   'https://instructions-vnet-functions.azurewebsites.net/api/fetchInstructionData';
-    
-    let functionCode = process.env.INSTRUCTIONS_FUNC_CODE;
-    if (!functionCode) {
-      console.log(`[${requestId}] No direct function code, attempting Key Vault lookup...`);
-      try {
-        const secretName = process.env.INSTRUCTIONS_FUNC_CODE_SECRET || 'fetchInstructionData-code';
-        functionCode = await getSecret(secretName);
-        console.log(`[${requestId}] Successfully retrieved function code from Key Vault`);
-      } catch (error) {
-        console.log(`[${requestId}] Failed to retrieve function code from Key Vault:`, error.message);
-        return res.status(500).json({
-          error: 'VNet function code not configured',
-          detail: 'INSTRUCTIONS_FUNC_CODE environment variable or Key Vault secret required',
-          instructions: [],
-          count: 0,
-          requestId,
-          timestamp: new Date().toISOString()
-        });
+    const config = await getDbConfig();
+    const pool = new sql.ConnectionPool(config);
+    await pool.connect();
+
+    const initials = req.query.initials;
+    const prospectId = req.query.prospectId && Number(req.query.prospectId);
+    const instructionRef = req.query.instructionRef;
+    const dealId = req.query.dealId && Number(req.query.dealId);
+
+    console.log(`[${requestId}] Query params:`, { initials, prospectId, instructionRef, dealId });
+
+    // ─── Deals pitched by this user with related data ────────────────────
+    let deals = [];
+    if (initials) {
+      const dealsResult = await pool.request()
+        .input('initials', sql.NVarChar, initials)
+        .query('SELECT * FROM Deals WHERE PitchedBy=@initials ORDER BY DealId DESC');
+      deals = dealsResult.recordset || [];
+    } else {
+      const dealsResult = await pool.request()
+        .query('SELECT * FROM Deals ORDER BY DealId DESC');
+      deals = dealsResult.recordset || [];
+    }
+
+    console.log(`[${requestId}] Found ${deals.length} deals`);
+
+    for (const d of deals) {
+      const jointRes = await pool.request()
+        .input('dealId', sql.Int, d.DealId)
+        .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
+      d.jointClients = jointRes.recordset || [];
+
+      if (d.InstructionRef) {
+        const instRes = await pool.request()
+          .input('ref', sql.NVarChar, d.InstructionRef)
+          .query('SELECT * FROM Instructions WHERE InstructionRef=@ref');
+        const inst = instRes.recordset[0] || null;
+        if (inst) {
+          const docRes = await pool.request()
+            .input('ref', sql.NVarChar, d.InstructionRef)
+            .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
+          inst.documents = docRes.recordset || [];
+
+          const riskRes = await pool.request()
+            .input('ref', sql.NVarChar, d.InstructionRef)
+            .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
+          inst.idVerifications = riskRes.recordset || [];
+
+          const riskAssessRes = await pool.request()
+            .input('ref', sql.NVarChar, d.InstructionRef)
+            .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
+          inst.riskAssessments = riskAssessRes.recordset || [];
+          d.instruction = inst;
+        }
       }
     }
-    
-    const params = new URLSearchParams({ code: functionCode });
-    if (initials) params.append('initials', initials);
-    if (prospectId) params.append('prospectId', prospectId);
-    if (instructionRef) params.append('instructionRef', instructionRef);
-    if (dealId) params.append('dealId', dealId);
-    
-    const url = `${baseUrl}?${params.toString()}`;
-    
-    console.log(`[${requestId}] Calling VNet fetchInstructionData:`, url.replace(functionCode, '[REDACTED]'));
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log(`[${requestId}] VNet fetchInstructionData error:`, response.status, errorText);
-      return res.status(500).json({
-        error: 'Failed to fetch instruction data from VNet',
-        detail: `fetchInstructionData returned ${response.status}: ${errorText}`,
-        instructions: [],
-        count: 0,
-        requestId,
-        timestamp: new Date().toISOString()
-      });
+
+    // ─── Single deal by ID when requested ───────────────────────────────
+    let deal = null;
+    if (dealId != null) {
+      const dealRes = await pool.request()
+        .input('dealId', sql.Int, dealId)
+        .query('SELECT * FROM Deals WHERE DealId=@dealId');
+      deal = dealRes.recordset[0] || null;
+      if (deal) {
+        const jointRes = await pool.request()
+          .input('dealId', sql.Int, dealId)
+          .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
+        deal.jointClients = jointRes.recordset || [];
+
+        if (deal.InstructionRef) {
+          const instRes = await pool.request()
+            .input('ref', sql.NVarChar, deal.InstructionRef)
+            .query('SELECT * FROM Instructions WHERE InstructionRef=@ref');
+          const inst = instRes.recordset[0] || null;
+          if (inst) {
+            const docRes = await pool.request()
+              .input('ref', sql.NVarChar, deal.InstructionRef)
+              .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
+            inst.documents = docRes.recordset || [];
+
+            const riskRes = await pool.request()
+              .input('ref', sql.NVarChar, deal.InstructionRef)
+              .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
+            inst.idVerifications = riskRes.recordset || [];
+
+            const riskAssessRes = await pool.request()
+              .input('ref', sql.NVarChar, deal.InstructionRef)
+              .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
+            inst.riskAssessments = riskAssessRes.recordset || [];
+            deal.instruction = inst;
+          }
+        }
+      }
     }
+
+    // ─── Instructions for this user ──────────────────────────────────────
+    let instructions = [];
+    const allIdVerifications = [];
+    if (initials) {
+      const instrResult = await pool.request()
+        .input('initials', sql.NVarChar, initials)
+        .query('SELECT * FROM Instructions WHERE HelixContact=@initials ORDER BY InstructionRef DESC');
+      instructions = instrResult.recordset || [];
+    } else {
+      const instrResult = await pool.request()
+        .query('SELECT * FROM Instructions ORDER BY InstructionRef DESC');
+      instructions = instrResult.recordset || [];
+    }
+
+    console.log(`[${requestId}] Found ${instructions.length} instructions`);
+
+    for (const inst of instructions) {
+      const docRes = await pool.request()
+        .input('ref', sql.NVarChar, inst.InstructionRef)
+        .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
+      inst.documents = docRes.recordset || [];
+
+      const riskRes = await pool.request()
+        .input('ref', sql.NVarChar, inst.InstructionRef)
+        .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
+      inst.idVerifications = riskRes.recordset || [];
+
+      const riskAssessRes = await pool.request()
+        .input('ref', sql.NVarChar, inst.InstructionRef)
+        .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
+      inst.riskAssessments = riskAssessRes.recordset || [];
+      allIdVerifications.push(...inst.idVerifications);
+
+      const dealRes = await pool.request()
+        .input('ref', sql.NVarChar, inst.InstructionRef)
+        .query('SELECT * FROM Deals WHERE InstructionRef=@ref');
+      const d = dealRes.recordset[0];
+      if (d) {
+        const jointRes = await pool.request()
+          .input('dealId', sql.Int, d.DealId)
+          .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
+        d.jointClients = jointRes.recordset || [];
+        inst.deal = d;
+      }
+
+      // Fetch payment data
+      const paymentRes = await pool.request()
+        .input('ref', sql.NVarChar, inst.InstructionRef)
+        .query('SELECT * FROM Payments WHERE instruction_ref=@ref ORDER BY created_at DESC');
+      inst.payments = paymentRes.recordset || [];
+    }
+
+    // ─── Single instruction by reference when requested ─────────────────
+    let instruction = null;
+    if (instructionRef) {
+      const instRes = await pool.request()
+        .input('ref', sql.NVarChar, instructionRef)
+        .query('SELECT * FROM Instructions WHERE InstructionRef=@ref');
+      instruction = instRes.recordset[0] || null;
+
+      if (instruction) {
+        const docRes = await pool.request()
+          .input('ref', sql.NVarChar, instructionRef)
+          .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
+        instruction.documents = docRes.recordset || [];
+
+        const riskRes = await pool.request()
+          .input('ref', sql.NVarChar, instructionRef)
+          .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
+        instruction.idVerifications = riskRes.recordset || [];
+
+        const riskAssessRes = await pool.request()
+          .input('ref', sql.NVarChar, instructionRef)
+          .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
+        instruction.riskAssessments = riskAssessRes.recordset || [];
+
+        const dealRes = await pool.request()
+          .input('ref', sql.NVarChar, instructionRef)
+          .query('SELECT * FROM Deals WHERE InstructionRef=@ref');
+        const d = dealRes.recordset[0];
+        if (d) {
+          const jointRes = await pool.request()
+            .input('dealId', sql.Int, d.DealId)
+            .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
+          d.jointClients = jointRes.recordset || [];
+          instruction.deal = d;
+        }
+
+        // Fetch payment data
+        const paymentRes = await pool.request()
+          .input('ref', sql.NVarChar, instructionRef)
+          .query('SELECT * FROM Payments WHERE instruction_ref=@ref ORDER BY created_at DESC');
+        instruction.payments = paymentRes.recordset || [];
+      }
+    }
+
+    // ─── ID verifications by ProspectId or instruction refs ─────────────
+    let idVerifications = [];
+    if (prospectId != null) {
+      const riskRes = await pool.request()
+        .input('pid', sql.Int, prospectId)
+        .query('SELECT * FROM IDVerifications WHERE ProspectId=@pid ORDER BY InternalId DESC');
+      idVerifications = riskRes.recordset || [];
+    } else if (initials) {
+      idVerifications = allIdVerifications;
+    } else {
+      const riskRes = await pool.request()
+        .query('SELECT * FROM IDVerifications ORDER BY InternalId DESC');
+      idVerifications = riskRes.recordset || [];
+    }
+
+    // ─── Documents by instruction ref when requested ────────────────────
+    let documents = [];
+    if (instructionRef && !instruction) {
+      const docRes = await pool.request()
+        .input('ref', sql.NVarChar, instructionRef)
+        .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
+      documents = docRes.recordset || [];
+    } else if (!instructionRef) {
+      const docRes = await pool.request()
+        .query('SELECT * FROM Documents ORDER BY DocumentId');
+      documents = docRes.recordset || [];
+    }
+
+    await pool.close();
+
+    console.log(`[${requestId}] Successfully fetched all instruction data directly from database`);
+
+    // Transform the data to match frontend expectations
+    // The frontend expects all items in a single 'instructions' array
+    const transformedInstructions = [];
     
-    const data = await response.json();
-    console.log(`[${requestId}] VNet fetchInstructionData success:`, {
-      deals: data.deals?.length || 0,
-      instructions: data.instructions?.length || 0,
-      documents: data.documents?.length || 0,
-      idVerifications: data.idVerifications?.length || 0
+    // Add real instructions to the array
+    instructions.forEach(inst => {
+      transformedInstructions.push({
+        ...inst,
+        isRealInstruction: true,
+        deal: inst.deal || null,
+        documents: inst.documents || [],
+        idVerifications: inst.idVerifications || [],
+        riskAssessments: inst.riskAssessments || [],
+        payments: inst.payments || []
+      });
     });
     
-    // Transform the data for frontend with server-side business logic
+    // Add standalone deals (deals without instructions) to the same array
+    const standaloneDeals = deals.filter(deal => {
+      // Only include deals that don't have a corresponding instruction
+      const hasInstruction = deal.InstructionRef && instructions.some(inst => inst.InstructionRef === deal.InstructionRef);
+      return !hasInstruction;
+    });
+    
+    standaloneDeals.forEach(deal => {
+      transformedInstructions.push({
+        InstructionRef: `deal-${deal.DealId}`,
+        isRealInstruction: false,
+        deal: deal,
+        documents: [],
+        idVerifications: [],
+        riskAssessments: [],
+        payments: []
+      });
+    });
+
+    console.log(`[${requestId}] Transformed data: ${instructions.length} instructions + ${standaloneDeals.length} standalone deals = ${transformedInstructions.length} total items`);
+
     const transformedData = {
-      ...data, // Pass through all data from VNet function
-      count: (data.instructions?.length || 0) + (data.deals?.length || 0),
+      instructions: transformedInstructions, // All items in single array as expected by frontend
+      deals,
+      deal,
+      instruction,
+      idVerifications,
+      documents,
+      count: transformedInstructions.length,
       computedServerSide: true,
+      directDatabase: true,
       requestId,
       timestamp: new Date().toISOString()
     };
-    
-    console.log(`[${requestId}] Full response:`, {
-      instructionCount: data.instructions?.length || 0,
-      dealCount: data.deals?.length || 0,
-      documentCount: data.documents?.length || 0,
-      idVerificationCount: data.idVerifications?.length || 0
-    });
-    
+
     res.json(transformedData);
-    
+
   } catch (error) {
-    console.log(`[${requestId}] Instructions endpoint error:`, error.message);
+    console.error(`[${requestId}] Direct database instruction fetch failed:`, error);
     res.status(500).json({
-      error: 'Failed to fetch instruction data',
+      error: 'Failed to fetch instruction data from database',
       detail: error.message,
       instructions: [],
+      deals: [],
       count: 0,
       requestId,
       timestamp: new Date().toISOString()

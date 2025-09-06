@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from "react";
+import React, { useEffect, useState, useMemo, useRef, useLayoutEffect, useCallback } from "react";
 import { flushSync } from "react-dom";
 import {
   Stack,
@@ -64,6 +64,7 @@ interface InstructionsProps {
   matters?: Matter[];
   hasActiveMatter?: boolean;
   setIsInMatterOpeningWorkflow?: (inWorkflow: boolean) => void;
+  enquiries?: any[] | null;
 }
 const Instructions: React.FC<InstructionsProps> = ({
   userInitials,
@@ -77,6 +78,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   matters = [],
   hasActiveMatter = false,
   setIsInMatterOpeningWorkflow,
+  enquiries = [],
 }) => {
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigatorActions();
@@ -96,6 +98,107 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   // Flat tab navigation: default to Clients
   const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('pitches');
+  
+  // Unified enquiries data for name mapping (separate from main enquiries)
+  const [unifiedEnquiries, setUnifiedEnquiries] = useState<any[]>([]);
+  
+  // Client name cache for performance optimization
+  const clientNameCache = useMemo(() => new Map<string, { firstName: string; lastName: string }>(), [unifiedEnquiries]);
+
+  /**
+   * Fetch unified enquiries data for name mapping
+   * This combines enquiries from both database sources directly
+   */
+  const fetchUnifiedEnquiries = async () => {
+    try {
+      console.log('🔗 Fetching unified enquiries for name mapping...');
+      
+      // Try the server route directly
+      try {
+        const response = await fetch('/server/enquiries-unified');
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ Fetched ${data.count} unified enquiries from both databases`);
+          setUnifiedEnquiries(data.enquiries || []);
+          return;
+        }
+      } catch (err) {
+        console.log('📝 Unified route not available yet, falling back to direct queries...');
+      }
+
+      // Fallback: Fetch from both sources directly
+      const [mainEnquiries, instructionsData] = await Promise.all([
+        // Main enquiries (helix-core-data via SQL)
+        fetch('/api/enquiries').then(res => res.ok ? res.json() : { enquiries: [] }),
+        // Instructions data (already has ProspectId info)
+        fetch('/api/instructions').then(res => res.ok ? res.json() : { instructions: [] })
+      ]);
+
+      console.log(`📊 Fallback data: ${mainEnquiries.enquiries?.length || 0} main enquiries, ${instructionsData.instructions?.length || 0} instructions`);
+
+      // Combine data sources for name mapping
+      const combinedEnquiries = [
+        ...(mainEnquiries.enquiries || []),
+        // Extract prospect info from instructions - check both deal and instruction level
+        ...(instructionsData.instructions || []).map((inst: any) => {
+          // Try to get ProspectId from deal first, then instruction level
+          const prospectId = inst.deal?.ProspectId || inst.ProspectId;
+          const firstName = inst.FirstName || inst.deal?.FirstName || '';
+          const lastName = inst.LastName || inst.deal?.LastName || '';
+          const email = inst.Email || inst.deal?.LeadClientEmail || '';
+          
+          return {
+            acid: prospectId,
+            first: firstName,
+            last: lastName,
+            email: email,
+            db_source: 'instructions'
+          };
+        }).filter((item: any) => item.acid && (item.first || item.last))
+      ];
+
+      console.log(`✅ Combined ${combinedEnquiries.length} enquiries for name mapping (${mainEnquiries.enquiries?.length || 0} from main + ${instructionsData.instructions?.filter((i: any) => i.deal?.ProspectId || i.ProspectId).length || 0} from instructions)`);
+      
+      setUnifiedEnquiries(combinedEnquiries);
+      
+    } catch (error) {
+      console.error('❌ Error fetching unified enquiries:', error);
+      setUnifiedEnquiries([]);
+    }
+  };
+
+  /**
+   * Lookup client name by ProspectId (which matches ACID in enquiries data)
+   * @param prospectId The ProspectId value to search for
+   * @returns Object with firstName and lastName, or empty strings if not found
+   */
+  const getClientNameByProspectId = useCallback((prospectId: string | number | undefined): { firstName: string; lastName: string } => {
+    if (!prospectId || !unifiedEnquiries || unifiedEnquiries.length === 0) {
+      return { firstName: '', lastName: '' };
+    }
+
+    // Convert prospectId to string for comparison and caching
+    const prospectIdStr = String(prospectId);
+    
+    // Check cache first
+    if (clientNameCache.has(prospectIdStr)) {
+      return clientNameCache.get(prospectIdStr)!;
+    }
+
+    const enquiry = unifiedEnquiries.find((enq: any) => {
+      const enqAcid = enq.acid || enq.ACID || enq.Acid;
+      return String(enqAcid) === prospectIdStr;
+    });
+
+    const result = enquiry ? {
+      firstName: enquiry.first || enquiry.First || enquiry.firstName || enquiry.FirstName || '',
+      lastName: enquiry.last || enquiry.Last || enquiry.lastName || enquiry.LastName || ''
+    } : { firstName: '', lastName: '' };
+    
+    // Cache the result
+    clientNameCache.set(prospectIdStr, result);
+    return result;
+  }, [unifiedEnquiries, clientNameCache]);
 
   const handleRiskAssessmentSave = (risk: any) => {
     setInstructionData(prev =>
@@ -198,6 +301,11 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Admin detection using proper utility
   const isAdmin = isAdminUser(userData?.[0] || null);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  // Fetch unified enquiries data for name mapping on component load
+  useEffect(() => {
+    fetchUnifiedEnquiries();
+  }, []);
   
   // Get effective instruction data based on admin mode
   const effectiveInstructionData = useMemo(() => {
@@ -375,6 +483,13 @@ const Instructions: React.FC<InstructionsProps> = ({
       position: "sticky",
       top: ACTION_BAR_HEIGHT * 2,
       zIndex: 998,
+      // Responsive padding
+      '@media (max-width: 768px)': {
+        padding: "0 16px",
+      },
+      '@media (max-width: 480px)': {
+        padding: "0 12px",
+      },
     });
 
   const useLocalData =
@@ -728,6 +843,15 @@ const Instructions: React.FC<InstructionsProps> = ({
         ? `0 4px 12px ${colours.dark.border}`
         : `0 4px 12px ${colours.light.border}`,
       width: "100%",
+      // Responsive padding
+      '@media (max-width: 768px)': {
+        padding: "12px",
+        paddingBottom: activeTab === "clients" ? "100px" : "12px",
+      },
+      '@media (max-width: 480px)': {
+        padding: "8px",
+        paddingBottom: activeTab === "clients" ? "80px" : "8px",
+      },
     });
 
   const overviewItems = useMemo(() => {
@@ -831,7 +955,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           eid,
           eids,
           documents: docs,
-          prospectId: prospect.prospectId,
+          prospectId: deal?.ProspectId || inst?.ProspectId || prospect.prospectId,
           documentCount: docs ? docs.length : 0,
         };
       });
@@ -885,7 +1009,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           eid: null,
           eids: [],
           documents: deal.documents ?? [],
-          prospectId: prospect.prospectId,
+          prospectId: deal.ProspectId || prospect.prospectId,
           documentCount: deal.documents?.length ?? 0,
         };
       });
@@ -906,7 +1030,35 @@ const Instructions: React.FC<InstructionsProps> = ({
       }
     });
     return Object.values(unique);
+  }, [effectiveInstructionData, enquiries]);
+
+  // Debug logging for input data
+  React.useEffect(() => {
+    console.log('Debug - effectiveInstructionData:', effectiveInstructionData.length, 'prospects');
+    const allDeals = effectiveInstructionData.flatMap(p => p.deals ?? []);
+    console.log('Debug - Total deals in data:', allDeals.length);
+    console.log('Debug - Sample deals:', allDeals.slice(0, 3).map(d => ({
+      dealId: d.DealId,
+      instructionRef: d.InstructionRef,
+      status: d.Status,
+      acid: d.ACID || d.acid || d.Acid
+    })));
   }, [effectiveInstructionData]);
+
+  // Debug logging for pitches
+  React.useEffect(() => {
+    const pitchedItems = overviewItems.filter(item => !item.instruction && item.deal);
+    console.log('Debug - Total overview items:', overviewItems.length);
+    console.log('Debug - Pitched deals (no instruction):', pitchedItems.length);
+    console.log('Debug - Pitched deals details:', pitchedItems.map(item => ({
+      dealId: item.deal?.DealId,
+      status: item.deal?.Status,
+      acid: item.deal?.ACID || item.deal?.acid || item.deal?.Acid,
+      firstName: item.deal?.firstName,
+      lastName: item.deal?.lastName,
+      prospectId: item.prospectId
+    })));
+  }, [overviewItems]);
 
   const selectedOverviewItem = useMemo(
     () =>
@@ -1040,7 +1192,17 @@ const Instructions: React.FC<InstructionsProps> = ({
           let firstName = '';
           let lastName = '';
 
-          if (d.LeadClientEmail) {
+          // First priority: Look up by ProspectId in enquiries data
+          if (d.ProspectId || d.prospectId) {
+            const prospectIdLookup = getClientNameByProspectId(d.ProspectId || d.prospectId);
+            if (prospectIdLookup.firstName || prospectIdLookup.lastName) {
+              firstName = prospectIdLookup.firstName;
+              lastName = prospectIdLookup.lastName;
+            }
+          }
+
+          // Second priority: Use existing email-based lookup if no name found from ACID
+          if ((!firstName && !lastName) && d.LeadClientEmail) {
             const emailLc = d.LeadClientEmail.toLowerCase();
 
             // Look in instruction-level data for a matching client
@@ -1090,7 +1252,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           };
         })
       ),
-    [effectiveInstructionData],
+    [effectiveInstructionData, enquiries],
   );
   const clients: ClientInfo[] = useMemo(() => {
     const map: Record<string, ClientInfo> = {};
@@ -1700,16 +1862,31 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const overviewGridStyle = mergeStyles({
     display: 'grid',
-    gridTemplateColumns: twoColumn ? 'repeat(2, minmax(0,1fr))' : '1fr',
+    gridTemplateColumns: twoColumn ? 'repeat(auto-fit, minmax(350px, 1fr))' : '1fr',
     gap: twoColumn ? '16px' : '8px',
     width: '100%',
     margin: '0 auto',
     boxSizing: 'border-box',
     transition: 'grid-template-columns .25s ease',
+    // Responsive adjustments
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+      gap: '12px',
+    },
+    '@media (max-width: 480px)': {
+      gap: '8px',
+    },
   }, twoColumn && 'two-col-grid');
 
   const overviewItemStyle = mergeStyles({
-    minWidth: 350,
+    minWidth: '280px',
+    width: '100%',
+    '@media (max-width: 768px)': {
+      minWidth: 'unset',
+    },
+    '@media (max-width: 480px)': {
+      minWidth: 'unset',
+    },
   });
 
   const repositionMasonry = React.useCallback(() => {
@@ -1933,64 +2110,88 @@ const Instructions: React.FC<InstructionsProps> = ({
                   (() => {
                     const styleEl = document.createElement('style');
                     styleEl.id = 'instructionsTwoColStyles';
-                    styleEl.textContent = '@media (max-width: 860px){.two-col-grid{grid-template-columns:1fr!important;}}';
+                    styleEl.textContent = `
+                      @media (max-width: 860px) { .two-col-grid { grid-template-columns: 1fr !important; } }
+                      @media (max-width: 768px) { .two-col-grid { gap: 12px !important; } }
+                      @media (max-width: 480px) { .two-col-grid { gap: 8px !important; } }
+                    `;
                     document.head.appendChild(styleEl);
                     return null;
                   })()
                 )}
-        {filteredOverviewItems.filter(item => 
-          // Show only pitched deals (items without instructions)
-          !item.instruction && item.deal
-        ).filter(item => {
-          // Apply pitches status filter
-          if (pitchesStatusFilter === 'All') return true;
-          if (pitchesStatusFilter === 'Open') return String(item.deal?.Status).toLowerCase() !== 'closed';
-          if (pitchesStatusFilter === 'Closed') return String(item.deal?.Status).toLowerCase() === 'closed';
-          return true;
-        }).map((item, idx) => {
-                  const row = Math.floor(idx / 4);
-                  const col = idx % 4;
-                  const animationDelay = row * 0.2 + col * 0.1;
-                  const itemKey = `deal-${item.deal?.DealId}` || idx;
-                  return (
-                    <div key={`instruction-${itemKey}-${selectedInstruction?.InstructionRef === item.instruction?.InstructionRef ? 'selected' : 'unselected'}`} className={overviewItemStyle}>
-                      <InstructionCard
-                        index={idx}
-                        key={`card-${itemKey}-${selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}`}
-                        instruction={item.instruction as any}
-                        deal={(item as any).deal}
-                        deals={item.deals}
-                        clients={item.clients}
-                        risk={(item as any).risk}
-                        eid={(item as any).eid}
-                        eids={(item as any).eids}
-                        compliance={undefined}
-                        documents={item.documents}
-                        payments={(item as any).payments}
-                        prospectId={item.prospectId}
-                        documentCount={item.documentCount ?? 0}
-                        animationDelay={animationDelay}
-                        expanded={overviewItems.length === 1 || selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
-                        selected={selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
-                        onSelect={() => {
-                          // Toggle selection: if already selected, unselect; otherwise select
-                          flushSync(() => {
-                            if (selectedInstruction?.InstructionRef === item.instruction?.InstructionRef) {
-                              setSelectedInstruction(null);
-                            } else {
-                              setSelectedInstruction(item.instruction);
-                            }
-                          });
-                        }}
-                        onToggle={handleCardToggle}
-                        onProofOfIdClick={() =>
-                          handleOpenRiskCompliance(item.instruction?.InstructionRef)
-                        }
-                      />
-                    </div>
-
-                  );
-                })}
+        {(() => {
+          // Get deals that haven't been converted to instructions yet (pure pitches)
+          const pitchedItems = overviewItems.filter(item => 
+            // Show only deals that don't have instructions yet (not converted)
+            !item.instruction && !!item.deal
+          );
+          
+          if (pitchedItems.length === 0) {
+            return (
+              <div style={{ 
+                padding: '40px', 
+                textAlign: 'center', 
+                color: isDarkMode ? '#fff' : '#666',
+                fontSize: '14px',
+                fontFamily: 'Raleway, sans-serif'
+              }}>
+                <div style={{ marginBottom: '16px', fontSize: '16px', fontWeight: 600 }}>
+                  No pitches found
+                </div>
+                <div style={{ opacity: 0.8, lineHeight: 1.5 }}>
+                  No unconverted deals are available. Pitches show deals that haven't been converted to instructions yet.
+                </div>
+              </div>
+            );
+          }
+          
+          return pitchedItems.filter(item => {
+            // Apply pitches status filter
+            if (pitchesStatusFilter === 'All') return true;
+            if (pitchesStatusFilter === 'Open') return String(item.deal?.Status).toLowerCase() !== 'closed';
+            if (pitchesStatusFilter === 'Closed') return String(item.deal?.Status).toLowerCase() === 'closed';
+            return true;
+          }).map((item, idx) => {
+                    const row = Math.floor(idx / 4);
+                    const col = idx % 4;
+                    const animationDelay = row * 0.2 + col * 0.1;
+                    const dealKey = `pitch-${item.deal?.DealId}` || idx;
+                    return (
+                      <div key={`pitch-${dealKey}`} className={overviewItemStyle}>
+                        <InstructionCard
+                          index={idx}
+                          instruction={null} // No instruction - this is a pure pitch/deal
+                          deal={item.deal}
+                          deals={item.deals}
+                          clients={item.clients}
+                          risk={(item as any).risk}
+                          eid={(item as any).eid}
+                          eids={(item as any).eids}
+                          compliance={undefined}
+                          documents={item.documents}
+                          payments={(item as any).payments}
+                          prospectId={item.prospectId}
+                          documentCount={item.documentCount ?? 0}
+                          animationDelay={animationDelay}
+                          expanded={false} // Don't expand pitches by default
+                          selected={false} // Simple selection for pitches
+                          getClientNameByProspectId={getClientNameByProspectId}
+                          onSelect={() => {
+                            // TODO: Implement pitch selection logic
+                            console.log('Pitch selected:', item.deal?.DealId);
+                          }}
+                          onToggle={() => {
+                            // TODO: Implement pitch toggle logic
+                            console.log('Pitch toggled:', item.deal?.DealId);
+                          }}
+                          onProofOfIdClick={() => {
+                            // Not applicable for pitches
+                          }}
+                        />
+                      </div>
+                    );
+                  });
+                })()}
             </div>
           )}
       {activeTab === "clients" && (
@@ -2032,6 +2233,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                         animationDelay={animationDelay}
                         expanded={overviewItems.length === 1 || selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
                         selected={selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
+                        getClientNameByProspectId={getClientNameByProspectId}
                         onSelect={() => {
                           // Toggle selection: if already selected, unselect; otherwise select
                           flushSync(() => {

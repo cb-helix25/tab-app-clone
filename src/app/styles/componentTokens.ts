@@ -6,6 +6,8 @@ import { colours } from './colours';
  * Design tokens that capture the look and feel of common UI components.
  * These values are derived from the sample instruction form styles and can be
  * reused across the application to maintain visual consistency.
+ * 
+ * Enhanced with professional styling tokens for glass morphism and modern design patterns.
  */
 export const componentTokens = {
   stepHeader: {
@@ -98,6 +100,59 @@ export const componentTokens = {
     hover: {
       boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
       transform: 'translateY(-5px)',
+    },
+  },
+
+  /** Professional styling tokens for modern UI components */
+  professional: {
+    glassMorphism: {
+      light: {
+        background: 'rgba(255, 255, 255, 0.85)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.7)',
+      },
+      dark: {
+        background: 'rgba(30, 41, 59, 0.8)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(148, 163, 184, 0.1)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(148, 163, 184, 0.1)',
+      },
+    },
+    gradients: {
+      primary: 'linear-gradient(135deg, #3690CE 0%, #1e40af 100%)',
+      primaryDark: 'linear-gradient(135deg, #1e40af 0%, #3730a3 100%)',
+      success: 'linear-gradient(135deg, #16A34A, #15803d)',
+      warning: 'linear-gradient(135deg, #F59E0B, #D97706)',
+      error: 'linear-gradient(135deg, #DC2626, #B91C1C)',
+      neutral: 'linear-gradient(135deg, #64748b, #475569)',
+      text: {
+        light: 'linear-gradient(135deg, #1a365d, #3690CE)',
+        dark: 'linear-gradient(135deg, #e2e8f0, #60a5fa)',
+      },
+    },
+    shadows: {
+      subtle: '0 4px 6px rgba(0, 0, 0, 0.07)',
+      medium: '0 8px 25px rgba(0, 0, 0, 0.12)',
+      strong: '0 16px 48px rgba(0, 0, 0, 0.15)',
+      glow: '0 0 20px rgba(54, 144, 206, 0.3)',
+      dark: {
+        subtle: '0 4px 6px rgba(0, 0, 0, 0.3)',
+        medium: '0 8px 25px rgba(0, 0, 0, 0.4)',
+        strong: '0 16px 48px rgba(0, 0, 0, 0.5)',
+        glow: '0 0 20px rgba(59, 130, 246, 0.4)',
+      },
+    },
+    transitions: {
+      fast: '0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+      medium: '0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      slow: '0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+    },
+    borderRadius: {
+      small: '8px',
+      medium: '12px',
+      large: '16px',
+      pill: '50px',
     },
   },
 } as const;

@@ -12,9 +12,29 @@
 - ⚠️ **Database**: 45 records with 30 test noise records ready for cleanup
 - ⚠️ **Luke Test**: Health indicator preserved at `HLX-27367-94842`
 
-## Overview
+## Helix Hub v1 - Teams Tab App
 
-Helix Hub v1 is a comprehensive legal services platform built as a Microsoft Teams app. It provides client instruction management, enquiry processing, and workflow automation for legal professionals. The app integrates React with Fluent UI, Azure Functions, and Azure SQL Database to deliver a seamless Teams experience.
+## Quick Start for Developers
+
+### Recent Updates (September 6, 2025)
+- ✅ **React 18 Migration Complete** - Updated to createRoot API
+- ✅ **Console Errors Resolved** - Fixed 404s and performance issues  
+- ✅ **Instructions Tab Optimized** - Corrected logic and performance
+- ✅ **Database Analysis Complete** - Instructions/Deals relationship documented
+
+### Important Documentation
+- **📋 [Instructions Component Guide](docs/QUICKSTART_INSTRUCTIONS.md)** - Fast track for next agent
+- **📊 [Database Analysis](docs/INSTRUCTIONS_DATABASE_ANALYSIS.md)** - Complete technical details
+- **🏗️ [Architecture Analysis](ARCHITECTURE_ANALYSIS.md)** - System overview
+
+### Instructions Tab Status
+The Instructions tab now correctly separates:
+- **Pitches Tab**: 161 unconverted deals (potential clients)
+- **Clients Tab**: 6 actual instructions (converted clients)
+
+## Overview of the Teams Tab App template
+
+The Teams Tab app template is a Hello World app for Microsoft Teams. It can help you get started with your first Teams app and it can be a base for creating more complex apps.
 
 ### Key Features
 - **Instructions Management**: Unified endpoint for client instruction data

@@ -50,6 +50,8 @@ export interface InstructionCardProps {
     PitchedDate?: string;
     PitchedTime?: string;
     AreaOfWork?: string;
+    firstName?: string;
+    lastName?: string;
   };
   prospectId?: number;
   eid?: any;
@@ -64,6 +66,7 @@ export interface InstructionCardProps {
   onClick?: () => void;
   onProofOfIdClick?: () => void;
   animationDelay?: number;
+  getClientNameByProspectId?: (prospectId: string | number | undefined) => { firstName: string; lastName: string };
 }
 
 // Component definition with CopyableText
@@ -158,7 +161,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   payments,
   style,
   onClick,
-  animationDelay = 0
+  animationDelay = 0,
+  getClientNameByProspectId
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -432,6 +436,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     background: `${bgColorToken}`,
     // Subtle visual differences for pitched deals
     opacity: isPitchedDeal ? 0.92 : 1,
+    // Responsive padding
+    '@media (max-width: 768px)': {
+      padding: (nextActionDetails || isPitchedDeal) ? '8px 14px' : '8px 14px',
+    },
+    '@media (max-width: 480px)': {
+      padding: (nextActionDetails || isPitchedDeal) ? '6px 12px' : '6px 12px',
+      borderRadius: 4,
+    },
     '::after': {
       content: '""',
       position: 'absolute',
@@ -453,6 +465,17 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       pointerEvents: 'none',
       transition: 'opacity .3s',
       filter: 'blur(.15px)',
+      // Responsive watermark
+      '@media (max-width: 768px)': {
+        width: 120,
+        right: 8,
+      },
+      '@media (max-width: 480px)': {
+        width: 100,
+        right: 6,
+        top: 6,
+        bottom: 6,
+      },
       zIndex: 0,
     },
     border: `1px solid ${selected ? colours.blue : 
@@ -514,23 +537,45 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, paddingLeft: 0 }}>
         <span style={{ fontWeight: 600, color: isDarkMode ? '#fff' : '#0d2538', lineHeight: 1.2, fontSize: '15px' }}>
           {(() => {
-            const firstName = instruction?.Forename || instruction?.FirstName || instruction?.forename || instruction?.firstName || '';
-            const lastName = instruction?.Surname || instruction?.LastName || instruction?.surname || instruction?.lastName || '';
-            const fullName = instruction?.FullName || instruction?.fullName || instruction?.Name || instruction?.name || '';
-            const company = instruction?.Company || instruction?.CompanyName || instruction?.company || instruction?.companyName || '';
-            
-            if (fullName) return fullName;
-            if (firstName && lastName) return `${firstName} ${lastName}`;
-            if (firstName) return firstName;
-            if (lastName) return lastName;
-            if (company) return company;
-            
-            // For standalone deals without instructions, show prospect ID
-            if (isPitchedDeal) {
-              return (instruction as any)?.prospectId || prospectId;
+            // First try to get client name from enquiries data lookup
+            if (getClientNameByProspectId && prospectId) {
+              const clientName = getClientNameByProspectId(prospectId);
+              if (clientName.firstName || clientName.lastName) {
+                return `${clientName.firstName} ${clientName.lastName}`.trim();
+              }
+            }
+
+            // For pitched deals (no instruction), try names from deal object (ACID lookup)
+            if (isPitchedDeal && deal) {
+              const dealFirstName = deal.firstName || '';
+              const dealLastName = deal.lastName || '';
+              if (dealFirstName || dealLastName) {
+                return `${dealFirstName} ${dealLastName}`.trim();
+              }
+            }
+
+            // For clients with instructions, use instruction data based on client type
+            if (instruction) {
+              const firstName = instruction?.Forename || instruction?.FirstName || instruction?.forename || instruction?.firstName || '';
+              const lastName = instruction?.Surname || instruction?.LastName || instruction?.surname || instruction?.lastName || '';
+              const fullName = instruction?.FullName || instruction?.fullName || instruction?.Name || instruction?.name || '';
+              const company = instruction?.Company || instruction?.CompanyName || instruction?.company || instruction?.companyName || '';
+              
+              // For companies, show company name
+              if (instruction.ClientType === 'Company' && company) {
+                return company;
+              }
+              
+              // For individuals, show personal names
+              if (fullName) return fullName;
+              if (firstName && lastName) return `${firstName} ${lastName}`;
+              if (firstName) return firstName;
+              if (lastName) return lastName;
+              if (company) return company; // Fallback to company name even for individuals
             }
             
-            return 'Client';
+            // Fallback to prospect ID only if no name found
+            return `Client ${prospectId}`;
           })()}
         </span>
         <span style={{ fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9', fontWeight: 500, letterSpacing: 0.5, userSelect: 'all', fontFamily: 'Consolas, Monaco, monospace', padding: '1px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -561,8 +606,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)', fontWeight: 500, marginTop: 6, marginLeft: 2 }}>
         {(() => {
           const company = instruction?.Company || instruction?.CompanyName || instruction?.company || instruction?.companyName;
-          const firstName = instruction?.Forename || instruction?.FirstName || '';
-          const lastName = instruction?.Surname || instruction?.LastName || '';
+          const firstName = instruction?.Forename || instruction?.FirstName || deal?.firstName || '';
+          const lastName = instruction?.Surname || instruction?.LastName || deal?.lastName || '';
           const hasPerson = firstName || lastName || instruction?.FullName || instruction?.fullName;
           if (company && hasPerson) {
             return <CopyableText value={company} label="Company" />;
@@ -589,22 +634,25 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
           border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
           borderRadius: '3px',
-          padding: '8px 14px',
-          marginTop: '6px',
-          marginBottom: '2px'
+          padding: window.innerWidth <= 480 ? '6px 10px' : '8px 14px',
+          marginTop: window.innerWidth <= 480 ? '4px' : '6px',
+          marginBottom: window.innerWidth <= 480 ? '1px' : '2px'
         }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '12px'
+            gap: '12px',
+            flexWrap: window.innerWidth <= 480 ? 'wrap' : 'nowrap'
           }}>
             <div style={{
               fontSize: '11px',
               fontWeight: 500,
               color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)',
               lineHeight: 1.2,
-              flex: 1
+              flex: 1,
+              minWidth: window.innerWidth <= 480 ? '100%' : 'auto',
+              marginBottom: window.innerWidth <= 480 ? '4px' : '0'
             }}>
               {deal?.ServiceDescription || 'Legal Service'}
             </div>

@@ -26,6 +26,7 @@ const bundleRouter = require('./routes/bundle');
 const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 
 const enquiriesRouter = require('./routes/enquiries');
+const enquiriesUnifiedRouter = require('./routes/enquiries-unified');
 const enquiryEmailsRouter = require('./routes/enquiryEmails');
 const pitchesRouter = require('./routes/pitches');
 const mattersRouter = require('./routes/matters');
@@ -74,6 +75,7 @@ app.use('/api/getAllMatters', getAllMattersRouter);
 // app.use('/ccls', express.static(CCL_DIR));
 
 app.use('/api/enquiries', enquiriesRouter);
+app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/matters', mattersRouter);
