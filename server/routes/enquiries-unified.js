@@ -39,34 +39,37 @@ router.get('/', async (req, res) => {
     // Query main enquiries table (helix-core-data)
     const mainEnquiriesQuery = `
       SELECT 
-        id,
-        datetime,
-        stage,
-        claim,
-        poc,
-        pitch,
-        aow,
-        tow,
-        moc,
-        rep,
-        first,
-        last,
-        email,
-        phone,
-        value,
-        notes,
-        rank,
-        rating,
-        acid,
-        card_id,
-        source,
-        url,
-        contact_referrer,
-        company_referrer,
-        gclid,
+        ID,
+        ID as id,
+        Date_Created as datetime,
+        Tags as stage,
+        Value as claim,
+        Point_of_Contact as poc,
+        Area_of_Work as pitch,
+        Area_of_Work as aow,
+        Type_of_Work as tow,
+        Method_of_Contact as moc,
+        Contact_Referrer as rep,
+        First_Name,
+        First_Name as first,
+        Last_Name,
+        Last_Name as last,
+        Email as email,
+        Phone_Number as phone,
+        Value as value,
+        Initial_first_call_notes as notes,
+        Gift_Rank as rank,
+        Rating as rating,
+        ID as acid,
+        ID as card_id,
+        Ultimate_Source as source,
+        Referral_URL as url,
+        Contact_Referrer as contact_referrer,
+        Referring_Company as company_referrer,
+        GCLID as gclid,
         'main' as db_source
       FROM enquiries
-      ORDER BY datetime DESC
+      ORDER BY Date_Created DESC
     `;
 
     // Query instructions database for any additional enquiry data
@@ -105,16 +108,17 @@ router.get('/', async (req, res) => {
       ...instructionsResult.recordset
     ];
 
-    // Remove duplicates based on acid (ProspectId)
+    // Remove duplicates based on id (ProspectId)
     const uniqueEnquiries = [];
-    const seenAcids = new Set();
+    const seenIds = new Set();
     
     for (const enquiry of allEnquiries) {
-      if (enquiry.acid && !seenAcids.has(enquiry.acid)) {
-        seenAcids.add(enquiry.acid);
+      const enquiryId = enquiry.id || enquiry.acid;
+      if (enquiryId && !seenIds.has(enquiryId)) {
+        seenIds.add(enquiryId);
         uniqueEnquiries.push(enquiry);
-      } else if (!enquiry.acid) {
-        // Include enquiries without acid (they can't be duplicates)
+      } else if (!enquiryId) {
+        // Include enquiries without id (they can't be duplicates)
         uniqueEnquiries.push(enquiry);
       }
     }

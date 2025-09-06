@@ -14,6 +14,8 @@ interface UserBubbleProps {
     onAreasChange?: (areas: string[]) => void;
     onUserChange?: (user: UserData) => void;
     availableUsers?: UserData[] | null;
+    onReturnToAdmin?: () => void;
+    originalAdminUser?: UserData | null;
 }
 
 const AVAILABLE_AREAS = [
@@ -30,6 +32,8 @@ const UserBubble: React.FC<UserBubbleProps> = ({
     onAreasChange,
     onUserChange,
     availableUsers,
+    onReturnToAdmin,
+    originalAdminUser,
 }) => {
     const [open, setOpen] = useState(false);
     const [isClickToggled, setIsClickToggled] = useState(false);
@@ -609,6 +613,43 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                             </option>
                                         ))}
                                     </select>
+                                </div>
+                            )}
+
+                            {/* Return to Admin */}
+                            {originalAdminUser && onReturnToAdmin && (
+                                <div style={{ marginBottom: '16px' }}>
+                                    <button
+                                        onClick={() => {
+                                            onReturnToAdmin();
+                                            setOpen(false);
+                                            setIsClickToggled(false);
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            background: '#ef4444',
+                                            color: '#ffffff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = '#dc2626';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = '#ef4444';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                        }}
+                                    >
+                                        ← Return to Admin View
+                                    </button>
                                 </div>
                             )}
 

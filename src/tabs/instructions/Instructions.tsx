@@ -29,6 +29,7 @@ import { useTheme } from "../../app/functionality/ThemeContext";
 import { useNavigatorActions } from "../../app/functionality/NavigatorContext";
 import { colours } from "../../app/styles/colours";
 import { dashboardTokens } from "./componentTokens";
+import DataFlowWorkbench from "../../components/DataFlowWorkbench";
 import InstructionCard from "./InstructionCard";
 
 import RiskComplianceCard from "./RiskComplianceCard";
@@ -103,7 +104,24 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [unifiedEnquiries, setUnifiedEnquiries] = useState<any[]>([]);
   
   // Client name cache for performance optimization
-  const clientNameCache = useMemo(() => new Map<string, { firstName: string; lastName: string }>(), [unifiedEnquiries]);
+  // Enhanced caching for client name resolution
+  const clientNameCache = useMemo(() => {
+    // Clear old cache on component mount to ensure fresh data after fixes
+    localStorage.removeItem('clientNameCache');
+    sessionStorage.removeItem('unifiedEnquiries');
+    sessionStorage.removeItem('unifiedEnquiriesTime');
+    
+    return new Map<string, { firstName: string; lastName: string }>();
+  }, []);
+
+  // Save cache to localStorage whenever it changes
+  const saveClientNameCache = useCallback((cache: Map<string, { firstName: string; lastName: string }>) => {
+    try {
+      localStorage.setItem('clientNameCache', JSON.stringify(Array.from(cache.entries())));
+    } catch (error) {
+      console.warn('Failed to save client name cache to localStorage');
+    }
+  }, []);
 
   /**
    * Fetch unified enquiries data for name mapping
@@ -113,17 +131,42 @@ const Instructions: React.FC<InstructionsProps> = ({
     try {
       console.log('🔗 Fetching unified enquiries for name mapping...');
       
+      // Check if we already have cached data in sessionStorage
+      const cached = sessionStorage.getItem('unifiedEnquiries');
+      const cacheTime = sessionStorage.getItem('unifiedEnquiriesTime');
+      const oneHour = 60 * 60 * 1000; // Extended to 1 hour for better performance
+      
+      if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneHour)) {
+        console.log('📦 Using cached unified enquiries data');
+        const cachedData = JSON.parse(cached);
+        setUnifiedEnquiries(cachedData);
+        return;
+      }
+      
       // Try the server route directly
       try {
-        const response = await fetch('/server/enquiries-unified');
+        const response = await fetch('http://localhost:8080/api/enquiries-unified');
         if (response.ok) {
           const data = await response.json();
           console.log(`✅ Fetched ${data.count} unified enquiries from both databases`);
-          setUnifiedEnquiries(data.enquiries || []);
+          console.log('🔍 Sample unified enquiries data:', data.enquiries?.slice(0, 3));
+          console.log('🔍 Looking for prospect 27671:', data.enquiries?.find((e: any) => 
+            e.ID === '27671' || e.id === '27671' || e.acid === '27671' || e.card_id === '27671'
+          ));
+          const enquiries = data.enquiries || [];
+          setUnifiedEnquiries(enquiries);
+          
+          // Cache the results
+          sessionStorage.setItem('unifiedEnquiries', JSON.stringify(enquiries));
+          sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
           return;
+        } else {
+          console.log(`❌ Unified route failed with status: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.log(`❌ Error details:`, errorText);
         }
       } catch (err) {
-        console.log('📝 Unified route not available yet, falling back to direct queries...');
+        console.log('📝 Unified route not available yet, falling back to direct queries...', err);
       }
 
       // Fallback: Fetch from both sources directly
@@ -161,6 +204,10 @@ const Instructions: React.FC<InstructionsProps> = ({
       
       setUnifiedEnquiries(combinedEnquiries);
       
+      // Cache the fallback results too
+      sessionStorage.setItem('unifiedEnquiries', JSON.stringify(combinedEnquiries));
+      sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
+      
     } catch (error) {
       console.error('❌ Error fetching unified enquiries:', error);
       setUnifiedEnquiries([]);
@@ -173,7 +220,39 @@ const Instructions: React.FC<InstructionsProps> = ({
    * @returns Object with firstName and lastName, or empty strings if not found
    */
   const getClientNameByProspectId = useCallback((prospectId: string | number | undefined): { firstName: string; lastName: string } => {
-    if (!prospectId || !unifiedEnquiries || unifiedEnquiries.length === 0) {
+    if (!prospectId) {
+      return { firstName: '', lastName: '' };
+    }
+
+    // Fast path: Check cache first for immediate response
+    const cached = clientNameCache.get(prospectId.toString());
+    if (cached) {
+      return cached;
+    }
+
+    // If unified enquiries not loaded yet, try to find name in current instruction data
+    if (!unifiedEnquiries || unifiedEnquiries.length === 0) {
+      // Look for the name in the current instruction being displayed
+      const currentInstructionData = effectiveInstructionData || [];
+      const matchingInstruction = currentInstructionData.find((inst: any) => {
+        const instrProspectId = inst.deal?.ProspectId || inst.ProspectId;
+        return instrProspectId?.toString() === prospectId.toString();
+      });
+      
+      if (matchingInstruction) {
+        // Cast to any since instruction data can have various dynamic properties
+        const inst = matchingInstruction as any;
+        const firstName = inst.FirstName || inst.Name?.split(' ')[0] || '';
+        const lastName = inst.LastName || inst.Name?.split(' ')[1] || '';
+        if (firstName || lastName) {
+          const result = { firstName, lastName };
+          // Cache this result in memory and localStorage
+          clientNameCache.set(prospectId.toString(), result);
+          saveClientNameCache(clientNameCache);
+          return result;
+        }
+      }
+      
       return { firstName: '', lastName: '' };
     }
 
@@ -182,23 +261,37 @@ const Instructions: React.FC<InstructionsProps> = ({
     
     // Check cache first
     if (clientNameCache.has(prospectIdStr)) {
-      return clientNameCache.get(prospectIdStr)!;
+      const cached = clientNameCache.get(prospectIdStr);
+      if (cached) {
+        return cached;
+      }
     }
 
     const enquiry = unifiedEnquiries.find((enq: any) => {
-      const enqAcid = enq.acid || enq.ACID || enq.Acid;
-      return String(enqAcid) === prospectIdStr;
+      const enqId = enq.ID || enq.id || enq.acid || enq.ACID || enq.Acid;
+      const match = String(enqId) === prospectIdStr;
+      
+      if (match && prospectIdStr === '27671') {
+        console.log('🎯 Found match for 27671:', enq);
+      }
+      return match;
     });
 
+    if (prospectIdStr === '27671') {
+      console.log('🔍 Searching for 27671 in', unifiedEnquiries.length, 'enquiries');
+      console.log('🔍 Found enquiry for 27671:', enquiry);
+    }
+
     const result = enquiry ? {
-      firstName: enquiry.first || enquiry.First || enquiry.firstName || enquiry.FirstName || '',
-      lastName: enquiry.last || enquiry.Last || enquiry.lastName || enquiry.LastName || ''
+      firstName: enquiry.First_Name || enquiry.first || enquiry.First || enquiry.firstName || enquiry.FirstName || '',
+      lastName: enquiry.Last_Name || enquiry.last || enquiry.Last || enquiry.lastName || enquiry.LastName || ''
     } : { firstName: '', lastName: '' };
     
-    // Cache the result
+    // Cache the result in both memory and localStorage
     clientNameCache.set(prospectIdStr, result);
+    saveClientNameCache(clientNameCache);
     return result;
-  }, [unifiedEnquiries, clientNameCache]);
+  }, [unifiedEnquiries, clientNameCache, saveClientNameCache]);
 
   const handleRiskAssessmentSave = (risk: any) => {
     setInstructionData(prev =>
@@ -296,6 +389,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Debug toggles for admin/localhost
   const [useNewData, setUseNewData] = useState<boolean>(false);
   const [twoColumn, setTwoColumn] = useState<boolean>(false);
+  const [showWorkbench, setShowWorkbench] = useState<boolean>(false);
   
   const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
   // Admin detection using proper utility
@@ -309,10 +403,20 @@ const Instructions: React.FC<InstructionsProps> = ({
   
   // Get effective instruction data based on admin mode
   const effectiveInstructionData = useMemo(() => {
-    if (isAdmin && showAllInstructions && allInstructionData.length > 0) {
-      return allInstructionData;
-    }
-    return instructionData;
+    const result = isAdmin && showAllInstructions && allInstructionData.length > 0 
+      ? allInstructionData 
+      : instructionData;
+    
+    console.log('🔄 effectiveInstructionData updated:', {
+      isAdmin,
+      showAllInstructions,
+      allInstructionDataLength: allInstructionData.length,
+      instructionDataLength: instructionData.length,
+      resultLength: result.length,
+      usingAllData: isAdmin && showAllInstructions && allInstructionData.length > 0
+    });
+    
+    return result;
   }, [isAdmin, showAllInstructions, allInstructionData, instructionData]);
   
   const showDraftPivot = true; // Allow all users to see Document editor
@@ -443,6 +547,10 @@ const Instructions: React.FC<InstructionsProps> = ({
         '::-webkit-scrollbar': {
           display: 'none',
         },
+        '@media (max-width: 768px)': {
+          flexWrap: 'wrap',
+          padding: '10px 16px 12px 16px',
+        }
       },
     });
 
@@ -718,7 +826,14 @@ const Instructions: React.FC<InstructionsProps> = ({
           <>
             {/* Quick Actions Bar with Unified Two-Layer Filter */}
             <div className={quickLinksStyle(isDarkMode)}>
-              <div style={{ display:'flex', alignItems:'center', gap:24, width:'100%' }}>
+              <div style={{ 
+                display:'flex', 
+                alignItems:'center', 
+                gap:24, 
+                width:'100%',
+                flexWrap: 'wrap',
+                minWidth: 0 // Allow shrinking
+              }}>
                 <TwoLayerFilter
                   id="instructions-unified-filter"
                   ariaLabel="Instructions navigation and filtering"
@@ -728,8 +843,11 @@ const Instructions: React.FC<InstructionsProps> = ({
                   onSecondaryChange={handleSecondaryFilterChange}
                   options={filterOptions}
                 />
-                {/* Spacer */}
-                <div style={{ flex: 1 }} />
+                {/* Spacer - only on larger screens */}
+                <div style={{ 
+                  flex: 1,
+                  minWidth: '20px' // Ensure minimum spacing
+                }} />
                 {/* Admin controls (debug) for admin or localhost */}
                 {(isAdmin || isLocalhost) && (
                   <div
@@ -745,10 +863,19 @@ const Instructions: React.FC<InstructionsProps> = ({
                       boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
                       fontSize: 11,
                       fontWeight: 600,
-                      color: isDarkMode ? '#ffe9a3' : '#5d4700'
+                      color: isDarkMode ? '#ffe9a3' : '#5d4700',
+                      flexShrink: 0,
+                      minWidth: 'max-content' // Prevent admin controls from shrinking too much
                     }}
                     title="Admin / debug controls"
                   >
+                    <IconButton
+                      iconProps={{ iconName: 'Flow', style: { fontSize: 16 } }}
+                      title="Data flow workbench"
+                      ariaLabel="Open data flow workbench"
+                      onClick={() => setShowWorkbench(true)}
+                      styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
+                    />
                     <IconButton
                       iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
                       title="Debug API calls"
@@ -776,19 +903,12 @@ const Instructions: React.FC<InstructionsProps> = ({
                     />
                     {isAdmin && (
                       <ToggleSwitch
-                        key={`admin-toggle-${showAllInstructions}`}
                         id="instructions-all-users-toggle"
                         checked={showAllInstructions}
-                        onChange={(checked) => {
-                          console.log('Admin toggle changed:', checked ? 'All Instructions' : 'My Instructions');
-                          // Force synchronous state update
-                          flushSync(() => {
-                            setShowAllInstructions(checked);
-                          });
-                        }}
+                        onChange={setShowAllInstructions}
                         size="sm"
-                        onText="All"
-                        offText="Mine"
+                        onText={`All (${allInstructionData.length})`}
+                        offText={`Mine (${instructionData.length})`}
                         ariaLabel="Toggle between my instructions and all instructions"
                       />
                     )}
@@ -2061,7 +2181,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   return (
     <>
-    <section className="page-section">
+    <section key="instructions-section" className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className={sectionContainerStyle(isDarkMode)}>
         {/* Local development immediate Matter Opening CTA */}
@@ -2546,6 +2666,12 @@ const Instructions: React.FC<InstructionsProps> = ({
           <DefaultButton onClick={handleStartNewMatter} text="Start New" />
         </DialogFooter>
       </Dialog>
+
+      {/* Data Flow Workbench Modal */}
+      <DataFlowWorkbench 
+        isOpen={showWorkbench}
+        onClose={() => setShowWorkbench(false)}
+      />
     </>
   );
 };

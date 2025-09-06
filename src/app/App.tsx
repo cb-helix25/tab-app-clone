@@ -14,7 +14,7 @@ import { hasActiveMatterOpening } from './functionality/matterOpeningUtils';
 import localIdVerifications from '../localData/localIdVerifications.json';
 import localInstructionData from '../localData/localInstructionData.json';
 import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
-import { ADMIN_USERS, isAdminUser } from './admin';
+import { ADMIN_USERS, isAdminUser, hasInstructionsAccess } from './admin';
 
 const proxyBaseUrl = getProxyBaseUrl();
 
@@ -37,6 +37,8 @@ interface AppProps {
   isLocalDev?: boolean;
   onAreaChange?: (areas: string[]) => void;
   onUserChange?: (user: UserData) => void;
+  onReturnToAdmin?: () => void;
+  originalAdminUser?: UserData | null;
   onRefreshEnquiries?: () => Promise<void>;
 }
 
@@ -51,6 +53,8 @@ const App: React.FC<AppProps> = ({
   isLocalDev = false,
   onAreaChange,
   onUserChange,
+  onReturnToAdmin,
+  originalAdminUser,
   onRefreshEnquiries,
 }) => {
   const [activeTab, setActiveTab] = useState('home');
@@ -451,14 +455,14 @@ const App: React.FC<AppProps> = ({
   }, [userInitials, userData]);
 
   // Tabs visible to all users start with the Enquiries tab.
-  // Only show the Instructions tab to admins or when developing locally (hostname === 'localhost').
+  // Instructions tab is available to admins plus BR, LA, SP
   // Only show the Reports tab to admins.
   const tabs: Tab[] = useMemo(() => {
     const isLocalhost = window.location.hostname === 'localhost';
     const currentUser = userData?.[0] || null;
     const isAdmin = isAdminUser(currentUser);
     
-    const showInstructionsTab = isAdmin;
+    const showInstructionsTab = hasInstructionsAccess(currentUser);
     const showReportsTab = isAdmin;
 
     return [
@@ -595,6 +599,8 @@ const App: React.FC<AppProps> = ({
             onAreaChange={onAreaChange}
             teamData={teamData as any}
             onUserChange={onUserChange}
+            onReturnToAdmin={onReturnToAdmin}
+            originalAdminUser={originalAdminUser}
           />
           <Navigator />
           

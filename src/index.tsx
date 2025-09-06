@@ -136,6 +136,7 @@ async function fetchEnquiries(
   dateTo: string,
   userAow: string = '',
   userInitials: string = '',
+  fetchAll: boolean = false // New parameter to fetch all enquiries without filtering
 ): Promise<Enquiry[]> {
   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}-${userAow}`;
   const cached = getCachedData<Enquiry[]>(cacheKey);
@@ -171,23 +172,27 @@ async function fetchEnquiries(
           rawNewEnquiries = newData.enquiries;
         }
         
-        // Filter new enquiries to match user's criteria
+        // Filter new enquiries to match user's criteria (unless fetchAll is true)
         // New space uses Initials matching, old space uses email matching
         const userEmail = email.toLowerCase();
         const userInitialsUpper = userInitials.toUpperCase();
         
-        const filteredNewEnquiries = rawNewEnquiries.filter(enq => {
-          const pocInitials = (enq.Point_of_Contact || enq.poc || '').toUpperCase();
-          const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
+        let filteredNewEnquiries = rawNewEnquiries;
+        
+        if (!fetchAll) {
+          filteredNewEnquiries = rawNewEnquiries.filter(enq => {
+            const pocInitials = (enq.Point_of_Contact || enq.poc || '').toUpperCase();
+            const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
 
-          const matchesInitials = pocInitials === userInitialsUpper;
-          const matchesEmail = pocEmail === userEmail;
-          // Only treat enquiries sent to the team inbox as unclaimed
-          const unclaimedEmails = ['team@helix-law.com'];
-          const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocInitials === 'TEAM';
+            const matchesInitials = pocInitials === userInitialsUpper;
+            const matchesEmail = pocEmail === userEmail;
+            // Only treat enquiries sent to the team inbox as unclaimed
+            const unclaimedEmails = ['team@helix-law.com'];
+            const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocInitials === 'TEAM';
 
-          return matchesInitials || matchesEmail || isUnclaimed;
-        });
+            return matchesInitials || matchesEmail || isUnclaimed;
+          });
+        }
         
         // Convert to Enquiry format if needed
         const newEnquiries = filteredNewEnquiries.map(enq => ({
@@ -569,6 +574,7 @@ const AppWithContext: React.FC = () => {
   const [teamsContext, setTeamsContext] =
     useState<microsoftTeams.Context | null>(null);
   const [userData, setUserData] = useState<UserData[] | null>(null);
+  const [originalAdminUser, setOriginalAdminUser] = useState<UserData | null>(null);
   const [enquiries, setEnquiries] = useState<Enquiry[] | null>(null);
   const [matters, setMatters] = useState<NormalizedMatter[]>([]);
   const [teamData, setTeamData] = useState<TeamData[] | null>(null);
@@ -610,6 +616,11 @@ const AppWithContext: React.FC = () => {
 
   // Allow switching user in production for specific users
   const switchUser = async (newUser: UserData) => {
+    // Store the current admin user if this is the first switch
+    if (!originalAdminUser && userData && userData[0]) {
+      setOriginalAdminUser(userData[0]);
+    }
+
     const normalized: UserData = {
       ...newUser,
       EntraID: (newUser as any)["Entra ID"] || newUser.EntraID,
@@ -623,24 +634,42 @@ const AppWithContext: React.FC = () => {
     
     console.log(`🔄 User switched to: ${fullName} (${normalized.Email})`);
     
+    // Clear localStorage cache when switching users to force fresh data
+    const keysToRemove = Object.keys(localStorage).filter(key => 
+      key.includes('enquiries-') || key.includes('userData-') || key.includes('matters-')
+    );
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    console.log(`🗑️ Cleared ${keysToRemove.length} cache entries for fresh data`);
+    
     try {
       // Fetch matters for new user
       const mattersRes = await fetchAllMatterSources(fullName);
       setMatters(mattersRes);
       
-      // Also fetch enquiries for new user
-      
-      const today = new Date();
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      // Fetch enquiries for new user with extended date range and fresh data
+      const { dateFrom, dateTo } = getDateRange();
       const enquiriesRes = await fetchEnquiries(
         normalized.Email || '',
-        startOfMonth.toISOString().split('T')[0],
-        today.toISOString().split('T')[0]
+        dateFrom,
+        dateTo,
+        normalized.AOW || '',
+        normalized.Initials || ''
       );
       setEnquiries(enquiriesRes);
       
+      console.log(`✅ Loaded ${enquiriesRes.length} enquiries for ${normalized.Email}`);
+      
     } catch (err) {
       console.error('Error fetching data for switched user:', err);
+    }
+  };
+
+  // Return to original admin user
+  const returnToAdmin = async () => {
+    if (originalAdminUser) {
+      console.log(`🔙 Returning to admin user: ${originalAdminUser.FullName}`);
+      await switchUser(originalAdminUser);
+      setOriginalAdminUser(null); // Clear the stored admin user
     }
   };
 
@@ -778,6 +807,8 @@ const AppWithContext: React.FC = () => {
         isLocalDev={useLocalData}
         onAreaChange={updateLocalUserData}
         onUserChange={switchUser}
+        onReturnToAdmin={returnToAdmin}
+        originalAdminUser={originalAdminUser}
         onRefreshEnquiries={refreshEnquiries}
       />
     </>

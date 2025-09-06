@@ -37,6 +37,8 @@ interface CustomTabsProps {
   onAreaChange?: (areas: string[]) => void;
   teamData?: UserData[] | null;
   onUserChange?: (user: UserData) => void;
+  onReturnToAdmin?: () => void;
+  originalAdminUser?: UserData | null;
 }
 
 const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
@@ -79,6 +81,8 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   onAreaChange,
   teamData,
   onUserChange,
+  onReturnToAdmin,
+  originalAdminUser,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -205,6 +209,8 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
           onAreasChange={onAreaChange}
           availableUsers={teamData || undefined}
           onUserChange={onUserChange}
+          onReturnToAdmin={onReturnToAdmin}
+          originalAdminUser={originalAdminUser}
         />
       )}
     </div>

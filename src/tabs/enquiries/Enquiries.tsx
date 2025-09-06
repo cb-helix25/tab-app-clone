@@ -43,7 +43,7 @@ import EnquiryCalls from './EnquiryCalls';
 import EnquiryEmails from './EnquiryEmails';
 import { colours } from '../../app/styles/colours';
 import ToggleSwitch from '../../components/ToggleSwitch';
-import { isAdminUser } from '../../app/admin';
+import { isAdminUser, hasInstructionsAccess } from '../../app/admin';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import UnclaimedEnquiries from './UnclaimedEnquiries';
@@ -173,14 +173,87 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   // Navigation state variables  
   // (declaration moved below, only declare once)
 
+  // Function to fetch all enquiries (unfiltered) for "All" mode
+  const fetchAllEnquiries = useCallback(async () => {
+    try {
+      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      // Call the route directly to get all enquiries
+      const allDataUrl = isLocalDev 
+        ? '/api/enquiries' // Local development route
+        : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData`; // Production route
+      
+      console.log('🌐 Fetching ALL enquiries from:', allDataUrl);
+      
+      const response = await fetch(allDataUrl, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      let rawEnquiries: any[] = [];
+      if (Array.isArray(data)) {
+        rawEnquiries = data;
+      } else if (Array.isArray(data.enquiries)) {
+        rawEnquiries = data.enquiries;
+      }
+      
+      console.log('✅ Fetched all enquiries:', rawEnquiries.length);
+      console.log('📊 All enquiries POC breakdown:', rawEnquiries.reduce((acc: any, enq) => {
+        const poc = enq.Point_of_Contact || enq.poc || 'unknown';
+        acc[poc] = (acc[poc] || 0) + 1;
+        return acc;
+      }, {}));
+      
+      // Convert to normalized format
+      const normalizedEnquiries = rawEnquiries.map((raw: any) => {
+        const sourceType = detectSourceType(raw);
+        return {
+          ...raw,
+          ID: raw.ID || raw.id?.toString(),
+          Touchpoint_Date: raw.Touchpoint_Date || raw.datetime,
+          Point_of_Contact: raw.Point_of_Contact || raw.poc,
+          Area_of_Work: raw.Area_of_Work || raw.aow,
+          Type_of_Work: raw.Type_of_Work || raw.tow,
+          Method_of_Contact: raw.Method_of_Contact || raw.moc,
+          First_Name: raw.First_Name || raw.first,
+          Last_Name: raw.Last_Name || raw.last,
+          Email: raw.Email || raw.email,
+          Phone_Number: raw.Phone_Number || raw.phone,
+          Value: raw.Value || raw.value,
+          Initial_first_call_notes: raw.Initial_first_call_notes || raw.notes,
+          Call_Taker: raw.Call_Taker || raw.rep,
+          __sourceType: sourceType
+        };
+      });
+      
+      setAllEnquiries(normalizedEnquiries);
+      
+      return normalizedEnquiries;
+    } catch (error) {
+      console.error('❌ Failed to fetch all enquiries:', error);
+      return [];
+    }
+  }, []);
+
   // ...existing code...
 
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigatorActions();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
   const [twoColumn, setTwoColumn] = useState<boolean>(false);
-  // Scope toggle (Mine vs All) for claimed enquiries
-  const [showMineOnly, setShowMineOnly] = useState<boolean>(true);
+  // Scope toggle (Mine vs All) for claimed enquiries - default to All for Instructions access users
+  const [showMineOnly, setShowMineOnly] = useState<boolean>(() => {
+    // For Instructions access users (BR, LA, SP), default to showing All enquiries
+    const hasInstructionsAccess = userData?.[0] ? 
+      (userData[0].Initials && ['BR', 'LA', 'SP'].includes(userData[0].Initials.toUpperCase())) : false;
+    return !hasInstructionsAccess; // If has Instructions access, default to false (All), otherwise true (Mine)
+  });
   // Removed pagination states
   // const [currentPage, setCurrentPage] = useState<number>(1);
   // const enquiriesPerPage = 12;
@@ -217,6 +290,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     [userRec.First, userRec.Last].filter(Boolean).join(' ')
   )?.toString() || '';
   const isAdmin = isAdminUser(userData?.[0] || null);
+  const hasInstructionsAndMoreAccess = hasInstructionsAccess(userData?.[0] || null);
   // Debug storage for raw payloads when inspecting
   const [debugRaw, setDebugRaw] = useState<{ legacy?: unknown; direct?: unknown }>({});
   const [debugLoading, setDebugLoading] = useState(false);
@@ -298,6 +372,19 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         filtered = allEnquiries;
       }
       
+      // Debug logging for BR
+      const userEmail = userData?.[0]?.Email?.toLowerCase() || '';
+      if (userEmail.includes('br@') || userEmail.includes('brendan')) {
+        console.log('🗄️ BR DEBUG - Data loading:', {
+          totalAllEnquiries: allEnquiries.length,
+          filteredCount: filtered.length,
+          useNewData,
+          isLocalhost,
+          userEmail,
+          samplePOCs: allEnquiries.slice(0, 10).map(e => e.Point_of_Contact || (e as any).poc)
+        });
+      }
+      
       setDisplayEnquiries(filtered);
     } else {
       setDisplayEnquiries(allEnquiries);
@@ -313,6 +400,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       }
     }
   }, [userData, activeAreaFilter]);
+
+  // Fetch all enquiries when user switches to "All" mode and current dataset is too small
+  useEffect(() => {
+    const userEmail = userData?.[0]?.Email?.toLowerCase() || '';
+    const isBRUser = userEmail.includes('br@') || userEmail.includes('brendan');
+    
+    if (isBRUser && !showMineOnly && displayEnquiries.length <= 1) {
+      console.log('🔄 BR switched to All mode but only has 1 enquiry - fetching complete dataset');
+      fetchAllEnquiries();
+    }
+  }, [showMineOnly, userData, displayEnquiries.length, fetchAllEnquiries]);
 
   const [currentSliderStart, setCurrentSliderStart] = useState<number>(0);
   const [currentSliderEnd, setCurrentSliderEnd] = useState<number>(0);
@@ -623,22 +721,56 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       ? 'ac@helix-law.com' 
       : userEmail;
 
+    // Debug logging for BR
+    if (userEmail.includes('br@') || userEmail.includes('brendan')) {
+      console.log('🐛 BR DEBUG - Enquiries filtering:', {
+        originalUserEmail: userEmail,
+        effectiveUserEmail,
+        isLocalhost,
+        useLocalData,
+        activeState,
+        showMineOnly,
+        totalEnquiriesBeforeFilter: enquiriesInSliderRange.length
+      });
+      
+      // Show sample of all POCs before filtering
+      const allPOCs = enquiriesInSliderRange.slice(0, 20).map(e => 
+        (e.Point_of_Contact || (e as any).poc || '').toLowerCase()
+      );
+      console.log('📧 All POCs in dataset (first 20):', allPOCs);
+      
+      // Count by POC
+      const pocCounts: Record<string, number> = {};
+      enquiriesInSliderRange.forEach(e => {
+        const poc = (e.Point_of_Contact || (e as any).poc || '').toLowerCase();
+        pocCounts[poc] = (pocCounts[poc] || 0) + 1;
+      });
+      console.log('📊 POC counts:', pocCounts);
+    }
+
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
       if (showMineOnly) {
-        
+        console.log('🔍 Filtering for Mine Only - looking for:', effectiveUserEmail);
         filtered = filtered.filter(enquiry => {
           const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
           const matches = effectiveUserEmail ? poc === effectiveUserEmail : false;
+          if (userEmail.includes('br@')) {
+            console.log('📧 Enquiry POC:', poc, 'matches:', matches);
+          }
           return matches;
         });
       } else {
-        
+        console.log('🌍 Filtering for All Claimed enquiries');
         filtered = filtered.filter(enquiry => {
           const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
           // Exclude unclaimed placeholder emails
           const isUnclaimed = unclaimedEmails.includes(poc);
-          return poc && !isUnclaimed; // any real claimed enquiry
+          const keep = poc && !isUnclaimed;
+          if (userEmail.includes('br@') && keep) {
+            console.log('✅ Keeping claimed enquiry with POC:', poc);
+          }
+          return keep; // any real claimed enquiry
         });
       }
     } else if (activeState === 'Claimable') {
@@ -699,6 +831,19 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       );
     }
     
+    // Final debug logging for BR
+    if (userEmail.includes('br@') || userEmail.includes('brendan')) {
+      console.log('🎯 BR DEBUG - Final filtered results:', {
+        finalCount: filtered.length,
+        activeState,
+        showMineOnly,
+        searchTerm: searchTerm.trim(),
+        activeAreaFilter
+      });
+      if (filtered.length > 0) {
+        console.log('📋 Sample enquiry POCs:', filtered.slice(0, 5).map(e => e.Point_of_Contact || (e as any).poc));
+      }
+    }
     
     return filtered;
   }, [
@@ -1206,6 +1351,20 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 data-tooltip="alex, luke, cass"
               />
               <ToggleSwitch id="enquiries-new-data-toggle" checked={useNewData} onChange={setUseNewData} size="sm" onText="New" offText="Legacy" ariaLabel="Toggle dataset between legacy and new" />
+            </div>
+          )}
+          
+          {hasInstructionsAndMoreAccess && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '2px 10px 2px 6px', height: 40, borderRadius: 12,
+                background: isDarkMode ? '#4a5a12' : '#e8f4d0',
+                border: isDarkMode ? '1px solid #6c801d' : '1px solid #a6c56a',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 11, fontWeight: 600, color: isDarkMode ? '#a3ff9e' : '#004750'
+              }}
+              title="Enhanced access - Instructions team"
+            >
+              <span style={{ fontSize: 10, fontWeight: 600, marginRight: 6 }}>Scope:</span>
               <ToggleSwitch id="enquiries-scope-toggle" checked={showMineOnly} onChange={setShowMineOnly} size="sm" onText="Mine" offText="All" ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries" />
             </div>
           )}
