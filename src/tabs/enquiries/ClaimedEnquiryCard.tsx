@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Text, Icon } from '@fluentui/react';
+import { Text, Icon, TextField, DefaultButton, PrimaryButton } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { Enquiry } from '../../app/functionality/types';
 import { useTheme } from '../../app/functionality/ThemeContext';
@@ -19,6 +19,9 @@ interface Props {
   onSelect: (enquiry: Enquiry, multi?: boolean) => void;
   onRate: (id: string) => void;
   onPitch?: (enquiry: Enquiry) => void;
+  onEdit?: (enquiry: Enquiry) => void;
+  // Allow async handlers
+  onAreaChange?: (enquiryId: string, newArea: string) => void | Promise<void>;
   isLast?: boolean;
   isPrimarySelected?: boolean;
   selected?: boolean;
@@ -36,6 +39,8 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
   onSelect,
   onRate,
   onPitch,
+  onEdit,
+  onAreaChange,
   isLast,
   selected = false,
   isPrimarySelected = false,
@@ -44,8 +49,20 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
 }) => {
   const { isDarkMode } = useTheme();
   const [showActions, setShowActions] = useState(false);
+  const [clickedForActions, setClickedForActions] = useState(false);
   const [hasAnimatedActions, setHasAnimatedActions] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isEnteringEdit, setIsEnteringEdit] = useState(false);
+  const [isExitingEdit, setIsExitingEdit] = useState(false);
+  const [editData, setEditData] = useState({
+    First_Name: enquiry.First_Name || '',
+    Last_Name: enquiry.Last_Name || '',
+    Email: enquiry.Email || '',
+    Value: enquiry.Value || '',
+    Initial_first_call_notes: enquiry.Initial_first_call_notes || ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
   // Removed inline pitch builder modal usage; pitch now handled by parent detail view
   const clampRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -68,6 +85,95 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
     return s.trim();
   };
 
+  // Check if current user can edit this enquiry (only owner can edit)
+  const userEmail = userData?.[0]?.Email?.toLowerCase() || '';
+  const enquiryOwner = (enquiry.Point_of_Contact || '').toLowerCase();
+  const canEdit = onEdit && userEmail && enquiryOwner === userEmail;
+
+  const handleEditClick = () => {
+    setIsEnteringEdit(true);
+    setIsExitingEdit(false);
+    setExpandedNotes(true); // Always expand notes when editing
+    
+    // Smooth transition into edit mode
+    setTimeout(() => {
+      setIsEditing(true);
+      setIsEnteringEdit(false);
+    }, 150);
+    
+    // Reset edit data to current enquiry values
+    setEditData({
+      First_Name: enquiry.First_Name || '',
+      Last_Name: enquiry.Last_Name || '',
+      Email: enquiry.Email || '',
+      Value: enquiry.Value || '',
+      Initial_first_call_notes: enquiry.Initial_first_call_notes || ''
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setIsExitingEdit(true);
+    
+    // Smooth transition out of edit mode
+    setTimeout(() => {
+      setIsEditing(false);
+      setIsEnteringEdit(false);
+      setIsExitingEdit(false);
+    }, 150);
+    
+    setEditData({
+      First_Name: enquiry.First_Name || '',
+      Last_Name: enquiry.Last_Name || '',
+      Email: enquiry.Email || '',
+      Value: enquiry.Value || '',
+      Initial_first_call_notes: enquiry.Initial_first_call_notes || ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!onEdit) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Prepare updates - only include changed fields
+      const updates: any = {};
+      if (editData.First_Name !== enquiry.First_Name) updates.First_Name = editData.First_Name.trim();
+      if (editData.Last_Name !== enquiry.Last_Name) updates.Last_Name = editData.Last_Name.trim();
+      if (editData.Email !== enquiry.Email) updates.Email = editData.Email.trim();
+      if (editData.Value !== enquiry.Value) updates.Value = editData.Value.trim();
+      if (editData.Initial_first_call_notes !== enquiry.Initial_first_call_notes) {
+        updates.Initial_first_call_notes = editData.Initial_first_call_notes.trim();
+      }
+
+      if (Object.keys(updates).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
+      // Call the parent's onEdit handler which will handle the API call
+      await onEdit({ ...enquiry, ...updates });
+      
+      // Smooth transition out of edit mode
+      setIsExitingEdit(true);
+      setTimeout(() => {
+        setIsEditing(false);
+        setIsEnteringEdit(false);
+        setIsExitingEdit(false);
+      }, 150);
+      
+    } catch (error) {
+      console.error('Failed to save changes:', error);
+      // Keep editing mode on error
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFieldChange = (field: keyof typeof editData, value: string) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
+  };
+
   const areaColor = (() => {
     switch (enquiry.Area_of_Work?.toLowerCase()) {
       case 'commercial': return colours.blue;
@@ -79,7 +185,7 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
     }
   })();
 
-  const isCardClickable = hasNotes && (isOverflowing || !expandedNotes); // allow click to expand notes when truncated
+  const isCardClickable = hasNotes && (isOverflowing || !expandedNotes) && !isEditing && !isEnteringEdit && !isExitingEdit;
   const svgMark = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" preserveAspectRatio="xMidYMid meet"><g fill="currentColor" opacity="0.22"><path d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/></g></svg>');
   const bgColorToken = isDarkMode ? '#1f2732' : '#ffffff';
   // Increased opacity for stronger visibility (previous 0.035 / 0.06)
@@ -114,22 +220,22 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
       filter: 'blur(.15px)',
   zIndex: 0,
     },
-    border: `1px solid ${selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
+    border: `1px solid ${isEditing || isEnteringEdit ? colours.blue : (selected || clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'))}`,
     boxShadow: isDarkMode
-      ? '0 4px 16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04)'
-      : '0 4px 14px rgba(33,56,82,0.10)',
+      ? `0 4px 16px rgba(0,0,0,${isEditing || isEnteringEdit ? '0.5' : '0.4'}), inset 0 0 0 1px rgba(255,255,255,${isEditing || isEnteringEdit ? '0.08' : '0.04'})`
+      : `0 4px 14px rgba(33,56,82,${isEditing || isEnteringEdit ? '0.15' : '0.10'})`,
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
     fontFamily: 'Raleway, sans-serif',
     cursor: isCardClickable ? 'pointer' : 'default',
-    transition: 'border-color .2s, transform .15s',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     marginBottom: !isLast ? 4 : 0,
     overflow: 'hidden', // ensure left accent clips to rounded corners
     borderLeftWidth: 2,
     borderLeftStyle: 'solid',
     selectors: {
-      ':hover': isCardClickable ? { transform: 'translateY(-2px)', borderColor: selected ? colours.blue : colours.highlight } : { borderColor: selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)') },
+      ':hover': isCardClickable ? { transform: 'translateY(-2px)', borderColor: selected || clickedForActions ? colours.blue : colours.highlight } : { borderColor: selected || clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)') },
       ':active': isCardClickable ? { transform: 'translateY(-1px)' } : {},
     },
   });
@@ -138,7 +244,8 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
     { key: 'pitch', icon: 'Send', label: 'Pitch', onClick: () => { onPitch ? onPitch(enquiry) : onSelect(enquiry); } },
     { key: 'call', icon: 'Phone', label: 'Call', onClick: () => enquiry.Phone_Number && (window.location.href = `tel:${enquiry.Phone_Number}`) },
     { key: 'email', icon: 'Mail', label: 'Email', onClick: () => enquiry.Email && (window.location.href = `mailto:${enquiry.Email}?subject=Your%20Enquiry&bcc=1day@followupthen.com`) },
-    { key: 'rate', icon: enquiry.Rating ? (enquiry.Rating === 'Poor' ? 'DislikeSolid' : enquiry.Rating === 'Neutral' ? 'Like' : 'LikeSolid') : 'Like', label: enquiry.Rating || 'Rate', onClick: () => onRate(enquiry.ID) },
+    { key: 'rate', icon: 'Like', label: 'Rate', onClick: () => onRate(enquiry.ID) },
+    ...(canEdit && !isEditing ? [{ key: 'edit', icon: 'Edit', label: 'Edit', onClick: handleEditClick }] : []),
   ];
 
   return (
@@ -153,8 +260,12 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
           setShowActions(true); setHasAnimatedActions(true);
         } else setShowActions(true);
       }}
-      onMouseLeave={() => { if (!selected) setShowActions(false); }}
+      onMouseLeave={() => { if (!selected && !clickedForActions) setShowActions(false); }}
       onClick={(e) => {
+        // Toggle clicked state for actions visibility
+        setClickedForActions(!clickedForActions);
+        setShowActions(!clickedForActions);
+        
         if (isCardClickable) {
           // Expand notes if truncated; if already expanded do nothing further
           if (!expandedNotes) {
@@ -184,97 +295,544 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
       {/* Left accent bar */}
       <span style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, background: areaColor, opacity: .95, pointerEvents: 'none' }} />
 
-      {/* Top-right badge component */}
-      <EnquiryBadge 
-        enquiry={enquiry} 
-        claimer={claimer} 
-        isClaimed={true}
-        showPulse={false}
-      />      {/* Name + ID inline */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, paddingLeft: onToggleSelect ? 26 : 0 }}>
-        <Text variant="medium" styles={{ root: { fontWeight: 600, color: isDarkMode ? '#fff' : '#0d2538', lineHeight: 1.2 } }}>
-          {(enquiry.First_Name || '') + ' ' + (enquiry.Last_Name || '')}
-        </Text>
+      {/* Area badge - redesigned for cleaner integration */}
+      <div style={{
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        zIndex: 2
+      }}>
+        <EnquiryBadge 
+          enquiry={enquiry}
+          onAreaChange={onAreaChange ? (enquiryId, newArea) => onAreaChange(enquiryId, newArea) : undefined}
+        />
+      </div>
+
+      {/* Name + ID inline */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 10, 
+        marginTop: 8, 
+        paddingLeft: onToggleSelect ? 26 : 0,
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: isExitingEdit ? 0.7 : 1,
+        transform: isEnteringEdit ? 'translateY(-2px)' : 'translateY(0)'
+      }}>
+        {(isEditing && !isExitingEdit) ? (
+          <div style={{ 
+            display: 'flex', 
+            gap: 8, 
+            flex: 1,
+            opacity: isEnteringEdit ? 0 : 1,
+            transform: isEnteringEdit ? 'translateY(4px)' : 'translateY(0)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s'
+          }}>
+            <TextField
+              value={editData.First_Name}
+              onChange={(_, value) => handleFieldChange('First_Name', value || '')}
+              placeholder="First name"
+              disabled={isSaving}
+              styles={{
+                root: { 
+                  flex: 1,
+                  transition: 'all 0.2s ease-in-out'
+                },
+                fieldGroup: {
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  padding: 0,
+                  height: 'auto',
+                  minHeight: 'auto',
+                  borderRadius: 6,
+                  transition: 'all 0.2s ease-in-out'
+                },
+                field: {
+                  padding: '8px 12px',
+                  color: isDarkMode ? '#fff' : '#0d2538',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
+                  borderRadius: 6,
+                  background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
+                  transition: 'all 0.2s ease-in-out',
+                  selectors: {
+                    ':focus': {
+                      borderColor: colours.blue,
+                      boxShadow: `0 0 0 2px ${colours.blue}20`,
+                      background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                    },
+                    ':hover': {
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)',
+                      background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                    }
+                  }
+                }
+              }}
+            />
+            <TextField
+              value={editData.Last_Name}
+              onChange={(_, value) => handleFieldChange('Last_Name', value || '')}
+              placeholder="Last name"
+              disabled={isSaving}
+              styles={{
+                root: { 
+                  flex: 1,
+                  transition: 'all 0.2s ease-in-out'
+                },
+                fieldGroup: {
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  padding: 0,
+                  height: 'auto',
+                  minHeight: 'auto',
+                  borderRadius: 6,
+                  transition: 'all 0.2s ease-in-out'
+                },
+                field: {
+                  padding: '8px 12px',
+                  color: isDarkMode ? '#fff' : '#0d2538',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
+                  borderRadius: 6,
+                  background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
+                  transition: 'all 0.2s ease-in-out',
+                  selectors: {
+                    ':focus': {
+                      borderColor: colours.blue,
+                      boxShadow: `0 0 0 2px ${colours.blue}20`,
+                      background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                    },
+                    ':hover': {
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)',
+                      background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+        ) : (
+          <Text variant="medium" styles={{ 
+            root: { 
+              fontWeight: 600, 
+              color: isDarkMode ? '#fff' : '#0d2538', 
+              lineHeight: 1.2,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              opacity: isEnteringEdit ? 0.7 : 1
+            } 
+          }}>
+            {(enquiry.First_Name || '') + ' ' + (enquiry.Last_Name || '')}
+          </Text>
+        )}
         {enquiry.ID && (
-          <span style={{ fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9', fontWeight: 500, letterSpacing: 0.5, userSelect: 'all', fontFamily: 'Consolas, Monaco, monospace', padding: '1px 6px' }}>ID {enquiry.ID}</span>
+          <span style={{ 
+            fontSize: 11, 
+            color: isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9', 
+            fontWeight: 500, 
+            letterSpacing: 0.5, 
+            userSelect: 'all', 
+            fontFamily: 'Consolas, Monaco, monospace', 
+            padding: '1px 6px',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            opacity: isEnteringEdit ? 0.7 : 1
+          }}>ID {enquiry.ID}</span>
         )}
       </div>
 
       {/* Value & Company */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)', fontWeight: 500, marginTop: 6, marginLeft: onToggleSelect ? 26 : 2 }}>
-        {enquiry.Value && <span style={{ fontWeight: 600 }}>{enquiry.Value}</span>}
-        {enquiry.Company && <span>{enquiry.Company}</span>}
-        {enquiry.Email && <span style={{ cursor: 'copy' }} onClick={e => { e.stopPropagation(); navigator?.clipboard?.writeText(enquiry.Email); }}>{enquiry.Email}</span>}
-        {enquiry.Phone_Number && <span style={{ cursor: 'copy' }} onClick={e => { e.stopPropagation(); navigator?.clipboard?.writeText(enquiry.Phone_Number!); }}>{enquiry.Phone_Number}</span>}
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: 12, 
+        fontSize: 11, 
+        color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)', 
+        fontWeight: 500, 
+        marginTop: 6, 
+        marginLeft: onToggleSelect ? 26 : 2,
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: isExitingEdit ? 0.7 : 1,
+        transform: isEnteringEdit ? 'translateY(-2px)' : 'translateY(0)'
+      }}>
+        {(isEditing && !isExitingEdit) ? (
+          <div style={{ 
+            display: 'flex', 
+            gap: 8, 
+            flex: 1, 
+            flexWrap: 'wrap',
+            opacity: isEnteringEdit ? 0 : 1,
+            transform: isEnteringEdit ? 'translateY(4px)' : 'translateY(0)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.2s'
+          }}>
+            <TextField
+              value={editData.Value}
+              onChange={(_, value) => handleFieldChange('Value', value || '')}
+              placeholder="Value (e.g. £10,000)"
+              disabled={isSaving}
+              styles={{
+                root: { 
+                  minWidth: 120,
+                  transition: 'all 0.2s ease-in-out'
+                },
+                fieldGroup: {
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  height: 'auto',
+                  minHeight: 'auto',
+                  borderRadius: 6
+                },
+                field: {
+                  padding: '6px 10px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
+                  borderRadius: 6,
+                  background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
+                  color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)',
+                  transition: 'all 0.2s ease-in-out',
+                  selectors: {
+                    ':focus': {
+                      borderColor: colours.blue,
+                      boxShadow: `0 0 0 2px ${colours.blue}20`,
+                      background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                    },
+                    ':hover': {
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)',
+                      background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                    }
+                  }
+                }
+              }}
+            />
+            <TextField
+              value={editData.Email}
+              onChange={(_, value) => handleFieldChange('Email', value || '')}
+              placeholder="Email address"
+              disabled={isSaving}
+              type="email"
+              styles={{
+                root: { 
+                  minWidth: 180,
+                  flex: 1,
+                  transition: 'all 0.2s ease-in-out'
+                },
+                fieldGroup: {
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  height: 'auto',
+                  minHeight: 'auto',
+                  borderRadius: 6
+                },
+                field: {
+                  padding: '6px 10px',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
+                  borderRadius: 6,
+                  background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
+                  color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)',
+                  transition: 'all 0.2s ease-in-out',
+                  selectors: {
+                    ':focus': {
+                      borderColor: colours.blue,
+                      boxShadow: `0 0 0 2px ${colours.blue}20`,
+                      background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                    },
+                    ':hover': {
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)',
+                      background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+        ) : (
+          <>
+            {enquiry.Value && <span style={{ fontWeight: 600, transition: 'all 0.3s ease' }}>{enquiry.Value}</span>}
+            {enquiry.Company && <span style={{ transition: 'all 0.3s ease' }}>{enquiry.Company}</span>}
+            {enquiry.Email && <span style={{ cursor: 'copy', transition: 'all 0.3s ease' }} onClick={e => { e.stopPropagation(); navigator?.clipboard?.writeText(enquiry.Email); }}>{enquiry.Email}</span>}
+          </>
+        )}
+        {enquiry.Phone_Number && <span style={{ cursor: 'copy', transition: 'all 0.3s ease' }} onClick={e => { e.stopPropagation(); navigator?.clipboard?.writeText(enquiry.Phone_Number!); }}>{enquiry.Phone_Number}</span>}
       </div>
 
       {/* Notes clamp */}
-      {hasNotes && (
-        <div style={{ marginTop: 6, marginBottom: 4, paddingLeft: onToggleSelect ? 26 : 0 }}>
-          {expandedNotes ? (
-            <div ref={clampRef} style={{ transition: 'max-height 0.32s cubic-bezier(.4,0,.2,1)', maxHeight: 1000, overflow: 'visible', fontSize: 11, lineHeight: 1.4, color: isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.75)' }}>
+      {(hasNotes || isEditing) && (
+        <div style={{ 
+          marginTop: 6, 
+          marginBottom: 4, 
+          paddingLeft: onToggleSelect ? 26 : 0,
+          transition: 'all 0.3s ease',
+          opacity: isExitingEdit ? 0.7 : 1
+        }}>
+          {(isEditing && !isExitingEdit) ? (
+            <div style={{
+              opacity: isEnteringEdit ? 0 : 1,
+              transition: 'opacity 0.4s ease 0.2s'
+            }}>
+              <TextField
+                value={editData.Initial_first_call_notes}
+                onChange={(_, value) => handleFieldChange('Initial_first_call_notes', value || '')}
+                placeholder="Initial call notes..."
+                disabled={isSaving}
+                multiline
+                rows={4}
+                autoAdjustHeight
+                styles={{
+                  root: { 
+                    width: '100%',
+                    transition: 'all 0.2s ease-in-out'
+                  },
+                  fieldGroup: {
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
+                    borderRadius: 8,
+                    background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
+                    padding: 8,
+                    transition: 'all 0.2s ease-in-out',
+                    selectors: {
+                      ':focus-within': {
+                        borderColor: colours.blue,
+                        boxShadow: `0 0 0 2px ${colours.blue}20`,
+                        background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                      },
+                      ':hover': {
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)',
+                        background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                      }
+                    }
+                  },
+                  field: {
+                    fontSize: 11,
+                    lineHeight: '1.5',
+                    color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    minHeight: 60,
+                    resize: 'vertical' as const,
+                    fontFamily: 'inherit',
+                    transition: 'all 0.2s ease-in-out'
+                  }
+                }}
+              />
+            </div>
+          ) : expandedNotes ? (
+            <div 
+              ref={clampRef} 
+              style={{ 
+                transition: 'all 0.3s ease', 
+                maxHeight: 1000, 
+                overflow: 'visible', 
+                fontSize: 11, 
+                lineHeight: '1.5', 
+                color: isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.75)',
+                whiteSpace: 'pre-wrap', // Preserves line breaks and wrapping
+                wordWrap: 'break-word', // Prevents long words from overflowing
+                fontFamily: 'inherit'
+              }}
+            >
               {normalizeNotes(enquiry.Initial_first_call_notes || '')}
             </div>
           ) : (
             <div style={{ position: 'relative' }}>
-              <div ref={clampRef} style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'pre-line', transition: 'max-height 0.32s cubic-bezier(.4,0,.2,1)', maxHeight: 57, fontSize: 11, lineHeight: 1.4, color: isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.75)' }}>
+              <div 
+                ref={clampRef} 
+                style={{ 
+                  display: '-webkit-box', 
+                  WebkitLineClamp: 3, 
+                  WebkitBoxOrient: 'vertical', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'pre-wrap', // Preserves line breaks
+                  wordWrap: 'break-word', // Prevents overflow
+                  transition: 'all 0.3s ease', 
+                  maxHeight: 57, 
+                  fontSize: 11, 
+                  lineHeight: '1.5', 
+                  color: isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.75)',
+                  fontFamily: 'inherit'
+                }}
+              >
                 {normalizeNotes(enquiry.Initial_first_call_notes || '')}
               </div>
               {isOverflowing && (
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 18, background: isDarkMode ? 'linear-gradient(to bottom, rgba(31,39,50,0), rgba(31,39,50,0.9))' : 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.95))', pointerEvents: 'none' }} />
+                <div style={{ 
+                  position: 'absolute', 
+                  bottom: 0, 
+                  left: 0, 
+                  right: 0, 
+                  height: 18, 
+                  background: isDarkMode ? 'linear-gradient(to bottom, rgba(31,39,50,0), rgba(31,39,50,0.95))' : 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.95))', 
+                  pointerEvents: 'none',
+                  transition: 'opacity 0.3s ease'
+                }} />
               )}
             </div>
           )}
-          {(isOverflowing || (expandedNotes && isOverflowing)) && (
+          {(isOverflowing || (expandedNotes && isOverflowing)) && !isEditing && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setExpandedNotes(v => !v); }}
               aria-expanded={expandedNotes}
               aria-label={expandedNotes ? 'Collapse notes' : 'Expand notes'}
-              style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: '#7a869a', fontSize: 15, marginLeft: 2, marginTop: 2, background: 'transparent', border: 'none', padding: 2 }}
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                cursor: 'pointer', 
+                color: '#7a869a', 
+                fontSize: 15, 
+                marginLeft: 2, 
+                marginTop: 4, 
+                background: 'transparent', 
+                border: 'none', 
+                padding: 4,
+                borderRadius: 4,
+                transition: 'all 0.2s ease-in-out'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = colours.blue;
+                e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#7a869a';
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <Icon iconName="ChevronDown" styles={{ root: { transition: 'transform 0.32s cubic-bezier(.4,0,.2,1)', transform: expandedNotes ? 'rotate(-180deg)' : 'rotate(0deg)', fontSize: 15, color: '#7a869a' } }} />
+              <Icon iconName="ChevronDown" styles={{ 
+                root: { 
+                  transition: 'all 0.3s ease', 
+                  transform: expandedNotes ? 'rotate(-180deg)' : 'rotate(0deg)', 
+                  fontSize: 15, 
+                  color: 'inherit'
+                } 
+              }} />
             </button>
           )}
         </div>
       )}
 
       {/* Action buttons (cascade) */}
-      <div style={{ display: 'flex', flexDirection: 'column', marginTop: 6, transition: 'max-height 0.35s cubic-bezier(.4,0,.2,1), padding 0.35s cubic-bezier(.4,0,.2,1)', maxHeight: showActions || selected ? 70 : 0, paddingTop: showActions || selected ? 4 : 0, paddingBottom: showActions || selected ? 8 : 0, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {actionButtons.map((btn, idx) => {
-            const delay = (showActions || selected) ? (!hasAnimatedActions ? 120 + idx * 70 : idx * 70) : (actionButtons.length - 1 - idx) * 65;
-            const isRate = btn.key === 'rate';
-            const isPitch = btn.key === 'pitch';
-            return (
-              <button
-                key={btn.key}
-                onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
-                className={mergeStyles({
-                  background: isPitch ? colours.highlight : 'transparent',
-                  color: isPitch ? '#fff' : (isRate && enquiry.Rating ? (enquiry.Rating === 'Good' ? colours.blue : enquiry.Rating === 'Neutral' ? colours.grey : colours.cta) : colours.greyText),
-                  border: `1.5px solid ${isPitch ? colours.highlight : 'transparent'}`,
-                  padding: '6px 14px',
-                  borderRadius: 20,
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        marginTop: 6, 
+        transition: 'all 0.4s cubic-bezier(.4,0,.2,1)', 
+        maxHeight: (showActions || selected || clickedForActions || isEditing) ? (isEditing ? 140 : 80) : 0, 
+        paddingTop: (showActions || selected || clickedForActions || isEditing) ? 8 : 0, 
+        paddingBottom: (showActions || selected || clickedForActions || isEditing) ? 8 : 0, 
+        overflow: 'hidden',
+        opacity: isExitingEdit ? 0.7 : 1,
+        transform: isEnteringEdit ? 'translateY(-2px)' : 'translateY(0)'
+      }}>
+        
+        {(isEditing && !isExitingEdit) ? (
+          /* Edit mode buttons */
+          <div style={{ 
+            display: 'flex', 
+            gap: 8, 
+            justifyContent: 'flex-end', 
+            paddingTop: 8,
+            opacity: isEnteringEdit ? 0 : 1,
+            transform: isEnteringEdit ? 'translateY(6px) scale(0.95)' : 'translateY(0) scale(1)',
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.3s'
+          }}>
+            <DefaultButton
+              text="Cancel"
+              onClick={(e) => { e.stopPropagation(); handleCancelEdit(); }}
+              disabled={isSaving}
+              styles={{
+                root: {
+                  minWidth: 60,
+                  height: 28,
                   fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  opacity: showActions || selected ? 1 : 0,
-                  transform: showActions || selected ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
-                  transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s, border-radius .35s cubic-bezier(.4,0,.2,1)',
-                  transitionDelay: `${delay}ms`,
-                  selectors: {
-                    ':hover': { background: isPitch ? colours.blue : '#f4f6f8', color: isPitch ? '#fff' : colours.blue, borderRadius: 6 },
-                    ':active': { background: isPitch ? colours.blue : '#e3f1fb', color: isPitch ? '#fff' : colours.blue, borderRadius: 6, transform: 'scale(0.95)' },
-                  },
-                })}
-              >
-                <Icon iconName={btn.icon} styles={{ root: { fontSize: 12, marginRight: 4 } }} />
-                {btn.label}
-              </button>
-            );
-          })}
-        </div>
+                  borderRadius: 4,
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}`,
+                  background: 'transparent',
+                  color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)'
+                }
+              }}
+            />
+            <PrimaryButton
+              text={isSaving ? 'Saving...' : 'Save'}
+              onClick={(e) => { e.stopPropagation(); handleSaveEdit(); }}
+              disabled={isSaving}
+              styles={{
+                root: {
+                  minWidth: 60,
+                  height: 28,
+                  fontSize: 11,
+                  borderRadius: 4,
+                  background: colours.blue,
+                  border: 'none'
+                }
+              }}
+            />
+          </div>
+        ) : (
+          /* Regular action buttons - unified badge-style design */
+          <div style={{ 
+            display: 'flex', 
+            gap: 6, 
+            flexWrap: 'wrap',
+            opacity: isEnteringEdit ? 0.7 : 1,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}>
+            {actionButtons.map((btn, idx) => {
+              const delay = (showActions || selected || clickedForActions) ? (!hasAnimatedActions ? 120 + idx * 70 : idx * 70) : (actionButtons.length - 1 - idx) * 65;
+              const isRate = btn.key === 'rate';
+              const isPitch = btn.key === 'pitch';
+              const isEdit = btn.key === 'edit';
+              return (
+                <button
+                  key={btn.key}
+                  onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
+                  className={mergeStyles({
+                    background: isPitch ? colours.highlight : 'transparent',
+                    color: isPitch ? '#fff' : colours.greyText,
+                    border: `1px solid ${isPitch ? colours.highlight : 'transparent'}`,
+                    backdropFilter: 'blur(8px)',
+                    padding: '6px 12px',
+                    borderRadius: 20,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    opacity: showActions || selected ? 1 : 0,
+                    transform: showActions || selected ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
+                    transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s, border-radius .35s cubic-bezier(.4,0,.2,1)',
+                    transitionDelay: `${delay}ms`,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    selectors: {
+                      ':hover': { 
+                        background: isPitch ? colours.blue : '#f4f6f8', 
+                        color: isPitch ? '#fff' : colours.blue, 
+                        borderRadius: 16,
+                        borderColor: isPitch ? colours.blue : 'transparent',
+                        transform: 'translateY(-1px)'
+                      },
+                      ':active': { 
+                        background: isPitch ? colours.blue : '#e3f1fb', 
+                        color: isPitch ? '#fff' : colours.blue, 
+                        borderRadius: 16, 
+                        transform: 'scale(0.95)' 
+                      },
+                    },
+                  })}
+                >
+                  <Icon iconName={btn.icon} styles={{ root: { fontSize: 12, marginRight: 4 } }} />
+                  {btn.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       
   {/* Removed inline pitch builder modal */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Icon } from '@fluentui/react';
+import { Icon, Dropdown, IDropdownOption } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
@@ -82,6 +82,7 @@ interface Props {
   claimer?: TeamDataRec | undefined;
   isClaimed?: boolean;
   showPulse?: boolean;
+  onAreaChange?: (enquiryId: string, newArea: string) => void | Promise<void>;
 }
 
 /**
@@ -93,16 +94,25 @@ const EnquiryBadge: React.FC<Props> = ({
   enquiry, 
   claimer, 
   isClaimed = false,
-  showPulse = false 
+  showPulse = false,
+  onAreaChange
 }) => {
   const { isDarkMode } = useTheme();
   const [isVisible, setIsVisible] = useState(false);
+  const [showAreaDropdown, setShowAreaDropdown] = useState(false);
 
   // Cascade animation on mount
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearInterval(timer);
   }, []);
+
+  const areaOptions: IDropdownOption[] = [
+    { key: 'Commercial', text: 'Commercial', data: { icon: 'CityNext', color: colours.blue } },
+    { key: 'Construction', text: 'Construction', data: { icon: 'Build', color: colours.orange } },
+    { key: 'Property', text: 'Property', data: { icon: 'Home', color: colours.green } },
+    { key: 'Employment', text: 'Employment', data: { icon: 'People', color: colours.yellow } },
+  ];
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -126,7 +136,7 @@ const EnquiryBadge: React.FC<Props> = ({
   const areaIconName = (() => {
     const a = enquiry.Area_of_Work?.toLowerCase();
     switch (a) {
-      case 'commercial': return 'Shop';
+      case 'commercial': return 'CityNext'; // Commercial law - business/work
       case 'construction': return 'Build';
       case 'property': return 'Home';
       case 'employment': return 'People';
@@ -138,15 +148,15 @@ const EnquiryBadge: React.FC<Props> = ({
 
   return (
     <>
-      {/* Single unified pill container */}
+      {/* Single unified pill container - compact design */}
       <div style={{ 
         position: 'absolute', 
-        top: 14, 
-        right: 14, 
+        top: 12, 
+        right: 12, 
         display: 'flex', 
         alignItems: 'center',
-        gap: 8,
-        padding: '6px 12px',
+        gap: 6,
+        padding: '4px 10px',
         borderRadius: 20,
         background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
         backdropFilter: 'blur(8px)',
@@ -159,56 +169,114 @@ const EnquiryBadge: React.FC<Props> = ({
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         zIndex: 2 // ensure above decorative watermark ::after
       }}>
-        {/* Area icon + label */}
+        {/* Area icon + label - clickable for reassignment */}
         {enquiry.Area_of_Work && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 4,
-            color: areaColor,
-            position: 'relative'
-          }}>
-            <Icon iconName={areaIconName} styles={{ root: { fontSize: 12, opacity: .9 } }} />
-            <span style={{ textTransform: 'uppercase', letterSpacing: 0.3 }}>
-              {enquiry.Area_of_Work}
-            </span>
-            {/* Pulse dot for unclaimed only */}
-            {showPulse && !isClaimed && (
-              <span style={{ position:'relative', width:12, height:12, marginLeft:4, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
-                <span
-                  style={{
-                    position:'absolute',
-                    width:12,
-                    height:12,
-                    borderRadius:'50%',
-                    background: areaColor + '22',
-                    animation:'pulseEnquiry 1.8s ease-in-out infinite',
-                    boxShadow:`0 0 0 0 ${areaColor}55`,
-                    transformOrigin:'center',
-                  }}
-                />
-                <span
-                  style={{
-                    position:'relative',
-                    width:6,
-                    height:6,
-                    borderRadius:'50%',
-                    background: areaColor,
-                    boxShadow:`0 0 0 2px ${isDarkMode? 'rgba(0,0,0,0.4)':'#ffffff'}`,
-                  }}
-                />
-              </span>
+          <div style={{ position: 'relative' }}>
+            {showAreaDropdown ? (
+              <Dropdown
+                options={areaOptions}
+                selectedKey={enquiry.Area_of_Work}
+                onChange={(_, option) => {
+                  if (option && onAreaChange) {
+                    onAreaChange(enquiry.ID, option.key as string);
+                    setShowAreaDropdown(false);
+                  }
+                }}
+                onDismiss={() => setShowAreaDropdown(false)}
+                styles={{
+                  dropdown: { 
+                    width: 120, 
+                    fontSize: 10,
+                    background: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.95)',
+                    backdropFilter: 'blur(8px)'
+                  },
+                  title: { 
+                    fontSize: 10, 
+                    fontWeight: 600,
+                    background: 'transparent',
+                    border: 'none',
+                    color: areaColor
+                  }
+                }}
+              />
+            ) : (
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 3,
+                  color: areaColor,
+                  cursor: onAreaChange ? 'pointer' : 'default',
+                  position: 'relative',
+                  padding: '2px 3px',
+                  borderRadius: 4,
+                  transition: 'all 0.2s ease'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onAreaChange) setShowAreaDropdown(true);
+                }}
+                onMouseEnter={(e) => {
+                  if (onAreaChange) {
+                    e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <Icon iconName={areaIconName} styles={{ root: { fontSize: 11, opacity: .9 } }} />
+                <span style={{ textTransform: 'uppercase', letterSpacing: 0.3, fontSize: 9 }}>
+                  {enquiry.Area_of_Work}
+                </span>
+                {onAreaChange && (
+                  <Icon iconName="ChevronDown" styles={{ 
+                    root: { 
+                      fontSize: 7, 
+                      opacity: 0.6,
+                      marginLeft: 1
+                    } 
+                  }} />
+                )}
+                {/* Pulse dot for unclaimed only */}
+                {showPulse && !isClaimed && (
+                  <span style={{ position:'relative', width:12, height:12, marginLeft:4, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                    <span
+                      style={{
+                        position:'absolute',
+                        width:12,
+                        height:12,
+                        borderRadius:'50%',
+                        background: areaColor + '22',
+                        animation:'pulseEnquiry 1.8s ease-in-out infinite',
+                        boxShadow:`0 0 0 0 ${areaColor}55`,
+                        transformOrigin:'center',
+                      }}
+                    />
+                    <span
+                      style={{
+                        position:'relative',
+                        width:6,
+                        height:6,
+                        borderRadius:'50%',
+                        background: areaColor,
+                        boxShadow:`0 0 0 2px ${isDarkMode? 'rgba(0,0,0,0.4)':'#ffffff'}`,
+                      }}
+                    />
+                  </span>
+                )}
+              </div>
             )}
           </div>
         )}
 
-        {/* Separator dot */}
+        {/* Separator dot - more subtle */}
         {enquiry.Area_of_Work && (
           <span style={{ 
             width: 2, 
             height: 2, 
             borderRadius: '50%', 
-            background: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)' 
+            background: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)' 
           }} />
         )}
 
@@ -216,18 +284,20 @@ const EnquiryBadge: React.FC<Props> = ({
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: 6,
+          gap: 4,
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
           color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'
         }}>
           {isClaimed ? (
             // Claimed: timeline effect for new, single date + tick for legacy
             isNewData ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span title="Enquiry received" style={{ opacity: 0.8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                <span title="Enquiry received" style={{ opacity: 0.8, whiteSpace: 'nowrap' }}>
                   {formatDate((enquiry as any).datetime)}
                 </span>
                 <Icon iconName="ChevronRight" styles={{ root: { fontSize: 8, opacity: 0.5 } }} />
-                <span title="Claimed" style={{ opacity: 1 }}>
+                <span title="Claimed" style={{ opacity: 1, whiteSpace: 'nowrap' }}>
                   {formatDate((enquiry as any).claim)}
                 </span>
                 {/* Show time taken to claim */}
@@ -262,15 +332,15 @@ const EnquiryBadge: React.FC<Props> = ({
                 })()}
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span>{formatDate(enquiry.Touchpoint_Date)}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                <span style={{ whiteSpace: 'nowrap' }}>{formatDate(enquiry.Touchpoint_Date)}</span>
                 <Icon iconName="CheckMark" styles={{ root: { fontSize: 10, color: colours.blue } }} />
               </div>
             )
           ) : (
             // Unclaimed: just the enquiry date + live age
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>{formatDate(isNewData ? (enquiry as any).datetime : enquiry.Touchpoint_Date)}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <span style={{ whiteSpace: 'nowrap' }}>{formatDate(isNewData ? (enquiry as any).datetime : enquiry.Touchpoint_Date)}</span>
               {!isClaimed && <LiveEnquiryAgeBadge enquiry={enquiry} />}
             </div>
           )}

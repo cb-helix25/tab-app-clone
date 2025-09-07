@@ -11,6 +11,7 @@ interface Props {
   enquiry: Enquiry & { __sourceType?: 'new' | 'legacy' };
   onSelect: (enquiry: Enquiry) => void;
   onRate: (id: string) => void;
+  onAreaChange?: (enquiryId: string, newArea: string) => void | Promise<void>;
   isLast: boolean;
   userEmail?: string;
   onClaimSuccess?: () => void;
@@ -100,7 +101,7 @@ const getAreaColour = (area?: string) => {
   }
 };
 
-const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, userEmail, onClaimSuccess }) => {
+const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaChange, userEmail, onClaimSuccess }) => {
   const { isDarkMode } = useTheme();
   const [selected, setSelected] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -192,7 +193,7 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, userEmail
       }} />
 
       {/* Badge */}
-      <EnquiryBadge enquiry={enquiry} isClaimed={false} showPulse={true} />
+      <EnquiryBadge enquiry={enquiry} isClaimed={false} showPulse={true} onAreaChange={onAreaChange} />
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>

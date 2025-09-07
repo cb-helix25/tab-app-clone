@@ -166,6 +166,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [clickedForActions, setClickedForActions] = useState(false);
   const [activeStep, setActiveStep] = useState<string>('');
   const { isDarkMode } = useTheme();
   // Inject keyframes once for pulse effect
@@ -478,7 +479,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       },
       zIndex: 0,
     },
-    border: `1px solid ${selected ? colours.blue : 
+    border: `1px solid ${selected || clickedForActions ? colours.blue : 
       isPitchedDeal ? (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)') :
       (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
     boxShadow: isDarkMode
@@ -519,6 +520,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Toggle clicked state for actions visibility in pitches
+    if (isPitchedDeal) {
+      setClickedForActions(!clickedForActions);
+      setShowDetails(!clickedForActions);
+    }
+    
     if (onSelect) {
       onSelect();
     } else if (onToggle) {
@@ -529,7 +537,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   return (
     <div className={cardClass} style={style_} onClick={handleCardClick} ref={innerRef}
       onMouseEnter={() => { setIsHovered(true); setShowDetails(true); }} 
-      onMouseLeave={() => { setIsHovered(false); if (!selected) setShowDetails(false); }}>
+      onMouseLeave={() => { setIsHovered(false); if (!selected && !clickedForActions) setShowDetails(false); }}>
       {/* Left accent bar */}
       <span style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, background: areaColor, opacity: .95, pointerEvents: 'none' }} />
       
@@ -579,7 +587,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           })()}
         </span>
         <span style={{ fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9', fontWeight: 500, letterSpacing: 0.5, userSelect: 'all', fontFamily: 'Consolas, Monaco, monospace', padding: '1px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
-          ID {instruction?.InstructionRef || instruction?.instructionRef || instruction?.ref || instruction?.Ref || deal?.DealId || 'No Reference'}
+          {deal ? (
+            prospectId ? `Deal: ${deal.DealId} | Prospect: ${prospectId}` : `Deal: ${deal.DealId}`
+          ) : (
+            `ID ${instruction?.InstructionRef || instruction?.instructionRef || instruction?.ref || instruction?.Ref || 'No Reference'}`
+          )}
           {areaOfWork && (
             <>
               <span style={{ 
@@ -603,7 +615,18 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       </div>
 
       {/* Company & Contact details */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)', fontWeight: 500, marginTop: 6, marginLeft: 2 }}>
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: 12, 
+        fontSize: 11, 
+        color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)', 
+        fontWeight: 500, 
+        marginTop: 6, 
+        marginLeft: 2,
+        opacity: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 1 : 0.7,
+        transition: 'opacity .3s ease'
+      }}>
         {(() => {
           const company = instruction?.Company || instruction?.CompanyName || instruction?.company || instruction?.companyName;
           const firstName = instruction?.Forename || instruction?.FirstName || deal?.firstName || '';
@@ -728,8 +751,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: (isPitchedDeal || step.key === nextActionStep) ? 'pointer' : 'default',
-                    opacity: (showDetails || selected || !isPitchedDeal) ? 1 : 0,
-                    transform: (showDetails || selected || !isPitchedDeal) ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
+                    opacity: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 1 : 0,
+                    transform: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
                     transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s',
                     transitionDelay: `${delay}ms`,
                     display: 'flex',

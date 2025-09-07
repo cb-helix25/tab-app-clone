@@ -8,6 +8,8 @@ if (typeof fetch === 'undefined') {
     global.fetch = require('node-fetch');
 }
 
+// Load environment variables
+require('dotenv').config({ path: path.join(__dirname, '../.env'), override: false });
 require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
 const express = require('express');
 const cors = require('cors');
@@ -60,6 +62,7 @@ app.use('/api/ccl', cclRouter);
 app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
+// app.post('/api/update-enquiry', require('../api/update-enquiry')); // Moved to enquiries-unified/update
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/instructions', instructionsRouter);
 app.use('/ccls', express.static(CCL_DIR));
@@ -80,6 +83,7 @@ console.log('  ✅ /api/ccl');
 console.log('  ✅ /api/enquiries');
 console.log('  ✅ /api/enquiries-unified');
 console.log('  ✅ /api/enquiry-emails');
+// console.log('  ✅ /api/update-enquiry'); // Moved to enquiries-unified/update
 console.log('  ✅ /api/pitches');
 console.log('  🆕 /api/instructions (UNIFIED ENDPOINT)');
 

@@ -384,7 +384,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   
   const [showApiDebugger, setShowApiDebugger] = useState(false);
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
-  const [showAllInstructions, setShowAllInstructions] = useState<boolean>(false); // Admin toggle
+  const [showAllInstructions, setShowAllInstructions] = useState<boolean>(false); // Admin toggle - defaults to false (show user's own data first)
   
   // Debug toggles for admin/localhost
   const [useNewData, setUseNewData] = useState<boolean>(false);
@@ -395,29 +395,212 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Admin detection using proper utility
   const isAdmin = isAdminUser(userData?.[0] || null);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  
+  // State for showing only user's own pitches/deals (defaults to true for non-admin users)
+  const [showOnlyMyDeals, setShowOnlyMyDeals] = useState<boolean>(!isAdmin);
+
+  // Update showOnlyMyDeals when user changes (for user switching)
+  useEffect(() => {
+    // For non-admin users, always show only their deals
+    // For admin users, keep current state or default to false (show everyone's)
+    if (!isAdmin) {
+      setShowOnlyMyDeals(true);
+    }
+  }, [isAdmin, currentUser?.Email]);
+
+  // Reset admin toggle when user changes to ensure proper initial state
+  useEffect(() => {
+    // Reset to show user's own data when switching users
+    setShowAllInstructions(false);
+  }, [currentUser?.Email]);
 
   // Fetch unified enquiries data for name mapping on component load
   useEffect(() => {
     fetchUnifiedEnquiries();
   }, []);
   
-  // Get effective instruction data based on admin mode
+  // Get effective instruction data based on admin mode and user filtering
   const effectiveInstructionData = useMemo(() => {
-    const result = isAdmin && showAllInstructions && allInstructionData.length > 0 
-      ? allInstructionData 
-      : instructionData;
+    console.log('🔄 effectiveInstructionData calculation:', {
+      isAdmin,
+      showAllInstructions,
+      instructionDataLength: instructionData.length,
+      allInstructionDataLength: allInstructionData.length,
+      currentUserEmail: currentUser?.Email,
+      currentUserInitials: currentUser?.Initials
+    });
+    
+    let result = instructionData;
+    
+    // If admin and wants to see all data, use allInstructionData (unfiltered)
+    if (isAdmin && showAllInstructions && allInstructionData.length > 0) {
+      result = allInstructionData;
+      console.log('🔄 Admin viewing ALL instructions');
+    } else {
+      // Default: Filter to show only current user's instructions (for both admin and non-admin)
+      // If instructionData is empty but allInstructionData has data, filter from allInstructionData
+      const sourceData = instructionData.length > 0 ? instructionData : allInstructionData;
+      
+      if (currentUser && currentUser.Email && sourceData.length > 0) {
+        result = sourceData.filter((instruction: any) => {
+          // Check multiple fields that might contain user email/initials
+          const userEmail = currentUser.Email!.toLowerCase();
+          const userInitials = currentUser.Initials?.toUpperCase();
+          
+          // Log the first few items to see the data structure
+          if (sourceData.indexOf(instruction) < 3) {
+            console.log('🔍 Sample instruction structure:', {
+              prospectId: instruction.prospectId,
+              Email: instruction.Email,
+              Lead: instruction.Lead,
+              assignedTo: instruction.assignedTo,
+              poc: instruction.poc,
+              POC: instruction.POC,
+              deals: instruction.deals?.map((d: any) => ({
+                DealId: d.DealId,
+                PitchedBy: d.PitchedBy,
+                Status: d.Status,
+                Email: d.Email,
+                Lead: d.Lead,
+                assignedTo: d.assignedTo,
+                poc: d.poc
+              })),
+              instructions: instruction.instructions?.map((i: any) => ({
+                InstructionRef: i.InstructionRef,
+                HelixContact: i.HelixContact
+              }))
+            });
+          }
+          
+          // Check if this instruction belongs to the current user
+          const belongsToUser = (
+            // Check deals array for PitchedBy field (this is the key field for deal ownership)
+            instruction.deals?.some((deal: any) => 
+              deal.PitchedBy?.toUpperCase() === userInitials
+            ) ||
+            // Check instructions array for HelixContact field (this is the key field for instruction ownership)
+            instruction.instructions?.some((inst: any) =>
+              inst.HelixContact?.toUpperCase() === userInitials
+            ) ||
+            // Fallback checks for legacy data structure
+            instruction.Email?.toLowerCase() === userEmail ||
+            instruction.Lead?.toLowerCase() === userEmail ||
+            instruction.assignedTo?.toLowerCase() === userEmail ||
+            instruction.poc?.toLowerCase() === userEmail ||
+            instruction.POC?.toUpperCase() === userInitials ||
+            instruction.deal?.Email?.toLowerCase() === userEmail ||
+            instruction.deal?.Lead?.toLowerCase() === userEmail ||
+            instruction.deal?.assignedTo?.toLowerCase() === userEmail ||
+            instruction.deal?.poc?.toLowerCase() === userEmail ||
+            instruction.deal?.PitchedBy?.toUpperCase() === userInitials ||
+            // Check deals array for other fields as fallback
+            instruction.deals?.some((deal: any) => 
+              deal.Email?.toLowerCase() === userEmail ||
+              deal.Lead?.toLowerCase() === userEmail ||
+              deal.assignedTo?.toLowerCase() === userEmail ||
+              deal.poc?.toLowerCase() === userEmail
+            )
+          );
+          
+          if (belongsToUser) {
+            console.log('✅ Instruction belongs to user:', {
+              prospectId: instruction.prospectId,
+              userEmail,
+              userInitials,
+              matchedFields: {
+                instruction_Email: instruction.Email?.toLowerCase() === userEmail,
+                instruction_poc: instruction.poc?.toLowerCase() === userEmail,
+                deal_Email: instruction.deal?.Email?.toLowerCase() === userEmail,
+                deal_poc: instruction.deal?.poc?.toLowerCase() === userEmail,
+                deals_any: instruction.deals?.some((d: any) => d.poc?.toLowerCase() === userEmail)
+              }
+            });
+          }
+          
+          return belongsToUser;
+        });
+        console.log('🔄 Filtered to user instructions:', {
+          sourceData: sourceData.length > 0 ? 'instructionData' : 'allInstructionData',
+          sourceLength: sourceData.length,
+          filteredLength: result.length
+        });
+      } else {
+        result = sourceData;
+      }
+      console.log(`🔄 ${isAdmin ? 'Admin' : 'User'} viewing OWN instructions (filtered)`);
+    }
     
     console.log('🔄 effectiveInstructionData updated:', {
       isAdmin,
       showAllInstructions,
+      currentUserEmail: currentUser?.Email,
+      currentUserInitials: currentUser?.Initials,
       allInstructionDataLength: allInstructionData.length,
       instructionDataLength: instructionData.length,
       resultLength: result.length,
-      usingAllData: isAdmin && showAllInstructions && allInstructionData.length > 0
+      usingAllData: isAdmin && showAllInstructions && allInstructionData.length > 0,
+      filteringByUser: !isAdmin || !showAllInstructions,
+      sampleFilteredItems: result.slice(0, 2).map(r => ({
+        prospectId: r.prospectId,
+        hasInstructions: r.instructions?.length || 0,
+        hasDeals: r.deals?.length || 0,
+        deals: r.deals?.map((d: any) => ({ 
+          DealId: d.DealId, 
+          InstructionRef: d.InstructionRef,
+          Email: d.Email, 
+          Lead: d.Lead, 
+          assignedTo: d.assignedTo,
+          Status: d.Status
+        })),
+        instructions: r.instructions?.map((i: any) => ({
+          InstructionRef: i.InstructionRef
+        }))
+      }))
     });
     
     return result;
-  }, [isAdmin, showAllInstructions, allInstructionData, instructionData]);
+  }, [isAdmin, showAllInstructions, allInstructionData, instructionData, currentUser]);
+
+  // Calculate toggle counts based on active tab and current data
+  const toggleCounts = useMemo(() => {
+    if (activeTab === 'pitches') {
+      // For Pitches tab: count deals that don't have instructions yet
+      const myPitchesCount = effectiveInstructionData.reduce((count, prospect) => {
+        const pitchedDeals = prospect.deals?.filter((deal: any) => 
+          !prospect.instructions?.some((inst: any) => inst.InstructionRef === deal.InstructionRef)
+        ) || [];
+        return count + pitchedDeals.length;
+      }, 0);
+      
+      const allPitchesCount = allInstructionData.reduce((count, prospect) => {
+        const pitchedDeals = prospect.deals?.filter((deal: any) => 
+          !prospect.instructions?.some((inst: any) => inst.InstructionRef === deal.InstructionRef)
+        ) || [];
+        return count + pitchedDeals.length;
+      }, 0);
+      
+      return {
+        mine: myPitchesCount,
+        all: allPitchesCount,
+        label: 'pitches'
+      };
+    } else {
+      // For Instructions tab: count actual instructions
+      const myInstructionsCount = effectiveInstructionData.reduce((count, prospect) => {
+        return count + (prospect.instructions?.length || 0);
+      }, 0);
+      
+      const allInstructionsCount = allInstructionData.reduce((count, prospect) => {
+        return count + (prospect.instructions?.length || 0);
+      }, 0);
+      
+      return {
+        mine: myInstructionsCount,
+        all: allInstructionsCount,
+        label: 'instructions'
+      };
+    }
+  }, [activeTab, effectiveInstructionData, allInstructionData]);
   
   const showDraftPivot = true; // Allow all users to see Document editor
 
@@ -907,9 +1090,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                         checked={showAllInstructions}
                         onChange={setShowAllInstructions}
                         size="sm"
-                        onText={`All (${allInstructionData.length})`}
-                        offText={`Mine (${instructionData.length})`}
-                        ariaLabel="Toggle between my instructions and all instructions"
+                        onText={`All (${toggleCounts.all})`}
+                        offText={`Mine (${toggleCounts.mine})`}
+                        ariaLabel={`Toggle between my ${toggleCounts.label} and all ${toggleCounts.label}`}
                       />
                     )}
                   </div>
@@ -2246,6 +2429,18 @@ const Instructions: React.FC<InstructionsProps> = ({
             !item.instruction && !!item.deal
           );
           
+          // Debug logging for pitches
+          console.log('🔍 Pitches Debug:', {
+            totalOverviewItems: overviewItems.length,
+            pitchedItems: pitchedItems.length,
+            sampleOverviewItems: overviewItems.slice(0, 3).map(item => ({
+              hasInstruction: !!item.instruction,
+              hasDeal: !!item.deal,
+              instructionRef: item.instruction?.InstructionRef,
+              dealId: item.deal?.DealId
+            }))
+          });
+          
           if (pitchedItems.length === 0) {
             return (
               <div style={{ 
@@ -2688,6 +2883,7 @@ interface DealsPivotProps {
   currentUser?: any;
   teamData: any[];
   userInitials: string;
+  isAdmin?: boolean; // Add admin prop
 }
 
 const DealsPivot: React.FC<DealsPivotProps> = ({ 
@@ -2700,7 +2896,8 @@ const DealsPivot: React.FC<DealsPivotProps> = ({
   onToggleMyDeals,
   currentUser,
   teamData,
-  userInitials
+  userInitials,
+  isAdmin = false // Add isAdmin parameter
 }) => {
   const [openFollowUpIdx, setOpenFollowUpIdx] = useState<number | null>(null);
   const [followUpContent, setFollowUpContent] = useState<string>("");
@@ -2760,43 +2957,45 @@ const DealsPivot: React.FC<DealsPivotProps> = ({
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {/* Show Everyone's/Mine Toggle */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              fontSize: '0.85rem'
-            }}>
-              <span style={{ color: '#666' }}>
-                {showOnlyMyDeals ? 'Show Mine' : 'Show Everyone\'s'}
-              </span>
-              <div
-                onClick={onToggleMyDeals}
-                style={{
-                  width: '36px',
-                  height: '20px',
-                  borderRadius: '10px',
-                  backgroundColor: showOnlyMyDeals ? '#0078d4' : '#d1d1d1',
-                  position: 'relative',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease',
-                }}
-              >
+            {/* Show Everyone's/Mine Toggle - Admin Only */}
+            {isAdmin && (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                fontSize: '0.85rem'
+              }}>
+                <span style={{ color: '#666' }}>
+                  {showOnlyMyDeals ? 'Show Mine' : 'Show Everyone\'s'}
+                </span>
                 <div
+                  onClick={onToggleMyDeals}
                   style={{
-                    width: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    backgroundColor: 'white',
-                    position: 'absolute',
-                    top: '2px',
-                    left: showOnlyMyDeals ? '18px' : '2px',
-                    transition: 'left 0.2s ease',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    width: '36px',
+                    height: '20px',
+                    borderRadius: '10px',
+                    backgroundColor: showOnlyMyDeals ? '#0078d4' : '#d1d1d1',
+                    position: 'relative',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
                   }}
-                />
+                >
+                  <div
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      backgroundColor: 'white',
+                      position: 'absolute',
+                      top: '2px',
+                      left: showOnlyMyDeals ? '18px' : '2px',
+                      transition: 'left 0.2s ease',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            )}
             
             {/* Show Closed Deals Toggle */}
             {closedDealsCount > 0 && (

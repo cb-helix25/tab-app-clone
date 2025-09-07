@@ -8,6 +8,7 @@ if (typeof fetch === 'undefined') {
     global.fetch = require('node-fetch');
 }
 
+require('dotenv').config({ path: path.join(__dirname, '../.env'), override: false });
 require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
 const express = require('express');
 const morgan = require('morgan');
@@ -79,6 +80,9 @@ app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
 app.use('/api/enquiries-combined', enquiriesCombinedRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
+
+// Update enquiry endpoint - moved to enquiries-unified/update
+// app.post('/api/update-enquiry', require('../api/update-enquiry'));
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/matters', mattersRouter);
 app.use('/api/instructions', instructionsRouter);

@@ -151,11 +151,11 @@ async function fetchEnquiries(
   
   if (isLocalDev || isLZUser) {
     try {
-      // Call the decoupled function via Express route (local) or directly (production)
-      // NEW decoupled function expects simple GET with no params to return ALL data
+      // Use unified route for direct database access (bypasses Azure Functions)
+      // This gives us both main + instructions database data in one call
       const newDataUrl = isLocalDev 
-        ? `/api/enquiries` // Express route for local dev - simple GET, no params
-        : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData`; // Direct call for production - simple GET, no params
+        ? `/api/enquiries-unified` // Direct database route for local dev
+        : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData`; // Fallback to function for production
       
       const newResponse = await fetch(newDataUrl, {
         method: 'GET',
@@ -633,6 +633,13 @@ const AppWithContext: React.FC = () => {
       `${normalized.First || ''} ${normalized.Last || ''}`.trim();
     
     console.log(`🔄 User switched to: ${fullName} (${normalized.Email})`);
+    console.log('📋 User details:', {
+      Email: normalized.Email,
+      Initials: normalized.Initials,
+      AOW: normalized.AOW,
+      isAdmin: ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW'].includes(normalized.Initials?.toUpperCase() || ''),
+      hasInstructionsAccess: ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW', 'BR', 'LA', 'SP'].includes(normalized.Initials?.toUpperCase() || '')
+    });
     
     // Clear localStorage cache when switching users to force fresh data
     const keysToRemove = Object.keys(localStorage).filter(key => 

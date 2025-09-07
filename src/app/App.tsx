@@ -465,6 +465,15 @@ const App: React.FC<AppProps> = ({
     const showInstructionsTab = hasInstructionsAccess(currentUser);
     const showReportsTab = isAdmin;
 
+    // Debug logging for tab permissions
+    console.log(`📑 Tab permissions for ${currentUser?.Initials || 'Unknown'}:`, {
+      user: currentUser?.Initials,
+      isAdmin,
+      showInstructionsTab,
+      showReportsTab,
+      isLocalhost
+    });
+
     return [
       { key: 'enquiries', text: 'Enquiries' },
       ...(showInstructionsTab ? [{ key: 'instructions', text: 'Instructions' }] : []),
@@ -472,7 +481,7 @@ const App: React.FC<AppProps> = ({
       { key: 'forms', text: 'Forms', disabled: true }, // Disabled tab that triggers modal
       { key: 'resources', text: 'Resources', disabled: true }, // Disabled tab that triggers modal
       ...(showReportsTab ? [{ key: 'reporting', text: 'Reports' }] : []),
-      ...(isLocalhost ? [{ key: 'callhub', text: 'Call Hub' }] : []),
+      ...(isLocalhost ? [{ key: 'callhub', text: 'Call Hub' }] : []), // Call Hub available to all users on localhost
     ];
   }, [userData]);
 

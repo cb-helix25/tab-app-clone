@@ -167,6 +167,10 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [allEnquiries, setAllEnquiries] = useState<(Enquiry & { __sourceType: 'new' | 'legacy' })[]>([]);
   // Display subset after applying dataset toggle
   const [displayEnquiries, setDisplayEnquiries] = useState<(Enquiry & { __sourceType: 'new' | 'legacy' })[]>([]);
+  // Loading state to prevent flickering
+  const [isLoadingAllData, setIsLoadingAllData] = useState<boolean>(false);
+  // Track if we've already fetched all data to prevent duplicate calls
+  const hasFetchedAllData = useRef<boolean>(false);
 
   // Debug logging
 
@@ -175,15 +179,24 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   // Function to fetch all enquiries (unfiltered) for "All" mode
   const fetchAllEnquiries = useCallback(async () => {
+    if (isLoadingAllData) {
+      console.log('🔄 Already loading all data, skipping fetch');
+      return;
+    }
+    
+    console.log('🔄 Attempting to fetch all enquiries, hasFetched:', hasFetchedAllData.current);
+    
     try {
+      setIsLoadingAllData(true);
+      hasFetchedAllData.current = true;
       const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       
-      // Call the route directly to get all enquiries
+      // Call the unified route to get ALL enquiries (both legacy and new sources)
       const allDataUrl = isLocalDev 
-        ? '/api/enquiries' // Local development route
+        ? '/api/enquiries-unified' // Local unified development route
         : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData`; // Production route
       
-      console.log('🌐 Fetching ALL enquiries from:', allDataUrl);
+      console.log('🌐 Fetching ALL enquiries (unified) from:', allDataUrl);
       
       const response = await fetch(allDataUrl, {
         method: 'GET',
@@ -232,14 +245,18 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         };
       });
       
+      console.log('🔄 Setting normalized data to state:', normalizedEnquiries.length);
       setAllEnquiries(normalizedEnquiries);
+      setDisplayEnquiries(normalizedEnquiries);
       
       return normalizedEnquiries;
     } catch (error) {
       console.error('❌ Failed to fetch all enquiries:', error);
       return [];
+    } finally {
+      setIsLoadingAllData(false);
     }
-  }, []);
+  }, [isLoadingAllData]);
 
   // ...existing code...
 
@@ -247,13 +264,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const { setContent } = useNavigatorActions();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
   const [twoColumn, setTwoColumn] = useState<boolean>(false);
-  // Scope toggle (Mine vs All) for claimed enquiries - default to All for Instructions access users
-  const [showMineOnly, setShowMineOnly] = useState<boolean>(() => {
-    // For Instructions access users (BR, LA, SP), default to showing All enquiries
-    const hasInstructionsAccess = userData?.[0] ? 
-      (userData[0].Initials && ['BR', 'LA', 'SP'].includes(userData[0].Initials.toUpperCase())) : false;
-    return !hasInstructionsAccess; // If has Instructions access, default to false (All), otherwise true (Mine)
-  });
+  // Scope toggle (Mine vs All) for claimed enquiries - admin-only feature, default to Mine
+  const [showMineOnly, setShowMineOnly] = useState<boolean>(true); // Default to showing only Mine for admin users
   // Removed pagination states
   // const [currentPage, setCurrentPage] = useState<number>(1);
   // const enquiriesPerPage = 12;
@@ -318,10 +330,28 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   // Normalize all incoming enquiries once (unfiltered by toggle)
   useEffect(() => {
+    console.log('🔄 Prop useEffect triggered:', { 
+      hasEnquiries: !!enquiries, 
+      enquiriesLength: enquiries?.length || 0, 
+      isAdmin, 
+      showMineOnly,
+      currentDisplayCount: displayEnquiries.length
+    });
+    
     if (!enquiries) {
       setAllEnquiries([]);
       setDisplayEnquiries([]);
       return;
+    }
+    
+    // Don't override fetched data when admin is in "All" mode
+    if (isAdmin && !showMineOnly) {
+      console.log('👤 Admin in All mode - keeping fetched dataset, not using prop data');
+      // If we already have fetched data, don't clear it
+      if (displayEnquiries.length > 0) {
+        console.log('👤 Preserving existing fetched data:', displayEnquiries.length, 'enquiries');
+        return;
+      }
     }
     
     const normalised: (Enquiry & { __sourceType: 'new' | 'legacy'; [k: string]: unknown })[] = enquiries.map((raw: any) => {
@@ -348,7 +378,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     const newCount = normalised.filter(r => r.__sourceType === 'new').length;
     const legacyCount = normalised.length - newCount;
     setAllEnquiries(normalised);
-  }, [enquiries]);
+  }, [enquiries, isAdmin, showMineOnly]);
 
   // Map for claimer quick lookup
   const claimerMap = useMemo(() => {
@@ -365,6 +395,16 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       setDisplayEnquiries([]);
       return;
     }
+    
+    // If admin is in "All" mode and we have fetched unified data, show all data
+    const userEmail = userData?.[0]?.Email?.toLowerCase() || '';
+    const isAdmin = userData?.[0]?.Email?.toLowerCase().includes('br@') || userData?.[0]?.Email?.toLowerCase().includes('brendan') || userData?.[0]?.Email?.toLowerCase().includes('lz@');
+    if (isAdmin && !showMineOnly && hasFetchedAllData.current && allEnquiries.length > 1000) {
+      console.log('👑 Admin All mode - showing unified data:', allEnquiries.length);
+      setDisplayEnquiries(allEnquiries);
+      return;
+    }
+    
     if (isLocalhost) {
       let filtered = allEnquiries.filter(e => useNewData ? e.__sourceType === 'new' : e.__sourceType === 'legacy');
       // Fallback: if toggle selected new but zero new detected, show legacy + emit warning for debug panel
@@ -373,7 +413,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       }
       
       // Debug logging for BR
-      const userEmail = userData?.[0]?.Email?.toLowerCase() || '';
       if (userEmail.includes('br@') || userEmail.includes('brendan')) {
         console.log('🗄️ BR DEBUG - Data loading:', {
           totalAllEnquiries: allEnquiries.length,
@@ -389,7 +428,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     } else {
       setDisplayEnquiries(allEnquiries);
     }
-  }, [allEnquiries, useNewData, isLocalhost]);
+  }, [allEnquiries, useNewData, isLocalhost, userData, showMineOnly]);
 
   // Reset area filter if current filter is no longer available
   useEffect(() => {
@@ -403,14 +442,34 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   // Fetch all enquiries when user switches to "All" mode and current dataset is too small
   useEffect(() => {
+    if (isLoadingAllData) return; // Prevent multiple concurrent fetches
+    
     const userEmail = userData?.[0]?.Email?.toLowerCase() || '';
     const isBRUser = userEmail.includes('br@') || userEmail.includes('brendan');
     
-    if (isBRUser && !showMineOnly && displayEnquiries.length <= 1) {
+    console.log('🔄 Toggle useEffect triggered:', { isAdmin, showMineOnly, userEmail, hasData: displayEnquiries.length });
+    
+    // Reset fetch flag when switching to "Mine" mode
+    if (showMineOnly) {
+      hasFetchedAllData.current = false;
+      return;
+    }
+    
+    // Also reset if we previously fetched only new data (29 records) and need unified data
+    if (displayEnquiries.length < 100 && allEnquiries.length < 100) {
+      console.log('🔄 Resetting fetch flag - previous fetch may have been incomplete');
+      hasFetchedAllData.current = false;
+    }
+    
+    // If admin toggles to "All" and we don't have comprehensive data, fetch complete dataset
+    if (isAdmin && !showMineOnly && !hasFetchedAllData.current) {
+      console.log('🔄 Admin switched to All mode - fetching complete dataset');
+      fetchAllEnquiries();
+    } else if (isBRUser && !showMineOnly && displayEnquiries.length <= 1 && !hasFetchedAllData.current) {
       console.log('🔄 BR switched to All mode but only has 1 enquiry - fetching complete dataset');
       fetchAllEnquiries();
     }
-  }, [showMineOnly, userData, displayEnquiries.length, fetchAllEnquiries]);
+  }, [showMineOnly, userData, fetchAllEnquiries, isAdmin]); // Removed isLoadingAllData from deps
 
   const [currentSliderStart, setCurrentSliderStart] = useState<number>(0);
   const [currentSliderEnd, setCurrentSliderEnd] = useState<number>(0);
@@ -676,6 +735,134 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     setCurrentRating('');
   }, []);
 
+  const handleEditEnquiry = useCallback(async (updatedEnquiry: Enquiry) => {
+    try {
+      // Calculate the updates by comparing with current state
+      const originalEnquiry = allEnquiries.find(e => e.ID === updatedEnquiry.ID);
+      if (!originalEnquiry) return;
+
+      const updates: Partial<Enquiry> = {};
+      if (updatedEnquiry.First_Name !== originalEnquiry.First_Name) updates.First_Name = updatedEnquiry.First_Name;
+      if (updatedEnquiry.Last_Name !== originalEnquiry.Last_Name) updates.Last_Name = updatedEnquiry.Last_Name;
+      if (updatedEnquiry.Email !== originalEnquiry.Email) updates.Email = updatedEnquiry.Email;
+      if (updatedEnquiry.Value !== originalEnquiry.Value) updates.Value = updatedEnquiry.Value;
+      if (updatedEnquiry.Initial_first_call_notes !== originalEnquiry.Initial_first_call_notes) {
+        updates.Initial_first_call_notes = updatedEnquiry.Initial_first_call_notes;
+      }
+
+      if (Object.keys(updates).length === 0) return;
+
+      // Call the save function - using direct API call to avoid dependency issues
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const updateUrl = isLocalhost 
+        ? '/api/enquiries-unified/update'
+        : `${getProxyBaseUrl()}/${process.env.REACT_APP_UPDATE_ENQUIRY_PATH}?code=${process.env.REACT_APP_UPDATE_ENQUIRY_CODE}`;
+      
+      const response = await fetch(updateUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ID: updatedEnquiry.ID, ...updates }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to update enquiry: ${errorText}`);
+      }
+
+      // Update local state
+      const updateEnquiry = (enquiry: Enquiry & { __sourceType: 'new' | 'legacy' }): Enquiry & { __sourceType: 'new' | 'legacy' } => {
+        if (enquiry.ID === updatedEnquiry.ID) {
+          return { ...enquiry, ...updates };
+        }
+        return enquiry;
+      };
+
+      setAllEnquiries(prev => prev.map(updateEnquiry));
+      setDisplayEnquiries(prev => prev.map(updateEnquiry));
+      
+      console.log('✅ Enquiry updated successfully:', updatedEnquiry.ID, updates);
+      
+    } catch (error) {
+      console.error('Failed to edit enquiry:', error);
+      throw error; // Re-throw so the card can handle the error
+    }
+  }, [allEnquiries]);
+
+  const handleAreaChange = useCallback(async (enquiryId: string, newArea: string) => {
+    try {
+      // Get the appropriate update endpoint
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const updateUrl = isLocalhost 
+        ? '/api/enquiries-unified/update' // Local development route
+        : `${getProxyBaseUrl()}/${process.env.REACT_APP_UPDATE_ENQUIRY_PATH}?code=${process.env.REACT_APP_UPDATE_ENQUIRY_CODE}`;
+      
+      const response = await fetch(updateUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ID: enquiryId, Area_of_Work: newArea }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to update enquiry area: ${errorText}`);
+      }
+
+      // Update local state
+      const updateEnquiry = (enquiry: Enquiry & { __sourceType: 'new' | 'legacy' }): Enquiry & { __sourceType: 'new' | 'legacy' } => {
+        if (enquiry.ID === enquiryId) {
+          return { ...enquiry, Area_of_Work: newArea };
+        }
+        return enquiry;
+      };
+
+      setAllEnquiries(prev => prev.map(updateEnquiry));
+      setDisplayEnquiries(prev => prev.map(updateEnquiry));
+      
+      console.log('✅ Enquiry area updated successfully:', enquiryId, 'to', newArea);
+      
+    } catch (error) {
+      console.error('Failed to update enquiry area:', error);
+      throw error;
+    }
+  }, []);
+
+  const handleSaveEnquiry = useCallback(async (enquiryId: string, updates: Partial<Enquiry>) => {
+    try {
+      // Get the appropriate update endpoint
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const updateUrl = isLocalhost 
+        ? '/api/enquiries-unified/update' // Local development route
+        : `${getProxyBaseUrl()}/${process.env.REACT_APP_UPDATE_ENQUIRY_PATH}?code=${process.env.REACT_APP_UPDATE_ENQUIRY_CODE}`;
+      
+      const response = await fetch(updateUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ID: enquiryId, ...updates }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to update enquiry: ${errorText}`);
+      }
+
+      // Update the local data
+      const updateEnquiry = (enquiry: Enquiry & { __sourceType: 'new' | 'legacy' }): Enquiry & { __sourceType: 'new' | 'legacy' } => {
+        if (enquiry.ID === enquiryId) {
+          return { ...enquiry, ...updates };
+        }
+        return enquiry;
+      };
+
+      setAllEnquiries(prev => prev.map(updateEnquiry));
+      setDisplayEnquiries(prev => prev.map(updateEnquiry));
+      
+      console.log('✅ Enquiry updated successfully:', enquiryId, updates);
+    } catch (error) {
+      console.error('❌ Failed to update enquiry:', error);
+      throw error;
+    }
+  }, []);
+
   const handleEditRating = useCallback(async (id: string, newRating: string) => {
     try {
       const response = await fetch(
@@ -748,9 +935,20 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       console.log('📊 POC counts:', pocCounts);
     }
 
+    // Add detailed logging for data flow debugging
+    console.log('🔍 Data Flow Debug:', {
+      activeState,
+      showMineOnly,
+      isAdmin,
+      allEnquiriesCount: allEnquiries.length,
+      displayEnquiriesCount: displayEnquiries.length,
+      enquiriesInSliderRangeCount: enquiriesInSliderRange.length,
+      filteredStartCount: filtered.length
+    });
+
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
-      if (showMineOnly) {
+      if (showMineOnly || !isAdmin) {
         console.log('🔍 Filtering for Mine Only - looking for:', effectiveUserEmail);
         filtered = filtered.filter(enquiry => {
           const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
@@ -761,17 +959,34 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           return matches;
         });
       } else {
-        console.log('🌍 Filtering for All Claimed enquiries');
+        console.log('🌍 Filtering for All Claimed enquiries (Admin Mode)');
+        console.log('📊 Total enquiries before filtering:', filtered.length);
+        console.log('📊 Unclaimed emails to exclude:', unclaimedEmails);
+        
+        // Show sample of data we're working with
+        if (filtered.length > 0) {
+          const samples = filtered.slice(0, 3).map(e => ({
+            ID: e.ID,
+            POC: e.Point_of_Contact || (e as any).poc,
+            CallTaker: e.Call_Taker || (e as any).rep
+          }));
+          console.log('📋 Sample enquiries:', samples);
+        }
+        
+        // For admin "All" mode, we want to show enquiries that have been claimed by ANYONE
+        // This means any enquiry that doesn't have the default unclaimed POC
         filtered = filtered.filter(enquiry => {
           const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
-          // Exclude unclaimed placeholder emails
+          
+          // An enquiry is "claimed" if it has a POC that's NOT in the unclaimed emails list
+          // The unclaimed list contains placeholder emails like 'team@helix-law.com'
           const isUnclaimed = unclaimedEmails.includes(poc);
-          const keep = poc && !isUnclaimed;
-          if (userEmail.includes('br@') && keep) {
-            console.log('✅ Keeping claimed enquiry with POC:', poc);
-          }
-          return keep; // any real claimed enquiry
+          const isClaimed = !isUnclaimed && poc && poc.trim() !== '';
+          
+          return isClaimed;
         });
+        
+        console.log('📊 Total claimed enquiries after filtering:', filtered.length);
       }
     } else if (activeState === 'Claimable') {
       filtered = filtered.filter(enquiry => {
@@ -1351,20 +1566,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 data-tooltip="alex, luke, cass"
               />
               <ToggleSwitch id="enquiries-new-data-toggle" checked={useNewData} onChange={setUseNewData} size="sm" onText="New" offText="Legacy" ariaLabel="Toggle dataset between legacy and new" />
-            </div>
-          )}
-          
-          {hasInstructionsAndMoreAccess && (
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '2px 10px 2px 6px', height: 40, borderRadius: 12,
-                background: isDarkMode ? '#4a5a12' : '#e8f4d0',
-                border: isDarkMode ? '1px solid #6c801d' : '1px solid #a6c56a',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 11, fontWeight: 600, color: isDarkMode ? '#a3ff9e' : '#004750'
-              }}
-              title="Enhanced access - Instructions team"
-            >
-              <span style={{ fontSize: 10, fontWeight: 600, marginRight: 6 }}>Scope:</span>
+              <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 8, marginRight: 6, color: isDarkMode ? '#ffe9a3' : '#5d4700' }}>Scope:</span>
               <ToggleSwitch id="enquiries-scope-toggle" checked={showMineOnly} onChange={setShowMineOnly} size="sm" onText="Mine" offText="All" ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries" />
             </div>
           )}
@@ -1614,6 +1816,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                                     enquiry={item}
                                     onSelect={() => {}} // Prevent click-through to pitch builder
                                     onRate={handleRate}
+                                    onAreaChange={handleAreaChange}
                                     isLast={isLast}
                                     userEmail={currentUserEmail}
                                     onClaimSuccess={onRefreshEnquiries}
@@ -1628,6 +1831,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                                   claimer={claimer}
                                   onSelect={handleSelectEnquiry}
                                   onRate={handleRate}
+                                  onEdit={handleEditEnquiry}
+                                  onAreaChange={handleAreaChange}
+                                  userData={userData}
                                   isLast={isLast}
                                 />
                               );
@@ -1738,6 +1944,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           {debugError && <MessageBar messageBarType={MessageBarType.error}>{debugError}</MessageBar>}
         </div>
       )}
+
     </div>
   );
 }
