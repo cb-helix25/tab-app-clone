@@ -33,6 +33,7 @@ const enquiryEmailsRouter = require('./routes/enquiryEmails');
 const pitchesRouter = require('./routes/pitches');
 const mattersRouter = require('./routes/matters');
 const instructionsRouter = require('./routes/instructions');
+const verifyIdRouter = require('./routes/verify-id');
 // const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 const app = express();
@@ -86,6 +87,7 @@ app.use('/api/enquiry-emails', enquiryEmailsRouter);
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/matters', mattersRouter);
 app.use('/api/instructions', instructionsRouter);
+app.use('/api/verify-id', verifyIdRouter);
 
 // Proxy routes to Azure Functions
 app.use('/', proxyToAzureFunctionsRouter);

@@ -52,6 +52,8 @@ import SegmentedControl from '../../components/filter/SegmentedControl';
 import TwoLayerFilter, { TwoLayerFilterOption } from '../../components/filter/TwoLayerFilter';
 import ToggleSwitch from '../../components/ToggleSwitch';
 import InstructionApiDebugger from '../../components/InstructionApiDebugger';
+import IDVerificationReviewModal from '../../components/modals/IDVerificationReviewModal';
+import { fetchVerificationDetails, approveVerification } from '../../services/verificationAPI';
 
 interface InstructionsProps {
   userInitials: string;
@@ -92,6 +94,10 @@ const Instructions: React.FC<InstructionsProps> = ({
   );
   const [pendingInstructionRef, setPendingInstructionRef] = useState<string>('');
   const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
+  const [idVerificationLoading, setIdVerificationLoading] = useState<Set<string>>(new Set());
+  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [showReviewModal, setShowReviewModal] = useState<boolean>(false);
+  const [reviewModalDetails, setReviewModalDetails] = useState<any>(null);
   const overviewGridRef = useRef<HTMLDivElement | null>(null);
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
   const [forceNewMatter, setForceNewMatter] = useState(false);
@@ -417,6 +423,13 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Fetch unified enquiries data for name mapping on component load
   useEffect(() => {
     fetchUnifiedEnquiries();
+  }, []);
+  
+  // Window resize effect for responsive filters
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
   
   // Get effective instruction data based on admin mode and user filtering
@@ -1012,20 +1025,32 @@ const Instructions: React.FC<InstructionsProps> = ({
               <div style={{ 
                 display:'flex', 
                 alignItems:'center', 
-                gap:24, 
+                gap: windowWidth < 768 ? 12 : 24, 
                 width:'100%',
                 flexWrap: 'wrap',
-                minWidth: 0 // Allow shrinking
+                minWidth: 0, // Allow shrinking
+                justifyContent: windowWidth < 768 ? 'center' : 'flex-start'
               }}>
-                <TwoLayerFilter
-                  id="instructions-unified-filter"
-                  ariaLabel="Instructions navigation and filtering"
-                  primaryValue={activeTab}
-                  secondaryValue={secondaryFilter}
-                  onPrimaryChange={handlePrimaryFilterChange}
-                  onSecondaryChange={handleSecondaryFilterChange}
-                  options={filterOptions}
-                />
+                <div style={{
+                  minWidth: windowWidth < 768 ? '100%' : 'auto',
+                  maxWidth: '100%',
+                  overflow: 'hidden'
+                }}>
+                  <TwoLayerFilter
+                    id="instructions-unified-filter"
+                    ariaLabel="Instructions navigation and filtering"
+                    primaryValue={activeTab}
+                    secondaryValue={secondaryFilter}
+                    onPrimaryChange={handlePrimaryFilterChange}
+                    onSecondaryChange={handleSecondaryFilterChange}
+                    options={filterOptions}
+                    style={{
+                      fontSize: windowWidth < 768 ? '10px' : '11px',
+                      transform: windowWidth < 768 ? 'scale(0.9)' : 'none',
+                      transformOrigin: 'left center'
+                    }}
+                  />
+                </div>
                 {/* Spacer - only on larger screens */}
                 <div style={{ 
                   flex: 1,
@@ -2121,10 +2146,211 @@ const Instructions: React.FC<InstructionsProps> = ({
     setShowRiskPage(true);
   };
 
-  const handleEIDCheck = (inst: any) => {
-    setSelectedInstruction(inst);
-    setPendingInstructionRef('');
-    setShowEIDPage(true);
+  const handleEIDCheck = async (inst: any) => {
+    if (!inst?.InstructionRef) {
+      console.error('No instruction reference provided for ID verification');
+      return;
+    }
+
+    const instructionRef = inst.InstructionRef;
+    
+    // Determine current verification status using enhanced logic for Tiller API responses
+    const eid = inst.eidData || inst.EIDData;
+    const eids = inst.eidS;
+    const eidStatus = inst.EIDStatus;
+    const eidResult = inst.EIDOverallResult?.toLowerCase();
+    const poidPassed = inst.EIDOverallResult?.toLowerCase() === 'passed' || inst.EIDOverallResult?.toLowerCase() === 'complete';
+    const stageComplete = inst.stage === 'proof-of-id-complete';
+    const proofOfIdComplete = inst.ProofOfIdComplete || inst.proof_of_id_complete;
+    
+    // Check if we have Tiller API response data
+    let tillerOverallResult = null;
+    if (eid && typeof eid === 'object' && eid.overallResult) {
+      tillerOverallResult = eid.overallResult.result?.toLowerCase();
+    }
+    
+    console.log(`🔍 Enhanced EID Check for ${instructionRef}:`, {
+      stage: inst.stage,
+      eidResult,
+      eidStatus,
+      tillerOverallResult,
+      hasEidData: !!eid,
+      eidDataType: typeof eid
+    });
+    
+    let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
+    
+    // Priority 1: Check Tiller API overall result if available
+    if (tillerOverallResult === 'review') {
+      verifyIdStatus = 'review';
+      console.log(`✅ Status determined from Tiller API: review`);
+    } else if (tillerOverallResult === 'passed') {
+      verifyIdStatus = 'complete';
+      console.log(`✅ Status determined from Tiller API: complete`);
+    } 
+    // Priority 2: Check database EID result
+    else if (eidResult === 'review') {
+      verifyIdStatus = 'review';
+      console.log(`✅ Status determined from DB EIDResult: review`);
+    } else if (poidPassed || eidResult === 'passed') {
+      verifyIdStatus = 'complete';
+      console.log(`✅ Status determined from DB EIDResult: complete`);
+    }
+    // Priority 3: Check stage and other indicators
+    else if (stageComplete) {
+      // If stage shows proof-of-id-complete but no clear result, check for pending status
+      if (eidStatus === 'pending' || eidResult === 'pending') {
+        verifyIdStatus = 'review'; // Pending results usually need review
+        console.log(`✅ Status determined from pending state: review`);
+      } else {
+        verifyIdStatus = 'review'; // Stage complete but unclear result
+        console.log(`✅ Status determined from stage complete fallback: review`);
+      }
+    } else if (!eid && !eids?.length || eidStatus === 'pending') {
+      verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
+      console.log(`✅ Status determined from no data: ${verifyIdStatus}`);
+    } else if (poidPassed) {
+      verifyIdStatus = 'complete';
+      console.log(`✅ Status determined from poidPassed: complete`);
+    } else {
+      verifyIdStatus = 'review';
+      console.log(`✅ Status determined from fallback: review`);
+    }
+
+    console.log(`ID verification status for ${instructionRef}: ${verifyIdStatus}`);
+
+    // Handle different statuses
+    if (verifyIdStatus === 'review') {
+      // Open review modal for manual approval
+      console.log('Opening review modal for manual ID verification approval');
+      try {
+        const details = await fetchVerificationDetails(instructionRef);
+        setReviewModalDetails(details);
+        setShowReviewModal(true);
+      } catch (error) {
+        console.error('Failed to fetch verification details:', error);
+        alert('Failed to load verification details. Please try again.');
+      }
+      return;
+    } else if (verifyIdStatus === 'complete') {
+      // Show completed verification details
+      console.log('ID verification already completed, showing details');
+      alert('ID verification is already complete for this instruction.');
+      return;
+    }
+
+    // Only perform new verification if status is pending or received
+    console.log(`Starting new ID verification for ${instructionRef}`);
+
+    // Set loading state
+    setIdVerificationLoading(prev => new Set(prev).add(instructionRef));
+
+    try {
+      const response = await fetch('/api/verify-id', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ instructionRef }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        if (result.status === 'already_verified') {
+          // ID is already verified, show success message
+          alert('ID verification already completed for this instruction.');
+        } else {
+          // Verification submitted successfully
+          console.log('ID verification submitted successfully');
+          console.log('Admin Log - Response:', result.response);
+          console.log('Admin Log - Parse Results:', result.parseResults);
+          
+          // Show appropriate feedback based on results
+          const overallResult = result.overall || 'pending';
+          if (overallResult === 'review') {
+            // Results require review - could open review UI here
+            alert(`ID verification completed but requires review. Overall: ${result.overall}, Address: ${result.address}, PEP: ${result.pep}`);
+          } else if (overallResult === 'passed') {
+            alert('ID verification passed successfully!');
+          } else {
+            alert(`ID verification submitted. Status: ${overallResult}`);
+          }
+          
+          // Update local state with new verification result
+          setInstructionData(prevData => 
+            prevData.map(prospect => ({
+              ...prospect,
+              instructions: prospect.instructions.map((instruction: any) => 
+                instruction.InstructionRef === instructionRef
+                  ? { 
+                      ...instruction, 
+                      EIDOverallResult: result.overall,
+                      AddressVerificationResult: result.address,
+                      PEPAndSanctionsCheckResult: result.pep,
+                      EIDStatus: result.status || 'Completed'
+                    }
+                  : instruction
+              )
+            }))
+          );
+        }
+      } else {
+        throw new Error(result.message || 'Unknown error occurred');
+      }
+
+    } catch (error) {
+      console.error('ID verification failed:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`ID verification failed: ${errorMessage}`);
+      
+      // Stay on current page - don't redirect to EID page on error
+    } finally {
+      // Clear loading state
+      setIdVerificationLoading(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(instructionRef);
+        return newSet;
+      });
+    }
+  };
+
+  /**
+   * Handle verification approval from review modal
+   */
+  const handleVerificationApproval = async (instructionRef: string) => {
+    try {
+      await approveVerification(instructionRef);
+      
+      // Update local data to reflect the approval
+      setInstructionData(prevData => 
+        prevData.map(prospect => ({
+          ...prospect,
+          instructions: prospect.instructions.map((instruction: any) => 
+            instruction.InstructionRef === instructionRef
+              ? { ...instruction, EIDOverallResult: 'Verified', stage: 'proof-of-id-complete' }
+              : instruction
+          )
+        }))
+      );
+
+      // Close modal
+      setShowReviewModal(false);
+      setReviewModalDetails(null);
+
+      // Show success message
+      alert('ID verification approved and email sent to client.');
+      
+    } catch (error) {
+      console.error('Failed to approve verification:', error);
+      alert('Failed to approve verification. Please try again.');
+      throw error;
+    }
   };
 
 
@@ -2563,6 +2789,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                         onProofOfIdClick={() =>
                           handleOpenRiskCompliance(item.instruction?.InstructionRef)
                         }
+                        onEIDClick={() => handleEIDCheck(item.instruction)}
+                        idVerificationLoading={idVerificationLoading.has(item.instruction?.InstructionRef || '')}
                       />
                     </div>
 
@@ -2866,6 +3094,17 @@ const Instructions: React.FC<InstructionsProps> = ({
       <DataFlowWorkbench 
         isOpen={showWorkbench}
         onClose={() => setShowWorkbench(false)}
+      />
+
+      {/* ID Verification Review Modal */}
+      <IDVerificationReviewModal
+        isVisible={showReviewModal}
+        details={reviewModalDetails}
+        onClose={() => {
+          setShowReviewModal(false);
+          setReviewModalDetails(null);
+        }}
+        onApprove={handleVerificationApproval}
       />
     </>
   );

@@ -28,7 +28,8 @@ import {
   FaFolder,
   FaClipboardCheck,
   FaIdCard,
-  FaPlayCircle
+  FaPlayCircle,
+  FaSpinner
 } from 'react-icons/fa';
 
 // Move interface to separate file
@@ -65,6 +66,8 @@ export interface InstructionCardProps {
   style?: React.CSSProperties;
   onClick?: () => void;
   onProofOfIdClick?: () => void;
+  onEIDClick?: () => void;
+  idVerificationLoading?: boolean;
   animationDelay?: number;
   getClientNameByProspectId?: (prospectId: string | number | undefined) => { firstName: string; lastName: string };
 }
@@ -161,6 +164,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   payments,
   style,
   onClick,
+  onEIDClick,
+  idVerificationLoading = false,
   animationDelay = 0,
   getClientNameByProspectId
 }) => {
@@ -179,6 +184,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           0%{box-shadow:0 0 0 0 rgba(54,144,206,0.55);}
           60%{box-shadow:0 0 0 10px rgba(54,144,206,0);}
           100%{box-shadow:0 0 0 0 rgba(54,144,206,0);}
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         @keyframes fadeInScale {
           0% {
@@ -212,8 +221,31 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   const poidPassed = eidResult === "passed" || eidResult === "approved";
   const proofOfIdComplete = Boolean(instruction?.PassportNumber || instruction?.DriversLicenseNumber);
   
+  // Also check instruction stage for ID completion
+  const stageComplete = instruction?.Stage === 'proof-of-id-complete' || instruction?.stage === 'proof-of-id-complete';
+  
+  // Debug EID data
+  console.log(`🔍 ID Verification Debug for ${instruction?.InstructionRef}:`, {
+    stage: instruction?.Stage || instruction?.stage,
+    eidResult,
+    eidStatus,
+    eidData: eid,
+    eidsData: eids,
+    stageComplete
+  });
+  
   let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
-  if (!eid && !eids?.length || eidStatus === 'pending') {
+  if (stageComplete) {
+    // If stage shows proof-of-id-complete, check the actual EID result
+    if (eidResult === 'review') {
+      verifyIdStatus = 'review';
+    } else if (poidPassed || eidResult === 'passed') {
+      verifyIdStatus = 'complete';  
+    } else {
+      // Stage complete but no clear result - assume review needed
+      verifyIdStatus = 'review';
+    }
+  } else if (!eid && !eids?.length || eidStatus === 'pending') {
     verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
   } else if (poidPassed) {
     verifyIdStatus = 'complete';
@@ -724,7 +756,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 pitchStage,
                 { key:'payment', label: paymentStatus === 'complete' ? 'Paid' : 'Pay', icon:<FaPoundSign />, colour: paymentStatus === 'complete' ? colours.green : (nextActionStep === 'payment' ? colours.blue : colours.greyText) },
                 { key:'documents', label:'Docs', icon:<FaFileAlt />, colour: documentStatus === 'complete' ? colours.green : documentStatus === 'neutral' ? colours.greyText : (nextActionStep === 'documents' ? colours.blue : colours.greyText) },
-                { key:'id', label:'ID', icon:<FaIdCard />, colour: verifyIdStatus === 'complete' ? colours.green : verifyIdStatus === 'review' ? colours.red : (nextActionStep === 'id' ? colours.blue : colours.greyText) },
+                { key:'id', label: idVerificationLoading ? 'Verifying...' : 'ID', icon: idVerificationLoading ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> : <FaIdCard />, colour: idVerificationLoading ? colours.orange : (verifyIdStatus === 'complete' ? colours.green : verifyIdStatus === 'review' ? colours.red : (nextActionStep === 'id' ? colours.blue : colours.greyText)) },
                 { key:'risk', label:'Risk', icon:<FaShieldAlt />, colour: riskStatus === 'complete' ? colours.green : (nextActionStep === 'risk' ? colours.blue : (riskStatus === 'review' ? colours.red : colours.greyText)) },
                 { key:'matter', label:'Matter', icon:<FaFolder />, colour: matterStatus === 'complete' ? colours.green : (nextActionStep === 'matter' ? colours.blue : colours.greyText) },
                 { key:'ccl', label:'CCL', icon:<FaClipboardCheck />, colour: cclStatus === 'complete' ? colours.green : (nextActionStep === 'ccl' ? colours.blue : colours.greyText) }
@@ -739,7 +771,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     e.stopPropagation(); 
                     // For pitched deals, make actions clickable; for instruction cards, only nextActionStep is clickable
                     if(isPitchedDeal || step.key === nextActionStep) {
-                      setActiveStep(prev => prev === step.key ? '' : step.key); 
+                      if (step.key === 'id' && onEIDClick) {
+                        onEIDClick();
+                      } else {
+                        setActiveStep(prev => prev === step.key ? '' : step.key); 
+                      }
                     }
                   }}
                   className={mergeStyles({

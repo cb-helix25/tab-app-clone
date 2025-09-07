@@ -31,6 +31,8 @@ const enquiryEmailsRouter = require('./routes/enquiryEmails');
 const pitchesRouter = require('./routes/pitches');
 const instructionsRouter = require('./routes/instructions');
 const enquiriesUnifiedRouter = require('./routes/enquiries-unified');
+const verifyIdRouter = require('./routes/verify-id');
+const testDbRouter = require('./routes/test-db');
 const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 
 const app = express();
@@ -65,6 +67,8 @@ app.use('/api/enquiry-emails', enquiryEmailsRouter);
 // app.post('/api/update-enquiry', require('../api/update-enquiry')); // Moved to enquiries-unified/update
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/instructions', instructionsRouter);
+app.use('/api/verify-id', verifyIdRouter);
+app.use('/api/test-db', testDbRouter);
 app.use('/ccls', express.static(CCL_DIR));
 
 console.log('📋 Server routes registered:');
@@ -86,6 +90,7 @@ console.log('  ✅ /api/enquiry-emails');
 // console.log('  ✅ /api/update-enquiry'); // Moved to enquiries-unified/update
 console.log('  ✅ /api/pitches');
 console.log('  🆕 /api/instructions (UNIFIED ENDPOINT)');
+console.log('  🆕 /api/verify-id (ID VERIFICATION)');
 
 // Proxy routes to Azure Functions - these handle requests without /api/ prefix
 app.use('/', proxyToAzureFunctionsRouter);

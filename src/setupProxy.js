@@ -18,6 +18,8 @@ module.exports = function(app) {
     '/api/ccl',
     '/api/enquiry-emails',
     '/api/pitches',
+    '/api/instructions',
+    '/api/verify-id',
     '/ccls'
   ];
 
