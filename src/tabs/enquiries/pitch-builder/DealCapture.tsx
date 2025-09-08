@@ -114,7 +114,7 @@ export const DealCapture: React.FC<DealCaptureProps> = ({
             alignItems:'center',
             gap:6
           }}>
-            Estimated Fee (£) <span style={{ color: colours.red, fontSize: 11 }}>*</span>
+            Confirm Amount <span style={{ color: colours.red, fontSize: 11 }}>*</span>
           </label>
           <div 
             style={{

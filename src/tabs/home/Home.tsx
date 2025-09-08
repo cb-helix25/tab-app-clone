@@ -2960,29 +2960,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         );
         break;
       case 'Assess Risk':
-        content = (
-          <div style={{ padding: '20px' }}>
-            <Text variant="medium" style={{ marginBottom: '15px', display: 'block' }}>
-              Risk assessment functionality is available in the Instructions tab.
-            </Text>
-            <DefaultButton 
-              text="Go to Instructions" 
-              onClick={() => {
-                try {
-                  window.dispatchEvent(new CustomEvent('navigateToInstructions'));
-                } catch (error) {
-                  console.error('Failed to dispatch navigation event:', error);
-                }
-                setIsBespokePanelOpen(false);
-              }} 
-              style={{ marginRight: '10px' }}
-            />
-            <DefaultButton 
-              text="Close" 
-              onClick={() => setIsBespokePanelOpen(false)}
-            />
-          </div>
-        );
+        content = <CognitoForm dataKey="QzaAr_2Q7kesClKq8g229g" dataForm="70" />; // Risk Assessment form
         break;
       case 'Submit to CCL':
       case 'Draft CCL':
@@ -3060,7 +3038,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Calendar' }),
       });
     }
-    if (hasActiveMatter && (userInitials === 'LZ' || isLocalhost)) {
+    if ((hasActiveMatter && (userInitials === 'LZ' || isLocalhost)) || isLocalhost) {
       actions.push({
   title: 'Open Matter',
         icon: 'OpenFolderHorizontal',
@@ -3076,7 +3054,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           const poidPassed = eidResult === 'passed' || eidResult === 'approved';
           const hasMatter = Boolean(inst.MatterId || (inst.matters && inst.matters.length));
             // Accept also if user forced open via draft flag (optional future logic)
-          const ready = paymentOk && poidPassed && !hasMatter;
+          // For localhost, allow matter opening for all qualifying instructions (including those with existing matters)
+          const ready = paymentOk && poidPassed;
           return ready ? inst : null;
         }).filter(Boolean));
         if (candidates.length > 0) {

@@ -201,7 +201,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
     const riskResult = primaryRisk?.RiskAssessmentResult;
     const riskStatus = riskResult ? 
         ['low', 'low risk', 'pass', 'approved'].includes(riskResult.toLowerCase()) ? 'approved' :
-        ['medium'].includes(riskResult.toLowerCase()) ? 'review' : 'flagged'
+        ['medium', 'medium risk'].includes(riskResult.toLowerCase()) ? 'review' : 'flagged'
         : 'pending';
     
     // Get individual client verification statuses from enhanced client data
@@ -573,7 +573,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                 <div style={{ marginBottom: '4px' }}>
                                     <span style={{ color: '#666', fontWeight: 500 }}>Transaction Risk:</span>
                                     <div style={{ 
-                                        color: getRiskColor(primaryRisk.TransactionRiskLevel), 
+                                        color: getRiskColor(primaryRisk.RiskAssessmentResult), 
                                         fontWeight: 500, 
                                         fontSize: '0.75rem' 
                                     }}>

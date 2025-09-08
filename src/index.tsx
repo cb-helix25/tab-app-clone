@@ -638,7 +638,7 @@ const AppWithContext: React.FC = () => {
       Initials: normalized.Initials,
       AOW: normalized.AOW,
       isAdmin: ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW'].includes(normalized.Initials?.toUpperCase() || ''),
-      hasInstructionsAccess: ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW', 'BR', 'LA', 'SP'].includes(normalized.Initials?.toUpperCase() || '')
+      hasInstructionsAccess: true // Instructions now open to all users
     });
     
     // Clear localStorage cache when switching users to force fresh data

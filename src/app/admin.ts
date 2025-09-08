@@ -4,6 +4,7 @@ import { UserData } from './functionality/types';
 export const ADMIN_USERS = ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW'] as const;
 
 // Users who can access the Instructions tab (includes admins + additional users)
+// NOTE: Instructions tab is now open to all users, but keeping this list for reference
 export const INSTRUCTIONS_ACCESS_USERS = ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW', 'BR', 'LA', 'SP'] as const;
 
 // Helper to determine if a user has admin privileges
@@ -22,16 +23,8 @@ export function isAdminUser(user?: UserData | null): boolean {
 
 // Helper to determine if a user can access the Instructions tab
 export function hasInstructionsAccess(user?: UserData | null): boolean {
-    if (!user) return false;
-    const initials = user.Initials?.toUpperCase().trim();
-    const first = user.First?.toLowerCase().trim();
-    const nickname = user.Nickname?.toLowerCase().trim();
-    const instructionsNames = ['lukasz', 'luke', 'alex', 'cass', 'kanchel', 'billy', 'jonathan', 'bradley', 'lauren', 'sam'];
-    return !!(
-        (initials && INSTRUCTIONS_ACCESS_USERS.includes(initials as any)) ||
-        (first && instructionsNames.includes(first)) ||
-        (nickname && instructionsNames.includes(nickname))
-    );
+    // Instructions tab is now open to all users
+    return !!user;
 }
 
 // Helper to determine if a user is a power user (admin or has 'operations'/'tech' in AOW)

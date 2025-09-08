@@ -151,7 +151,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       
       // Try the server route directly
       try {
-        const response = await fetch('http://localhost:8080/api/enquiries-unified');
+        const response = await fetch('/api/enquiries-unified');
         if (response.ok) {
           const data = await response.json();
           console.log(`✅ Fetched ${data.count} unified enquiries from both databases`);
@@ -2253,7 +2253,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         verifyIdStatus = 'review'; // Stage complete but unclear result
         console.log(`✅ Status determined from stage complete fallback: review`);
       }
-    } else if (!eid && !eids?.length || eidStatus === 'pending') {
+    } else if ((!eid && !eids?.length) || eidStatus === 'pending') {
       verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
       console.log(`✅ Status determined from no data: ${verifyIdStatus}`);
     } else if (poidPassed) {

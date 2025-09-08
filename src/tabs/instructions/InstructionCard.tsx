@@ -29,7 +29,8 @@ import {
   FaClipboardCheck,
   FaIdCard,
   FaPlayCircle,
-  FaSpinner
+  FaSpinner,
+  FaCheckCircle
 } from 'react-icons/fa';
 
 // Move interface to separate file
@@ -173,6 +174,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   const [showDetails, setShowDetails] = useState(false);
   const [clickedForActions, setClickedForActions] = useState(false);
   const [activeStep, setActiveStep] = useState<string>('');
+  const [showRiskDetails, setShowRiskDetails] = useState(false);
+  const [showPaymentDetails, setShowPaymentDetails] = useState(false);
+  const [showDocumentDetails, setShowDocumentDetails] = useState(false);
+  const [showMatterDetails, setShowMatterDetails] = useState(false);
   const { isDarkMode } = useTheme();
   // Inject keyframes once for pulse effect
   React.useEffect(() => {
@@ -198,6 +203,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             opacity: 1;
             transform: translateX(-50%) scale(1);
           }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         @keyframes fadeIn {
           0% {
@@ -235,7 +244,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       // Stage complete but no clear result - assume review needed
       verifyIdStatus = 'review';
     }
-  } else if (!eid && !eids?.length || eidStatus === 'pending') {
+  } else if ((!eid && !eids?.length) || eidStatus === 'pending') {
     verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
   } else if (poidPassed) {
     verifyIdStatus = 'complete';
@@ -400,8 +409,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     paymentStatus !== 'complete' ? 'payment' :
     documentStatus !== 'complete' ? 'documents' :
     verifyIdStatus !== 'complete' ? 'id' :
+    matterStatus !== 'complete' ? 'matter' : // Moved matter before risk
     riskStatus !== 'complete' ? 'risk' :
-    matterStatus !== 'complete' ? 'matter' :
     cclStatus !== 'complete' ? 'ccl' : null;
 
   // Get next action label and icon
@@ -707,7 +716,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         display: 'flex', 
         flexDirection: 'column', 
         marginTop: 6, 
-        transition: 'max-height 0.35s cubic-bezier(.4,0,.2,1), padding 0.35s cubic-bezier(.4,0,.2,1)', 
+        transition: 'max-height 0.25s ease-out, padding 0.25s ease-out', 
         maxHeight: (showDetails || selected || !isPitchedDeal) ? 120 : 0, 
         paddingTop: (showDetails || selected || !isPitchedDeal) ? 4 : 0, 
         paddingBottom: (showDetails || selected || !isPitchedDeal) ? 8 : 0, 
@@ -762,20 +771,34 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             ).map((step, idx) => {
               const isComplete = step.colour === colours.green;
               const isDisabled = (step as any).disabled; // Check if step is disabled
-              const delay = (showDetails || selected || !isPitchedDeal) ? idx * 70 : (7 - 1 - idx) * 65;
+              const delay = (showDetails || selected || !isPitchedDeal) ? idx * 40 : (7 - 1 - idx) * 35;
               return (
                 <button
                   key={step.key}
                   onClick={(e) => { 
                     e.stopPropagation(); 
                     // For pitched deals, make actions clickable; for instruction cards, only nextActionStep is clickable
-                    // Exception: ID verification is always clickable to view details
+                    // Exception: ID verification and Risk Assessment are always clickable to view details
                     // Don't allow clicks on disabled steps
-                    if(!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id')) {
+                    if(!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) {
                       if (step.key === 'id' && onEIDClick) {
                         onEIDClick();
+                      } else if (step.key === nextActionStep) {
+                        // For active/next action step, trigger the action (not details)
+                        setActiveStep(prev => prev === step.key ? '' : step.key);
+                      } else if (step.key === 'risk') {
+                        setShowRiskDetails(prev => !prev);
+                      } else if (step.key === 'payment') {
+                        setShowPaymentDetails(prev => !prev);
+                      } else if (step.key === 'documents') {
+                        setShowDocumentDetails(prev => !prev);
+                      } else if (step.key === 'matter') {
+                        setShowMatterDetails(prev => !prev);
                       } else {
-                        setActiveStep(prev => prev === step.key ? '' : step.key); 
+                        // Other pills - if it's for a pitched deal, make it clickable
+                        if (isPitchedDeal) {
+                          setActiveStep(prev => prev === step.key ? '' : step.key);
+                        }
                       }
                     }
                   }}
@@ -787,20 +810,20 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     borderRadius: 20,
                     fontSize: 11,
                     fontWeight: 600,
-                    cursor: (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id')) ? 'pointer' : 'default',
+                    cursor: (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? 'pointer' : 'default',
                     opacity: isDisabled ? 0.3 : ((showDetails || selected || clickedForActions || !isPitchedDeal) ? 1 : 0), // Grey out disabled steps
-                    transform: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
-                    transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s',
+                    transform: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 'translateY(0) scale(1)' : 'translateY(2px) scale(.98)',
+                    transition: 'opacity .3s ease-out, transform .3s ease-out, background .2s, color .2s, border .2s',
                     transitionDelay: `${delay}ms`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 4,
                     selectors: {
-                      ':hover': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id')) ? { 
+                      ':hover': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? { 
                       background: colours.blue, 
                       borderColor: colours.blue 
                     } : {},
-                    ':active': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id')) ? { 
+                    ':active': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? { 
                       background: colours.blue, 
                       transform: 'scale(0.95)' 
                     } : {},
@@ -891,6 +914,394 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       </div>
 
       {/* Contact banner removed per request; details now inline in header */}
+      
+      {/* Risk Details Section - shown when risk pill is clicked */}
+      {showRiskDetails && risk && (
+        <div style={{
+          marginTop: '12px',
+          padding: '16px',
+          background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(54,144,206,0.05)',
+          borderRadius: '8px',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(54,144,206,0.15)'}`,
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '12px',
+            paddingBottom: '8px',
+            borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(54,144,206,0.1)'}`
+          }}>
+            <FaShieldAlt style={{ color: colours.blue, fontSize: '16px' }} />
+            <span style={{
+              fontSize: '14px',
+              fontWeight: 700,
+              color: isDarkMode ? '#fff' : colours.darkBlue
+            }}>
+              Risk Assessment Details
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+            {/* Risk Result */}
+            {risk.RiskAssessmentResult && (
+              <div>
+                <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Risk Level
+                </div>
+                <div style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: risk.RiskAssessmentResult?.toLowerCase().includes('low') ? colours.green : 
+                         risk.RiskAssessmentResult?.toLowerCase().includes('medium') ? colours.yellow :
+                         risk.RiskAssessmentResult?.toLowerCase().includes('high') ? colours.red : '#666'
+                }}>
+                  {risk.RiskAssessmentResult}
+                </div>
+              </div>
+            )}
+
+            {/* Risk Score */}
+            {risk.RiskScore && (
+              <div>
+                <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Risk Score
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: isDarkMode ? '#fff' : colours.darkBlue }}>
+                  {risk.RiskScore}/21
+                </div>
+              </div>
+            )}
+
+            {/* Assessor */}
+            {risk.RiskAssessor && (
+              <div>
+                <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Assessed By
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: isDarkMode ? '#fff' : colours.darkBlue }}>
+                  {risk.RiskAssessor}
+                </div>
+              </div>
+            )}
+
+            {/* Date */}
+            {risk.ComplianceDate && (
+              <div>
+                <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Assessment Date
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: isDarkMode ? '#fff' : colours.darkBlue }}>
+                  {new Date(risk.ComplianceDate).toLocaleDateString('en-GB')}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Additional Risk Factors */}
+          {(risk.ClientType || risk.ValueOfInstruction || risk.TransactionRiskLevel) && (
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#666', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase' }}>
+                Risk Factors
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {risk.ClientType && (
+                  <span style={{
+                    padding: '4px 8px',
+                    background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    color: isDarkMode ? '#fff' : colours.darkBlue
+                  }}>
+                    {risk.ClientType}
+                  </span>
+                )}
+                {risk.ValueOfInstruction && (
+                  <span style={{
+                    padding: '4px 8px',
+                    background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    color: isDarkMode ? '#fff' : colours.darkBlue
+                  }}>
+                    {risk.ValueOfInstruction}
+                  </span>
+                )}
+                {risk.TransactionRiskLevel && (
+                  <span style={{
+                    padding: '4px 8px',
+                    background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    color: isDarkMode ? '#fff' : colours.darkBlue
+                  }}>
+                    Transaction: {risk.TransactionRiskLevel}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payment Details Section - shown when payment pill is clicked */}
+      {showPaymentDetails && payments && payments.length > 0 && (
+        <div style={{
+          marginTop: '12px',
+          padding: '16px',
+          background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(34,197,94,0.05)',
+          borderRadius: '8px',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(34,197,94,0.15)'}`,
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '12px',
+            paddingBottom: '8px',
+            borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(34,197,94,0.1)'}`
+          }}>
+            <FaCheckCircle style={{ color: colours.green, fontSize: '16px' }} />
+            <span style={{
+              fontSize: '14px',
+              fontWeight: 700,
+              color: isDarkMode ? '#fff' : colours.darkBlue
+            }}>
+              Payment Details
+            </span>
+          </div>
+
+          {payments.map((payment, idx) => (
+            <div key={idx} style={{
+              marginBottom: idx < payments.length - 1 ? '12px' : '0',
+              paddingBottom: idx < payments.length - 1 ? '12px' : '0',
+              borderBottom: idx < payments.length - 1 ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` : 'none'
+            }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                {/* Amount */}
+                {payment.amount && (
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                      Amount
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: isDarkMode ? '#fff' : colours.darkBlue }}>
+                      £{payment.amount}
+                    </div>
+                  </div>
+                )}
+
+                {/* Status */}
+                {payment.payment_status && (
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                      Payment Status
+                    </div>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: payment.payment_status === 'succeeded' ? colours.green : 
+                             payment.payment_status === 'pending' ? colours.yellow :
+                             colours.red
+                    }}>
+                      {payment.payment_status}
+                    </div>
+                  </div>
+                )}
+
+                {/* Internal Status */}
+                {payment.internal_status && (
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                      Internal Status
+                    </div>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: ['completed', 'paid'].includes(payment.internal_status) ? colours.green : colours.yellow
+                    }}>
+                      {payment.internal_status}
+                    </div>
+                  </div>
+                )}
+
+                {/* Created Date */}
+                {payment.created_at && (
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                      Created Date
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: isDarkMode ? '#fff' : colours.darkBlue }}>
+                      {new Date(payment.created_at).toLocaleDateString('en-GB')}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Document Details Section - shown when documents pill is clicked */}
+      {showDocumentDetails && documents && documents.length > 0 && (
+        <div style={{
+          marginTop: '12px',
+          padding: '16px',
+          background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(34,197,94,0.05)',
+          borderRadius: '8px',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(34,197,94,0.15)'}`,
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '12px',
+            paddingBottom: '8px',
+            borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(34,197,94,0.1)'}`
+          }}>
+            <FaFileAlt style={{ color: colours.green, fontSize: '16px' }} />
+            <span style={{
+              fontSize: '14px',
+              fontWeight: 700,
+              color: isDarkMode ? '#fff' : colours.darkBlue
+            }}>
+              Document Details ({documents.length})
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {documents.map((doc, idx) => (
+              <div 
+                key={idx} 
+                onClick={() => onDocumentClick && onDocumentClick(doc)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '8px 12px',
+                  background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  borderRadius: '6px',
+                  border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                  cursor: onDocumentClick ? 'pointer' : 'default',
+                  transition: 'all 0.2s ease'
+                }}
+                className={mergeStyles({
+                  selectors: onDocumentClick ? {
+                    ':hover': {
+                      background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                      transform: 'translateY(-1px)'
+                    }
+                  } : {}
+                })}
+              >
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FaFileAlt style={{ color: colours.blue, fontSize: '14px' }} />
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: isDarkMode ? '#fff' : colours.darkBlue }}>
+                      {doc.filename || doc.name || `Document ${idx + 1}`}
+                    </div>
+                    {doc.uploaded_at && (
+                      <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                        Uploaded: {new Date(doc.uploaded_at).toLocaleDateString('en-GB')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <div style={{
+                    padding: '4px 8px',
+                    background: colours.green,
+                    color: '#fff',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: 600
+                  }}>
+                    Uploaded
+                  </div>
+                  {onDocumentClick && (
+                    <FaDownload style={{ color: colours.blue, fontSize: '12px' }} />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Matter Details Section - shown when matter pill is clicked */}
+      {showMatterDetails && (instruction?.MatterId || (instruction as any)?.matters?.length > 0) && (
+        <div style={{
+          marginTop: '12px',
+          padding: '16px',
+          background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(34,197,94,0.05)',
+          borderRadius: '8px',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(34,197,94,0.15)'}`,
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '12px',
+            paddingBottom: '8px',
+            borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(34,197,94,0.1)'}`
+          }}>
+            <FaFolder style={{ color: colours.green, fontSize: '16px' }} />
+            <span style={{
+              fontSize: '14px',
+              fontWeight: 700,
+              color: isDarkMode ? '#fff' : colours.darkBlue
+            }}>
+              Matter Details
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+            {/* Matter ID */}
+            {instruction?.MatterId && (
+              <div>
+                <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Matter ID
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: isDarkMode ? '#fff' : colours.darkBlue }}>
+                  {instruction.MatterId}
+                </div>
+              </div>
+            )}
+
+            {/* Matter Count */}
+            {(instruction as any)?.matters?.length > 0 && (
+              <div>
+                <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Matters
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: isDarkMode ? '#fff' : colours.darkBlue }}>
+                  {(instruction as any).matters.length} matter(s) created
+                </div>
+              </div>
+            )}
+
+            {/* Status */}
+            <div>
+              <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' }}>
+                Status
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: colours.green }}>
+                Matter Created
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

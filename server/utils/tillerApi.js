@@ -74,7 +74,9 @@ async function getToken() {
 async function submitVerification(instructionData) {
     const token = await getToken();
     const payload = buildTillerPayload(instructionData);
-    console.log('▶️ Tiller payload built');
+    console.log('▶️ Tiller payload built for:', instructionData.InstructionRef);
+    console.log('▶️ Full payload being sent:', JSON.stringify(payload, null, 2));
+    
     try {
         const res = await axios.post(
             'https://verify-api.tiller-verify.com/api/v1/verifications',
@@ -92,7 +94,10 @@ async function submitVerification(instructionData) {
     } catch (err) {
         if (err.response) {
             console.error('❌ Tiller status:', err.response.status);
-            console.error('❌ Tiller error data:', JSON.stringify(err.response.data));
+            console.error('❌ Tiller error data:', JSON.stringify(err.response.data, null, 2));
+            if (err.response.data?.ValidationErrors) {
+                console.error('❌ Validation Errors:', JSON.stringify(err.response.data.ValidationErrors, null, 2));
+            }
         } else {
             console.error('❌ Tiller request error:', err.message);
         }
@@ -128,9 +133,61 @@ function findIdByName(list, name) {
 function buildTillerPayload(data) {
     const get = (...keys) => {
         for (const k of keys) {
-            if (data[k] != null) return data[k];
+            if (data[k] != null && data[k] !== '') return data[k];
         }
         return undefined;
+    };
+
+    // Format date to ISO string if needed
+    const formatDate = (dateValue) => {
+        if (!dateValue) return undefined;
+        
+        try {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) {
+                console.warn('Invalid date format:', dateValue);
+                return undefined;
+            }
+            return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+        } catch (error) {
+            console.warn('Date parsing error:', error.message, 'for value:', dateValue);
+            return undefined;
+        }
+    };
+
+    // Format phone number to remove spaces/dashes and ensure it starts with country code
+    const formatPhone = (phone) => {
+        if (!phone) return undefined;
+        
+        let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+        
+        // Add UK country code if missing
+        if (cleaned.startsWith('0')) {
+            cleaned = '+44' + cleaned.substring(1);
+        } else if (!cleaned.startsWith('+')) {
+            cleaned = '+44' + cleaned;
+        }
+        
+        return cleaned;
+    };
+
+    // Ensure country code is 2-letter ISO format
+    const formatCountryCode = (country) => {
+        if (!country) return 'GB'; // Default to GB
+        
+        const countryMappings = {
+            'United Kingdom': 'GB',
+            'UK': 'GB',
+            'England': 'GB',
+            'Scotland': 'GB',
+            'Wales': 'GB',
+            'Northern Ireland': 'GB',
+            'United States': 'US',
+            'USA': 'US',
+            'Canada': 'CA'
+        };
+        
+        return countryMappings[country] || (country.length === 2 ? country.toUpperCase() : 'GB');
     };
 
     const profile = {
@@ -138,8 +195,8 @@ function buildTillerPayload(data) {
         genderTypeId: findIdByName(genders, get('gender', 'Gender')),
         firstName: get('firstName', 'FirstName'),
         lastName: get('lastName', 'LastName'),
-        dateOfBirth: get('dob', 'DOB'),
-        mobileNumber: get('phone', 'Phone'),
+        dateOfBirth: formatDate(get('dob', 'DOB')),
+        mobileNumber: formatPhone(get('phone', 'Phone')),
         email: get('email', 'Email'),
         cardTypes: [],
         currentAddress: {
@@ -149,7 +206,7 @@ function buildTillerPayload(data) {
                 townCity: get('city', 'City'),
                 stateProvinceName: get('county', 'County'),
                 postZipCode: get('postcode', 'Postcode'),
-                countryCode: get('countryCode', 'CountryCode') || get('country', 'Country')
+                countryCode: formatCountryCode(get('countryCode', 'CountryCode') || get('country', 'Country'))
             }
         }
     };
@@ -163,10 +220,12 @@ function buildTillerPayload(data) {
         profile.cardTypes.push({ cardTypeId: 4, cardNumber: drivers });
     }
 
+    console.log('▶️ Built profile data:', JSON.stringify(profile, null, 2));
+
     return {
         externalReferenceId: '18207',
         runAsync: 'True',
-        mock: 'True', // Enable mock mode for testing
+        mock: 'False', // Disable mock mode for production
         checks: [
             { checkTypeId: 1, maximumSources: 3, CheckMethod: 1, matchesRequired: 1 },
             { checkTypeId: 2 }

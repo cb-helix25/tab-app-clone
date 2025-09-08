@@ -26,9 +26,9 @@ export const getActionableInstructions = (
         }
         
         const matterLinked = instruction.MatterId || item.matter;
-        if (matterLinked) {
+        if (matterLinked && !isLocalhost) {
             console.log(`DEBUG: Item ${index} (${item.prospectId}) - already has matter:`, matterLinked);
-            return; // skip if already linked to a matter
+            return; // skip if already linked to a matter (except in localhost)
         }
 
         // Calculate workflow status like InstructionCard.connected.tsx does
@@ -83,6 +83,11 @@ export const getActionableInstructions = (
             riskStatus !== 'complete' ? 'risk' :
             'ccl'; // Include CCL as final step
 
+        // For localhost, add matter opening after core workflow steps (ID + payment)
+        const needsMatterOpening = isLocalhost && matterLinked && 
+            verifyIdStatus === 'complete' && 
+            paymentStatus === 'complete';
+
         // Check if any steps need review (red status)
         const hasIdReview = verifyIdStatus === 'review';
         const hasRiskReview = riskStatus === 'review';
@@ -102,10 +107,11 @@ export const getActionableInstructions = (
         
         // Include items that either:
         // 1. Have next action step as id/risk/ccl (blue active step), OR
-        // 2. Have review status (red step that needs attention)
+        // 2. Have review status (red step that needs attention), OR
+        // 3. Need matter opening (localhost only)
         const needsUserAction = 
             (nextActionStep === 'id' || nextActionStep === 'risk' || nextActionStep === 'ccl') ||
-            hasIdReview || hasRiskReview;
+            hasIdReview || hasRiskReview || needsMatterOpening;
             
         if (!needsUserAction) {
             console.log(`🔍 DEBUG [${timestamp}]: Item ${index} (${item.prospectId}) - SKIPPING, no immediate action needed (nextActionStep: ${nextActionStep}, idReview: ${hasIdReview}, riskReview: ${hasRiskReview})`);
@@ -125,6 +131,8 @@ export const getActionableInstructions = (
             actionLabel = 'Review ID';
         } else if (hasRiskReview) {
             actionLabel = 'Review Risk';
+        } else if (needsMatterOpening) {
+            actionLabel = 'Open Matter';
         } else if (nextActionStep === 'id') {
             actionLabel = 'Verify ID';
         } else if (nextActionStep === 'risk') {
