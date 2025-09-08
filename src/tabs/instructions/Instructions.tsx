@@ -2159,6 +2159,12 @@ const Instructions: React.FC<InstructionsProps> = ({
     const eids = inst.eidS;
     const eidStatus = inst.EIDStatus;
     const eidResult = inst.EIDOverallResult?.toLowerCase();
+    
+    // Try alternative field names for ID verification data
+    const altEidResult = (inst.eidOverallResult || inst.eid_overall_result || inst.overallResult)?.toLowerCase();
+    const altAddressResult = (inst.addressVerificationResult || inst.AddressVerificationResult || inst.address_verification_result)?.toLowerCase();
+    const altPepResult = (inst.pepAndSanctionsCheckResult || inst.PEPAndSanctionsCheckResult || inst.pep_and_sanctions_check_result)?.toLowerCase();
+    
     const poidPassed = inst.EIDOverallResult?.toLowerCase() === 'passed' || inst.EIDOverallResult?.toLowerCase() === 'complete';
     const stageComplete = inst.stage === 'proof-of-id-complete';
     const proofOfIdComplete = inst.ProofOfIdComplete || inst.proof_of_id_complete;
@@ -2169,34 +2175,69 @@ const Instructions: React.FC<InstructionsProps> = ({
       tillerOverallResult = eid.overallResult.result?.toLowerCase();
     }
     
+    // Get the latest ID verification data from the idVerifications array
+    const idVerification = inst.idVerifications && inst.idVerifications.length > 0 
+      ? inst.idVerifications[0] // Most recent (ordered by InternalId DESC)
+      : null;
+    
     console.log(`🔍 Enhanced EID Check for ${instructionRef}:`, {
       stage: inst.stage,
-      eidResult,
-      eidStatus,
-      tillerOverallResult,
-      hasEidData: !!eid,
-      eidDataType: typeof eid
+      hasIdVerifications: !!(inst.idVerifications && inst.idVerifications.length > 0),
+      idVerificationCount: inst.idVerifications ? inst.idVerifications.length : 0,
+      latestIdVerification: idVerification ? {
+        EIDOverallResult: idVerification.EIDOverallResult,
+        EIDStatus: idVerification.EIDStatus,
+        AddressVerificationResult: idVerification.AddressVerificationResult,
+        PEPAndSanctionsCheckResult: idVerification.PEPAndSanctionsCheckResult,
+        EIDCheckId: idVerification.EIDCheckId,
+        EIDCheckedDate: idVerification.EIDCheckedDate
+      } : null,
+      
+      // Legacy fields for backward compatibility
+      legacyFields: {
+        eidResult,
+        eidStatus,
+        tillerOverallResult,
+        hasEidData: !!eid,
+        poidPassed,
+        stageComplete,
+        proofOfIdComplete
+      }
     });
     
     let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
     
-    // Priority 1: Check Tiller API overall result if available
-    if (tillerOverallResult === 'review') {
+    // Priority 1: Check latest ID verification record from database
+    if (idVerification && idVerification.EIDOverallResult) {
+      const dbResult = idVerification.EIDOverallResult.toLowerCase();
+      if (dbResult === 'review') {
+        verifyIdStatus = 'review';
+        console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: review`);
+      } else if (dbResult === 'passed' || dbResult === 'complete') {
+        verifyIdStatus = 'complete';
+        console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: complete (${dbResult})`);
+      } else {
+        verifyIdStatus = 'review'; // Default for unknown results
+        console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: review (fallback for ${dbResult})`);
+      }
+    }
+    // Priority 2: Check Tiller API overall result if available
+    else if (tillerOverallResult === 'review') {
       verifyIdStatus = 'review';
       console.log(`✅ Status determined from Tiller API: review`);
     } else if (tillerOverallResult === 'passed') {
       verifyIdStatus = 'complete';
       console.log(`✅ Status determined from Tiller API: complete`);
     } 
-    // Priority 2: Check database EID result
-    else if (eidResult === 'review') {
+    // Priority 3: Check legacy database EID result fields
+    else if (eidResult === 'review' || altEidResult === 'review') {
       verifyIdStatus = 'review';
-      console.log(`✅ Status determined from DB EIDResult: review`);
-    } else if (poidPassed || eidResult === 'passed') {
+      console.log(`✅ Status determined from legacy DB EIDResult: review (${eidResult || altEidResult})`);
+    } else if (poidPassed || eidResult === 'passed' || altEidResult === 'passed') {
       verifyIdStatus = 'complete';
-      console.log(`✅ Status determined from DB EIDResult: complete`);
+      console.log(`✅ Status determined from legacy DB EIDResult: complete (${eidResult || altEidResult})`);
     }
-    // Priority 3: Check stage and other indicators
+    // Priority 4: Check stage and other indicators
     else if (stageComplete) {
       // If stage shows proof-of-id-complete but no clear result, check for pending status
       if (eidStatus === 'pending' || eidResult === 'pending') {
@@ -2219,10 +2260,10 @@ const Instructions: React.FC<InstructionsProps> = ({
 
     console.log(`ID verification status for ${instructionRef}: ${verifyIdStatus}`);
 
-    // Handle different statuses
+    // IMPORTANT: Handle review and complete statuses immediately - NO API CALLS
     if (verifyIdStatus === 'review') {
-      // Open review modal for manual approval
-      console.log('Opening review modal for manual ID verification approval');
+      // Red ID - already requires review, open modal directly
+      console.log('🔴 RED ID detected - Opening review modal directly (NO API CALL)');
       try {
         const details = await fetchVerificationDetails(instructionRef);
         setReviewModalDetails(details);
@@ -2231,16 +2272,18 @@ const Instructions: React.FC<InstructionsProps> = ({
         console.error('Failed to fetch verification details:', error);
         alert('Failed to load verification details. Please try again.');
       }
-      return;
-    } else if (verifyIdStatus === 'complete') {
-      // Show completed verification details
-      console.log('ID verification already completed, showing details');
+      return; // STOP HERE - no API call needed
+    } 
+    
+    if (verifyIdStatus === 'complete') {
+      // Green ID - already completed
+      console.log('🟢 GREEN ID detected - Already completed');
       alert('ID verification is already complete for this instruction.');
-      return;
+      return; // STOP HERE - no API call needed
     }
 
-    // Only perform new verification if status is pending or received
-    console.log(`Starting new ID verification for ${instructionRef}`);
+    // Only reach here if status is 'pending' or 'received' - these need API calls
+    console.log(`🟡 PENDING/RECEIVED ID detected - Making API call for ${instructionRef}`);
 
     // Set loading state
     setIdVerificationLoading(prev => new Set(prev).add(instructionRef));
@@ -2274,31 +2317,23 @@ const Instructions: React.FC<InstructionsProps> = ({
           // Show appropriate feedback based on results
           const overallResult = result.overall || 'pending';
           if (overallResult === 'review') {
-            // Results require review - could open review UI here
-            alert(`ID verification completed but requires review. Overall: ${result.overall}, Address: ${result.address}, PEP: ${result.pep}`);
+            // Results require review - open modal for manual approval
+            console.log('Opening review modal for verification results');
+            try {
+              const details = await fetchVerificationDetails(instructionRef);
+              setReviewModalDetails(details);
+              setShowReviewModal(true);
+            } catch (error) {
+              console.error('Failed to fetch verification details for review:', error);
+              alert('Verification requires manual review. Please check the verification details.');
+            }
           } else if (overallResult === 'passed') {
-            alert('ID verification passed successfully!');
+            alert('ID verification completed successfully!');
           } else {
             alert(`ID verification submitted. Status: ${overallResult}`);
           }
           
-          // Update local state with new verification result
-          setInstructionData(prevData => 
-            prevData.map(prospect => ({
-              ...prospect,
-              instructions: prospect.instructions.map((instruction: any) => 
-                instruction.InstructionRef === instructionRef
-                  ? { 
-                      ...instruction, 
-                      EIDOverallResult: result.overall,
-                      AddressVerificationResult: result.address,
-                      PEPAndSanctionsCheckResult: result.pep,
-                      EIDStatus: result.status || 'Completed'
-                    }
-                  : instruction
-              )
-            }))
-          );
+          // Note: Card will update status on next data refresh
         }
       } else {
         throw new Error(result.message || 'Unknown error occurred');
@@ -3105,6 +3140,10 @@ const Instructions: React.FC<InstructionsProps> = ({
           setReviewModalDetails(null);
         }}
         onApprove={handleVerificationApproval}
+        onRequestDocuments={async (instructionRef: string) => {
+          console.log('Documents requested for:', instructionRef);
+          // The email sending is handled within the modal
+        }}
       />
     </>
   );

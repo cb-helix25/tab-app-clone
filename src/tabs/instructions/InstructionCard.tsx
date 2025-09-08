@@ -224,16 +224,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   // Also check instruction stage for ID completion
   const stageComplete = instruction?.Stage === 'proof-of-id-complete' || instruction?.stage === 'proof-of-id-complete';
   
-  // Debug EID data
-  console.log(`🔍 ID Verification Debug for ${instruction?.InstructionRef}:`, {
-    stage: instruction?.Stage || instruction?.stage,
-    eidResult,
-    eidStatus,
-    eidData: eid,
-    eidsData: eids,
-    stageComplete
-  });
-  
   let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
   if (stageComplete) {
     // If stage shows proof-of-id-complete, check the actual EID result
@@ -253,29 +243,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     verifyIdStatus = 'review';
   }
 
-  // Debug log to check instruction data
-  console.log('Instruction data:', {
-    ref: instruction?.InstructionRef,
-    status: instruction?.Status || instruction?.status,
-    stage: instruction?.Stage || instruction?.stage,
-    workflow: instruction?.Workflow || instruction?.workflow,
-    payments: instruction?.payments?.length,
-    paymentData: instruction?.payments?.[0],
-    allKeys: instruction ? Object.keys(instruction) : null
-  });
-
   // Payment status based on payments array
-  const getPaymentStatus = () => {
-    console.log('Checking payment status for instruction:', instruction?.InstructionRef, payments);
-    
+  const getPaymentStatus = () => {    
     // Check if instruction itself is marked as paid (fallback)
     if (instruction?.InternalStatus === 'paid' || instruction?.internalStatus === 'paid') {
-      console.log('Instruction marked as paid');
       return 'complete';
     }
     
     if (!payments || payments.length === 0) {
-      console.log('No payments found');
       return 'pending';
     }
     
