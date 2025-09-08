@@ -216,9 +216,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
   // Status logic - match the logic used in global actions
   // ID Verification status based on EID data
-  const eidResult = (eid?.EIDOverallResult || eids?.[0]?.EIDOverallResult)?.toLowerCase() ?? "";
+  const eidResult = (eid?.EIDOverallResult || eids?.[0]?.EIDOverallResult || instruction?.EIDOverallResult)?.toLowerCase() ?? "";
   const eidStatus = (eid?.EIDStatus || eids?.[0]?.EIDStatus)?.toLowerCase() ?? "";
-  const poidPassed = eidResult === "passed" || eidResult === "approved";
+  const poidPassed = eidResult === "passed" || eidResult === "approved" || eidResult === "verified";
   const proofOfIdComplete = Boolean(instruction?.PassportNumber || instruction?.DriversLicenseNumber);
   
   // Also check instruction stage for ID completion
@@ -724,7 +724,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               // Pitch-specific workflow
               [
                 { key: 'pitched', label: 'Pitched', icon: <FaEnvelope />, colour: colours.green },
-                { key: 'follow-up', label: 'Follow Up', icon: <FaPhone />, colour: colours.greyText }
+                { key: 'follow-up', label: 'Follow Up', icon: <FaPhone />, colour: colours.greyText, disabled: true } // Mark as disabled
               ] : 
               // Standard instruction workflow
               [
@@ -734,10 +734,34 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 { key:'id', label: idVerificationLoading ? 'Verifying...' : 'ID', icon: idVerificationLoading ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> : <FaIdCard />, colour: idVerificationLoading ? colours.orange : (verifyIdStatus === 'complete' ? colours.green : verifyIdStatus === 'review' ? colours.red : (nextActionStep === 'id' ? colours.blue : colours.greyText)) },
                 { key:'risk', label:'Risk', icon:<FaShieldAlt />, colour: riskStatus === 'complete' ? colours.green : (nextActionStep === 'risk' ? colours.blue : (riskStatus === 'review' ? colours.red : colours.greyText)) },
                 { key:'matter', label:'Matter', icon:<FaFolder />, colour: matterStatus === 'complete' ? colours.green : (nextActionStep === 'matter' ? colours.blue : colours.greyText) },
-                { key:'ccl', label:'CCL', icon:<FaClipboardCheck />, colour: cclStatus === 'complete' ? colours.green : (nextActionStep === 'ccl' ? colours.blue : colours.greyText) }
+                // CCL - only show in development environment
+                ...(process.env.NODE_ENV === 'development' ? [
+                  { 
+                    key:'ccl', 
+                    label: (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        CCL
+                        <span style={{
+                          fontSize: '8px',
+                          fontWeight: 700,
+                          backgroundColor: colours.orange,
+                          color: 'white',
+                          padding: '1px 4px',
+                          borderRadius: '3px',
+                          letterSpacing: '0.3px'
+                        }}>
+                          DEV
+                        </span>
+                      </span>
+                    ), 
+                    icon:<FaClipboardCheck />, 
+                    colour: cclStatus === 'complete' ? colours.green : (nextActionStep === 'ccl' ? colours.blue : colours.greyText) 
+                  }
+                ] : [])
               ]
             ).map((step, idx) => {
               const isComplete = step.colour === colours.green;
+              const isDisabled = (step as any).disabled; // Check if step is disabled
               const delay = (showDetails || selected || !isPitchedDeal) ? idx * 70 : (7 - 1 - idx) * 65;
               return (
                 <button
@@ -745,7 +769,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   onClick={(e) => { 
                     e.stopPropagation(); 
                     // For pitched deals, make actions clickable; for instruction cards, only nextActionStep is clickable
-                    if(isPitchedDeal || step.key === nextActionStep) {
+                    // Exception: ID verification is always clickable to view details
+                    // Don't allow clicks on disabled steps
+                    if(!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id')) {
                       if (step.key === 'id' && onEIDClick) {
                         onEIDClick();
                       } else {
@@ -761,8 +787,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     borderRadius: 20,
                     fontSize: 11,
                     fontWeight: 600,
-                    cursor: (isPitchedDeal || step.key === nextActionStep) ? 'pointer' : 'default',
-                    opacity: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 1 : 0,
+                    cursor: (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id')) ? 'pointer' : 'default',
+                    opacity: isDisabled ? 0.3 : ((showDetails || selected || clickedForActions || !isPitchedDeal) ? 1 : 0), // Grey out disabled steps
                     transform: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
                     transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s',
                     transitionDelay: `${delay}ms`,
@@ -770,11 +796,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     alignItems: 'center',
                     gap: 4,
                     selectors: {
-                      ':hover': (isPitchedDeal || step.key === nextActionStep) ? { 
+                      ':hover': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id')) ? { 
                       background: colours.blue, 
                       borderColor: colours.blue 
                     } : {},
-                    ':active': (isPitchedDeal || step.key === nextActionStep) ? { 
+                    ':active': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id')) ? { 
                       background: colours.blue, 
                       transform: 'scale(0.95)' 
                     } : {},
@@ -794,15 +820,18 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              opacity: isHovered ? 1 : 0.6,
+              opacity: isPitchedDeal ? 0.4 : (isHovered ? 1 : 0.6), // Grey out pitched deals
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              cursor: (nextActionDetails || isPitchedDeal) ? 'pointer' : 'default',
-              flexShrink: 0
+              cursor: isPitchedDeal ? 'not-allowed' : ((nextActionDetails || isPitchedDeal) ? 'pointer' : 'default'), // Disable cursor for pitched deals
+              flexShrink: 0,
+              pointerEvents: isPitchedDeal ? 'none' : 'auto' // Disable click for pitched deals
             }}
             onClick={(e) => {
               e.stopPropagation();
               if (isPitchedDeal) {
-                console.log('Follow Up action for pitched deal:', instruction);
+                // Disabled - no action for follow up yet
+                console.log('Follow Up action disabled - coming soon');
+                return;
               } else if (nextActionDetails && onClick) {
                 onClick();
               }
@@ -845,12 +874,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   width: 28,
                   height: 28,
                   borderRadius: '50%',
-                  background: colours.blue,
-                  color: 'white',
+                  background: isPitchedDeal ? '#999' : colours.blue, // Grey background for pitched deals
+                  color: isPitchedDeal ? '#666' : 'white', // Muted text color for pitched deals
                   fontSize: '14px',
                   fontWeight: 'bold',
-                  boxShadow: '0 2px 6px rgba(52, 152, 219, 0.3)',
-                  transition: 'all 0.2s ease'
+                  boxShadow: isPitchedDeal ? 'none' : '0 2px 6px rgba(52, 152, 219, 0.3)', // Remove shadow for pitched deals
+                  transition: 'all 0.2s ease',
+                  opacity: isPitchedDeal ? 0.5 : 1 // Additional opacity reduction for pitched deals
                 }}>
                   →
                 </div>

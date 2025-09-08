@@ -9,6 +9,7 @@ interface Action {
     title: string;
     onClick: () => void;
     icon: string;
+    disabled?: boolean; // For greyed out production features
 }
 
 interface ImmediateActionsBarProps {
@@ -197,7 +198,8 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
                             icon={action.icon}
                             isDarkMode={isDarkMode}
                             onClick={action.onClick}
-                            iconColor={colours.cta}
+                            iconColor={action.disabled ? '#999' : colours.cta}
+                            disabled={action.disabled}
                             alwaysShowText={true}
                             style={{
                                 '--card-index': index,

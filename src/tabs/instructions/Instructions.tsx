@@ -1403,7 +1403,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const poidResult =
     selectedOverviewItem?.eid?.EIDOverallResult?.toLowerCase() ?? "";
   const eidStatus = selectedOverviewItem?.eid?.EIDStatus?.toLowerCase() ?? "";
-  const poidPassed = poidResult === "passed" || poidResult === "approved";
+  const poidPassed = poidResult === "passed" || poidResult === "approved" || poidResult === "verified";
   const verificationFound = !!selectedOverviewItem?.eid;
   
   // Match InstructionCard logic for verification status
@@ -1832,7 +1832,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       const eid = item.eid;
       const riskResultRaw = item.risk?.RiskAssessmentResult?.toString().toLowerCase();
       const poidResult = eid?.EIDOverallResult?.toLowerCase();
-      const poidPassed = poidResult === 'passed' || poidResult === 'approved';
+      const poidPassed = poidResult === 'passed' || poidResult === 'approved' || poidResult === 'verified';
       const eidStatus = eid?.EIDStatus?.toLowerCase() ?? '';
       const proofOfIdComplete = Boolean(inst?.PassportNumber || inst?.DriversLicenseNumber);
       let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
@@ -2165,7 +2165,13 @@ const Instructions: React.FC<InstructionsProps> = ({
     const altAddressResult = (inst.addressVerificationResult || inst.AddressVerificationResult || inst.address_verification_result)?.toLowerCase();
     const altPepResult = (inst.pepAndSanctionsCheckResult || inst.PEPAndSanctionsCheckResult || inst.pep_and_sanctions_check_result)?.toLowerCase();
     
-    const poidPassed = inst.EIDOverallResult?.toLowerCase() === 'passed' || inst.EIDOverallResult?.toLowerCase() === 'complete';
+    const poidPassed = inst.EIDOverallResult?.toLowerCase() === 'passed' || inst.EIDOverallResult?.toLowerCase() === 'complete' || inst.EIDOverallResult?.toLowerCase() === 'verified';
+    console.log('Status check for', inst.InstructionRef, ':', {
+      EIDOverallResult: inst.EIDOverallResult,
+      stage: inst.stage,
+      poidPassed,
+      stageComplete: inst.stage === 'proof-of-id-complete'
+    });
     const stageComplete = inst.stage === 'proof-of-id-complete';
     const proofOfIdComplete = inst.ProofOfIdComplete || inst.proof_of_id_complete;
     
@@ -2213,7 +2219,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       if (dbResult === 'review') {
         verifyIdStatus = 'review';
         console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: review`);
-      } else if (dbResult === 'passed' || dbResult === 'complete') {
+      } else if (dbResult === 'passed' || dbResult === 'complete' || dbResult === 'verified') {
         verifyIdStatus = 'complete';
         console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: complete (${dbResult})`);
       } else {
@@ -2276,9 +2282,16 @@ const Instructions: React.FC<InstructionsProps> = ({
     } 
     
     if (verifyIdStatus === 'complete') {
-      // Green ID - already completed
-      console.log('🟢 GREEN ID detected - Already completed');
-      alert('ID verification is already complete for this instruction.');
+      // Green ID - already completed, open review modal to show details
+      console.log('🟢 GREEN ID detected - Opening review modal to show completion details');
+      try {
+        const details = await fetchVerificationDetails(instructionRef);
+        setReviewModalDetails(details);
+        setShowReviewModal(true);
+      } catch (error) {
+        console.error('Failed to fetch verification details:', error);
+        alert('Failed to load verification details. Please try again.');
+      }
       return; // STOP HERE - no API call needed
     }
 
@@ -2366,20 +2379,31 @@ const Instructions: React.FC<InstructionsProps> = ({
       setInstructionData(prevData => 
         prevData.map(prospect => ({
           ...prospect,
-          instructions: prospect.instructions.map((instruction: any) => 
-            instruction.InstructionRef === instructionRef
-              ? { ...instruction, EIDOverallResult: 'Verified', stage: 'proof-of-id-complete' }
-              : instruction
-          )
+          instructions: prospect.instructions.map((instruction: any) => {
+            if (instruction.InstructionRef === instructionRef) {
+              console.log('Updating instruction:', instructionRef, 'from', instruction.EIDOverallResult, 'to Verified');
+              return { ...instruction, EIDOverallResult: 'Verified', stage: 'proof-of-id-complete' };
+            }
+            return instruction;
+          })
         }))
       );
 
-      // Close modal
-      setShowReviewModal(false);
-      setReviewModalDetails(null);
+      // Update the modal details to show the new status
+      if (reviewModalDetails) {
+        setReviewModalDetails({
+          ...reviewModalDetails,
+          overallResult: 'Verified'
+        });
+      }
 
       // Show success message
-      alert('ID verification approved and email sent to client.');
+      alert('ID verification approved successfully.');
+      
+      // Force a data refresh to ensure the UI updates properly
+      setTimeout(() => {
+        fetchUnifiedEnquiries();
+      }, 1000);
       
     } catch (error) {
       console.error('Failed to approve verification:', error);
@@ -3143,6 +3167,14 @@ const Instructions: React.FC<InstructionsProps> = ({
         onRequestDocuments={async (instructionRef: string) => {
           console.log('Documents requested for:', instructionRef);
           // The email sending is handled within the modal
+        }}
+        onOverride={async (instructionRef: string) => {
+          console.log('Override verification for:', instructionRef);
+          // Close modal and potentially refresh data
+          setShowReviewModal(false);
+          setReviewModalDetails(null);
+          // Optionally trigger a data refresh if needed
+          await fetchUnifiedEnquiries();
         }}
       />
     </>

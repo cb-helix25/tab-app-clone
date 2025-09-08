@@ -207,6 +207,7 @@ interface HomeProps {
   context: TeamsContextType | null;
   userData: any;
   enquiries: any[] | null;
+  instructionData?: InstructionData[];
   onAllMattersFetched?: (matters: Matter[]) => void;
   onOutstandingBalancesFetched?: (data: any) => void;
   onPOID6YearsFetched?: (data: any[]) => void;
@@ -790,7 +791,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 // Home Component
 //////////////////////
 
-const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false }) => {
+const Home: React.FC<HomeProps> = ({ context, userData, enquiries, instructionData: propInstructionData, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false }) => {
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigatorActions();
   const inTeams = isInTeams();
@@ -1082,11 +1083,14 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     return () => clearInterval(interval);
   }, []);
 
-  const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+  const [localInstructionDataState, setLocalInstructionDataState] = useState<InstructionData[]>([]);
 
-  // Load instruction data
+  // Use prop instruction data if available, otherwise use local state
+  const instructionData = propInstructionData || localInstructionDataState;
+
+  // Load instruction data - only load local data if no prop data is provided
   useEffect(() => {
-    if (useLocalData) {
+    if (!propInstructionData && useLocalData) {
       const transformedData: InstructionData[] = (localInstructionData as any).map((item: any) => ({
         prospectId: item.prospectId,
         deals: item.deals || [],
@@ -1096,9 +1100,12 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
         idVerification: item.idVerification || null,
         matter: item.matter || null
       }));
-      setInstructionData(transformedData);
+      setLocalInstructionDataState(transformedData);
+      console.log('🏠 Home: Loaded local instruction data:', transformedData.length);
+    } else if (propInstructionData) {
+      console.log('🏠 Home: Using prop instruction data:', propInstructionData.length);
     }
-  }, [useLocalData]);
+  }, [useLocalData, propInstructionData]);
 
   // Populate current user details once user data is available
   useEffect(() => {
@@ -1121,16 +1128,6 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     setPrevRecoveredData(null);
   }, [userData]);
 
-  const actionableSummaries = useMemo(
-    () => getActionableInstructions(instructionData),
-    [instructionData]
-  );
-
-  const actionableInstructionIds = useMemo(
-    () => actionableSummaries.map(s => s.id).sort().join(','),
-    [actionableSummaries]
-  );
-
   // Convert legacy matters to normalized format for FormDetails
   const normalizedMatters = useMemo<NormalizedMatter[]>(() => {
     if (!allMatters) return [];
@@ -1143,9 +1140,6 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const [reviewedInstructionIds, setReviewedInstructionIds] = useState<string>(() =>
     sessionStorage.getItem('reviewedInstructionIds') || ''
   );
-
-  const instructionsActionDone =
-    reviewedInstructionIds === actionableInstructionIds && actionableInstructionIds !== '';
 
   const getCurrentWeekKey = (): string => {
     const monday = getMondayOfCurrentWeek();
@@ -2178,6 +2172,34 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
   // Does the user have an object at all for that week?
   const currentUserConfirmed = isLocalhost || !!currentUserRecord?.weeks?.[relevantWeekKey];
 
+  // Debug logging for instructionData changes
+  useEffect(() => {
+    console.log('🏠 Home: instructionData changed:', {
+      propLength: propInstructionData?.length || 0,
+      localLength: localInstructionDataState?.length || 0,
+      finalLength: instructionData?.length || 0,
+      timestamp: new Date().toISOString()
+    });
+  }, [propInstructionData, localInstructionDataState, instructionData]);
+
+  // Calculate actionable instruction summaries (needs isLocalhost)
+  const actionableSummaries = useMemo(() => {
+    console.log('🏠 Home: Computing actionableSummaries with instructionData:', instructionData?.length || 0, 'items');
+    console.log('🏠 Home: isLocalhost:', isLocalhost);
+    console.log('🏠 Home: Full instructionData:', instructionData);
+    const result = getActionableInstructions(instructionData, isLocalhost);
+    console.log('🏠 Home: actionableSummaries result:', result);
+    return result;
+  }, [instructionData, isLocalhost]);
+
+  const actionableInstructionIds = useMemo(
+    () => actionableSummaries.map(s => s.id).sort().join(','),
+    [actionableSummaries]
+  );
+
+  const instructionsActionDone =
+    reviewedInstructionIds === actionableInstructionIds && actionableInstructionIds !== '';
+
 const officeAttendanceButtonText = currentUserConfirmed
   ? 'Update Attendance'
   : 'Confirm Attendance';
@@ -2798,7 +2820,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
 
   // Build immediate actions list
   // Ensure every action has an icon (never undefined)
-  type Action = { title: string; onClick: () => void; icon: string };
+  type Action = { title: string; onClick: () => void; icon: string; disabled?: boolean };
   const handleActionClick = useCallback((action: { title: string; icon: string }) => {
     let content: React.ReactNode = <div>No form available.</div>;
     const titleText = action.title;
@@ -2911,6 +2933,71 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           />
         );
         break;
+      case 'Verify ID':
+      case 'Review ID':
+        content = (
+          <div style={{ padding: '20px' }}>
+            <Text variant="medium" style={{ marginBottom: '15px', display: 'block' }}>
+              ID verification functionality is available in the Instructions tab.
+            </Text>
+            <DefaultButton 
+              text="Go to Instructions" 
+              onClick={() => {
+                try {
+                  window.dispatchEvent(new CustomEvent('navigateToInstructions'));
+                } catch (error) {
+                  console.error('Failed to dispatch navigation event:', error);
+                }
+                setIsBespokePanelOpen(false);
+              }} 
+              style={{ marginRight: '10px' }}
+            />
+            <DefaultButton 
+              text="Close" 
+              onClick={() => setIsBespokePanelOpen(false)}
+            />
+          </div>
+        );
+        break;
+      case 'Assess Risk':
+        content = (
+          <div style={{ padding: '20px' }}>
+            <Text variant="medium" style={{ marginBottom: '15px', display: 'block' }}>
+              Risk assessment functionality is available in the Instructions tab.
+            </Text>
+            <DefaultButton 
+              text="Go to Instructions" 
+              onClick={() => {
+                try {
+                  window.dispatchEvent(new CustomEvent('navigateToInstructions'));
+                } catch (error) {
+                  console.error('Failed to dispatch navigation event:', error);
+                }
+                setIsBespokePanelOpen(false);
+              }} 
+              style={{ marginRight: '10px' }}
+            />
+            <DefaultButton 
+              text="Close" 
+              onClick={() => setIsBespokePanelOpen(false)}
+            />
+          </div>
+        );
+        break;
+      case 'Submit to CCL':
+      case 'Draft CCL':
+        content = (
+          <div style={{ padding: '20px' }}>
+            <Text variant="medium" style={{ marginBottom: '15px', display: 'block' }}>
+              CCL submission functionality is coming soon.
+            </Text>
+            <DefaultButton 
+              text="Close" 
+              onClick={() => setIsBespokePanelOpen(false)}
+            />
+          </div>
+        );
+        break;
       default:
         content = <div>No form available.</div>;
         break;
@@ -2931,6 +3018,38 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     futureBookings,
     unclaimedEnquiries,
   ]);
+
+  // Group instruction next actions by type with counts
+  const groupedInstructionActions = useMemo(() => {
+    const actionGroups: Record<string, { count: number; icon: string; disabled?: boolean }> = {};
+    
+    console.log('🔍 DEBUG Home: actionableSummaries input:', actionableSummaries);
+    console.log('🔍 DEBUG Home: actionableSummaries count:', actionableSummaries.length);
+    
+    actionableSummaries.forEach(summary => {
+      const action = summary.nextAction;
+      console.log('🔍 DEBUG Home: Processing summary:', { id: summary.id, action, disabled: summary.disabled });
+      if (actionGroups[action]) {
+        actionGroups[action].count++;
+      } else {
+        // Map next actions to appropriate icons
+        let icon = 'OpenFile'; // default
+        if (action === 'Verify ID') icon = 'ContactCard';
+        else if (action === 'Assess Risk') icon = 'Shield';
+        else if (action === 'Submit to CCL') icon = 'Send';
+        else if (action === 'Review') icon = 'ReviewRequestMirrored';
+        
+        actionGroups[action] = { 
+          count: 1, 
+          icon,
+          disabled: summary.disabled // Pass through disabled state
+        };
+      }
+    });
+    
+    console.log('🔍 DEBUG Home: Final groupedInstructionActions:', actionGroups);
+    return actionGroups;
+  }, [actionableSummaries]);
 
   const immediateActionsList: Action[] = useMemo(() => {
     const actions: Action[] = [];
@@ -2976,16 +3095,21 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         onClick: () => handleActionClick({ title: 'Resume Pitch', icon: 'Mail' }),
       });
     }
-    if (
-      actionableSummaries.length > 0 &&
-      !instructionsActionDone &&
-      (userInitials === 'LZ' || isLocalhost)
-    ) {
-      const title = actionableSummaries.length === 1 ? 'Review Instruction' : 'Review Instructions';
-      actions.push({
-        title,
-        icon: 'OpenFile',
-        onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
+    
+    // Add grouped instruction actions (replaces old single "Review Instructions" action)
+    if (!instructionsActionDone && (userInitials === 'LZ' || isLocalhost)) {
+      console.log('DEBUG: Adding instruction actions, instructionsActionDone:', instructionsActionDone, 'userInitials:', userInitials, 'isLocalhost:', isLocalhost);
+      Object.entries(groupedInstructionActions).forEach(([actionType, { count, icon, disabled }]) => {
+        const title = count === 1 ? actionType : `${actionType} (${count})`;
+        console.log('DEBUG: Adding action:', title, icon, disabled ? '(disabled)' : '');
+        actions.push({
+          title,
+          icon,
+          disabled,
+          onClick: disabled 
+            ? () => console.log('CCL action disabled in production') 
+            : () => handleActionClick({ title: actionType, icon }),
+        });
       });
     }
     actions.push(
@@ -3002,10 +3126,9 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     isLoadingAttendance,
     currentUserConfirmed,
     hasActiveMatter,
-  instructionData,
-    actionableSummaries,
-    instructionsActionDone,
     instructionData,
+    groupedInstructionActions,
+    instructionsActionDone,
     immediateALActions,
     handleActionClick,
     hasActivePitch,

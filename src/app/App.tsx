@@ -511,6 +511,7 @@ const App: React.FC<AppProps> = ({
             context={teamsContext}
             userData={userData}
             enquiries={enquiries}
+            instructionData={instructionData}
             onAllMattersFetched={handleAllMattersFetched}
             onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
             onPOID6YearsFetched={handlePOID6YearsFetched}

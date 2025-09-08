@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { 
@@ -6,7 +6,12 @@ import {
   MdCheckBox, 
   MdInfo, 
   MdError,
-  MdMoreHoriz 
+  MdMoreHoriz,
+  MdAccessTime,
+  MdPending,
+  MdEmail,
+  MdCheckCircle,
+  MdDrafts
 } from 'react-icons/md';
 
 interface IDVerificationDetails {
@@ -42,6 +47,42 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
   const { isDarkMode } = useTheme();
   const [isProcessing, setIsProcessing] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
+  const [showDevControls, setShowDevControls] = useState(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showDevControls && !(event.target as Element)?.closest('[data-dev-controls]')) {
+        setShowDevControls(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDevControls]);
+  
+  // Development testing function to switch states
+  const switchTestState = async (newState: string) => {
+    // Temporarily enabled in production for testing
+    // if (process.env.NODE_ENV !== 'development') return;
+    
+    try {
+      const response = await fetch(`/api/verify-id/${details?.instructionRef}/test-state`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: newState })
+      });
+      
+      if (response.ok) {
+        // Just close the modal - the parent will refresh the data when reopened
+        onClose();
+      }
+    } catch (error) {
+      console.error('Failed to switch test state:', error);
+    }
+  };
 
   // Send email to request additional documents via server route
   const sendDocumentRequestEmail = async () => {
@@ -82,18 +123,68 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
     }
   };
 
+  // Draft email functionality - sends email to fee earner directly
+  const draftDocumentRequestEmail = async () => {
+    if (!details?.instructionRef) {
+      alert('No instruction reference available');
+      return;
+    }
+
+    setEmailSending(true);
+    
+    try {
+      console.log(`Drafting document request for fee earner for ${details.instructionRef}`);
+      console.log(`Draft API URL: /api/verify-id/${details.instructionRef}/draft-request`);
+      
+      const response = await fetch(`/api/verify-id/${details.instructionRef}/draft-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      console.log('Draft API response status:', response.status);
+      console.log('Draft API response headers:', response.headers);
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.log('Draft API error response text:', responseText);
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || 'Failed to send draft email');
+        } catch (parseError) {
+          throw new Error(`Server returned HTML instead of JSON. Status: ${response.status}`);
+        }
+      }
+
+      const result = await response.json();
+      console.log('Draft email response:', result);
+
+      alert(`Draft email sent to fee earner successfully!`);
+    } catch (error: any) {
+      console.error('Draft email send error:', error);
+      alert(`Failed to send draft email: ${error.message}`);
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
   if (!isVisible || !details) return null;
 
   // Determine the current workflow state
   const getWorkflowState = () => {
-    if (details.documentsReceived) return 'documents-received';
-    if (details.documentsRequested) return 'documents-pending';
-    return 'fresh-failure';
+    // If already verified, no workflow needed
+    if (details?.overallResult?.toLowerCase() === 'verified') return 'verified' as const;
+    
+    if (details?.documentsReceived === true) return 'documents-received' as const;
+    if (details?.overallResult?.toLowerCase() === 'documents requested' || details?.documentsRequested === true) return 'documents-pending' as const;
+    return 'fresh-failure' as const;
   };
 
   const workflowState = getWorkflowState();
 
-  const handleAction = async (action: 'approve' | 'request' | 'override') => {
+  // Check if documents have already been requested
+  const isDocumentsAlreadyRequested = details.overallResult?.toLowerCase() === 'documents requested' || details.documentsRequested;
+
+  const handleAction = async (action: 'approve' | 'request' | 'draft' | 'override') => {
     setIsProcessing(true);
     try {
       switch (action) {
@@ -103,8 +194,11 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
         case 'request':
           await sendDocumentRequestEmail();
           break;
+        case 'draft':
+          await draftDocumentRequestEmail();
+          return; // Don't close modal after drafting
         case 'override':
-          if (onOverride) await onOverride(details.instructionRef);
+          await onApprove(details.instructionRef); // Override should approve the verification
           break;
       }
       onClose();
@@ -130,7 +224,7 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
   };
 
   const getResultColor = (result: string) => {
-    if (result?.toLowerCase() === 'passed') return colours.green;
+    if (result?.toLowerCase() === 'passed' || result?.toLowerCase() === 'verified') return colours.green;
     if (result?.toLowerCase() === 'review') return colours.orange;
     return colours.red;
   };
@@ -306,7 +400,8 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
           })}
         </div>
 
-        {/* Verification Results */}
+        {/* Action Items - Moved to top for importance */}
+        {/* Verification Results with Integrated Actions */}
         <div style={{ marginBottom: '28px' }}>
           <h3 style={{
             color: isDarkMode ? colours.dark.text : colours.light.text,
@@ -334,7 +429,8 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
               boxShadow: isDarkMode 
                 ? '0 2px 4px rgba(0, 0, 0, 0.3)' 
                 : '0 2px 4px rgba(0, 0, 0, 0.05)',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              position: 'relative'
             }}>
               <div style={{ 
                 marginRight: '14px', 
@@ -364,7 +460,449 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
               }}>
                 {details.overallResult?.toUpperCase()}
               </div>
+              
+              {/* Development Controls - Subtle Dropdown */}
+              {/* Temporarily enabled in production for testing */}
+              {(process.env.NODE_ENV === 'development' || true) && (
+                <div style={{ position: 'relative', marginLeft: '8px' }} data-dev-controls>
+                  <button
+                    onClick={() => setShowDevControls(!showDevControls)}
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      background: isDarkMode 
+                        ? 'rgba(107, 114, 128, 0.15)' 
+                        : 'rgba(107, 114, 128, 0.08)',
+                      color: isDarkMode 
+                        ? 'rgba(156, 163, 175, 0.7)' 
+                        : 'rgba(75, 85, 99, 0.6)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      transition: 'all 0.2s ease',
+                      opacity: 0.6
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                      e.currentTarget.style.background = isDarkMode 
+                        ? 'rgba(107, 114, 128, 0.25)' 
+                        : 'rgba(107, 114, 128, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = '0.6';
+                      e.currentTarget.style.background = isDarkMode 
+                        ? 'rgba(107, 114, 128, 0.15)' 
+                        : 'rgba(107, 114, 128, 0.08)';
+                    }}
+                    title="Development Controls"
+                  >
+                    ⚙
+                  </button>
+                  
+                  {showDevControls && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: '4px',
+                      background: isDarkMode 
+                        ? 'linear-gradient(135deg, #2e2e2e 0%, #3a3a3a 100%)'
+                        : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'}`,
+                      borderRadius: '6px',
+                      boxShadow: isDarkMode 
+                        ? '0 8px 16px rgba(0, 0, 0, 0.4)' 
+                        : '0 8px 16px rgba(0, 0, 0, 0.1)',
+                      padding: '8px',
+                      minWidth: '140px',
+                      zIndex: 1000
+                    }}>
+                      <div style={{
+                        fontSize: '9px',
+                        fontWeight: '600',
+                        color: isDarkMode ? 'rgba(156, 163, 175, 0.8)' : 'rgba(75, 85, 99, 0.7)',
+                        marginBottom: '6px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Test States
+                      </div>
+                      
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '3px'
+                      }}>
+                        <button
+                          onClick={() => { switchTestState('fresh-failure'); setShowDevControls(false); }}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '10px',
+                            background: `${colours.red}20`,
+                            color: colours.red,
+                            border: `1px solid ${colours.red}30`,
+                            borderRadius: '3px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = `${colours.red}30`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = `${colours.red}20`;
+                          }}
+                        >
+                          Fresh Failure
+                        </button>
+                        
+                        <button
+                          onClick={() => { switchTestState('documents-pending'); setShowDevControls(false); }}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '10px',
+                            background: `${colours.orange}20`,
+                            color: colours.orange,
+                            border: `1px solid ${colours.orange}30`,
+                            borderRadius: '3px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = `${colours.orange}30`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = `${colours.orange}20`;
+                          }}
+                        >
+                          Docs Pending
+                        </button>
+                        
+                        <button
+                          onClick={() => { switchTestState('documents-received'); setShowDevControls(false); }}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '10px',
+                            background: `${colours.blue}20`,
+                            color: colours.blue,
+                            border: `1px solid ${colours.blue}30`,
+                            borderRadius: '3px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = `${colours.blue}30`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = `${colours.blue}20`;
+                          }}
+                        >
+                          Docs Received
+                        </button>
+                        
+                        <button
+                          onClick={() => { switchTestState('verified'); setShowDevControls(false); }}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '10px',
+                            background: `${colours.green}20`,
+                            color: colours.green,
+                            border: `1px solid ${colours.green}30`,
+                            borderRadius: '3px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = `${colours.green}30`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = `${colours.green}20`;
+                          }}
+                        >
+                          Verified
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Action Required Section - Only for failed states */}
+            {(workflowState === 'fresh-failure' || workflowState === 'documents-received') && (
+              <div style={{
+                padding: '18px 20px',
+                background: isDarkMode 
+                  ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.12) 0%, rgba(54, 144, 206, 0.06) 100%)'
+                  : 'linear-gradient(135deg, rgba(54, 144, 206, 0.06) 0%, rgba(54, 144, 206, 0.03) 100%)',
+                border: `1px solid ${colours.blue}30`,
+                borderRadius: '10px',
+                marginBottom: '6px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{
+                    padding: '6px',
+                    borderRadius: '6px',
+                    backgroundColor: `${colours.blue}20`,
+                    color: colours.blue,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <MdPending size={18} />
+                  </div>
+                  <div>
+                    <div style={{
+                      color: isDarkMode ? colours.dark.text : colours.light.text,
+                      fontWeight: '600',
+                      fontSize: '15px'
+                    }}>
+                      Action Required
+                    </div>
+                    <div style={{
+                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                      fontSize: '13px'
+                    }}>
+                      {workflowState === 'fresh-failure' 
+                        ? 'Verification checks need review - choose action below'
+                        : 'Additional documents received - review and approve'
+                      }
+                    </div>
+                  </div>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  flexWrap: 'wrap'
+                }}>
+                  {workflowState === 'fresh-failure' && !isDocumentsAlreadyRequested && (
+                    <>
+                      <button
+                        onClick={() => handleAction('request')}
+                        disabled={true} // Always disabled now - greyed out
+                        style={{
+                          background: '#999', // Greyed out
+                          color: '#666',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '12px 18px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: 'not-allowed',
+                          opacity: 0.5,
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <MdEmail size={16} />
+                        Request Additional Documents
+                      </button>
+                      
+                      <button
+                        onClick={() => handleAction('draft')}
+                        disabled={emailSending}
+                        style={{
+                          background: emailSending 
+                            ? `${colours.blue}60` 
+                            : `linear-gradient(135deg, ${colours.blue} 0%, ${colours.blue}CC 100%)`,
+                          color: '#FFFFFF',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '12px 18px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: emailSending ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: isDarkMode 
+                            ? '0 4px 8px rgba(54, 144, 206, 0.3)'
+                            : '0 4px 8px rgba(54, 144, 206, 0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!emailSending) {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = isDarkMode 
+                              ? '0 6px 12px rgba(54, 144, 206, 0.4)'
+                              : '0 6px 12px rgba(54, 144, 206, 0.3)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = isDarkMode 
+                            ? '0 4px 8px rgba(54, 144, 206, 0.3)'
+                            : '0 4px 8px rgba(54, 144, 206, 0.2)';
+                        }}
+                      >
+                        <MdDrafts size={16} />
+                        {emailSending ? 'Sending...' : 'Draft Request (to yourself) first'}
+                      </button>
+                    </>
+                  )}
+                  
+                  <button
+                    onClick={() => handleAction('override')}
+                    disabled={isProcessing}
+                    style={{
+                      background: isProcessing 
+                        ? `${colours.green}60` 
+                        : `linear-gradient(135deg, ${colours.green} 0%, ${colours.green}CC 100%)`,
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '12px 18px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: isDarkMode 
+                        ? '0 4px 8px rgba(32, 178, 108, 0.3)'
+                        : '0 4px 8px rgba(32, 178, 108, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isProcessing) {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = isDarkMode 
+                          ? '0 6px 12px rgba(32, 178, 108, 0.4)'
+                          : '0 6px 12px rgba(32, 178, 108, 0.3)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = isDarkMode 
+                        ? '0 4px 8px rgba(32, 178, 108, 0.3)'
+                        : '0 4px 8px rgba(32, 178, 108, 0.2)';
+                    }}
+                  >
+                    <MdCheckCircle size={16} />
+                    {isProcessing ? 'Processing...' : 
+                      (workflowState === 'documents-received' ? 'Approve Verification' : 'Skip & Approve')
+                    }
+                  </button>
+                </div>
+                
+                {workflowState === 'fresh-failure' && isDocumentsAlreadyRequested && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '10px 14px',
+                    background: isDarkMode 
+                      ? 'rgba(107, 114, 128, 0.15)'
+                      : 'rgba(107, 114, 128, 0.08)',
+                    border: `1px solid ${isDarkMode ? 'rgba(107, 114, 128, 0.3)' : 'rgba(107, 114, 128, 0.2)'}`,
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <MdInfo size={16} style={{ color: '#6B7280' }} />
+                    <span style={{
+                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                      fontSize: '12px',
+                      fontWeight: '500'
+                    }}>
+                      Additional documents already requested
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Status Indicators for other states */}
+            {workflowState === 'documents-pending' && (
+              <div style={{
+                padding: '16px 18px',
+                background: isDarkMode 
+                  ? 'linear-gradient(135deg, rgba(255, 140, 0, 0.12) 0%, rgba(255, 140, 0, 0.06) 100%)'
+                  : 'linear-gradient(135deg, rgba(255, 140, 0, 0.06) 0%, rgba(255, 140, 0, 0.03) 100%)',
+                border: `1px solid ${colours.orange}30`,
+                borderRadius: '10px',
+                marginBottom: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  padding: '6px',
+                  borderRadius: '6px',
+                  backgroundColor: `${colours.orange}20`,
+                  color: colours.orange
+                }}>
+                  <MdAccessTime size={18} />
+                </div>
+                <div>
+                  <div style={{
+                    color: isDarkMode ? colours.dark.text : colours.light.text,
+                    fontWeight: '600',
+                    fontSize: '15px'
+                  }}>
+                    Awaiting Client Response
+                  </div>
+                  <div style={{
+                    color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                    fontSize: '13px'
+                  }}>
+                    Waiting for additional documents from client
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {workflowState === 'verified' && (
+              <div style={{
+                padding: '16px 18px',
+                background: isDarkMode 
+                  ? 'linear-gradient(135deg, rgba(32, 178, 108, 0.12) 0%, rgba(32, 178, 108, 0.06) 100%)'
+                  : 'linear-gradient(135deg, rgba(32, 178, 108, 0.06) 0%, rgba(32, 178, 108, 0.03) 100%)',
+                border: `1px solid ${colours.green}30`,
+                borderRadius: '10px',
+                marginBottom: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  padding: '6px',
+                  borderRadius: '6px',
+                  backgroundColor: `${colours.green}20`,
+                  color: colours.green
+                }}>
+                  <MdCheckBox size={18} />
+                </div>
+                <div>
+                  <div style={{
+                    color: isDarkMode ? colours.dark.text : colours.light.text,
+                    fontWeight: '600',
+                    fontSize: '15px'
+                  }}>
+                    Verification Complete
+                  </div>
+                  <div style={{
+                    color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                    fontSize: '13px'
+                  }}>
+                    ID verification has been approved and completed
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* PEP & Sanctions Check */}
             <div style={{
@@ -462,260 +1000,7 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
         <div style={{
           marginBottom: '28px'
         }}>
-          {workflowState === 'fresh-failure' && (
-            <div style={{
-              padding: '20px',
-              background: isDarkMode 
-                ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.15) 0%, rgba(54, 144, 206, 0.08) 100%)'
-                : 'linear-gradient(135deg, rgba(54, 144, 206, 0.08) 0%, rgba(54, 144, 206, 0.04) 100%)',
-              border: `2px solid ${colours.blue}20`,
-              borderRadius: '10px',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '4px',
-                height: '100%',
-                background: colours.blue
-              }} />
-              
-              {/* Timeline */}
-              <div style={{
-                paddingLeft: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '16px'
-              }}>
-                {/* Step 1: Current Status */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '6px',
-                    backgroundColor: `${colours.orange}20`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM8 5a.75.75 0 01.75.75V8.5a.75.75 0 01-1.5 0V5.75A.75.75 0 018 5zm0 5.5a.75.75 0 100 1.5.75.75 0 000-1.5z" fill={colours.orange}/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      color: isDarkMode ? colours.dark.text : colours.light.text,
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      marginBottom: '2px'
-                    }}>
-                      ID Verification Failed
-                    </div>
-                    <div style={{
-                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                      fontSize: '12px'
-                    }}>
-                      Checks resulted in 'Review' status
-                    </div>
-                  </div>
-                  <div style={{
-                    width: '2px',
-                    height: '30px',
-                    backgroundColor: isDarkMode ? colours.dark.border : colours.light.border,
-                    position: 'absolute',
-                    left: '47px',
-                    marginTop: '32px',
-                    opacity: 0.5
-                  }} />
-                </div>
-
-                {/* Step 2: Email Request */}
-                <div 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '14px',
-                    cursor: 'pointer',
-                    padding: '8px',
-                    margin: '-8px',
-                    borderRadius: '8px',
-                    transition: 'all 0.2s ease',
-                    background: 'transparent'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isDarkMode 
-                      ? 'rgba(54, 144, 206, 0.1)' 
-                      : 'rgba(54, 144, 206, 0.05)';
-                    e.currentTarget.style.transform = 'translateX(2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }}
-                  onClick={() => onRequestDocuments?.(details.instructionRef)}
-                >
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '6px',
-                    backgroundColor: `${colours.blue}20`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    transition: 'all 0.2s ease'
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M2 4a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm2-.5a.5.5 0 00-.5.5v.217l4.5 2.7 4.5-2.7V4a.5.5 0 00-.5-.5H4zm8.5 2.283L10 7.317 8 6.283 6 7.317 1.5 5.783V12a.5.5 0 00.5.5h8a.5.5 0 00.5-.5V5.783z" fill={colours.blue}/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      color: isDarkMode ? colours.dark.text : colours.light.text,
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      marginBottom: '2px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      Send Additional ID Request
-                      <span style={{
-                        fontSize: '11px',
-                        color: colours.blue,
-                        backgroundColor: isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.1)',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontWeight: '500'
-                      }}>
-                        Click to Send
-                      </span>
-                    </div>
-                    <div style={{
-                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                      fontSize: '12px',
-                      marginBottom: '6px'
-                    }}>
-                      Email client with secure upload link
-                    </div>
-                    <div style={{
-                      fontSize: '10px',
-                      fontFamily: 'monospace',
-                      color: colours.blue,
-                      backgroundColor: isDarkMode ? 'rgba(54, 144, 206, 0.1)' : 'rgba(54, 144, 206, 0.05)',
-                      padding: '3px 6px',
-                      borderRadius: '3px',
-                      display: 'inline-block'
-                    }}>
-                      http://instruct.helix-law.com/pitch/20200/additional-id
-                    </div>
-                  </div>
-                  <div style={{
-                    width: '2px',
-                    height: '30px',
-                    backgroundColor: isDarkMode ? colours.dark.border : colours.light.border,
-                    position: 'absolute',
-                    left: '47px',
-                    marginTop: '32px',
-                    opacity: 0.5
-                  }} />
-                </div>
-
-                {/* Step 3: Re-verification */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '6px',
-                    backgroundColor: `${colours.green}20`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" fill={colours.green}/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      color: isDarkMode ? colours.dark.text : colours.light.text,
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      marginBottom: '2px'
-                    }}>
-                      Re-verify with Tiller
-                    </div>
-                    <div style={{
-                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                      fontSize: '12px'
-                    }}>
-                      Update status to 'Passed' or 'Review'
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {workflowState === 'documents-pending' && (
-            <div style={{
-              padding: '18px 20px',
-              background: isDarkMode 
-                ? 'linear-gradient(135deg, rgba(255, 140, 0, 0.15) 0%, rgba(255, 140, 0, 0.08) 100%)'
-                : 'linear-gradient(135deg, rgba(255, 140, 0, 0.08) 0%, rgba(255, 140, 0, 0.04) 100%)',
-              border: `2px solid ${colours.orange}20`,
-              borderRadius: '10px',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '4px',
-                height: '100%',
-                background: colours.orange
-              }} />
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                paddingLeft: '12px'
-              }}>
-                <div style={{
-                  fontSize: '20px',
-                  padding: '8px',
-                  borderRadius: '8px',
-                  backgroundColor: `${colours.orange}20`,
-                  color: colours.orange
-                }}>
-                  ⏳
-                </div>
-                <div>
-                  <div style={{
-                    color: isDarkMode ? colours.dark.text : colours.light.text,
-                    fontWeight: '700',
-                    fontSize: '15px',
-                    marginBottom: '4px'
-                  }}>
-                    Awaiting Client Response
-                  </div>
-                  <div style={{
-                    color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                    fontSize: '13px'
-                  }}>
-                    Additional documents have been requested
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {workflowState === 'documents-received' && (
+          {workflowState === 'verified' && (
             <div style={{
               padding: '18px 20px',
               background: isDarkMode 
@@ -745,9 +1030,12 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
                   padding: '8px',
                   borderRadius: '8px',
                   backgroundColor: `${colours.green}20`,
-                  color: colours.green
+                  color: colours.green,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}>
-                  📋
+                  <MdCheckBox size={20} />
                 </div>
                 <div>
                   <div style={{
@@ -756,406 +1044,19 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
                     fontSize: '15px',
                     marginBottom: '4px'
                   }}>
-                    Documents Received
+                    ID Verification Complete
                   </div>
                   <div style={{
                     color: isDarkMode ? colours.dark.subText : colours.light.subText,
                     fontSize: '13px'
                   }}>
-                    Review and approve if verification concerns are resolved
+                    This verification has been approved and completed.
                   </div>
                 </div>
               </div>
             </div>
           )}
         </div>
-
-        {/* Issues Found - Show actual Tiller check failures */}
-        {(details.overallResult?.toLowerCase() === 'review' || 
-          details.pepResult?.toLowerCase() === 'review' || 
-          details.addressResult?.toLowerCase() === 'review') && (
-          <div style={{ marginBottom: '28px' }}>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {getCheckStatuses(details).map((checkStatus: any, index: number) => {
-                if (checkStatus.result?.result?.toLowerCase() !== 'review' && checkStatus.result?.result?.toLowerCase() !== 'fail') {
-                  return null;
-                }
-                
-                const checkName = getCheckName(checkStatus.checkTypeId);
-                const resultCode = checkStatus.result?.resultCode || 'UNKNOWN';
-                const resultReason = checkStatus.result?.reason || checkStatus.sourceResults?.reason || 'Check requires manual review';
-                
-                return (
-                  <div key={index} style={{
-                    padding: '16px 18px',
-                    background: isDarkMode 
-                      ? 'linear-gradient(135deg, #3a2a1a 0%, #2e1e0e 100%)'
-                      : 'linear-gradient(135deg, #FFF8E1 0%, #FFF3C4 100%)',
-                    borderRadius: '10px',
-                    border: `1px solid ${colours.orange}30`,
-                    boxShadow: isDarkMode 
-                      ? '0 2px 4px rgba(255, 140, 0, 0.2)' 
-                      : '0 2px 4px rgba(255, 140, 0, 0.1)'
-                  }}>
-                    <div style={{
-                      color: colours.orange,
-                      fontWeight: '700',
-                      fontSize: '14px',
-                      marginBottom: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}>
-                      <MdInfo style={{ 
-                        fontSize: '14px', 
-                        color: colours.orange 
-                      }} />
-                      {checkName}
-                      <span style={{ 
-                        fontSize: '12px',
-                        fontFamily: 'monospace',
-                        color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                        opacity: 0.7,
-                        marginLeft: 'auto'
-                      }}>[{resultCode}]</span>
-                    </div>
-                    <div style={{
-                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                      fontSize: '13px',
-                      lineHeight: '1.5',
-                      marginBottom: '10px'
-                    }}>
-                      <strong>Issue:</strong> {resultReason}
-                    </div>
-                    
-                    {/* Show detailed check information if available */}
-                    {checkStatus.sourceResults && (
-                      <div style={{
-                        color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                        fontSize: '12px',
-                        lineHeight: '1.4',
-                        opacity: 0.8,
-                        fontStyle: 'italic',
-                        background: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.05)'
-                          : 'rgba(0, 0, 0, 0.03)',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        marginTop: '6px'
-                      }}>
-                        <div><strong>Check Title:</strong> {checkStatus.sourceResults.title}</div>
-                        {checkStatus.sourceResults.rule && <div><strong>Rule:</strong> {checkStatus.sourceResults.rule}</div>}
-                        {checkStatus.sourceResults.source && <div><strong>Source:</strong> {checkStatus.sourceResults.source}</div>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              
-              {/* Show raw response for debugging if no structured issues found */}
-              {getCheckStatuses(details).length === 0 && details.rawResponse && (
-                <div style={{
-                  padding: '16px 18px',
-                  background: isDarkMode 
-                    ? 'linear-gradient(135deg, #2a2a2a 0%, #1e1e1e 100%)'
-                    : 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
-                  borderRadius: '10px',
-                  border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <div style={{
-                    color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                    fontWeight: '600',
-                    fontSize: '14px',
-                    marginBottom: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    Electronic ID Check Response
-                    <span style={{
-                      fontSize: '11px',
-                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                      fontWeight: '400',
-                      opacity: 0.7
-                    }}>
-                      • Kept for transparency and debugging
-                    </span>
-                  </div>
-                  
-                  <details style={{
-                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
-                    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-                    borderRadius: '6px',
-                    padding: '0'
-                  }}>
-                    <summary style={{
-                      cursor: 'pointer',
-                      padding: '12px 16px',
-                      color: colours.blue,
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      borderRadius: '6px',
-                      transition: 'all 0.2s ease',
-                      userSelect: 'none'
-                    }}>
-                      View Technical Details & Database Records
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: '400',
-                        marginLeft: '8px',
-                        opacity: 0.7
-                      }}>
-                        (Correlation ID, Check Results, Source Data)
-                      </span>
-                    </summary>
-                    
-                    <div style={{
-                      padding: '16px',
-                      paddingTop: '8px',
-                      borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        gap: '12px',
-                        marginBottom: '16px',
-                        flexWrap: 'wrap'
-                      }}>
-                        <button
-                          onClick={() => document.getElementById('checkStatuses')?.scrollIntoView({ behavior: 'smooth' })}
-                          style={{
-                            padding: '6px 12px',
-                            border: `1px solid ${colours.blue}`,
-                            background: 'transparent',
-                            color: colours.blue,
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            cursor: 'pointer',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = `${colours.blue}10`;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                          }}
-                        >
-                          Jump to Check Statuses
-                        </button>
-                        <button
-                          onClick={() => document.getElementById('sourceResults')?.scrollIntoView({ behavior: 'smooth' })}
-                          style={{
-                            padding: '6px 12px',
-                            border: `1px solid ${colours.blue}`,
-                            background: 'transparent',
-                            color: colours.blue,
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            cursor: 'pointer',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = `${colours.blue}10`;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                          }}
-                        >
-                          Jump to Source Results
-                        </button>
-                        <button
-                          onClick={() => document.getElementById('rawJson')?.scrollIntoView({ behavior: 'smooth' })}
-                          style={{
-                            padding: '6px 12px',
-                            border: `1px solid ${colours.blue}`,
-                            background: 'transparent',
-                            color: colours.blue,
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            cursor: 'pointer',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = `${colours.blue}10`;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                          }}
-                        >
-                          Jump to Raw Data
-                        </button>
-                      </div>
-                      
-                      <div style={{
-                        color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                        fontSize: '12px',
-                        lineHeight: '1.6'
-                      }}>
-                        {(() => {
-                          const parsed = parseRawResponse(details.rawResponse);
-                          const responseData = Array.isArray(parsed) ? parsed[0] : parsed;
-                          
-                          if (!responseData) return <div>No response data available</div>;
-                          
-                          const getResultColor = (result: string) => {
-                            const r = result?.toLowerCase();
-                            if (r === 'passed' || r === 'pass') return colours.green;
-                            if (r === 'review') return colours.orange;
-                            if (r === 'failed' || r === 'fail') return colours.red;
-                            return 'inherit';
-                          };
-                          
-                          return (
-                            <div>
-                              <div id="checkStatuses" style={{ marginBottom: '20px' }}>
-                                <div style={{ 
-                                  fontWeight: '600', 
-                                  marginBottom: '12px', 
-                                  color: colours.blue,
-                                  fontSize: '14px',
-                                  borderBottom: `1px solid ${colours.blue}20`,
-                                  paddingBottom: '6px'
-                                }}>
-                                  Check Statuses & Database Records:
-                                </div>
-                                <div style={{ 
-                                  backgroundColor: isDarkMode ? 'rgba(54, 144, 206, 0.08)' : 'rgba(54, 144, 206, 0.04)',
-                                  padding: '12px',
-                                  borderRadius: '6px',
-                                  border: `1px solid ${colours.blue}20`
-                                }}>
-                                  <div>Overall Result: <strong style={{ color: getResultColor(responseData.overallResult?.result) }}>{responseData.overallResult?.result || 'N/A'}</strong></div>
-                                  <div>Overall Status: <strong>{responseData.overallStatus?.status || 'N/A'}</strong></div>
-                                  {responseData.correlationId && (
-                                    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${colours.blue}20` }}>
-                                      <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px' }}>Database Reference:</div>
-                                      <div>Correlation ID: <code style={{ 
-                                        fontSize: '10px', 
-                                        background: isDarkMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.8)',
-                                        padding: '2px 4px',
-                                        borderRadius: '3px'
-                                      }}>{responseData.correlationId}</code></div>
-                                      {responseData.externalReferenceId && <div>External Reference: <strong>{responseData.externalReferenceId}</strong></div>}
-                                      <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px' }}>
-                                        Use these IDs to reference this check in our database or with Tiller support
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <div id="sourceResults" style={{ marginBottom: '20px' }}>
-                                <div style={{ 
-                                  fontWeight: '600', 
-                                  marginBottom: '12px', 
-                                  color: colours.blue,
-                                  fontSize: '14px',
-                                  borderBottom: `1px solid ${colours.blue}20`,
-                                  paddingBottom: '6px'
-                                }}>
-                                  Individual Check Results:
-                                </div>
-                                {responseData.checkStatuses && responseData.checkStatuses.length > 0 ? (
-                                  responseData.checkStatuses.map((check: any, index: number) => (
-                                    <div key={index} style={{ marginBottom: '16px', paddingLeft: '12px', borderLeft: `3px solid ${getResultColor(check.result?.result)}`, backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)', padding: '12px', borderRadius: '6px' }}>
-                                      <div style={{ marginBottom: '8px' }}>
-                                        <strong>{check.sourceResults?.title || `Check ${index + 1}`}</strong>
-                                        <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.subText : colours.light.subText }}>
-                                          Type: {check.checkTypeId === 1 ? 'Address Verification' : check.checkTypeId === 2 ? 'PEP & Sanctions' : check.checkTypeId === 3 ? 'ID Verification' : `Type ${check.checkTypeId}`}
-                                          {check.id && ` • ID: ${check.id}`}
-                                        </div>
-                                      </div>
-                                      <div>Result: <strong style={{ color: getResultColor(check.result?.result) }}>{check.result?.result || 'N/A'}</strong></div>
-                                      <div>Status: <strong>{check.status?.status || 'N/A'}</strong></div>
-                                      {check.sourceResults?.date && <div>Date: {new Date(check.sourceResults.date).toLocaleString()}</div>}
-                                      
-                                      {check.resultCount && (
-                                        <div style={{ marginTop: '8px', fontSize: '11px', opacity: 0.8, backgroundColor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)', padding: '6px', borderRadius: '4px' }}>
-                                          <strong>Source Summary:</strong> {check.resultCount.totalSourcesChecked || 0} checked, {check.resultCount.totalSourcesPassed || 0} passed, {check.resultCount.totalSourcesForReview || 0} for review
-                                        </div>
-                                      )}
-                                      
-                                      {check.sourceResults?.results && check.sourceResults.results.length > 0 && (
-                                        <details style={{ marginTop: '12px' }}>
-                                          <summary style={{ cursor: 'pointer', color: colours.blue, fontSize: '11px', fontWeight: '600' }}>View detailed breakdown ({check.sourceResults.results.length} results)</summary>
-                                          <div style={{ marginTop: '8px', paddingLeft: '12px' }}>
-                                            {check.sourceResults.results.map((result: any, resultIndex: number) => (
-                                              <div key={resultIndex} style={{ marginBottom: '8px', padding: '8px', backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderRadius: '4px', border: `1px solid ${getResultColor(result.result)}30` }}>
-                                                <div><strong>{result.title}</strong> - <span style={{ color: getResultColor(result.result) }}>{result.result}</span></div>
-                                                <div style={{ fontSize: '11px', opacity: 0.8 }}>{result.description}</div>
-                                                {result.detail?.reasons && result.detail.reasons.length > 0 && (
-                                                  <div style={{ marginTop: '6px' }}>
-                                                    {result.detail.reasons.map((reason: any, reasonIndex: number) => (
-                                                      <div key={reasonIndex} style={{ fontSize: '10px', marginLeft: '8px', marginTop: '2px' }}>
-                                                        • <strong>{reason.key || 'Detail'}:</strong> <span style={{ color: getResultColor(reason.result) }}>{reason.result}</span>
-                                                        {reason.reason && <div style={{ marginLeft: '12px', opacity: 0.7, fontStyle: 'italic' }}>{reason.reason} {reason.code && `(Code: ${reason.code})`}</div>}
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </details>
-                                      )}
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div>No check details available</div>
-                                )}
-                              </div>
-                              
-                              <div id="rawJson">
-                                <div style={{ 
-                                  fontWeight: '600', 
-                                  marginBottom: '12px', 
-                                  color: colours.blue,
-                                  fontSize: '14px',
-                                  borderBottom: `1px solid ${colours.blue}20`,
-                                  paddingBottom: '6px'
-                                }}>
-                                  Raw Response Data:
-                                </div>
-                                <div style={{
-                                  fontSize: '11px',
-                                  marginBottom: '8px',
-                                  padding: '8px',
-                                  backgroundColor: isDarkMode ? 'rgba(255, 140, 0, 0.1)' : 'rgba(255, 140, 0, 0.05)',
-                                  border: `1px solid ${colours.orange}30`,
-                                  borderRadius: '4px',
-                                  color: isDarkMode ? colours.dark.subText : colours.light.subText
-                                }}>
-                                  <strong>Note:</strong> This raw JSON data matches what's stored in our database. Since this ID verification system is new, this data helps with understanding how the checks work and troubleshooting any issues.
-                                </div>
-                                <pre style={{
-                                  fontSize: '10px',
-                                  lineHeight: '1.3',
-                                  fontFamily: 'monospace',
-                                  backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.05)',
-                                  padding: '12px',
-                                  borderRadius: '4px',
-                                  overflow: 'auto',
-                                  maxHeight: '300px',
-                                  border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-                                }}>
-                                  {JSON.stringify(parsed, null, 2)}
-                                </pre>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </details>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Action Buttons */}
         <div style={{
@@ -1165,59 +1066,63 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
           flexWrap: 'wrap'
         }}>
           {/* Conditional buttons based on workflow state */}
+          {workflowState === 'verified' && (
+            <button
+              onClick={onClose}
+              style={{
+                padding: '12px 24px',
+                border: 'none',
+                background: `linear-gradient(135deg, ${colours.green} 0%, #1a8c5a 100%)`,
+                color: 'white',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 6px rgba(32, 178, 108, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 12px rgba(32, 178, 108, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(32, 178, 108, 0.3)';
+              }}
+            >
+              Close
+            </button>
+          )}
+
           {workflowState === 'fresh-failure' && (
-            <>
-              {onOverride && (
-                <button
-                  onClick={() => handleAction('override')}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '12px 24px',
-                    border: 'none',
-                    background: `linear-gradient(135deg, ${colours.orange} 0%, #cc7000 100%)`,
-                    color: 'white',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '700',
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    opacity: isProcessing ? 0.7 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 6px rgba(255, 140, 0, 0.3)'
-                  }}
-                >
-                  {isProcessing && <MdMoreHoriz style={{ animation: 'pulse 1.5s infinite' }} />}
-                  Override
-                </button>
-              )}
-              {onRequestDocuments && (
-                <button
-                  onClick={sendDocumentRequestEmail}
-                  disabled={isProcessing || emailSending}
-                  style={{
-                    padding: '12px 24px',
-                    border: 'none',
-                    background: `linear-gradient(135deg, ${colours.blue} 0%, #2570a8 100%)`,
-                    color: 'white',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '700',
-                    cursor: (isProcessing || emailSending) ? 'not-allowed' : 'pointer',
-                    opacity: (isProcessing || emailSending) ? 0.7 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 6px rgba(54, 144, 206, 0.3)'
-                  }}
-                >
-                  {emailSending && <MdMoreHoriz style={{ animation: 'pulse 1.5s infinite' }} />}
-                  {emailSending ? 'Sending Email...' : 'Request Documents'}
-                </button>
-              )}
-            </>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '12px 24px',
+                border: `2px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}`,
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, #3a3a3a 0%, #2e2e2e 100%)'
+                  : 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
+                color: isDarkMode ? colours.dark.text : colours.light.text,
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = isDarkMode 
+                  ? '0 6px 12px rgba(0, 0, 0, 0.3)'
+                  : '0 6px 12px rgba(0, 0, 0, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              Close
+            </button>
           )}
 
           {workflowState === 'documents-pending' && (
@@ -1243,6 +1148,49 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
               >
                 Cancel
               </button>
+              {onOverride && (
+                <button
+                  onClick={() => handleAction('override')}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '12px 24px',
+                    border: `2px solid ${colours.red}`,
+                    background: `linear-gradient(135deg, ${colours.red} 0%, ${colours.red}dd 100%)`,
+                    color: 'white',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.7 : 1,
+                    transition: 'all 0.2s ease',
+                    boxShadow: isDarkMode 
+                      ? '0 4px 6px rgba(0, 0, 0, 0.3)' 
+                      : '0 4px 6px rgba(0, 0, 0, 0.07)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isProcessing) {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = isDarkMode 
+                        ? '0 6px 12px rgba(0, 0, 0, 0.4)' 
+                        : '0 6px 12px rgba(0, 0, 0, 0.15)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isProcessing) {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = isDarkMode 
+                        ? '0 4px 6px rgba(0, 0, 0, 0.3)' 
+                        : '0 4px 6px rgba(0, 0, 0, 0.07)';
+                    }
+                  }}
+                >
+                  {isProcessing && <MdMoreHoriz style={{ animation: 'pulse 1.5s infinite' }} />}
+                  Skip Additional ID Request
+                </button>
+              )}
               <div style={{
                 padding: '12px 24px',
                 background: isDarkMode
@@ -1283,7 +1231,7 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
                 Cancel
               </button>
               <button
-                onClick={() => handleAction('approve')}
+                onClick={() => handleAction(workflowState === 'documents-received' ? 'approve' : 'override')}
                 disabled={isProcessing}
                 style={{
                   padding: '12px 24px',
@@ -1313,15 +1261,351 @@ const IDVerificationReviewModal: React.FC<IDVerificationReviewModalProps> = ({
                 }}
               >
                 {isProcessing && <MdMoreHoriz style={{ animation: 'pulse 1.5s infinite' }} />}
-                {isProcessing ? 'Processing...' : 'Approve Documents'}
+                {isProcessing 
+                  ? 'Processing...' 
+                  : workflowState === 'documents-received' 
+                    ? 'Approve Verification' 
+                    : 'Override Review'
+                }
               </button>
             </>
           )}
         </div>
+
+        {/* Electronic ID Check Response - Subtle expandable section at bottom */}
+        {details.rawResponse && (
+          <>
+            <div style={{
+              width: '100%',
+              height: '1px',
+              background: isDarkMode 
+                ? 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)'
+                : 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
+              margin: '24px 0 16px 0'
+            }} />
+
+            <details style={{
+              backgroundColor: 'transparent',
+              border: 'none',
+              padding: '0'
+            }}>
+              <summary style={{
+                cursor: 'pointer',
+                padding: '8px 0',
+                color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                fontSize: '11px',
+                fontWeight: '500',
+                opacity: 0.6,
+                transition: 'all 0.2s ease',
+                userSelect: 'none',
+                listStyle: 'none'
+              }}>
+                <span style={{ textDecoration: 'underline', textDecorationStyle: 'dotted' }}>
+                  Technical Details
+                </span>
+                <span style={{ fontSize: '10px', marginLeft: '6px', opacity: 0.5 }}>
+                  (Electronic ID verification response data)
+                </span>
+              </summary>
+              
+              <div style={{
+                padding: '12px 16px',
+                background: isDarkMode 
+                  ? 'rgba(255, 255, 255, 0.02)'
+                  : 'rgba(0, 0, 0, 0.02)',
+                border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
+                borderRadius: '6px',
+                marginTop: '8px'
+              }}>
+                <div style={{
+                  color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                  fontSize: '12px',
+                  marginBottom: '12px',
+                  opacity: 0.8
+                }}>
+                  <strong>Response Summary:</strong> {(() => {
+                    const parsed = parseRawResponse(details.rawResponse);
+                    const responseData = Array.isArray(parsed) ? parsed[0] : parsed;
+                    const checkCount = responseData?.checkStatuses?.length || 0;
+                    return `${checkCount} verification checks performed, correlation ID: ${responseData?.correlationId?.slice(0, 8) || 'N/A'}...`;
+                  })()}
+                </div>
+
+                <details style={{
+                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+                  border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}`,
+                  borderRadius: '6px',
+                  padding: '0'
+                }}>
+                  <summary style={{
+                    cursor: 'pointer',
+                    padding: '12px 16px',
+                    color: colours.blue,
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    borderRadius: '6px',
+                    transition: 'all 0.2s ease',
+                    userSelect: 'none',
+                    opacity: 0.8
+                  }}>
+                    View Technical Details & Database Records
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: '400',
+                      marginLeft: '8px',
+                      opacity: 0.7
+                    }}>
+                      (Correlation ID, Check Results, Source Data)
+                    </span>
+                  </summary>
+                  
+                  <div style={{
+                    padding: '16px',
+                    paddingTop: '8px',
+                    borderTop: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      gap: '12px',
+                      marginBottom: '16px',
+                      flexWrap: 'wrap'
+                    }}>
+                      <button
+                        onClick={() => document.getElementById('checkStatuses')?.scrollIntoView({ behavior: 'smooth' })}
+                        style={{
+                          padding: '6px 12px',
+                          border: `1px solid ${colours.blue}`,
+                          background: 'transparent',
+                          color: colours.blue,
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = `${colours.blue}10`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        Jump to Check Statuses
+                      </button>
+                      <button
+                        onClick={() => document.getElementById('sourceResults')?.scrollIntoView({ behavior: 'smooth' })}
+                        style={{
+                          padding: '6px 12px',
+                          border: `1px solid ${colours.blue}`,
+                          background: 'transparent',
+                          color: colours.blue,
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = `${colours.blue}10`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        Jump to Source Results
+                      </button>
+                      <button
+                        onClick={() => document.getElementById('rawJson')?.scrollIntoView({ behavior: 'smooth' })}
+                        style={{
+                          padding: '6px 12px',
+                          border: `1px solid ${colours.blue}`,
+                          background: 'transparent',
+                          color: colours.blue,
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = `${colours.blue}10`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        Jump to Raw Data
+                      </button>
+                    </div>
+                    
+                    <div style={{
+                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                      fontSize: '12px',
+                      lineHeight: '1.6'
+                    }}>
+                      {(() => {
+                        const parsed = parseRawResponse(details.rawResponse);
+                        const responseData = Array.isArray(parsed) ? parsed[0] : parsed;
+                        
+                        if (!responseData) return <div>No response data available</div>;
+                        
+                        const getResultColor = (result: string) => {
+                          const r = result?.toLowerCase();
+                          if (r === 'passed' || r === 'pass' || r === 'verified') return colours.green;
+                          if (r === 'review') return colours.orange;
+                          if (r === 'failed' || r === 'fail') return colours.red;
+                          return 'inherit';
+                        };
+                        
+                        return (
+                          <div>
+                            <div id="checkStatuses" style={{ marginBottom: '20px' }}>
+                              <div style={{ 
+                                fontWeight: '600', 
+                                marginBottom: '12px', 
+                                color: colours.blue,
+                                fontSize: '14px',
+                                borderBottom: `1px solid ${colours.blue}20`,
+                                paddingBottom: '6px'
+                              }}>
+                                Check Statuses & Database Records:
+                              </div>
+                              <div style={{ 
+                                backgroundColor: isDarkMode ? 'rgba(54, 144, 206, 0.08)' : 'rgba(54, 144, 206, 0.04)',
+                                padding: '12px',
+                                borderRadius: '6px',
+                                border: `1px solid ${colours.blue}20`
+                              }}>
+                                <div>Overall Result: <strong style={{ color: getResultColor(responseData.overallResult?.result) }}>{responseData.overallResult?.result || 'N/A'}</strong></div>
+                                <div>Overall Status: <strong>{responseData.overallStatus?.status || 'N/A'}</strong></div>
+                                {responseData.correlationId && (
+                                  <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${colours.blue}20` }}>
+                                    <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px' }}>Database Reference:</div>
+                                    <div>Correlation ID: <code style={{ 
+                                      fontSize: '10px', 
+                                      background: isDarkMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.8)',
+                                      padding: '2px 4px',
+                                      borderRadius: '3px'
+                                    }}>{responseData.correlationId}</code></div>
+                                    {responseData.externalReferenceId && <div>External Reference: <strong>{responseData.externalReferenceId}</strong></div>}
+                                    <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px' }}>
+                                      Use these IDs to reference this check in our database or with Tiller support
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div id="sourceResults" style={{ marginBottom: '20px' }}>
+                              <div style={{ 
+                                fontWeight: '600', 
+                                marginBottom: '12px', 
+                                color: colours.blue,
+                                fontSize: '14px',
+                                borderBottom: `1px solid ${colours.blue}20`,
+                                paddingBottom: '6px'
+                              }}>
+                                Individual Check Results:
+                              </div>
+                              {responseData.checkStatuses && responseData.checkStatuses.length > 0 ? (
+                                responseData.checkStatuses.map((check: any, index: number) => (
+                                  <div key={index} style={{ marginBottom: '16px', paddingLeft: '12px', borderLeft: `3px solid ${getResultColor(check.result?.result)}`, backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)', padding: '12px', borderRadius: '6px' }}>
+                                    <div style={{ marginBottom: '8px' }}>
+                                      <strong>{check.sourceResults?.title || `Check ${index + 1}`}</strong>
+                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.subText : colours.light.subText }}>
+                                        Type: {check.checkTypeId === 1 ? 'Address Verification' : check.checkTypeId === 2 ? 'PEP & Sanctions' : check.checkTypeId === 3 ? 'ID Verification' : `Type ${check.checkTypeId}`}
+                                        {check.id && ` • ID: ${check.id}`}
+                                      </div>
+                                    </div>
+                                    <div>Result: <strong style={{ color: getResultColor(check.result?.result) }}>{check.result?.result || 'N/A'}</strong></div>
+                                    <div>Status: <strong>{check.status?.status || 'N/A'}</strong></div>
+                                    {check.sourceResults?.date && <div>Date: {new Date(check.sourceResults.date).toLocaleString()}</div>}
+                                    
+                                    {check.resultCount && (
+                                      <div style={{ marginTop: '8px', fontSize: '11px', opacity: 0.8, backgroundColor: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)', padding: '6px', borderRadius: '4px' }}>
+                                        <strong>Source Summary:</strong> {check.resultCount.totalSourcesChecked || 0} checked, {check.resultCount.totalSourcesPassed || 0} passed, {check.resultCount.totalSourcesForReview || 0} for review
+                                      </div>
+                                    )}
+                                    
+                                    {check.sourceResults?.results && check.sourceResults.results.length > 0 && (
+                                      <details style={{ marginTop: '12px' }}>
+                                        <summary style={{ cursor: 'pointer', color: colours.blue, fontSize: '11px', fontWeight: '600' }}>View detailed breakdown ({check.sourceResults.results.length} results)</summary>
+                                        <div style={{ marginTop: '8px', paddingLeft: '12px' }}>
+                                          {check.sourceResults.results.map((result: any, resultIndex: number) => (
+                                            <div key={resultIndex} style={{ marginBottom: '8px', padding: '8px', backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderRadius: '4px', border: `1px solid ${getResultColor(result.result)}30` }}>
+                                              <div><strong>{result.title}</strong> - <span style={{ color: getResultColor(result.result) }}>{result.result}</span></div>
+                                              <div style={{ fontSize: '11px', opacity: 0.8 }}>{result.description}</div>
+                                              {result.detail?.reasons && result.detail.reasons.length > 0 && (
+                                                <div style={{ marginTop: '6px' }}>
+                                                  {result.detail.reasons.map((reason: any, reasonIndex: number) => (
+                                                    <div key={reasonIndex} style={{ fontSize: '10px', marginLeft: '8px', marginTop: '2px' }}>
+                                                      • <strong>{reason.key || 'Detail'}:</strong> <span style={{ color: getResultColor(reason.result) }}>{reason.result}</span>
+                                                      {reason.reason && <div style={{ marginLeft: '12px', opacity: 0.7, fontStyle: 'italic' }}>{reason.reason} {reason.code && `(Code: ${reason.code})`}</div>}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </details>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <div>No check details available</div>
+                              )}
+                            </div>
+                            
+                            <div id="rawJson">
+                              <div style={{ 
+                                fontWeight: '600', 
+                                marginBottom: '12px', 
+                                color: colours.blue,
+                                fontSize: '14px',
+                                borderBottom: `1px solid ${colours.blue}20`,
+                                paddingBottom: '6px'
+                              }}>
+                                Raw Response Data:
+                              </div>
+                              <div style={{
+                                fontSize: '11px',
+                                marginBottom: '8px',
+                                padding: '8px',
+                                backgroundColor: isDarkMode ? 'rgba(255, 140, 0, 0.1)' : 'rgba(255, 140, 0, 0.05)',
+                                border: `1px solid ${colours.orange}30`,
+                                borderRadius: '4px',
+                                color: isDarkMode ? colours.dark.subText : colours.light.subText
+                              }}>
+                                <strong>Note:</strong> This raw JSON data matches what's stored in our database. Since this ID verification system is new, this data helps with understanding how the checks work and troubleshooting any issues.
+                              </div>
+                              <pre style={{
+                                fontSize: '10px',
+                                lineHeight: '1.3',
+                                fontFamily: 'monospace',
+                                backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.05)',
+                                padding: '12px',
+                                borderRadius: '4px',
+                                overflow: 'auto',
+                                maxHeight: '300px',
+                                border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+                              }}>
+                                {JSON.stringify(parsed, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </details>
+          </>
+        )}
       </div>
     </div>
   );
 };
 
 export default IDVerificationReviewModal;
-export {};

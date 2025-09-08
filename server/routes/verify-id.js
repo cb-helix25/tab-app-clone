@@ -162,7 +162,7 @@ router.post('/', async (req, res) => {
         SELECT TOP 1 EIDStatus, EIDOverallResult 
         FROM IDVerifications 
         WHERE InstructionRef = @ref 
-        ORDER BY InternalId DESC
+        ORDER BY EIDCheckedDate DESC
       `);
 
     if (existingResult.recordset.length > 0) {
@@ -511,13 +511,12 @@ router.post('/:instructionRef/approve', async (req, res) => {
     const updateInstructionQuery = `
       UPDATE Instructions 
       SET 
-        stage = 'proof-of-id-complete',
-        EIDOverallResult = 'Verified'
-      WHERE InternalId = @internalId
+        stage = 'proof-of-id-complete'
+      WHERE InstructionRef = @instructionRef
     `;
 
     request = pool.request();
-    request.input('internalId', sql.Int, instruction.InternalId);
+    request.input('instructionRef', sql.VarChar(50), instructionRef);
     
     await request.query(updateInstructionQuery);
 
@@ -595,18 +594,38 @@ async function sendDocumentRequestEmail(instructionRef, clientEmail, clientFirst
     <div style="font-family: Raleway, sans-serif; color: #000;">
       <p>Dear ${clientFirstName || 'Client'},</p>
       
-      <p>Thank you for your enquiry. Following our identity verification checks, we require some additional documentation to proceed with your matter.</p>
+      <p>Thank you for submitting your proof of identity form. We initially aim to verify identities electronically.</p>
       
-      <p><strong>Required Documents:</strong></p>
+      <p>Unfortunately, we were unable to verify your identity through electronic means. Please be assured that this is a common occurrence and can result from various factors, such as recent relocation or a limited history at your current residence.</p>
+      
+      <p>To comply with anti-money laundering regulations and our know-your-client requirements, we kindly ask you to provide additional documents.</p>
+      
+      <p>Completing these steps is necessary for us to proceed with substantive actions on your behalf.</p>
+      
+      <p>We appreciate your cooperation and understanding in this matter.</p>
+      
+      <p><strong>Please provide 1 item from Section A and 1 item from Section B below:</strong></p>
+      
+      <p><strong>Section A</strong></p>
       <ul>
-        <li>Valid photo identification (passport or driving licence)</li>
-        <li>Proof of address dated within the last 3 months (utility bill or bank statement)</li>
-        <li>Any additional documents specific to your case</li>
+        <li>Passport (current and valid)</li>
+        <li>Driving Licence</li>
+        <li>Employer Identity Card</li>
+        <li>Other Item showing your name, signature and address</li>
       </ul>
       
-      <p>Please reply to this email with the requested documents attached, or contact us if you have any questions.</p>
+      <p><strong>Section B</strong></p>
+      <ul>
+        <li>Recent utility bill (not more than 3 months old)</li>
+        <li>Recent Council Tax Bill</li>
+        <li>Mortgage Statement (not more than 3 months old)</li>
+        <li>Bank or Credit Card Statement (not more than 3 months old)</li>
+        <li>Other item linking your name to your current address</li>
+      </ul>
       
-      <p>We appreciate your cooperation and look forward to assisting you with your legal matter.</p>
+      <p>Please reply to this email with the requested documents attached as clear photographs or scanned copies.</p>
+      
+      <p>If you have any questions about these requirements, please don't hesitate to contact us.</p>
       
       <p>Best regards,</p>
     </div>
@@ -763,6 +782,156 @@ async function sendDocumentRequestEmail(instructionRef, clientEmail, clientFirst
 }
 
 /**
+ * Sends draft document request email to fee earner for manual sending
+ */
+async function sendDraftDocumentRequestEmail(instructionRef, feeEarnerContact, clientFirstName, clientName, clientEmail) {
+  const axios = require('axios');
+  const { getSecret } = require('../utils/getSecret');
+
+  console.log(`[verify-id] Sending draft document request to fee earner ${feeEarnerContact} for ${instructionRef}`);
+
+  // Get team data from cache/API
+  const teamData = await getTeamData();
+
+  // Get the fee earner email address
+  const feeEarnerEmail = getContactEmail(feeEarnerContact, teamData);
+  console.log(`[verify-id] Sending draft to fee earner email: ${feeEarnerEmail}`);
+  
+  // Get contact details for the draft
+  const contactDetails = teamData.find(person => {
+    const fullName = person['Full Name'] || '';
+    const initials = person.Initials || '';
+    const firstName = person.First || '';
+    const nickname = person.Nickname || '';
+    
+    return fullName === feeEarnerContact ||
+           initials === feeEarnerContact.toUpperCase() ||
+           firstName === feeEarnerContact ||
+           nickname === feeEarnerContact;
+  });
+
+  const contactName = contactDetails ? contactDetails['Full Name'] : feeEarnerContact;
+  const contactFirstName = contactDetails ? contactDetails['First'] : feeEarnerContact;
+  const contactRole = contactDetails ? contactDetails.Role : 'Legal Assistant';
+
+  // Draft email HTML for fee earner to manually send
+  const draftEmailBody = `
+    <div style="font-family: Raleway, sans-serif; color: #000;">
+      <p><strong>DRAFT EMAIL FOR MANUAL SENDING</strong></p>
+      <p><strong>Instruction Reference:</strong> ${instructionRef}</p>
+      <p><strong>Client:</strong> ${clientName}</p>
+      <p><strong>Client Email:</strong> ${clientEmail}</p>
+      
+      <hr style="margin: 20px 0; border: 1px solid #ccc;"/>
+      
+      <p><strong>Subject:</strong> Additional Documents Required - ${instructionRef}</p>
+      
+      <div style="border: 2px dashed #3690CE; padding: 15px; margin: 20px 0; background-color: #f8f9fa;">
+        <p><em>Copy the content below and send directly to the client:</em></p>
+        
+        <div style="background: white; padding: 15px; border: 1px solid #ddd;">
+          <p>Dear ${clientFirstName || 'Client'},</p>
+          
+          <p>Thank you for submitting your proof of identity form. We initially aim to verify identities electronically.</p>
+          
+          <p>Unfortunately, we were unable to verify your identity through electronic means. Please be assured that this is a common occurrence and can result from various factors, such as recent relocation or a limited history at your current residence.</p>
+          
+          <p>To comply with anti-money laundering regulations and our know-your-client requirements, we kindly ask you to provide additional documents.</p>
+          
+          <p>Completing these steps is necessary for us to proceed with substantive actions on your behalf.</p>
+          
+          <p>We appreciate your cooperation and understanding in this matter.</p>
+          
+          <p><strong>Please provide 1 item from Section A and 1 item from Section B below:</strong></p>
+          
+          <p><strong>Section A</strong></p>
+          <ul>
+            <li>Passport (current and valid)</li>
+            <li>Driving Licence</li>
+            <li>Employer Identity Card</li>
+            <li>Other Item showing your name, signature and address</li>
+          </ul>
+          
+          <p><strong>Section B</strong></p>
+          <ul>
+            <li>Recent utility bill (not more than 3 months old)</li>
+            <li>Recent Council Tax Bill</li>
+            <li>Mortgage Statement (not more than 3 months old)</li>
+            <li>Bank or Credit Card Statement (not more than 3 months old)</li>
+            <li>Other item linking your name to your current address</li>
+          </ul>
+          
+          <p>Please reply to this email with the requested documents attached as clear photographs or scanned copies.</p>
+          
+          <p>If you have any questions about these requirements, please don't hesitate to contact us.</p>
+          
+          <p>Best regards,</p>
+          <p>${contactFirstName}</p>
+        </div>
+      </div>
+      
+      <p><em>This draft email has been prepared for instruction ${instructionRef}. Please review and send directly to the client when appropriate.</em></p>
+    </div>
+  `;
+
+  try {
+    // Get Microsoft Graph API credentials from Key Vault
+    const clientId = await getSecret('graph-pitchbuilderemailprovider-clientid');
+    const clientSecret = await getSecret('graph-pitchbuilderemailprovider-clientsecret');
+    const tenantId = '7fbc252f-3ce5-460f-9740-4e1cb8bf78b8';
+
+    // Get access token
+    const tokenResponse = await axios.post(
+      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+      new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: 'https://graph.microsoft.com/.default',
+        grant_type: 'client_credentials'
+      }).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // Send draft email to fee earner
+    const messagePayload = {
+      message: {
+        subject: `DRAFT: Document Request for ${clientName} (${instructionRef})`,
+        body: {
+          contentType: 'HTML',
+          content: draftEmailBody
+        },
+        toRecipients: [{ emailAddress: { address: feeEarnerEmail } }],
+        from: { emailAddress: { address: feeEarnerEmail } }
+      },
+      saveToSentItems: 'false'
+    };
+
+    const graphResponse = await axios.post(
+      `https://graph.microsoft.com/v1.0/users/${feeEarnerEmail}/sendMail`,
+      messagePayload,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (graphResponse.status === 202) {
+      console.log(`[verify-id] Draft document request email sent to fee earner ${feeEarnerEmail}`);
+      return true;
+    } else {
+      throw new Error(`Unexpected Graph API status: ${graphResponse.status}`);
+    }
+  } catch (error) {
+    console.error(`[verify-id] Failed to send draft document request email:`, error);
+    throw error;
+  }
+}
+
+/**
  * Sends verification failure notification email to client
  */
 async function sendVerificationFailureEmail(instructionRef, clientEmail, clientFirstName, sendingContact) {
@@ -838,5 +1007,205 @@ This email was sent from an automated system. Please do not reply directly to th
   // TODO: Integrate with actual email service
   return true;
 }
+
+/**
+ * Test state switching for development (local only)
+ * POST /api/verify-id/:instructionRef/test-state
+ */
+router.post('/:instructionRef/test-state', async (req, res) => {
+  // Only allow in development environment
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Not available in production' });
+  }
+
+  const { instructionRef } = req.params;
+  const { state } = req.body;
+  
+  if (!instructionRef || !state) {
+    return res.status(400).json({ error: 'Missing instructionRef or state' });
+  }
+
+  const validStates = ['fresh-failure', 'documents-pending', 'documents-received', 'verified'];
+  if (!validStates.includes(state)) {
+    return res.status(400).json({ 
+      error: 'Invalid state', 
+      validStates 
+    });
+  }
+
+  console.log(`[verify-id] Switching test state to '${state}' for ${instructionRef}`);
+
+  let pool;
+  try {
+    const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
+    if (!connectionString) {
+      throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
+    }
+
+    pool = await sql.connect(connectionString);
+
+    // Map state to database values
+    let eidOverallResult;
+    let instructionStage;
+    
+    switch (state) {
+      case 'fresh-failure':
+        eidOverallResult = 'Declined';
+        instructionStage = 'proof-of-id-failed';
+        break;
+      case 'documents-pending':
+        eidOverallResult = 'Documents Requested';
+        instructionStage = 'proof-of-id-failed';
+        break;
+      case 'documents-received':
+        eidOverallResult = 'Documents Received';
+        instructionStage = 'proof-of-id-failed';
+        break;
+      case 'verified':
+        eidOverallResult = 'Verified';
+        instructionStage = 'proof-of-id-complete';
+        break;
+    }
+
+    // Update IDVerifications table
+    const updateVerificationQuery = `
+      UPDATE IDVerifications 
+      SET EIDOverallResult = @eidOverallResult
+      WHERE InstructionRef = @instructionRef
+    `;
+
+    let request = pool.request();
+    request.input('instructionRef', sql.VarChar(50), instructionRef);
+    request.input('eidOverallResult', sql.VarChar(50), eidOverallResult);
+    
+    await request.query(updateVerificationQuery);
+
+    // Update Instructions table (only stage, not EIDOverallResult)
+    const updateInstructionQuery = `
+      UPDATE Instructions 
+      SET stage = @stage
+      WHERE InstructionRef = @instructionRef
+    `;
+
+    request = pool.request();
+    request.input('instructionRef', sql.VarChar(50), instructionRef);
+    request.input('stage', sql.VarChar(50), instructionStage);
+    
+    await request.query(updateInstructionQuery);
+
+    res.json({
+      success: true,
+      message: `Test state switched to '${state}'`,
+      instructionRef,
+      newState: state,
+      eidOverallResult,
+      instructionStage
+    });
+
+  } catch (error) {
+    console.error('[verify-id] Error switching test state:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message
+    });
+  } finally {
+    if (pool) {
+      await pool.close();
+    }
+  }
+});
+
+/**
+ * Send draft document request email to fee earner
+ * POST /api/verify-id/:instructionRef/draft-request
+ */
+router.post('/:instructionRef/draft-request', async (req, res) => {
+  const { instructionRef } = req.params;
+  
+  console.log(`[verify-id] DRAFT REQUEST - Received request for instructionRef: ${instructionRef}`);
+  console.log(`[verify-id] DRAFT REQUEST - Request method: ${req.method}`);
+  console.log(`[verify-id] DRAFT REQUEST - Request URL: ${req.originalUrl}`);
+  
+  if (!instructionRef) {
+    console.log(`[verify-id] DRAFT REQUEST - Missing instructionRef`);
+    return res.status(400).json({ error: 'Missing instructionRef' });
+  }
+
+  console.log(`[verify-id] Sending draft document request for ${instructionRef}`);
+
+  let pool;
+  try {
+    const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
+    if (!connectionString) {
+      throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
+    }
+
+    pool = await sql.connect(connectionString);
+
+    // Get the instruction details
+    const getInstructionQuery = `
+      SELECT 
+        i.InstructionRef,
+        i.FirstName,
+        i.LastName,
+        i.Email,
+        i.HelixContact,
+        d.PitchedBy
+      FROM Instructions i
+      LEFT JOIN Deals d ON i.InstructionRef = d.InstructionRef
+      WHERE i.InstructionRef = @instructionRef
+    `;
+
+    let request = pool.request();
+    request.input('instructionRef', sql.VarChar(50), instructionRef);
+    
+    const instructionResult = await request.query(getInstructionQuery);
+    
+    if (instructionResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'Instruction not found' });
+    }
+
+    const instruction = instructionResult.recordset[0];
+    const clientName = `${instruction.FirstName || ''} ${instruction.LastName || ''}`.trim();
+    const clientFirstName = instruction.FirstName || 'Client';
+
+    // Determine the sending contact (fee earner)
+    const feeEarner = instruction.HelixContact || instruction.PitchedBy;
+    if (!feeEarner) {
+      return res.status(400).json({ error: 'No Helix contact found for this instruction' });
+    }
+
+    // Send draft email to fee earner instead of client
+    try {
+      await sendDraftDocumentRequestEmail(instructionRef, feeEarner, clientFirstName, clientName, instruction.Email);
+      
+      res.json({
+        success: true,
+        message: 'Draft document request email sent to fee earner',
+        instructionRef,
+        emailSent: true,
+        recipient: feeEarner
+      });
+      
+    } catch (emailError) {
+      console.error('Failed to send draft document request email:', emailError);
+      res.status(500).json({ 
+        error: 'Failed to send email',
+        details: emailError.message 
+      });
+    }
+
+  } catch (error) {
+    console.error('[verify-id] Error sending draft document request:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message
+    });
+  } finally {
+    if (pool) {
+      await pool.close();
+    }
+  }
+});
 
 module.exports = router;

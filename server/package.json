@@ -8,6 +8,7 @@
     "dependencies": {
         "@azure/identity": "^4.5.0",
         "@azure/keyvault-secrets": "^4.9.0",
+        "axios": "^0.21.4",
         "docx-templates": "^4.14.1",
         "dotenv": "^16.4.2",
         "express": "^4.18.2",
