@@ -287,7 +287,7 @@ export function hasAdminAccess(userRole: string, userFullName: string): boolean 
 
   const isLZ = initials === 'LZ' || name.includes('lukasz') || name.includes('luke') || name.includes('zemanek');
   const isAdminByRole = role.includes('admin');
-  const isKnownAdminByName = name.includes('alex');
+  const isKnownAdminByName = name.includes('alex') || name.includes('laura');
 
   return isAdminByRole || isKnownAdminByName || isLZ;
 }

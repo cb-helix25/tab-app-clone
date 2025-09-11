@@ -1,5 +1,6 @@
 const express = require('express');
 const { getSecret } = require('../utils/getSecret');
+const sql = require('mssql');
 const router = express.Router();
 
 // Route: GET /api/enquiries-combined

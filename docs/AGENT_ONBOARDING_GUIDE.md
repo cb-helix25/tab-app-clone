@@ -1,7 +1,7 @@
 # 🚀 Agent Onboarding Guide
 ## Fast-Track Setup for Helix Hub Instructions Tab
 
-*Last Updated: September 4, 2025*
+*Last Updated: September 9, 2025*
 
 ---
 
@@ -10,13 +10,21 @@
 ### Current Architecture Status
 - ✅ **Unified API Endpoint**: `server/routes/instructions.js` proxies to VNet functions
 - ✅ **Environment Logic**: `src/app/App.tsx` uses `REACT_APP_USE_LOCAL_DATA=false` for production data  
-- ✅ **Documentation**: Comprehensive guides in `/docs` folder
+- ✅ **Pill System**: Interactive status pills with expandable details (September 2025)
+- ✅ **Documentation**: Comprehensive guides in `/docs` folder updated for pill system
 - ⚠️ **Database**: 45 records with 30 test/noise records identified for cleanup
+
+### Recent Updates (September 2025)
+1. **Pill Functionality**: Instruction cards now use interactive status pills instead of action tabs
+2. **Risk Display Fix**: Risk assessments now show correct colors (green for low risk)
+3. **Email Updates**: Deal capture notifications now sent to both `lz@helix-law.com` and `cb@helix-law.com`
+4. **Document Integration**: Documents are now clickable within pill detail sections
 
 ### Essential Context
 1. **Luke Test Record**: `HLX-27367-94842` is the health indicator - NEVER delete
 2. **Production Data**: 7 meaningful example records (HLX-10001 to HLX-10008 series)
 3. **Test Noise**: 30 records with "Final test", "Placeholder", or empty data
+4. **Pill System**: Status shown via colored pills - click completed pills to see details, next action pills to trigger actions
 
 ---
 

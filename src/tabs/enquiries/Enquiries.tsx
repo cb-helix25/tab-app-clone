@@ -192,9 +192,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       
       // Call the unified route to get ALL enquiries (both legacy and new sources)
-      const allDataUrl = isLocalDev 
-        ? '/api/enquiries-unified' // Local unified development route
-        : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData`; // Production route
+      // Use the same route for both local and production - the one that works!
+      const allDataUrl = '/api/enquiries-unified';
       
       console.log('🌐 Fetching ALL enquiries (unified) from:', allDataUrl);
       
@@ -203,17 +202,34 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         headers: { 'Content-Type': 'application/json' },
       });
       
+      console.log('📡 Response status:', response.status, response.statusText);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response not OK:', response.status, errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
+      console.log('🔍 RAW RESPONSE from unified route:', {
+        dataType: typeof data,
+        isArray: Array.isArray(data),
+        hasEnquiries: !!data.enquiries,
+        enquiriesLength: data.enquiries?.length,
+        dataKeys: Object.keys(data),
+        sampleData: JSON.stringify(data).substring(0, 200)
+      });
       
       let rawEnquiries: any[] = [];
       if (Array.isArray(data)) {
         rawEnquiries = data;
+        console.log('📦 Using data as direct array');
       } else if (Array.isArray(data.enquiries)) {
         rawEnquiries = data.enquiries;
+        console.log('📦 Using data.enquiries array');
+      } else {
+        console.warn('⚠️ Unexpected data structure:', data);
       }
       
       console.log('✅ Fetched all enquiries:', rawEnquiries.length);
@@ -222,6 +238,20 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         acc[poc] = (acc[poc] || 0) + 1;
         return acc;
       }, {}));
+      
+      // PRODUCTION DEBUG: Log sample of claimed enquiries
+      const claimedSample = rawEnquiries
+        .filter(enq => {
+          const poc = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
+          return poc !== 'team@helix-law.com' && poc.trim() !== '';
+        })
+        .slice(0, 10);
+      console.log('🔍 PRODUCTION DEBUG - Sample claimed enquiries:', claimedSample.map(e => ({
+        ID: e.ID || e.id,
+        POC: e.Point_of_Contact || e.poc,
+        Area: e.Area_of_Work || e.aow,
+        Date: e.Touchpoint_Date || e.datetime
+      })));
       
       // Convert to normalized format
       const normalizedEnquiries = rawEnquiries.map((raw: any) => {
@@ -246,8 +276,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       });
       
       console.log('🔄 Setting normalized data to state:', normalizedEnquiries.length);
+      console.log('🔍 Sample normalized enquiry:', normalizedEnquiries[0]);
+      console.log('🔍 Normalized enquiries POC distribution:', normalizedEnquiries.reduce((acc: any, enq) => {
+        const poc = enq.Point_of_Contact || 'unknown';
+        acc[poc] = (acc[poc] || 0) + 1;
+        return acc;
+      }, {}));
+      
       setAllEnquiries(normalizedEnquiries);
       setDisplayEnquiries(normalizedEnquiries);
+      
+      console.log('✅ State updated with normalized enquiries');
       
       return normalizedEnquiries;
     } catch (error) {
@@ -302,6 +341,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     [userRec.First, userRec.Last].filter(Boolean).join(' ')
   )?.toString() || '';
   const isAdmin = isAdminUser(userData?.[0] || null);
+  console.log('🔍 ADMIN STATUS DEBUG:', {
+    userEmail: userData?.[0]?.Email,
+    userInitials: userData?.[0]?.Initials,
+    userName: userData?.[0]?.First,
+    isAdmin,
+    showMineOnly
+  });
   const hasInstructionsAndMoreAccess = hasInstructionsAccess(userData?.[0] || null);
   // Debug storage for raw payloads when inspecting
   const [debugRaw, setDebugRaw] = useState<{ legacy?: unknown; direct?: unknown }>({});
@@ -398,7 +444,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     
     // If admin is in "All" mode and we have fetched unified data, show all data
     const userEmail = userData?.[0]?.Email?.toLowerCase() || '';
-    const isAdmin = userData?.[0]?.Email?.toLowerCase().includes('br@') || userData?.[0]?.Email?.toLowerCase().includes('brendan') || userData?.[0]?.Email?.toLowerCase().includes('lz@');
     if (isAdmin && !showMineOnly && hasFetchedAllData.current && allEnquiries.length > 1000) {
       console.log('👑 Admin All mode - showing unified data:', allEnquiries.length);
       setDisplayEnquiries(allEnquiries);
@@ -449,9 +494,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     
     console.log('🔄 Toggle useEffect triggered:', { isAdmin, showMineOnly, userEmail, hasData: displayEnquiries.length });
     
-    // Reset fetch flag when switching to "Mine" mode
+    // When switching to "Mine" mode, ensure displayEnquiries has the full dataset for filtering
+    // BUT don't reset fetch flag if we already have all data - this prevents infinite loops
     if (showMineOnly) {
-      hasFetchedAllData.current = false;
+      if (allEnquiries.length > 0) {
+        console.log('🔄 Mine mode - setting displayEnquiries to allEnquiries for filtering:', allEnquiries.length);
+        setDisplayEnquiries(allEnquiries);
+      }
+      // Don't reset hasFetchedAllData.current here - it causes infinite loops
       return;
     }
     
@@ -894,7 +944,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   }, [ratingEnquiryId, currentRating, handleEditRating, closeRateModal]);
 
   const filteredEnquiries = useMemo(() => {
-    let filtered = enquiriesInSliderRange;
+    let filtered = displayEnquiries; // Use full dataset, not slider range
 
     const userEmail = userData && userData[0] && userData[0].Email
       ? userData[0].Email.toLowerCase()
@@ -917,18 +967,18 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         useLocalData,
         activeState,
         showMineOnly,
-        totalEnquiriesBeforeFilter: enquiriesInSliderRange.length
+        totalEnquiriesBeforeFilter: displayEnquiries.length
       });
       
       // Show sample of all POCs before filtering
-      const allPOCs = enquiriesInSliderRange.slice(0, 20).map(e => 
+      const allPOCs = displayEnquiries.slice(0, 20).map(e => 
         (e.Point_of_Contact || (e as any).poc || '').toLowerCase()
       );
       console.log('📧 All POCs in dataset (first 20):', allPOCs);
       
       // Count by POC
       const pocCounts: Record<string, number> = {};
-      enquiriesInSliderRange.forEach(e => {
+      displayEnquiries.forEach(e => {
         const poc = (e.Point_of_Contact || (e as any).poc || '').toLowerCase();
         pocCounts[poc] = (pocCounts[poc] || 0) + 1;
       });
@@ -942,7 +992,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       isAdmin,
       allEnquiriesCount: allEnquiries.length,
       displayEnquiriesCount: displayEnquiries.length,
-      enquiriesInSliderRangeCount: enquiriesInSliderRange.length,
+      enquiriesInSliderRangeCount: displayEnquiries.length,
       filteredStartCount: filtered.length
     });
 
@@ -950,10 +1000,29 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     if (activeState === 'Claimed') {
       if (showMineOnly || !isAdmin) {
         console.log('🔍 Filtering for Mine Only - looking for:', effectiveUserEmail);
+        
+        // DEBUG: Show available claimed POCs first
+        const claimedEnquiries = filtered.filter(enquiry => {
+          const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+          const isUnclaimed = unclaimedEmails.includes(poc);
+          return !isUnclaimed && poc && poc.trim() !== '';
+        });
+        
+        const claimedPOCs = claimedEnquiries.reduce((acc: any, enq) => {
+          const poc = (enq.Point_of_Contact || (enq as any).poc || '').toLowerCase();
+          acc[poc] = (acc[poc] || 0) + 1;
+          return acc;
+        }, {});
+        
+        console.log('🔍 MINE DEBUG - Available claimed POCs:', claimedPOCs);
+        console.log('🔍 MINE DEBUG - Total claimed enquiries available:', claimedEnquiries.length);
+        console.log('🔍 MINE DEBUG - Looking for exact match:', effectiveUserEmail);
+        console.log('🔍 MINE DEBUG - User has claimed enquiries:', claimedPOCs[effectiveUserEmail] || 0);
+        
         filtered = filtered.filter(enquiry => {
           const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
           const matches = effectiveUserEmail ? poc === effectiveUserEmail : false;
-          if (userEmail.includes('br@')) {
+          if (userEmail.includes('br@') || userEmail.includes('lz@')) {
             console.log('📧 Enquiry POC:', poc, 'matches:', matches);
           }
           return matches;
@@ -962,6 +1031,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         console.log('🌍 Filtering for All Claimed enquiries (Admin Mode)');
         console.log('📊 Total enquiries before filtering:', filtered.length);
         console.log('📊 Unclaimed emails to exclude:', unclaimedEmails);
+        console.log('🔍 PRODUCTION DEBUG - Current user admin status:', isAdmin);
+        console.log('🔍 PRODUCTION DEBUG - Current showMineOnly setting:', showMineOnly);
         
         // Show sample of data we're working with
         if (filtered.length > 0) {
@@ -987,6 +1058,12 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         });
         
         console.log('📊 Total claimed enquiries after filtering:', filtered.length);
+        console.log('🔍 PRODUCTION DEBUG - Sample of filtered claimed enquiries:', filtered.slice(0, 5).map(e => ({
+          ID: e.ID,
+          POC: e.Point_of_Contact || (e as any).poc,
+          Area: e.Area_of_Work,
+          Date: e.Touchpoint_Date
+        })));
       }
     } else if (activeState === 'Claimable') {
       filtered = filtered.filter(enquiry => {
@@ -1062,7 +1139,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     
     return filtered;
   }, [
-    enquiriesInSliderRange,
+    displayEnquiries, // Use full dataset, not slider range
     userData,
     activeState,
     activeAreaFilter,
@@ -1732,7 +1809,12 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                           },
                         }}
                       >
-                        No enquiries found
+                        {activeState === 'Claimed' && showMineOnly
+                          ? 'No claimed enquiries found'
+                          : activeState === 'Claimed'
+                          ? 'No claimed enquiries found'
+                          : 'No enquiries found'
+                        }
                       </Text>
                       <Text
                         variant="medium"
@@ -1743,7 +1825,12 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                           },
                         }}
                       >
-                        Try adjusting your search criteria or filters
+                        {activeState === 'Claimed' && showMineOnly
+                          ? 'You have no claimed enquiries yet. Try switching to "All" to see claimed enquiries from all team members.'
+                          : activeState === 'Claimed'
+                          ? 'No enquiries have been claimed yet.'
+                          : 'Try adjusting your search criteria or filters'
+                        }
                       </Text>
                     </div>
 

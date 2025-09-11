@@ -12,6 +12,7 @@ Prospect 123
 │ HLX-1-001                              │
 │ Status: instruction                    │
 │ Client: Alex Smith                     │
+│ [Pitch] [ID] [Risk] [Payment] [Docs]   │
 └───────────────────────────────────────┘
 ```
 
@@ -27,15 +28,40 @@ Important styles include:
 
 By leveraging these tokens the instruction dashboard maintains a clean and high quality appearance that matches the existing design language.
 
-## Action Points
+## Status Pills System
 
-Below the details list the card includes an "Action Points" section. This lists
-instruction‑specific tasks such as the electronic ID check status and the most
-recent risk assessment result so solicitors can quickly see what work remains.
-The action list sits beneath a divider at the bottom of the card.
+**Updated September 2025**: The card now uses a pill-based status system instead of action tabs. Pills are displayed horizontally below the instruction details and show the status of different workflow stages.
 
-Below the action list the card exposes three actions as tabs positioned along
-the bottom edge. The currently selected tab expands to reveal its label while
-the other two shrink to just their icons. The tabs appear in the order
-**Verify an ID**, **Risk Assessment**, and finally **Open Matter** to guide users
-through each step in sequence.
+### Pill Types:
+1. **Instruction/Pitch Capture** - Shows deal/service capture status
+2. **ID Verification** - Electronic ID check status  
+3. **Risk Assessment** - Risk assessment completion and result
+4. **Payment** - Payment status and amount
+5. **Documents** - Document upload status
+6. **Matter** - Matter creation status
+7. **CCL** - CCL submission status
+
+### Pill Interactions:
+- **Active/Next Action Pills**: Clicking triggers the related action
+- **Completed Pills**: Clicking shows detailed information below the card
+- **ID Verification**: Always opens verification popup (maintains original behavior)
+
+### Pill Colors:
+- **Green**: Complete/Passed status
+- **Yellow**: Review required/Pending status  
+- **Red**: Failed/Missing status
+- **Blue**: Next action required
+
+### Expandable Details:
+When clicking on completed status pills, detailed information appears below the card:
+
+- **Risk Assessment**: Shows risk level, score, assessor, date, and risk factors
+- **Payment**: Shows amount, payment status, internal status, and dates for all payments
+- **Documents**: Shows clickable document list with filenames and upload dates
+- **Matter**: Shows matter ID, creation status, and related information
+
+All detail sections use consistent styling with:
+- Fade-in animations
+- Grid layouts for responsive design
+- Color-coded status indicators
+- Appropriate FontAwesome icons

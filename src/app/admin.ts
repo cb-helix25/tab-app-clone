@@ -1,7 +1,7 @@
 import { UserData } from './functionality/types';
 
 // Centralized list of admin users by initials
-export const ADMIN_USERS = ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW'] as const;
+export const ADMIN_USERS = ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW', 'LA'] as const;
 
 // Users who can access the Instructions tab (includes admins + additional users)
 // NOTE: Instructions tab is now open to all users, but keeping this list for reference
@@ -13,7 +13,7 @@ export function isAdminUser(user?: UserData | null): boolean {
     const initials = user.Initials?.toUpperCase().trim();
     const first = user.First?.toLowerCase().trim();
     const nickname = user.Nickname?.toLowerCase().trim();
-    const adminNames = ['lukasz', 'luke', 'alex', 'cass', 'kanchel', 'billy', 'jonathan'];
+    const adminNames = ['lukasz', 'luke', 'alex', 'cass', 'kanchel', 'billy', 'jonathan', 'laura'];
     return !!(
         (initials && ADMIN_USERS.includes(initials as any)) ||
         (first && adminNames.includes(first)) ||

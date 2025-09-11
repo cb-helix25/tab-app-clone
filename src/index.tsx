@@ -155,7 +155,7 @@ async function fetchEnquiries(
       // This gives us both main + instructions database data in one call
       const newDataUrl = isLocalDev 
         ? `/api/enquiries-unified` // Direct database route for local dev
-        : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData`; // Fallback to function for production
+        : `/api/enquiries-combined`; // Production unified route through server proxy
       
       const newResponse = await fetch(newDataUrl, {
         method: 'GET',
