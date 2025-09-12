@@ -102,8 +102,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
   const [forceNewMatter, setForceNewMatter] = useState(false);
   const [showCclDraftPage, setShowCclDraftPage] = useState(false);
-  // Prevent duplicate unified fetch in StrictMode/dev
-  const hasFetchedUnifiedRef = useRef(false);
 
   // Flat tab navigation: default to Clients
   const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('pitches');
@@ -112,75 +110,31 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [unifiedEnquiries, setUnifiedEnquiries] = useState<any[]>([]);
   
   // Client name cache for performance optimization
-  // Enhanced caching for client name resolution (durable with TTL)
+  // Enhanced caching for client name resolution
   const clientNameCache = useMemo(() => {
+    // Load any previously cached names to avoid "unresolving" on remount/tab switch
     try {
-      const cached = localStorage.getItem('clientNameCache');
-      const cachedTime = localStorage.getItem('clientNameCacheTime');
-      const ttlMs = 24 * 60 * 60 * 1000; // 24 hours
-      const isFresh = cached && cachedTime && (Date.now() - parseInt(cachedTime, 10)) < ttlMs;
-      if (isFresh) {
-        const parsed = JSON.parse(cached!);
-        if (Array.isArray(parsed)) {
-          return new Map<string, { firstName: string; lastName: string }>(parsed);
-        }
-        if (parsed && Array.isArray(parsed.entries)) {
-          return new Map<string, { firstName: string; lastName: string }>(parsed.entries);
+      const saved = localStorage.getItem('clientNameCache');
+      if (saved) {
+        const entries = JSON.parse(saved) as Array<[string, { firstName: string; lastName: string }]>;
+        if (Array.isArray(entries)) {
+          return new Map<string, { firstName: string; lastName: string }>(entries);
         }
       }
     } catch {
-      // fall through to empty map
+      // ignore parse errors and start fresh
     }
     return new Map<string, { firstName: string; lastName: string }>();
   }, []);
 
   // Save cache to localStorage whenever it changes
-  const cacheSaveWarnedRef = useRef(false);
-  const cacheSaveDisabledRef = useRef(false);
   const saveClientNameCache = useCallback((cache: Map<string, { firstName: string; lastName: string }>) => {
-    if (cacheSaveDisabledRef.current) return;
     try {
-      // Cap entries to avoid exceeding localStorage quota
-      const entries = Array.from(cache.entries());
-      const MAX_ENTRIES = 500;
-      const trimmed = entries.length > MAX_ENTRIES ? entries.slice(-MAX_ENTRIES) : entries;
-      localStorage.setItem('clientNameCache', JSON.stringify(trimmed));
-      localStorage.setItem('clientNameCacheTime', Date.now().toString());
+      localStorage.setItem('clientNameCache', JSON.stringify(Array.from(cache.entries())));
     } catch (error) {
-      if (!cacheSaveWarnedRef.current) {
-        console.warn('Failed to save client name cache to localStorage');
-        cacheSaveWarnedRef.current = true;
-      }
-      // Disable further save attempts this session
-      cacheSaveDisabledRef.current = true;
+      console.warn('Failed to save client name cache to localStorage');
     }
   }, []);
-
-  // Pre-warm client name cache from unified enquiries when loaded
-  useEffect(() => {
-    if (!unifiedEnquiries || unifiedEnquiries.length === 0) return;
-    let added = 0;
-    try {
-      for (const enq of unifiedEnquiries) {
-        const enqId = enq?.ID || enq?.id || enq?.acid || enq?.ACID || enq?.Acid;
-        const key = enqId != null ? String(enqId) : '';
-        if (!key) continue;
-        if (clientNameCache.has(key)) continue;
-        const nameField = (typeof enq?.Name === 'string' && enq.Name) || (typeof enq?.FullName === 'string' && enq.FullName) || '';
-        const firstName = enq?.First_Name || enq?.first || enq?.First || enq?.firstName || enq?.FirstName || (nameField ? nameField.split(' ')[0] : '');
-        const lastName = enq?.Last_Name || enq?.last || enq?.Last || enq?.lastName || enq?.LastName || (nameField ? nameField.split(' ').slice(1).join(' ') : '');
-        if (firstName || lastName) {
-          clientNameCache.set(key, { firstName, lastName });
-          added++;
-        }
-      }
-      if (added > 0) saveClientNameCache(clientNameCache);
-    } catch {
-      // ignore warm-up errors
-    }
-  }, [unifiedEnquiries, clientNameCache, saveClientNameCache]);
-
-  // (moved below effectiveInstructionData)
 
   /**
    * Fetch unified enquiries data for name mapping
@@ -188,7 +142,7 @@ const Instructions: React.FC<InstructionsProps> = ({
    */
   const fetchUnifiedEnquiries = async () => {
     try {
-  // Intentionally quiet to reduce console noise
+      console.log('🔗 Fetching unified enquiries for name mapping...');
       
       // Check if we already have cached data in sessionStorage
       const cached = sessionStorage.getItem('unifiedEnquiries');
@@ -196,7 +150,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       const oneHour = 60 * 60 * 1000; // Extended to 1 hour for better performance
       
       if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneHour)) {
-  // Using cached unified enquiries data
+        console.log('📦 Using cached unified enquiries data');
         const cachedData = JSON.parse(cached);
         setUnifiedEnquiries(cachedData);
         return;
@@ -207,7 +161,11 @@ const Instructions: React.FC<InstructionsProps> = ({
         const response = await fetch('/api/enquiries-unified');
         if (response.ok) {
           const data = await response.json();
-          // fetched unified enquiries
+          console.log(`✅ Fetched ${data.count} unified enquiries from both databases`);
+          console.log('🔍 Sample unified enquiries data:', data.enquiries?.slice(0, 3));
+          console.log('🔍 Looking for prospect 27671:', data.enquiries?.find((e: any) => 
+            e.ID === '27671' || e.id === '27671' || e.acid === '27671' || e.card_id === '27671'
+          ));
           const enquiries = data.enquiries || [];
           setUnifiedEnquiries(enquiries);
           
@@ -216,10 +174,12 @@ const Instructions: React.FC<InstructionsProps> = ({
           sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
           return;
         } else {
-          // Unified route failed; will fall back
+          console.log(`❌ Unified route failed with status: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.log(`❌ Error details:`, errorText);
         }
       } catch (err) {
-  // Unified route not available yet, falling back
+        console.log('📝 Unified route not available yet, falling back to direct queries...', err);
       }
 
       // Fallback: Fetch from both sources directly
@@ -230,7 +190,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         fetch('/api/instructions').then(res => res.ok ? res.json() : { instructions: [] })
       ]);
 
-  // gathered fallback data
+      console.log(`📊 Fallback data: ${mainEnquiries.enquiries?.length || 0} main enquiries, ${instructionsData.instructions?.length || 0} instructions`);
 
       // Combine data sources for name mapping
       const combinedEnquiries = [
@@ -253,7 +213,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         }).filter((item: any) => item.acid && (item.first || item.last))
       ];
 
-  // combined enquiries for name mapping
+      console.log(`✅ Combined ${combinedEnquiries.length} enquiries for name mapping (${mainEnquiries.enquiries?.length || 0} from main + ${instructionsData.instructions?.filter((i: any) => i.deal?.ProspectId || i.ProspectId).length || 0} from instructions)`);
       
       setUnifiedEnquiries(combinedEnquiries);
       
@@ -262,7 +222,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
       
     } catch (error) {
-  console.error('Error fetching unified enquiries:', error);
+      console.error('❌ Error fetching unified enquiries:', error);
       setUnifiedEnquiries([]);
     }
   };
@@ -277,135 +237,75 @@ const Instructions: React.FC<InstructionsProps> = ({
       return { firstName: '', lastName: '' };
     }
 
-    const pidStr = prospectId.toString();
+    // Convert prospectId to string for consistent caching
+    const prospectIdStr = String(prospectId);
 
-    // Fast path: Check cache first for immediate response
-    const cached = clientNameCache.get(pidStr);
-    if (cached && (cached.firstName || cached.lastName)) {
+    // Fast path: Check cache first for immediate response - prioritize this over everything
+    const cached = clientNameCache.get(prospectIdStr);
+    if (cached && (cached.firstName?.trim() || cached.lastName?.trim())) {
       return cached;
     }
 
-    // Robust fallback: scan effectiveInstructionData for matching prospect/deal and infer names
-    const searchSources = effectiveInstructionData || [];
-    for (const prospect of searchSources as any[]) {
-      const pId = prospect?.prospectId || prospect?.ProspectId;
-      if (pId != null && String(pId) === pidStr) {
-        const inst = (prospect?.instructions || [])[0];
-        const f = inst?.FirstName || '';
-        const l = inst?.LastName || '';
-        if (f || l) {
-          const result = { firstName: f, lastName: l };
-          clientNameCache.set(pidStr, result);
+    // If unified enquiries not loaded yet, try to find name in current instruction data
+    if (!unifiedEnquiries || unifiedEnquiries.length === 0) {
+      // Look for the name in the current instruction being displayed
+      const currentInstructionData = instructionData.length > 0 ? instructionData : allInstructionData;
+      const matchingInstruction = currentInstructionData.find((inst: any) => {
+        const instrProspectId = inst.deal?.ProspectId || inst.ProspectId;
+        return instrProspectId?.toString() === prospectIdStr;
+      });
+      
+      if (matchingInstruction) {
+        // Cast to any since instruction data can have various dynamic properties
+        const inst = matchingInstruction as any;
+        const firstName = inst.FirstName || inst.Name?.split(' ')[0] || '';
+        const lastName = inst.LastName || inst.Name?.split(' ')[1] || '';
+        if (firstName?.trim() || lastName?.trim()) {
+          const result = { firstName: firstName?.trim() || '', lastName: lastName?.trim() || '' };
+          // Cache this result in memory and localStorage
+          clientNameCache.set(prospectIdStr, result);
           saveClientNameCache(clientNameCache);
           return result;
         }
       }
-      for (const d of (prospect?.deals || [])) {
-        const dPid = d?.ProspectId || d?.prospectId;
-        if (dPid != null && String(dPid) === pidStr) {
-          // Prefer instruction-level names
-          const dealInst = (prospect?.instructions || []).find((i: any) => i.InstructionRef === d.InstructionRef);
-          const df = dealInst?.FirstName || '';
-          const dl = dealInst?.LastName || '';
-          if (df || dl) {
-            const result = { firstName: df, lastName: dl };
-            clientNameCache.set(pidStr, result);
-            saveClientNameCache(clientNameCache);
-            return result;
-          }
-          // Joint client/email-derived
-          const emailLc = (d?.LeadClientEmail || '').toLowerCase();
-          if (emailLc) {
-            const sources = [
-              ...((prospect?.jointClients || prospect?.joinedClients) || []),
-              ...((d?.jointClients) || [])
-            ];
-            const jc = sources.find((j: any) => (j?.ClientEmail || '').toLowerCase() === emailLc);
-            const jf = jc?.FirstName || jc?.Name?.split(' ')[0] || '';
-            const jl = jc?.LastName || (jc?.Name ? jc.Name.split(' ').slice(1).join(' ') : '') || '';
-            if (jf || jl) {
-              const result = { firstName: jf, lastName: jl };
-              clientNameCache.set(pidStr, result);
-              saveClientNameCache(clientNameCache);
-              return result;
-            }
-          }
-        }
+      
+      // If we have cached data but unified enquiries not loaded, return cached even if empty
+      // This prevents "unresolving" when tab switching
+      if (cached) {
+        return cached;
       }
+      
+      return { firstName: '', lastName: '' };
     }
 
     const enquiry = unifiedEnquiries.find((enq: any) => {
-      const enqId = enq.ID || enq.id || enq.acid || enq.ACID || enq.Acid || enq.card_id;
-      const match = String(enqId) === pidStr;
+      const enqId = enq.ID || enq.id || enq.acid || enq.ACID || enq.Acid;
+      const match = String(enqId) === prospectIdStr;
       
-      if (match && pidStr === '27671') {
+      if (match && prospectIdStr === '27671') {
         console.log('🎯 Found match for 27671:', enq);
       }
       return match;
     });
 
-    let result: { firstName: string; lastName: string };
-    if (enquiry) {
-      const nameField = (typeof enquiry?.Name === 'string' && enquiry.Name) || (typeof enquiry?.FullName === 'string' && enquiry.FullName) || '';
-      result = {
-        firstName: enquiry.First_Name || enquiry.first || enquiry.First || enquiry.firstName || enquiry.FirstName || (nameField ? nameField.split(' ')[0] : ''),
-        lastName: enquiry.Last_Name || enquiry.last || enquiry.Last || enquiry.lastName || enquiry.LastName || (nameField ? nameField.split(' ').slice(1).join(' ') : ''),
-      };
-    } else {
-      // Email-based fallback if we can find a matching entry by email across data we have
-      // Try to find prospect/deal to get lead email
-      let emailLc = '';
-      for (const prospect of (effectiveInstructionData as any[]) || []) {
-        const pId = prospect?.prospectId || prospect?.ProspectId;
-        if (pId != null && String(pId) === pidStr) {
-          const inst = (prospect?.instructions || [])[0];
-          emailLc = (inst?.Email || prospect?.Email || '').toLowerCase();
-          if (emailLc) break;
-        }
-        for (const d of (prospect?.deals || [])) {
-          const dPid = d?.ProspectId || d?.prospectId;
-          if (dPid != null && String(dPid) === pidStr) {
-            emailLc = (d?.LeadClientEmail || d?.Email || '').toLowerCase();
-            if (!emailLc) {
-              const inst = (prospect?.instructions || []).find((i: any) => i.InstructionRef === d.InstructionRef);
-              emailLc = (inst?.Email || '').toLowerCase();
-            }
-            if (emailLc) break;
-          }
-        }
-        if (emailLc) break;
-      }
+    if (prospectIdStr === '27671') {
+      console.log('🔍 Searching for 27671 in', unifiedEnquiries.length, 'enquiries');
+      console.log('🔍 Found enquiry for 27671:', enquiry);
+    }
 
-      if (emailLc) {
-        const emailMatch = unifiedEnquiries.find((enq: any) => {
-          const e = (enq?.email || enq?.Email || enq?.ClientEmail || '').toLowerCase();
-          return e && e === emailLc;
-        });
-        if (emailMatch) {
-          const nameField = (typeof emailMatch?.Name === 'string' && emailMatch.Name) || (typeof emailMatch?.FullName === 'string' && emailMatch.FullName) || '';
-          result = {
-            firstName: emailMatch.First_Name || emailMatch.first || emailMatch.First || emailMatch.firstName || emailMatch.FirstName || (nameField ? nameField.split(' ')[0] : ''),
-            lastName: emailMatch.Last_Name || emailMatch.last || emailMatch.Last || emailMatch.lastName || emailMatch.LastName || (nameField ? nameField.split(' ').slice(1).join(' ') : ''),
-          };
-        } else {
-          // Last resort: derive a display name from the email
-          const [local] = emailLc.split('@');
-          const cleaned = local.replace(/[._-]+/g, ' ').trim();
-          const parts = cleaned.split(' ').filter(Boolean);
-          result = parts.length >= 2
-            ? { firstName: parts[0].charAt(0).toUpperCase() + parts[0].slice(1), lastName: parts.slice(1).join(' ').replace(/\b\w/g, c => c.toUpperCase()) }
-            : { firstName: cleaned.charAt(0).toUpperCase() + cleaned.slice(1), lastName: '' };
-        }
-      } else {
-        result = { firstName: '', lastName: '' };
-      }
+    const result = enquiry ? {
+      firstName: enquiry.First_Name || enquiry.first || enquiry.First || enquiry.firstName || enquiry.FirstName || '',
+      lastName: enquiry.Last_Name || enquiry.last || enquiry.Last || enquiry.lastName || enquiry.LastName || ''
+    } : (cached || { firstName: '', lastName: '' }); // Fallback to cached if available
+    
+    // Only cache non-empty results to avoid overwriting good cached data with empty data
+    if (result.firstName?.trim() || result.lastName?.trim() || !cached) {
+      clientNameCache.set(prospectIdStr, result);
+      saveClientNameCache(clientNameCache);
     }
     
-    // Cache the result in both memory and localStorage - ALWAYS cache even if empty to prevent re-resolution
-    clientNameCache.set(pidStr, result);
-    saveClientNameCache(clientNameCache);
     return result;
-  }, [unifiedEnquiries, clientNameCache, saveClientNameCache]);
+  }, [unifiedEnquiries, clientNameCache, saveClientNameCache, instructionData, allInstructionData]);
 
   const handleRiskAssessmentSave = (risk: any) => {
     setInstructionData(prev =>
@@ -573,8 +473,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   // Fetch unified enquiries data for name mapping on component load
   useEffect(() => {
-    if (hasFetchedUnifiedRef.current) return;
-    hasFetchedUnifiedRef.current = true;
     fetchUnifiedEnquiries();
   }, []);
   
@@ -587,14 +485,21 @@ const Instructions: React.FC<InstructionsProps> = ({
   
   // Get effective instruction data based on admin mode and user filtering
   const effectiveInstructionData = useMemo(() => {
-    // quiet debug: effectiveInstructionData calculation
+    console.log('🔄 effectiveInstructionData calculation:', {
+      isAdmin,
+      showAllInstructions,
+      instructionDataLength: instructionData.length,
+      allInstructionDataLength: allInstructionData.length,
+      currentUserEmail: currentUser?.Email,
+      currentUserInitials: currentUser?.Initials
+    });
     
     let result = instructionData;
     
     // If admin and wants to see all data, use allInstructionData (unfiltered)
     if (isAdmin && showAllInstructions && allInstructionData.length > 0) {
       result = allInstructionData;
-  // admin viewing all instructions
+      console.log('🔄 Admin viewing ALL instructions');
     } else {
       // Default: Filter to show only current user's instructions (for both admin and non-admin)
       // If instructionData is empty but allInstructionData has data, filter from allInstructionData
@@ -607,7 +512,29 @@ const Instructions: React.FC<InstructionsProps> = ({
           const userInitials = currentUser.Initials?.toUpperCase();
           
           // Log the first few items to see the data structure
-          // quiet sample logs
+          if (sourceData.indexOf(instruction) < 3) {
+            console.log('🔍 Sample instruction structure:', {
+              prospectId: instruction.prospectId,
+              Email: instruction.Email,
+              Lead: instruction.Lead,
+              assignedTo: instruction.assignedTo,
+              poc: instruction.poc,
+              POC: instruction.POC,
+              deals: instruction.deals?.map((d: any) => ({
+                DealId: d.DealId,
+                PitchedBy: d.PitchedBy,
+                Status: d.Status,
+                Email: d.Email,
+                Lead: d.Lead,
+                assignedTo: d.assignedTo,
+                poc: d.poc
+              })),
+              instructions: instruction.instructions?.map((i: any) => ({
+                InstructionRef: i.InstructionRef,
+                HelixContact: i.HelixContact
+              }))
+            });
+          }
           
           // Check if this instruction belongs to the current user
           const belongsToUser = (
@@ -639,74 +566,64 @@ const Instructions: React.FC<InstructionsProps> = ({
             )
           );
           
-          // quiet belongs-to-user logs
+          if (belongsToUser) {
+            console.log('✅ Instruction belongs to user:', {
+              prospectId: instruction.prospectId,
+              userEmail,
+              userInitials,
+              matchedFields: {
+                instruction_Email: instruction.Email?.toLowerCase() === userEmail,
+                instruction_poc: instruction.poc?.toLowerCase() === userEmail,
+                deal_Email: instruction.deal?.Email?.toLowerCase() === userEmail,
+                deal_poc: instruction.deal?.poc?.toLowerCase() === userEmail,
+                deals_any: instruction.deals?.some((d: any) => d.poc?.toLowerCase() === userEmail)
+              }
+            });
+          }
           
           return belongsToUser;
         });
-        // quiet filtered summary
+        console.log('🔄 Filtered to user instructions:', {
+          sourceData: sourceData.length > 0 ? 'instructionData' : 'allInstructionData',
+          sourceLength: sourceData.length,
+          filteredLength: result.length
+        });
       } else {
         result = sourceData;
       }
-  // quiet viewing mode log
+      console.log(`🔄 ${isAdmin ? 'Admin' : 'User'} viewing OWN instructions (filtered)`);
     }
     
-    // quiet detailed update log
+    console.log('🔄 effectiveInstructionData updated:', {
+      isAdmin,
+      showAllInstructions,
+      currentUserEmail: currentUser?.Email,
+      currentUserInitials: currentUser?.Initials,
+      allInstructionDataLength: allInstructionData.length,
+      instructionDataLength: instructionData.length,
+      resultLength: result.length,
+      usingAllData: isAdmin && showAllInstructions && allInstructionData.length > 0,
+      filteringByUser: !isAdmin || !showAllInstructions,
+      sampleFilteredItems: result.slice(0, 2).map(r => ({
+        prospectId: r.prospectId,
+        hasInstructions: r.instructions?.length || 0,
+        hasDeals: r.deals?.length || 0,
+        deals: r.deals?.map((d: any) => ({ 
+          DealId: d.DealId, 
+          InstructionRef: d.InstructionRef,
+          Email: d.Email, 
+          Lead: d.Lead, 
+          assignedTo: d.assignedTo,
+          Status: d.Status
+        })),
+        instructions: r.instructions?.map((i: any) => ({
+          InstructionRef: i.InstructionRef
+        }))
+      }))
+    });
     
     return result;
   }, [isAdmin, showAllInstructions, allInstructionData, instructionData, currentUser]);
-
-  // Pre-warm client name cache from current instruction/deal data (runs after effectiveInstructionData is defined)
-  useEffect(() => {
-    if (!effectiveInstructionData || effectiveInstructionData.length === 0) return;
-    let added = 0;
-    try {
-      for (const prospect of effectiveInstructionData as any[]) {
-        const pId = prospect?.prospectId || prospect?.ProspectId;
-        const pKey = pId != null ? String(pId) : '';
-        // Try to infer name from prospect-level instructions
-        const inst = (prospect?.instructions || [])[0];
-        const instFirst = inst?.FirstName;
-        const instLast = inst?.LastName;
-        if (pKey && !clientNameCache.has(pKey) && (instFirst || instLast)) {
-          clientNameCache.set(pKey, { firstName: instFirst || '', lastName: instLast || '' });
-          added++;
-        }
-        // Deals-level prospect ids
-        for (const d of (prospect?.deals || [])) {
-          const dPid = d?.ProspectId || d?.prospectId;
-          const dKey = dPid != null ? String(dPid) : '';
-          if (!dKey || clientNameCache.has(dKey)) continue;
-          // Derive from matching instruction for the deal
-          const dealInst = (prospect?.instructions || []).find((i: any) => i.InstructionRef === d.InstructionRef);
-          const df = dealInst?.FirstName || '';
-          const dl = dealInst?.LastName || '';
-          if (df || dl) {
-            clientNameCache.set(dKey, { firstName: df, lastName: dl });
-            added++;
-            continue;
-          }
-          // Fallback: joint client matching lead email
-          const emailLc = (d?.LeadClientEmail || '').toLowerCase();
-          if (emailLc) {
-            const sources = [
-              ...((prospect?.jointClients || prospect?.joinedClients) || []),
-              ...((d?.jointClients) || [])
-            ];
-            const jc = sources.find((j: any) => (j?.ClientEmail || '').toLowerCase() === emailLc);
-            const jf = jc?.FirstName || jc?.Name?.split(' ')[0] || '';
-            const jl = jc?.LastName || (jc?.Name ? jc.Name.split(' ').slice(1).join(' ') : '') || '';
-            if (jf || jl) {
-              clientNameCache.set(dKey, { firstName: jf, lastName: jl });
-              added++;
-            }
-          }
-        }
-      }
-      if (added > 0) saveClientNameCache(clientNameCache);
-    } catch {
-      // ignore warm-up errors
-    }
-  }, [effectiveInstructionData, clientNameCache, saveClientNameCache]);
 
   // Calculate toggle counts based on active tab and current data
   const toggleCounts = useMemo(() => {
@@ -1494,7 +1411,33 @@ const Instructions: React.FC<InstructionsProps> = ({
     return Object.values(unique);
   }, [effectiveInstructionData, enquiries]);
 
-  // Removed verbose debug logs
+  // Debug logging for input data
+  React.useEffect(() => {
+    console.log('Debug - effectiveInstructionData:', effectiveInstructionData.length, 'prospects');
+    const allDeals = effectiveInstructionData.flatMap(p => p.deals ?? []);
+    console.log('Debug - Total deals in data:', allDeals.length);
+    console.log('Debug - Sample deals:', allDeals.slice(0, 3).map(d => ({
+      dealId: d.DealId,
+      instructionRef: d.InstructionRef,
+      status: d.Status,
+      acid: d.ACID || d.acid || d.Acid
+    })));
+  }, [effectiveInstructionData]);
+
+  // Debug logging for pitches
+  React.useEffect(() => {
+    const pitchedItems = overviewItems.filter(item => !item.instruction && item.deal);
+    console.log('Debug - Total overview items:', overviewItems.length);
+    console.log('Debug - Pitched deals (no instruction):', pitchedItems.length);
+    console.log('Debug - Pitched deals details:', pitchedItems.map(item => ({
+      dealId: item.deal?.DealId,
+      status: item.deal?.Status,
+      acid: item.deal?.ACID || item.deal?.acid || item.deal?.Acid,
+      firstName: item.deal?.firstName,
+      lastName: item.deal?.lastName,
+      prospectId: item.prospectId
+    })));
+  }, [overviewItems]);
 
   const selectedOverviewItem = useMemo(
     () =>

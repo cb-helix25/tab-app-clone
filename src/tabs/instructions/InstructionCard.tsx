@@ -620,8 +620,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             // First try to get client name from enquiries data lookup
             if (getClientNameByProspectId && prospectId) {
               const clientName = getClientNameByProspectId(prospectId);
-              if (clientName.firstName || clientName.lastName) {
-                return `${clientName.firstName} ${clientName.lastName}`.trim();
+              if (clientName.firstName?.trim() || clientName.lastName?.trim()) {
+                return `${clientName.firstName || ''} ${clientName.lastName || ''}`.trim();
               }
             }
 
