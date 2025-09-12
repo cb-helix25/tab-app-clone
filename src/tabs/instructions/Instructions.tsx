@@ -293,10 +293,42 @@ const Instructions: React.FC<InstructionsProps> = ({
       console.log('🔍 Found enquiry for 27671:', enquiry);
     }
 
-    const result = enquiry ? {
+    let result = enquiry ? {
       firstName: enquiry.First_Name || enquiry.first || enquiry.First || enquiry.firstName || enquiry.FirstName || '',
       lastName: enquiry.Last_Name || enquiry.last || enquiry.Last || enquiry.lastName || enquiry.LastName || ''
     } : (cached || { firstName: '', lastName: '' }); // Fallback to cached if available
+    
+    // If still no name found, derive from instruction email as a last resort (common in "initialised" stage)
+    if (!(result.firstName?.trim() || result.lastName?.trim())) {
+      // Search in current instruction data for matching prospect
+      const source = instructionData.length > 0 ? instructionData : allInstructionData;
+      const prospect = source.find((p: any) => {
+        if (String(p.prospectId || '') === prospectIdStr) return true;
+        if (Array.isArray(p.deals) && p.deals.some((d: any) => String(d.ProspectId || d.prospectId || '') === prospectIdStr)) return true;
+        if (Array.isArray(p.instructions) && p.instructions.some((i: any) => String(i.ProspectId || i.deal?.ProspectId || '') === prospectIdStr)) return true;
+        return false;
+      });
+      let email = '';
+      if (prospect) {
+        const inst = (prospect.instructions || []).find((i: any) => String(i.ProspectId || i.deal?.ProspectId || '') === prospectIdStr);
+        const deal = (prospect.deals || []).find((d: any) => String(d.ProspectId || d.prospectId || '') === prospectIdStr);
+        email = (inst?.Email || deal?.LeadClientEmail || '').toString();
+      }
+      if (email.includes('@')) {
+        const local = email.split('@')[0];
+        // Split on common separators and remove digits/empties
+        const tokens = local
+          .split(/[._-]+/)
+          .map((t: string) => t.replace(/\d+/g, ''))
+          .filter((t: string) => t);
+        if (tokens.length > 0) {
+          const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+          const first = cap(tokens[0]);
+          const last = tokens.length > 1 ? cap(tokens[1]) : '';
+          result = { firstName: first, lastName: last };
+        }
+      }
+    }
     
     // Only cache non-empty results to avoid overwriting good cached data with empty data
     if (result.firstName?.trim() || result.lastName?.trim() || !cached) {
