@@ -118,6 +118,51 @@ router.get('/', async (req, res) => {
     ip: req.ip
   });
 
+  // Handle deal update via query parameters (workaround for route issues)
+  if (req.query.updateDeal && req.query.dealId) {
+    console.log(`[${requestId}] 🎯 DEAL UPDATE VIA QUERY - Deal ID: ${req.query.dealId}`);
+    try {
+      const dealId = parseInt(req.query.dealId);
+      const updates = JSON.parse(req.query.updates || '{}');
+      
+      const config = await getDbConfig();
+      const pool = new sql.ConnectionPool(config);
+      await pool.connect();
+      
+      // Build dynamic update query
+      const updateParts = [];
+      const request = pool.request().input('dealId', sql.Int, dealId);
+      
+      if (updates.ServiceDescription !== undefined) {
+        updateParts.push('ServiceDescription = @serviceDescription');
+        request.input('serviceDescription', sql.NVarChar, updates.ServiceDescription);
+      }
+      
+      if (updates.Amount !== undefined) {
+        updateParts.push('Amount = @amount');
+        request.input('amount', sql.Decimal(18, 2), updates.Amount);
+      }
+      
+  // Do not assume UpdatedAt column exists
+      
+      const updateQuery = `UPDATE Deals SET ${updateParts.join(', ')} WHERE DealId = @dealId`;
+      console.log(`[${requestId}] Executing update:`, updateQuery);
+      
+      const result = await request.query(updateQuery);
+      
+      if (result.rowsAffected[0] === 0) {
+        return res.status(404).json({ error: 'Deal not found', requestId });
+      }
+      
+      console.log(`[${requestId}] ✅ Deal ${dealId} updated successfully`);
+      return res.json({ success: true, updated: true, dealId, requestId });
+      
+    } catch (error) {
+      console.error(`[${requestId}] ❌ Update error:`, error);
+      return res.status(500).json({ error: 'Update failed', details: error.message, requestId });
+    }
+  }
+
   try {
     const config = await getDbConfig();
     const pool = new sql.ConnectionPool(config);
@@ -408,6 +453,87 @@ router.get('/', async (req, res) => {
       requestId,
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// Test endpoint to verify routes are working
+router.get('/test-route', async (req, res) => {
+  const requestId = generateRequestId();
+  console.log(`[${requestId}] 🧪 TEST ROUTE HIT`);
+  res.json({ message: 'Route is working', requestId, timestamp: new Date().toISOString() });
+});
+
+// Update deal endpoint - Added for deal editing functionality
+router.put('/deals/:dealId', async (req, res) => {
+  const requestId = generateRequestId();
+  const dealId = parseInt(req.params.dealId);
+  const { ServiceDescription, Amount } = req.body;
+  
+  console.log(`[${requestId}] 🎯 DEAL UPDATE REQUEST - Deal ID: ${dealId}`, { ServiceDescription, Amount });
+  
+  if (!dealId || (!ServiceDescription && Amount === undefined)) {
+    console.log(`[${requestId}] ❌ Bad request - missing required fields`);
+    return res.status(400).json({ error: 'Deal ID and at least one field to update are required', requestId });
+  }
+
+  try {
+    const config = await getDbConfig();
+    const pool = await sql.connect(config);
+    
+    // Build dynamic update query based on provided fields
+    const updates = [];
+    const request = pool.request().input('dealId', sql.Int, dealId);
+    
+    if (ServiceDescription !== undefined) {
+      updates.push('ServiceDescription = @serviceDescription');
+      request.input('serviceDescription', sql.NVarChar, ServiceDescription);
+    }
+    
+    if (Amount !== undefined) {
+      updates.push('Amount = @amount');
+      request.input('amount', sql.Decimal(18, 2), Amount);
+    }
+    
+    // Add updated timestamp
+    updates.push('UpdatedAt = GETDATE()');
+    
+    const updateQuery = `
+      UPDATE Deals 
+      SET ${updates.join(', ')} 
+      WHERE DealId = @dealId
+    `;
+    
+    console.log(`[${requestId}] Executing update query:`, updateQuery);
+    
+    const result = await request.query(updateQuery);
+    
+    if (result.rowsAffected[0] === 0) {
+      console.log(`[${requestId}] ❌ Deal not found: ${dealId}`);
+      return res.status(404).json({ error: 'Deal not found', requestId });
+    }
+    
+    // Fetch the updated deal to return
+    const updatedDealQuery = `
+      SELECT DealId, ServiceDescription, Amount, UpdatedAt 
+      FROM Deals 
+      WHERE DealId = @dealId
+    `;
+    
+    const updatedResult = await pool.request()
+      .input('dealId', sql.Int, dealId)
+      .query(updatedDealQuery);
+    
+    console.log(`[${requestId}] ✅ Deal ${dealId} updated successfully`);
+    
+    res.json({
+      success: true,
+      deal: updatedResult.recordset[0],
+      requestId
+    });
+    
+  } catch (error) {
+    console.error(`[${requestId}] ❌ Error updating deal:`, error);
+    res.status(500).json({ error: 'Failed to update deal', details: error.message, requestId });
   }
 });
 

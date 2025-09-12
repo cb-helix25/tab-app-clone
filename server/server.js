@@ -34,6 +34,7 @@ const pitchesRouter = require('./routes/pitches');
 const mattersRouter = require('./routes/matters');
 const instructionsRouter = require('./routes/instructions');
 const verifyIdRouter = require('./routes/verify-id');
+const teamLookupRouter = require('./routes/team-lookup');
 // const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 const app = express();
@@ -84,10 +85,14 @@ app.use('/api/enquiry-emails', enquiryEmailsRouter);
 
 // Update enquiry endpoint - moved to enquiries-unified/update
 // app.post('/api/update-enquiry', require('../api/update-enquiry'));
+console.log('🔧 REGISTERING UPDATE DEAL ROUTE: POST /api/update-deal');
+app.post('/api/update-deal', require('./routes/updateDeal'));
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/matters', mattersRouter);
 app.use('/api/instructions', instructionsRouter);
+app.use('/api/deals', require('./routes/dealUpdate'));
 app.use('/api/verify-id', verifyIdRouter);
+app.use('/api/team-lookup', teamLookupRouter);
 
 // Proxy routes to Azure Functions
 app.use('/', proxyToAzureFunctionsRouter);

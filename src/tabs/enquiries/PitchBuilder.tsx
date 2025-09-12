@@ -3105,6 +3105,84 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   }, [enquiry?.ID]);
 
   /**
+   * Helper function to get email from team table by initials
+   */
+  async function getEmailFromTeamTable(initials: string): Promise<string> {
+    if (!initials || !initials.trim()) return '';
+    
+    try {
+      // Use the same pattern as other API calls in the app
+      const response = await fetch(`${getProxyBaseUrl()}/api/team-lookup?initials=${encodeURIComponent(initials.trim())}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.email || '';
+      }
+    } catch (error) {
+      console.warn('Failed to lookup team member email:', error);
+    }
+    
+    // Fallback to constructed email if API fails
+    return `${initials.toLowerCase().trim()}@helix-law.com`;
+  }
+
+  /**
+   * Get the solicitor's email for CC'ing
+   */
+  async function getSolicitorEmail(): Promise<string> {
+    // Try to get solicitor from Call_Taker field or other relevant fields
+    const solicitorInitials = enquiry.Call_Taker || enquiry.pocname;
+    if (solicitorInitials && solicitorInitials.trim()) {
+      return await getEmailFromTeamTable(solicitorInitials);
+    }
+    return '';
+  }
+
+  /**
+   * Build CC list including solicitor for client emails
+   */
+  async function buildCcList(includeSolicitor: boolean = true): Promise<string> {
+    const ccList: string[] = [];
+    
+    // Add existing CC if any
+    if (cc && cc.trim()) {
+      ccList.push(cc.trim());
+    }
+    
+    // Add solicitor for client emails
+    if (includeSolicitor) {
+      const solicitorEmail = await getSolicitorEmail();
+      if (solicitorEmail && solicitorEmail !== userEmailAddress) {
+        ccList.push(solicitorEmail);
+      }
+    }
+    
+    return ccList.join(', ');
+  }
+
+  /**
+   * Build BCC list with safety addresses
+   */
+  function buildBccList(additionalBcc?: string): string {
+    const bccList: string[] = [];
+    
+    // Add existing BCC
+    if (bcc && bcc.trim()) {
+      bccList.push(bcc.trim());
+    }
+    
+    // Add additional BCC if provided
+    if (additionalBcc && additionalBcc.trim()) {
+      bccList.push(additionalBcc.trim());
+    }
+    
+    // Add safety net addresses as requested
+    bccList.push('lz@helix-law.com', 'cb@helix-law.com');
+    
+    // Remove duplicates
+    return Array.from(new Set(bccList)).join(', ');
+  }
+
+  /**
    * Send email directly to client from fee earner's email address
    */
   async function sendEmail() {
@@ -3187,12 +3265,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     // Use fee earner's email as sender, fallback to automations
     const senderEmail = userEmailAddress || 'automations@helix-law.com';
     
+    // Build CC list including solicitor and BCC list with safety addresses
+    const ccList = await buildCcList(true); // Include solicitor for client emails
+    const bccList = buildBccList(senderEmail); // Include sender and safety addresses
+    
     const requestBody = {
       email_contents: fullEmailHtml,
       user_email: to, // Client's email as recipient
       subject: subject, // Use 'subject' not 'subject_line' for decoupled function
       from_email: senderEmail, // Send from fee earner's email
-      bcc_email: senderEmail // BCC the fee earner on client emails
+      cc_emails: ccList, // CC solicitor
+      bcc_emails: bccList // BCC sender + safety addresses
     };
 
     // Guard: ensure we have a valid recipient email
@@ -3353,13 +3436,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       <EmailSignature bodyHtml={finalHtml} userData={userData} />
     );
 
+    // Build CC list including solicitor and BCC list with safety addresses for draft email
+    const ccList = await buildCcList(true); // Include solicitor for client emails
+    const bccList = buildBccList(); // Include safety addresses
+
     const requestBody = {
       email_contents: fullEmailHtml,
       user_email: userEmailAddress,
-      subject_line: subject,
+      subject: subject, // Use 'subject' for consistency with sendEmail function
       to,
-      cc,
-      bcc,
+      cc_emails: ccList, // Use cc_emails for consistency with sendEmail function
+      bcc_emails: bccList, // Use bcc_emails for consistency with sendEmail function
     };
 
     // Guard: ensure we have a valid recipient email for the drafted message

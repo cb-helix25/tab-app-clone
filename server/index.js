@@ -33,6 +33,7 @@ const instructionsRouter = require('./routes/instructions');
 const enquiriesUnifiedRouter = require('./routes/enquiries-unified');
 const verifyIdRouter = require('./routes/verify-id');
 const testDbRouter = require('./routes/test-db');
+const teamLookupRouter = require('./routes/team-lookup');
 const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 
 const app = express();
@@ -65,11 +66,33 @@ app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 // app.post('/api/update-enquiry', require('../api/update-enquiry')); // Moved to enquiries-unified/update
+// Register deal update endpoints (used by instruction cards editing)
+console.log('🔧 REGISTERING UPDATE DEAL ROUTES');
+app.post('/api/update-deal', require('./routes/updateDeal'));
+app.use('/api/deals', require('./routes/dealUpdate'));
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/instructions', instructionsRouter);
 app.use('/api/verify-id', verifyIdRouter);
 app.use('/api/test-db', testDbRouter);
+app.use('/api/team-lookup', teamLookupRouter);
 app.use('/ccls', express.static(CCL_DIR));
+
+// Temporary debug helper: allow GET /api/update-deal?dealId=...&ServiceDescription=...&Amount=...
+app.get('/api/update-deal', async (req, res) => {
+    try {
+        const updateDeal = require('./routes/updateDeal');
+        // Shim req.body from query
+        req.body = {
+            dealId: req.query.dealId,
+            ServiceDescription: req.query.ServiceDescription,
+            Amount: req.query.Amount ? Number(req.query.Amount) : undefined,
+        };
+        return updateDeal(req, res);
+    } catch (err) {
+        console.error('Fallback GET /api/update-deal failed:', err);
+        res.status(500).json({ error: 'Fallback update failed', details: String(err) });
+    }
+});
 
 console.log('📋 Server routes registered:');
 console.log('  ✅ /api/keys');
@@ -91,6 +114,7 @@ console.log('  ✅ /api/enquiry-emails');
 console.log('  ✅ /api/pitches');
 console.log('  🆕 /api/instructions (UNIFIED ENDPOINT)');
 console.log('  🆕 /api/verify-id (ID VERIFICATION)');
+console.log('  🆕 /api/team-lookup (TEAM EMAIL LOOKUP)');
 
 // Proxy routes to Azure Functions - these handle requests without /api/ prefix
 app.use('/', proxyToAzureFunctionsRouter);

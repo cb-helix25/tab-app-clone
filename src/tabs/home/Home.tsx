@@ -1101,9 +1101,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, instructionDa
         matter: item.matter || null
       }));
       setLocalInstructionDataState(transformedData);
-      console.log('🏠 Home: Loaded local instruction data:', transformedData.length);
     } else if (propInstructionData) {
-      console.log('🏠 Home: Using prop instruction data:', propInstructionData.length);
+      // Using prop instruction data
     }
   }, [useLocalData, propInstructionData]);
 
@@ -1949,11 +1948,11 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       const code = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_CODE;
       const path = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_PATH;
       const baseUrl = proxyBaseUrl;
-      if (!code || !path || !baseUrl) {
+      if (!code || !path) {
         console.error("Missing env variables for outstanding client balances");
         return null;
       }
-      const url = `${baseUrl}/${path}?code=${code}`;
+      const url = baseUrl ? `${baseUrl}/${path}?code=${code}` : `/${path}?code=${code}`;
       try {
         const response = await fetch(url, {
           method: "GET",
@@ -2173,22 +2172,9 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
   const currentUserConfirmed = isLocalhost || !!currentUserRecord?.weeks?.[relevantWeekKey];
 
   // Debug logging for instructionData changes
-  useEffect(() => {
-    console.log('🏠 Home: instructionData changed:', {
-      propLength: propInstructionData?.length || 0,
-      localLength: localInstructionDataState?.length || 0,
-      finalLength: instructionData?.length || 0,
-      timestamp: new Date().toISOString()
-    });
-  }, [propInstructionData, localInstructionDataState, instructionData]);
-
   // Calculate actionable instruction summaries (needs isLocalhost)
   const actionableSummaries = useMemo(() => {
-    console.log('🏠 Home: Computing actionableSummaries with instructionData:', instructionData?.length || 0, 'items');
-    console.log('🏠 Home: isLocalhost:', isLocalhost);
-    console.log('🏠 Home: Full instructionData:', instructionData);
     const result = getActionableInstructions(instructionData, isLocalhost);
-    console.log('🏠 Home: actionableSummaries result:', result);
     return result;
   }, [instructionData, isLocalhost]);
 
@@ -3001,12 +2987,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   const groupedInstructionActions = useMemo(() => {
     const actionGroups: Record<string, { count: number; icon: string; disabled?: boolean }> = {};
     
-    console.log('🔍 DEBUG Home: actionableSummaries input:', actionableSummaries);
-    console.log('🔍 DEBUG Home: actionableSummaries count:', actionableSummaries.length);
-    
     actionableSummaries.forEach(summary => {
       const action = summary.nextAction;
-      console.log('🔍 DEBUG Home: Processing summary:', { id: summary.id, action, disabled: summary.disabled });
       if (actionGroups[action]) {
         actionGroups[action].count++;
       } else {
@@ -3025,7 +3007,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       }
     });
     
-    console.log('🔍 DEBUG Home: Final groupedInstructionActions:', actionGroups);
     return actionGroups;
   }, [actionableSummaries]);
 
@@ -3077,10 +3058,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     
     // Add grouped instruction actions (replaces old single "Review Instructions" action)
     if (!instructionsActionDone && (userInitials === 'LZ' || isLocalhost)) {
-      console.log('DEBUG: Adding instruction actions, instructionsActionDone:', instructionsActionDone, 'userInitials:', userInitials, 'isLocalhost:', isLocalhost);
       Object.entries(groupedInstructionActions).forEach(([actionType, { count, icon, disabled }]) => {
         const title = count === 1 ? actionType : `${actionType} (${count})`;
-        console.log('DEBUG: Adding action:', title, icon, disabled ? '(disabled)' : '');
         actions.push({
           title,
           icon,

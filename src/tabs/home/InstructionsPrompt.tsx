@@ -15,19 +15,15 @@ export const getActionableInstructions = (
     isLocalhost: boolean = false,
 ): InstructionSummary[] => {
     const summaries: InstructionSummary[] = [];
-    const timestamp = new Date().toISOString();
-    console.log(`🔍 DEBUG [${timestamp}]: getActionableInstructions processing`, data.length, 'items, isLocalhost:', isLocalhost);
     
     data.forEach((item, index) => {
         const instruction = item.instructions && item.instructions[0];
         if (!instruction) {
-            console.log(`DEBUG: Item ${index} (${item.prospectId}) - no instruction found`);
             return;
         }
         
         const matterLinked = instruction.MatterId || item.matter;
         if (matterLinked && !isLocalhost) {
-            console.log(`DEBUG: Item ${index} (${item.prospectId}) - already has matter:`, matterLinked);
             return; // skip if already linked to a matter (except in localhost)
         }
 
@@ -92,19 +88,6 @@ export const getActionableInstructions = (
         const hasIdReview = verifyIdStatus === 'review';
         const hasRiskReview = riskStatus === 'review';
         
-        console.log(`🔍 DEBUG [${timestamp}]: Item ${index} (${item.prospectId}) workflow status:`, {
-            verifyIdStatus,
-            paymentStatus,
-            documentStatus,
-            riskStatus,
-            nextActionStep,
-            instruction: instruction.InstructionRef,
-            stageComplete,
-            eidResult,
-            hasIdReview,
-            hasRiskReview
-        });
-        
         // Include items that either:
         // 1. Have next action step as id/risk/ccl (blue active step), OR
         // 2. Have review status (red step that needs attention), OR
@@ -114,11 +97,8 @@ export const getActionableInstructions = (
             hasIdReview || hasRiskReview || needsMatterOpening;
             
         if (!needsUserAction) {
-            console.log(`🔍 DEBUG [${timestamp}]: Item ${index} (${item.prospectId}) - SKIPPING, no immediate action needed (nextActionStep: ${nextActionStep}, idReview: ${hasIdReview}, riskReview: ${hasRiskReview})`);
             return;
         }
-
-        console.log(`🔍 DEBUG [${timestamp}]: Item ${index} (${item.prospectId}) - INCLUDING in actionable list (step: ${nextActionStep}, idReview: ${hasIdReview}, riskReview: ${hasRiskReview})`);
 
         const clientName = `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim();
         const service = item.deals?.[0]?.ServiceDescription || 'New Matter';
@@ -141,18 +121,8 @@ export const getActionableInstructions = (
             actionLabel = 'Submit to CCL';
             isDisabled = !isLocalhost; // Enable CCL locally, disable in production
         } else {
-            // This shouldn't happen due to filtering above, but just in case
-            console.log(`DEBUG: Unexpected action step: ${nextActionStep}`);
             return;
         }
-
-        console.log(`🔍 DEBUG [${timestamp}]: Adding actionable instruction:`, {
-            id: instruction.InstructionRef ?? String(item.prospectId),
-            clientName: clientName || 'Unknown Client',
-            service,
-            nextAction: actionLabel,
-            disabled: isDisabled
-        });
 
         summaries.push({
             id: instruction.InstructionRef ?? String(item.prospectId),
@@ -163,8 +133,6 @@ export const getActionableInstructions = (
         });
     });
     
-    console.log(`🔍 DEBUG [${timestamp}]: getActionableInstructions FINAL RESULT - returning`, summaries.length, 'actionable instructions');
-    console.log(`🔍 DEBUG [${timestamp}]: Final actionable instructions:`, summaries.map(s => ({ id: s.id, nextAction: s.nextAction, disabled: s.disabled })));
     return summaries;
 };
 

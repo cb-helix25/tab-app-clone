@@ -632,21 +632,15 @@ const AppWithContext: React.FC = () => {
       normalized.FullName ||
       `${normalized.First || ''} ${normalized.Last || ''}`.trim();
     
-    console.log(`🔄 User switched to: ${fullName} (${normalized.Email})`);
-    console.log('📋 User details:', {
-      Email: normalized.Email,
-      Initials: normalized.Initials,
-      AOW: normalized.AOW,
-      isAdmin: ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW'].includes(normalized.Initials?.toUpperCase() || ''),
-      hasInstructionsAccess: true // Instructions now open to all users
-    });
+
+
     
     // Clear localStorage cache when switching users to force fresh data
     const keysToRemove = Object.keys(localStorage).filter(key => 
       key.includes('enquiries-') || key.includes('userData-') || key.includes('matters-')
     );
     keysToRemove.forEach(key => localStorage.removeItem(key));
-    console.log(`🗑️ Cleared ${keysToRemove.length} cache entries for fresh data`);
+
     
     try {
       // Fetch matters for new user
@@ -664,7 +658,7 @@ const AppWithContext: React.FC = () => {
       );
       setEnquiries(enquiriesRes);
       
-      console.log(`✅ Loaded ${enquiriesRes.length} enquiries for ${normalized.Email}`);
+
       
     } catch (err) {
       console.error('Error fetching data for switched user:', err);
@@ -674,7 +668,7 @@ const AppWithContext: React.FC = () => {
   // Return to original admin user
   const returnToAdmin = async () => {
     if (originalAdminUser) {
-      console.log(`🔙 Returning to admin user: ${originalAdminUser.FullName}`);
+
       await switchUser(originalAdminUser);
       setOriginalAdminUser(null); // Clear the stored admin user
     }
@@ -726,7 +720,7 @@ const AppWithContext: React.FC = () => {
           setLoading(false);
         }
       } else {
-        console.log("Using local sample data for development.");
+
 
         setTeamsContext({
           userObjectId: "local",

@@ -102,6 +102,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
   const [forceNewMatter, setForceNewMatter] = useState(false);
   const [showCclDraftPage, setShowCclDraftPage] = useState(false);
+  // Prevent duplicate unified fetch in StrictMode/dev
+  const hasFetchedUnifiedRef = useRef(false);
 
   // Flat tab navigation: default to Clients
   const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('pitches');
@@ -110,24 +112,75 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [unifiedEnquiries, setUnifiedEnquiries] = useState<any[]>([]);
   
   // Client name cache for performance optimization
-  // Enhanced caching for client name resolution
+  // Enhanced caching for client name resolution (durable with TTL)
   const clientNameCache = useMemo(() => {
-    // Clear old cache on component mount to ensure fresh data after fixes
-    localStorage.removeItem('clientNameCache');
-    sessionStorage.removeItem('unifiedEnquiries');
-    sessionStorage.removeItem('unifiedEnquiriesTime');
-    
+    try {
+      const cached = localStorage.getItem('clientNameCache');
+      const cachedTime = localStorage.getItem('clientNameCacheTime');
+      const ttlMs = 24 * 60 * 60 * 1000; // 24 hours
+      const isFresh = cached && cachedTime && (Date.now() - parseInt(cachedTime, 10)) < ttlMs;
+      if (isFresh) {
+        const parsed = JSON.parse(cached!);
+        if (Array.isArray(parsed)) {
+          return new Map<string, { firstName: string; lastName: string }>(parsed);
+        }
+        if (parsed && Array.isArray(parsed.entries)) {
+          return new Map<string, { firstName: string; lastName: string }>(parsed.entries);
+        }
+      }
+    } catch {
+      // fall through to empty map
+    }
     return new Map<string, { firstName: string; lastName: string }>();
   }, []);
 
   // Save cache to localStorage whenever it changes
+  const cacheSaveWarnedRef = useRef(false);
+  const cacheSaveDisabledRef = useRef(false);
   const saveClientNameCache = useCallback((cache: Map<string, { firstName: string; lastName: string }>) => {
+    if (cacheSaveDisabledRef.current) return;
     try {
-      localStorage.setItem('clientNameCache', JSON.stringify(Array.from(cache.entries())));
+      // Cap entries to avoid exceeding localStorage quota
+      const entries = Array.from(cache.entries());
+      const MAX_ENTRIES = 500;
+      const trimmed = entries.length > MAX_ENTRIES ? entries.slice(-MAX_ENTRIES) : entries;
+      localStorage.setItem('clientNameCache', JSON.stringify(trimmed));
+      localStorage.setItem('clientNameCacheTime', Date.now().toString());
     } catch (error) {
-      console.warn('Failed to save client name cache to localStorage');
+      if (!cacheSaveWarnedRef.current) {
+        console.warn('Failed to save client name cache to localStorage');
+        cacheSaveWarnedRef.current = true;
+      }
+      // Disable further save attempts this session
+      cacheSaveDisabledRef.current = true;
     }
   }, []);
+
+  // Pre-warm client name cache from unified enquiries when loaded
+  useEffect(() => {
+    if (!unifiedEnquiries || unifiedEnquiries.length === 0) return;
+    let added = 0;
+    try {
+      for (const enq of unifiedEnquiries) {
+        const enqId = enq?.ID || enq?.id || enq?.acid || enq?.ACID || enq?.Acid;
+        const key = enqId != null ? String(enqId) : '';
+        if (!key) continue;
+        if (clientNameCache.has(key)) continue;
+        const nameField = (typeof enq?.Name === 'string' && enq.Name) || (typeof enq?.FullName === 'string' && enq.FullName) || '';
+        const firstName = enq?.First_Name || enq?.first || enq?.First || enq?.firstName || enq?.FirstName || (nameField ? nameField.split(' ')[0] : '');
+        const lastName = enq?.Last_Name || enq?.last || enq?.Last || enq?.lastName || enq?.LastName || (nameField ? nameField.split(' ').slice(1).join(' ') : '');
+        if (firstName || lastName) {
+          clientNameCache.set(key, { firstName, lastName });
+          added++;
+        }
+      }
+      if (added > 0) saveClientNameCache(clientNameCache);
+    } catch {
+      // ignore warm-up errors
+    }
+  }, [unifiedEnquiries, clientNameCache, saveClientNameCache]);
+
+  // (moved below effectiveInstructionData)
 
   /**
    * Fetch unified enquiries data for name mapping
@@ -135,7 +188,7 @@ const Instructions: React.FC<InstructionsProps> = ({
    */
   const fetchUnifiedEnquiries = async () => {
     try {
-      console.log('🔗 Fetching unified enquiries for name mapping...');
+  // Intentionally quiet to reduce console noise
       
       // Check if we already have cached data in sessionStorage
       const cached = sessionStorage.getItem('unifiedEnquiries');
@@ -143,7 +196,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       const oneHour = 60 * 60 * 1000; // Extended to 1 hour for better performance
       
       if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneHour)) {
-        console.log('📦 Using cached unified enquiries data');
+  // Using cached unified enquiries data
         const cachedData = JSON.parse(cached);
         setUnifiedEnquiries(cachedData);
         return;
@@ -154,11 +207,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         const response = await fetch('/api/enquiries-unified');
         if (response.ok) {
           const data = await response.json();
-          console.log(`✅ Fetched ${data.count} unified enquiries from both databases`);
-          console.log('🔍 Sample unified enquiries data:', data.enquiries?.slice(0, 3));
-          console.log('🔍 Looking for prospect 27671:', data.enquiries?.find((e: any) => 
-            e.ID === '27671' || e.id === '27671' || e.acid === '27671' || e.card_id === '27671'
-          ));
+          // fetched unified enquiries
           const enquiries = data.enquiries || [];
           setUnifiedEnquiries(enquiries);
           
@@ -167,12 +216,10 @@ const Instructions: React.FC<InstructionsProps> = ({
           sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
           return;
         } else {
-          console.log(`❌ Unified route failed with status: ${response.status} ${response.statusText}`);
-          const errorText = await response.text();
-          console.log(`❌ Error details:`, errorText);
+          // Unified route failed; will fall back
         }
       } catch (err) {
-        console.log('📝 Unified route not available yet, falling back to direct queries...', err);
+  // Unified route not available yet, falling back
       }
 
       // Fallback: Fetch from both sources directly
@@ -183,7 +230,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         fetch('/api/instructions').then(res => res.ok ? res.json() : { instructions: [] })
       ]);
 
-      console.log(`📊 Fallback data: ${mainEnquiries.enquiries?.length || 0} main enquiries, ${instructionsData.instructions?.length || 0} instructions`);
+  // gathered fallback data
 
       // Combine data sources for name mapping
       const combinedEnquiries = [
@@ -206,7 +253,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         }).filter((item: any) => item.acid && (item.first || item.last))
       ];
 
-      console.log(`✅ Combined ${combinedEnquiries.length} enquiries for name mapping (${mainEnquiries.enquiries?.length || 0} from main + ${instructionsData.instructions?.filter((i: any) => i.deal?.ProspectId || i.ProspectId).length || 0} from instructions)`);
+  // combined enquiries for name mapping
       
       setUnifiedEnquiries(combinedEnquiries);
       
@@ -215,7 +262,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
       
     } catch (error) {
-      console.error('❌ Error fetching unified enquiries:', error);
+  console.error('Error fetching unified enquiries:', error);
       setUnifiedEnquiries([]);
     }
   };
@@ -230,71 +277,132 @@ const Instructions: React.FC<InstructionsProps> = ({
       return { firstName: '', lastName: '' };
     }
 
+    const pidStr = prospectId.toString();
+
     // Fast path: Check cache first for immediate response
-    const cached = clientNameCache.get(prospectId.toString());
-    if (cached) {
+    const cached = clientNameCache.get(pidStr);
+    if (cached && (cached.firstName || cached.lastName)) {
       return cached;
     }
 
-    // If unified enquiries not loaded yet, try to find name in current instruction data
-    if (!unifiedEnquiries || unifiedEnquiries.length === 0) {
-      // Look for the name in the current instruction being displayed
-      const currentInstructionData = effectiveInstructionData || [];
-      const matchingInstruction = currentInstructionData.find((inst: any) => {
-        const instrProspectId = inst.deal?.ProspectId || inst.ProspectId;
-        return instrProspectId?.toString() === prospectId.toString();
-      });
-      
-      if (matchingInstruction) {
-        // Cast to any since instruction data can have various dynamic properties
-        const inst = matchingInstruction as any;
-        const firstName = inst.FirstName || inst.Name?.split(' ')[0] || '';
-        const lastName = inst.LastName || inst.Name?.split(' ')[1] || '';
-        if (firstName || lastName) {
-          const result = { firstName, lastName };
-          // Cache this result in memory and localStorage
-          clientNameCache.set(prospectId.toString(), result);
+    // Robust fallback: scan effectiveInstructionData for matching prospect/deal and infer names
+    const searchSources = effectiveInstructionData || [];
+    for (const prospect of searchSources as any[]) {
+      const pId = prospect?.prospectId || prospect?.ProspectId;
+      if (pId != null && String(pId) === pidStr) {
+        const inst = (prospect?.instructions || [])[0];
+        const f = inst?.FirstName || '';
+        const l = inst?.LastName || '';
+        if (f || l) {
+          const result = { firstName: f, lastName: l };
+          clientNameCache.set(pidStr, result);
           saveClientNameCache(clientNameCache);
           return result;
         }
       }
-      
-      return { firstName: '', lastName: '' };
-    }
-
-    // Convert prospectId to string for comparison and caching
-    const prospectIdStr = String(prospectId);
-    
-    // Check cache first
-    if (clientNameCache.has(prospectIdStr)) {
-      const cached = clientNameCache.get(prospectIdStr);
-      if (cached) {
-        return cached;
+      for (const d of (prospect?.deals || [])) {
+        const dPid = d?.ProspectId || d?.prospectId;
+        if (dPid != null && String(dPid) === pidStr) {
+          // Prefer instruction-level names
+          const dealInst = (prospect?.instructions || []).find((i: any) => i.InstructionRef === d.InstructionRef);
+          const df = dealInst?.FirstName || '';
+          const dl = dealInst?.LastName || '';
+          if (df || dl) {
+            const result = { firstName: df, lastName: dl };
+            clientNameCache.set(pidStr, result);
+            saveClientNameCache(clientNameCache);
+            return result;
+          }
+          // Joint client/email-derived
+          const emailLc = (d?.LeadClientEmail || '').toLowerCase();
+          if (emailLc) {
+            const sources = [
+              ...((prospect?.jointClients || prospect?.joinedClients) || []),
+              ...((d?.jointClients) || [])
+            ];
+            const jc = sources.find((j: any) => (j?.ClientEmail || '').toLowerCase() === emailLc);
+            const jf = jc?.FirstName || jc?.Name?.split(' ')[0] || '';
+            const jl = jc?.LastName || (jc?.Name ? jc.Name.split(' ').slice(1).join(' ') : '') || '';
+            if (jf || jl) {
+              const result = { firstName: jf, lastName: jl };
+              clientNameCache.set(pidStr, result);
+              saveClientNameCache(clientNameCache);
+              return result;
+            }
+          }
+        }
       }
     }
 
     const enquiry = unifiedEnquiries.find((enq: any) => {
-      const enqId = enq.ID || enq.id || enq.acid || enq.ACID || enq.Acid;
-      const match = String(enqId) === prospectIdStr;
+      const enqId = enq.ID || enq.id || enq.acid || enq.ACID || enq.Acid || enq.card_id;
+      const match = String(enqId) === pidStr;
       
-      if (match && prospectIdStr === '27671') {
+      if (match && pidStr === '27671') {
         console.log('🎯 Found match for 27671:', enq);
       }
       return match;
     });
 
-    if (prospectIdStr === '27671') {
-      console.log('🔍 Searching for 27671 in', unifiedEnquiries.length, 'enquiries');
-      console.log('🔍 Found enquiry for 27671:', enquiry);
-    }
+    let result: { firstName: string; lastName: string };
+    if (enquiry) {
+      const nameField = (typeof enquiry?.Name === 'string' && enquiry.Name) || (typeof enquiry?.FullName === 'string' && enquiry.FullName) || '';
+      result = {
+        firstName: enquiry.First_Name || enquiry.first || enquiry.First || enquiry.firstName || enquiry.FirstName || (nameField ? nameField.split(' ')[0] : ''),
+        lastName: enquiry.Last_Name || enquiry.last || enquiry.Last || enquiry.lastName || enquiry.LastName || (nameField ? nameField.split(' ').slice(1).join(' ') : ''),
+      };
+    } else {
+      // Email-based fallback if we can find a matching entry by email across data we have
+      // Try to find prospect/deal to get lead email
+      let emailLc = '';
+      for (const prospect of (effectiveInstructionData as any[]) || []) {
+        const pId = prospect?.prospectId || prospect?.ProspectId;
+        if (pId != null && String(pId) === pidStr) {
+          const inst = (prospect?.instructions || [])[0];
+          emailLc = (inst?.Email || prospect?.Email || '').toLowerCase();
+          if (emailLc) break;
+        }
+        for (const d of (prospect?.deals || [])) {
+          const dPid = d?.ProspectId || d?.prospectId;
+          if (dPid != null && String(dPid) === pidStr) {
+            emailLc = (d?.LeadClientEmail || d?.Email || '').toLowerCase();
+            if (!emailLc) {
+              const inst = (prospect?.instructions || []).find((i: any) => i.InstructionRef === d.InstructionRef);
+              emailLc = (inst?.Email || '').toLowerCase();
+            }
+            if (emailLc) break;
+          }
+        }
+        if (emailLc) break;
+      }
 
-    const result = enquiry ? {
-      firstName: enquiry.First_Name || enquiry.first || enquiry.First || enquiry.firstName || enquiry.FirstName || '',
-      lastName: enquiry.Last_Name || enquiry.last || enquiry.Last || enquiry.lastName || enquiry.LastName || ''
-    } : { firstName: '', lastName: '' };
+      if (emailLc) {
+        const emailMatch = unifiedEnquiries.find((enq: any) => {
+          const e = (enq?.email || enq?.Email || enq?.ClientEmail || '').toLowerCase();
+          return e && e === emailLc;
+        });
+        if (emailMatch) {
+          const nameField = (typeof emailMatch?.Name === 'string' && emailMatch.Name) || (typeof emailMatch?.FullName === 'string' && emailMatch.FullName) || '';
+          result = {
+            firstName: emailMatch.First_Name || emailMatch.first || emailMatch.First || emailMatch.firstName || emailMatch.FirstName || (nameField ? nameField.split(' ')[0] : ''),
+            lastName: emailMatch.Last_Name || emailMatch.last || emailMatch.Last || emailMatch.lastName || emailMatch.LastName || (nameField ? nameField.split(' ').slice(1).join(' ') : ''),
+          };
+        } else {
+          // Last resort: derive a display name from the email
+          const [local] = emailLc.split('@');
+          const cleaned = local.replace(/[._-]+/g, ' ').trim();
+          const parts = cleaned.split(' ').filter(Boolean);
+          result = parts.length >= 2
+            ? { firstName: parts[0].charAt(0).toUpperCase() + parts[0].slice(1), lastName: parts.slice(1).join(' ').replace(/\b\w/g, c => c.toUpperCase()) }
+            : { firstName: cleaned.charAt(0).toUpperCase() + cleaned.slice(1), lastName: '' };
+        }
+      } else {
+        result = { firstName: '', lastName: '' };
+      }
+    }
     
-    // Cache the result in both memory and localStorage
-    clientNameCache.set(prospectIdStr, result);
+    // Cache the result in both memory and localStorage - ALWAYS cache even if empty to prevent re-resolution
+    clientNameCache.set(pidStr, result);
     saveClientNameCache(clientNameCache);
     return result;
   }, [unifiedEnquiries, clientNameCache, saveClientNameCache]);
@@ -348,6 +456,49 @@ const Instructions: React.FC<InstructionsProps> = ({
 
     setSelectedRisk(risk);
   };
+
+  // Handle deal editing
+  const handleDealEdit = useCallback(async (dealId: number, updates: { ServiceDescription?: string; Amount?: number }) => {
+    try {
+      console.log('Updating deal:', dealId, updates);
+      
+      // Call the API endpoint to update the deal
+      const response = await fetch('/api/update-deal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId, ...updates })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update deal');
+      }
+      
+      const result = await response.json();
+      console.log('Deal updated successfully:', result);
+      
+      // Update local state with the updated deal
+      setInstructionData(prev => 
+        prev.map(prospect => ({
+          ...prospect,
+          deals: (prospect.deals || []).map((deal: any) => 
+            deal.DealId === dealId ? { ...deal, ...updates } : deal
+          ),
+          instructions: (prospect.instructions || []).map((inst: any) => ({
+            ...inst,
+            deals: (inst.deals || []).map((deal: any) => 
+              deal.DealId === dealId ? { ...deal, ...updates } : deal
+            )
+          }))
+        }))
+      );
+      
+      return result;
+    } catch (error) {
+      console.error('Error updating deal:', error);
+      throw error;
+    }
+  }, []);
 
   // Notify parent when matter opening workflow state changes
   useEffect(() => {
@@ -422,6 +573,8 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   // Fetch unified enquiries data for name mapping on component load
   useEffect(() => {
+    if (hasFetchedUnifiedRef.current) return;
+    hasFetchedUnifiedRef.current = true;
     fetchUnifiedEnquiries();
   }, []);
   
@@ -434,21 +587,14 @@ const Instructions: React.FC<InstructionsProps> = ({
   
   // Get effective instruction data based on admin mode and user filtering
   const effectiveInstructionData = useMemo(() => {
-    console.log('🔄 effectiveInstructionData calculation:', {
-      isAdmin,
-      showAllInstructions,
-      instructionDataLength: instructionData.length,
-      allInstructionDataLength: allInstructionData.length,
-      currentUserEmail: currentUser?.Email,
-      currentUserInitials: currentUser?.Initials
-    });
+    // quiet debug: effectiveInstructionData calculation
     
     let result = instructionData;
     
     // If admin and wants to see all data, use allInstructionData (unfiltered)
     if (isAdmin && showAllInstructions && allInstructionData.length > 0) {
       result = allInstructionData;
-      console.log('🔄 Admin viewing ALL instructions');
+  // admin viewing all instructions
     } else {
       // Default: Filter to show only current user's instructions (for both admin and non-admin)
       // If instructionData is empty but allInstructionData has data, filter from allInstructionData
@@ -461,29 +607,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           const userInitials = currentUser.Initials?.toUpperCase();
           
           // Log the first few items to see the data structure
-          if (sourceData.indexOf(instruction) < 3) {
-            console.log('🔍 Sample instruction structure:', {
-              prospectId: instruction.prospectId,
-              Email: instruction.Email,
-              Lead: instruction.Lead,
-              assignedTo: instruction.assignedTo,
-              poc: instruction.poc,
-              POC: instruction.POC,
-              deals: instruction.deals?.map((d: any) => ({
-                DealId: d.DealId,
-                PitchedBy: d.PitchedBy,
-                Status: d.Status,
-                Email: d.Email,
-                Lead: d.Lead,
-                assignedTo: d.assignedTo,
-                poc: d.poc
-              })),
-              instructions: instruction.instructions?.map((i: any) => ({
-                InstructionRef: i.InstructionRef,
-                HelixContact: i.HelixContact
-              }))
-            });
-          }
+          // quiet sample logs
           
           // Check if this instruction belongs to the current user
           const belongsToUser = (
@@ -515,64 +639,74 @@ const Instructions: React.FC<InstructionsProps> = ({
             )
           );
           
-          if (belongsToUser) {
-            console.log('✅ Instruction belongs to user:', {
-              prospectId: instruction.prospectId,
-              userEmail,
-              userInitials,
-              matchedFields: {
-                instruction_Email: instruction.Email?.toLowerCase() === userEmail,
-                instruction_poc: instruction.poc?.toLowerCase() === userEmail,
-                deal_Email: instruction.deal?.Email?.toLowerCase() === userEmail,
-                deal_poc: instruction.deal?.poc?.toLowerCase() === userEmail,
-                deals_any: instruction.deals?.some((d: any) => d.poc?.toLowerCase() === userEmail)
-              }
-            });
-          }
+          // quiet belongs-to-user logs
           
           return belongsToUser;
         });
-        console.log('🔄 Filtered to user instructions:', {
-          sourceData: sourceData.length > 0 ? 'instructionData' : 'allInstructionData',
-          sourceLength: sourceData.length,
-          filteredLength: result.length
-        });
+        // quiet filtered summary
       } else {
         result = sourceData;
       }
-      console.log(`🔄 ${isAdmin ? 'Admin' : 'User'} viewing OWN instructions (filtered)`);
+  // quiet viewing mode log
     }
     
-    console.log('🔄 effectiveInstructionData updated:', {
-      isAdmin,
-      showAllInstructions,
-      currentUserEmail: currentUser?.Email,
-      currentUserInitials: currentUser?.Initials,
-      allInstructionDataLength: allInstructionData.length,
-      instructionDataLength: instructionData.length,
-      resultLength: result.length,
-      usingAllData: isAdmin && showAllInstructions && allInstructionData.length > 0,
-      filteringByUser: !isAdmin || !showAllInstructions,
-      sampleFilteredItems: result.slice(0, 2).map(r => ({
-        prospectId: r.prospectId,
-        hasInstructions: r.instructions?.length || 0,
-        hasDeals: r.deals?.length || 0,
-        deals: r.deals?.map((d: any) => ({ 
-          DealId: d.DealId, 
-          InstructionRef: d.InstructionRef,
-          Email: d.Email, 
-          Lead: d.Lead, 
-          assignedTo: d.assignedTo,
-          Status: d.Status
-        })),
-        instructions: r.instructions?.map((i: any) => ({
-          InstructionRef: i.InstructionRef
-        }))
-      }))
-    });
+    // quiet detailed update log
     
     return result;
   }, [isAdmin, showAllInstructions, allInstructionData, instructionData, currentUser]);
+
+  // Pre-warm client name cache from current instruction/deal data (runs after effectiveInstructionData is defined)
+  useEffect(() => {
+    if (!effectiveInstructionData || effectiveInstructionData.length === 0) return;
+    let added = 0;
+    try {
+      for (const prospect of effectiveInstructionData as any[]) {
+        const pId = prospect?.prospectId || prospect?.ProspectId;
+        const pKey = pId != null ? String(pId) : '';
+        // Try to infer name from prospect-level instructions
+        const inst = (prospect?.instructions || [])[0];
+        const instFirst = inst?.FirstName;
+        const instLast = inst?.LastName;
+        if (pKey && !clientNameCache.has(pKey) && (instFirst || instLast)) {
+          clientNameCache.set(pKey, { firstName: instFirst || '', lastName: instLast || '' });
+          added++;
+        }
+        // Deals-level prospect ids
+        for (const d of (prospect?.deals || [])) {
+          const dPid = d?.ProspectId || d?.prospectId;
+          const dKey = dPid != null ? String(dPid) : '';
+          if (!dKey || clientNameCache.has(dKey)) continue;
+          // Derive from matching instruction for the deal
+          const dealInst = (prospect?.instructions || []).find((i: any) => i.InstructionRef === d.InstructionRef);
+          const df = dealInst?.FirstName || '';
+          const dl = dealInst?.LastName || '';
+          if (df || dl) {
+            clientNameCache.set(dKey, { firstName: df, lastName: dl });
+            added++;
+            continue;
+          }
+          // Fallback: joint client matching lead email
+          const emailLc = (d?.LeadClientEmail || '').toLowerCase();
+          if (emailLc) {
+            const sources = [
+              ...((prospect?.jointClients || prospect?.joinedClients) || []),
+              ...((d?.jointClients) || [])
+            ];
+            const jc = sources.find((j: any) => (j?.ClientEmail || '').toLowerCase() === emailLc);
+            const jf = jc?.FirstName || jc?.Name?.split(' ')[0] || '';
+            const jl = jc?.LastName || (jc?.Name ? jc.Name.split(' ').slice(1).join(' ') : '') || '';
+            if (jf || jl) {
+              clientNameCache.set(dKey, { firstName: jf, lastName: jl });
+              added++;
+            }
+          }
+        }
+      }
+      if (added > 0) saveClientNameCache(clientNameCache);
+    } catch {
+      // ignore warm-up errors
+    }
+  }, [effectiveInstructionData, clientNameCache, saveClientNameCache]);
 
   // Calculate toggle counts based on active tab and current data
   const toggleCounts = useMemo(() => {
@@ -1360,33 +1494,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     return Object.values(unique);
   }, [effectiveInstructionData, enquiries]);
 
-  // Debug logging for input data
-  React.useEffect(() => {
-    console.log('Debug - effectiveInstructionData:', effectiveInstructionData.length, 'prospects');
-    const allDeals = effectiveInstructionData.flatMap(p => p.deals ?? []);
-    console.log('Debug - Total deals in data:', allDeals.length);
-    console.log('Debug - Sample deals:', allDeals.slice(0, 3).map(d => ({
-      dealId: d.DealId,
-      instructionRef: d.InstructionRef,
-      status: d.Status,
-      acid: d.ACID || d.acid || d.Acid
-    })));
-  }, [effectiveInstructionData]);
-
-  // Debug logging for pitches
-  React.useEffect(() => {
-    const pitchedItems = overviewItems.filter(item => !item.instruction && item.deal);
-    console.log('Debug - Total overview items:', overviewItems.length);
-    console.log('Debug - Pitched deals (no instruction):', pitchedItems.length);
-    console.log('Debug - Pitched deals details:', pitchedItems.map(item => ({
-      dealId: item.deal?.DealId,
-      status: item.deal?.Status,
-      acid: item.deal?.ACID || item.deal?.acid || item.deal?.Acid,
-      firstName: item.deal?.firstName,
-      lastName: item.deal?.lastName,
-      prospectId: item.prospectId
-    })));
-  }, [overviewItems]);
+  // Removed verbose debug logs
 
   const selectedOverviewItem = useMemo(
     () =>
@@ -2714,18 +2822,6 @@ const Instructions: React.FC<InstructionsProps> = ({
             !item.instruction && !!item.deal
           );
           
-          // Debug logging for pitches
-          console.log('🔍 Pitches Debug:', {
-            totalOverviewItems: overviewItems.length,
-            pitchedItems: pitchedItems.length,
-            sampleOverviewItems: overviewItems.slice(0, 3).map(item => ({
-              hasInstruction: !!item.instruction,
-              hasDeal: !!item.deal,
-              instructionRef: item.instruction?.InstructionRef,
-              dealId: item.deal?.DealId
-            }))
-          });
-          
           if (pitchedItems.length === 0) {
             return (
               <div style={{ 
@@ -2776,6 +2872,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                           expanded={false} // Don't expand pitches by default
                           selected={false} // Simple selection for pitches
                           getClientNameByProspectId={getClientNameByProspectId}
+                          onDealEdit={handleDealEdit}
                           onSelect={() => {
                             // TODO: Implement pitch selection logic
                             console.log('Pitch selected:', item.deal?.DealId);
@@ -2834,6 +2931,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                         expanded={overviewItems.length === 1 || selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
                         selected={selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
                         getClientNameByProspectId={getClientNameByProspectId}
+                        onDealEdit={handleDealEdit}
                         onSelect={() => {
                           // Toggle selection: if already selected, unselect; otherwise select
                           flushSync(() => {

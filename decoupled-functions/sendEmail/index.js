@@ -28,7 +28,9 @@ module.exports = async function (context, req) {
   const userEmail = body.user_email;
   const subject = body.subject || 'Your Enquiry from Helix';
   const fromEmail = body.from_email || 'automations@helix-law.com';
-  const bccEmail = body.bcc_email; // Optional BCC field
+  const ccEmails = body.cc_emails; // Optional CC field - can be array or single string
+  const bccEmails = body.bcc_emails; // Optional BCC field - can be array or single string
+  const bccEmail = body.bcc_email; // Backward compatibility
 
   if (!emailContents || !userEmail) {
     context.res = { status: 400, body: 'Missing email_contents or user_email' };
@@ -52,6 +54,29 @@ module.exports = async function (context, req) {
 
     const accessToken = tokenResponse.data.access_token;
 
+    // Helper function to format email recipients
+    const formatRecipients = (emails) => {
+      if (!emails) return [];
+      const emailArray = Array.isArray(emails) ? emails : [emails];
+      return emailArray.filter(email => email && email.trim()).map(email => ({
+        emailAddress: { address: email.trim() }
+      }));
+    };
+
+    // Build CC recipients
+    const ccRecipients = formatRecipients(ccEmails);
+    
+    // Build BCC recipients (combine new bccEmails with old bccEmail for backward compatibility)
+    const allBccEmails = [];
+    if (bccEmails) {
+      const bccArray = Array.isArray(bccEmails) ? bccEmails : [bccEmails];
+      allBccEmails.push(...bccArray);
+    }
+    if (bccEmail) {
+      allBccEmails.push(bccEmail);
+    }
+    const bccRecipients = formatRecipients(allBccEmails);
+
     const messagePayload = {
       message: {
         subject,
@@ -61,7 +86,8 @@ module.exports = async function (context, req) {
         },
         toRecipients: [{ emailAddress: { address: userEmail } }],
         from: { emailAddress: { address: fromEmail } },
-        ...(bccEmail ? { bccRecipients: [{ emailAddress: { address: bccEmail } }] } : {})
+        ...(ccRecipients.length > 0 ? { ccRecipients } : {}),
+        ...(bccRecipients.length > 0 ? { bccRecipients } : {})
       },
       saveToSentItems: 'false'
     };

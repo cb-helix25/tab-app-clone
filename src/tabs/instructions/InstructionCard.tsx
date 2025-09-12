@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
+import { TextField, DefaultButton, PrimaryButton } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { 
@@ -30,7 +31,8 @@ import {
   FaIdCard,
   FaPlayCircle,
   FaSpinner,
-  FaCheckCircle
+  FaCheckCircle,
+  FaEdit
 } from 'react-icons/fa';
 
 // Move interface to separate file
@@ -55,6 +57,7 @@ export interface InstructionCardProps {
     firstName?: string;
     lastName?: string;
   };
+  onDealEdit?: (dealId: number, updates: { ServiceDescription?: string; Amount?: number }) => Promise<void>;
   prospectId?: number;
   eid?: any;
   eids?: any[] | any;
@@ -168,17 +171,70 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   onEIDClick,
   idVerificationLoading = false,
   animationDelay = 0,
-  getClientNameByProspectId
+  getClientNameByProspectId,
+  onDealEdit
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [clickedForActions, setClickedForActions] = useState(false);
+  const [isEditingDeal, setIsEditingDeal] = useState(false);
+  const [editDealData, setEditDealData] = useState({
+    ServiceDescription: '',
+    Amount: ''
+  });
+  const [isSavingDeal, setIsSavingDeal] = useState(false);
   const [activeStep, setActiveStep] = useState<string>('');
   const [showRiskDetails, setShowRiskDetails] = useState(false);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [showDocumentDetails, setShowDocumentDetails] = useState(false);
   const [showMatterDetails, setShowMatterDetails] = useState(false);
   const { isDarkMode } = useTheme();
+
+  // Deal edit handlers
+  const handleEditDealClick = () => {
+    setIsEditingDeal(true);
+    setEditDealData({
+      ServiceDescription: deal?.ServiceDescription || '',
+      Amount: deal?.Amount?.toString() || ''
+    });
+  };
+
+  const handleCancelEditDeal = () => {
+    setIsEditingDeal(false);
+    setEditDealData({
+      ServiceDescription: '',
+      Amount: ''
+    });
+  };
+
+  const handleSaveDeal = async () => {
+    if (!deal?.DealId || !onDealEdit) return;
+
+    setIsSavingDeal(true);
+    try {
+      const updates: { ServiceDescription?: string; Amount?: number } = {};
+      
+      if (editDealData.ServiceDescription !== (deal?.ServiceDescription || '')) {
+        updates.ServiceDescription = editDealData.ServiceDescription;
+      }
+      
+      const newAmount = parseFloat(editDealData.Amount);
+      if (!isNaN(newAmount) && newAmount !== (deal?.Amount || 0)) {
+        updates.Amount = newAmount;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await onDealEdit(deal.DealId, updates);
+      }
+      
+      setIsEditingDeal(false);
+    } catch (error) {
+      console.error('Failed to save deal:', error);
+      // Could add error state here if needed
+    } finally {
+      setIsSavingDeal(false);
+    }
+  };
   // Inject keyframes once for pulse effect
   React.useEffect(() => {
     if (typeof document !== 'undefined' && !document.getElementById('instructioncard-pulse')) {
@@ -259,22 +315,22 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       return 'complete';
     }
     
-    if (!payments || payments.length === 0) {
+    // Use instruction.payments if available, fallback to payments prop
+    const paymentData = instruction?.payments || payments;
+    
+    if (!paymentData || paymentData.length === 0) {
       return 'pending';
     }
     
     // Get the most recent payment
-    const latestPayment = payments[0]; // Already sorted by created_at DESC in API
-    console.log('Latest payment:', latestPayment);
+    const latestPayment = paymentData[0]; // Already sorted by created_at DESC in API
     
     // A payment is complete if both payment_status is 'succeeded' AND internal_status is 'completed' or 'paid'
     if (latestPayment.payment_status === 'succeeded' && 
         (latestPayment.internal_status === 'completed' || latestPayment.internal_status === 'paid')) {
-      console.log('Payment is complete');
       return 'complete';
     }
     
-    console.log('Payment is pending - payment_status:', latestPayment.payment_status, 'internal_status:', latestPayment.internal_status);
     return 'pending';
   };
   
@@ -602,9 +658,164 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             return `Client ${prospectId}`;
           })()}
         </span>
-        <span style={{ fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9', fontWeight: 500, letterSpacing: 0.5, userSelect: 'all', fontFamily: 'Consolas, Monaco, monospace', padding: '1px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+        
+        {/* Subtle contact info with values */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '12px', 
+          alignItems: 'center',
+          opacity: isHovered ? 1 : 0.7,
+          transition: 'opacity 0.3s ease',
+          marginTop: '4px'
+        }}>
+          {(() => {
+            const email = instruction?.Email || instruction?.email || (deal as any)?.LeadClientEmail || (instruction as any)?.LeadClientEmail;
+            const phone = instruction?.Phone || instruction?.phone || (deal as any)?.Phone || (instruction as any)?.PhoneNumber || (instruction as any)?.ContactNumber;
+            
+            return (
+              <>
+                {email && (
+                  <div
+                    style={{
+                      color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(email);
+                      // Brief visual feedback
+                      e.currentTarget.style.backgroundColor = colours.blue;
+                      e.currentTarget.style.color = '#fff';
+                      setTimeout(() => {
+                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
+                        e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+                      }, 200);
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = colours.blue;
+                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+                      e.currentTarget.style.borderColor = colours.blue;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
+                      e.currentTarget.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+                    }}
+                    title={`Click to copy: ${email}`}
+                  >
+                    <FaEnvelope style={{ fontSize: '9px' }} />
+                    <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>
+                      {email.length > 20 ? `${email.substring(0, 17)}...` : email}
+                    </span>
+                  </div>
+                )}
+                {phone && (
+                  <div
+                    style={{
+                      color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(phone);
+                      // Brief visual feedback
+                      e.currentTarget.style.backgroundColor = colours.blue;
+                      e.currentTarget.style.color = '#fff';
+                      setTimeout(() => {
+                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
+                        e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+                      }, 200);
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = colours.blue;
+                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+                      e.currentTarget.style.borderColor = colours.blue;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
+                      e.currentTarget.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+                    }}
+                    title={`Click to copy: ${phone}`}
+                  >
+                    <FaPhone style={{ fontSize: '9px' }} />
+                    <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>
+                      {phone}
+                    </span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+        
+        <div style={{ fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9', fontWeight: 500, letterSpacing: 0.5, fontFamily: 'Consolas, Monaco, monospace', padding: '1px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
           {deal ? (
-            prospectId ? `Deal: ${deal.DealId} | Prospect: ${prospectId}` : `Deal: ${deal.DealId}`
+            <>
+              {/* For instruction cards - no labels, just values with copy */}
+              {!isPitchedDeal && (
+                <>
+                  {prospectId && (
+                    <span 
+                      style={{ 
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        borderRadius: '3px',
+                        transition: 'all 0.2s ease',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(prospectId.toString());
+                        // Brief visual feedback
+                        e.currentTarget.style.backgroundColor = colours.blue;
+                        e.currentTarget.style.color = '#fff';
+                        setTimeout(() => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
+                          e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9';
+                        }, 200);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = colours.blue;
+                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+                        e.currentTarget.style.borderColor = colours.blue;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9';
+                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
+                        e.currentTarget.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+                      }}
+                      title={`Click to copy prospect ID: ${prospectId}`}
+                    >
+                      {prospectId}
+                    </span>
+                  )}
+                </>
+              )}
+              {/* For pitched cards - keep deal label */}
+              {isPitchedDeal && (
+                prospectId ? `Deal: ${deal.DealId} | ${prospectId}` : `Deal: ${deal.DealId}`
+              )}
+            </>
           ) : (
             `ID ${instruction?.InstructionRef || instruction?.instructionRef || instruction?.ref || instruction?.Ref || 'No Reference'}`
           )}
@@ -627,7 +838,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               </span>
             </>
           )}
-        </span>
+        </div>
       </div>
 
       {/* Company & Contact details */}
@@ -653,18 +864,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           }
           return null;
         })()}
-        {(() => {
-          const email = instruction?.Email || instruction?.email;
-          return email ? (
-            <CopyableText value={email} label="Email" />
-          ) : null;
-        })()}
-        {(() => {
-          const phone = instruction?.Phone || instruction?.phone;
-          return phone ? (
-            <CopyableText value={phone} label="Phone" />
-          ) : null;
-        })()}
       </div>
 
       {/* Deal Information Box - Service Description and Amount */}
@@ -677,37 +876,116 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           marginTop: window.innerWidth <= 480 ? '4px' : '6px',
           marginBottom: window.innerWidth <= 480 ? '1px' : '2px'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            flexWrap: window.innerWidth <= 480 ? 'wrap' : 'nowrap'
-          }}>
-            <div style={{
-              fontSize: '11px',
-              fontWeight: 500,
-              color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)',
-              lineHeight: 1.2,
-              flex: 1,
-              minWidth: window.innerWidth <= 480 ? '100%' : 'auto',
-              marginBottom: window.innerWidth <= 480 ? '4px' : '0'
-            }}>
-              {deal?.ServiceDescription || 'Legal Service'}
+          {isEditingDeal ? (
+            /* Edit mode */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <TextField
+                value={editDealData.ServiceDescription}
+                onChange={(_, newValue) => setEditDealData(prev => ({ ...prev, ServiceDescription: newValue || '' }))}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="Service description"
+                multiline
+                rows={2}
+                disabled={isSavingDeal}
+                styles={{
+                  fieldGroup: {
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    borderRadius: 4,
+                  },
+                  field: {
+                    color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)',
+                    fontSize: 11,
+                    padding: '6px 8px'
+                  }
+                }}
+              />
+              <TextField
+                value={editDealData.Amount}
+                onChange={(_, newValue) => setEditDealData(prev => ({ ...prev, Amount: newValue || '' }))}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="Amount (numbers only)"
+                type="number"
+                disabled={isSavingDeal}
+                styles={{
+                  fieldGroup: {
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    borderRadius: 4,
+                  },
+                  field: {
+                    color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)',
+                    fontSize: 11,
+                    padding: '6px 8px'
+                  }
+                }}
+              />
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+                <DefaultButton
+                  text="Cancel"
+                  onClick={(e) => { e.stopPropagation(); handleCancelEditDeal(); }}
+                  disabled={isSavingDeal}
+                  styles={{
+                    root: {
+                      height: 24,
+                      fontSize: 10,
+                      minWidth: 50,
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                      color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'
+                    }
+                  }}
+                />
+                <PrimaryButton
+                  text={isSavingDeal ? 'Saving...' : 'Save'}
+                  onClick={(e) => { e.stopPropagation(); handleSaveDeal(); }}
+                  disabled={isSavingDeal}
+                  styles={{
+                    root: {
+                      height: 24,
+                      fontSize: 10,
+                      minWidth: 50,
+                      backgroundColor: colours.blue,
+                      border: 'none'
+                    }
+                  }}
+                />
+              </div>
             </div>
-            {typeof deal?.Amount === 'number' && (
+          ) : (
+            /* Display mode */
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: window.innerWidth <= 480 ? 'wrap' : 'nowrap'
+            }}>
               <div style={{
                 fontSize: '11px',
-                fontWeight: 600,
-                color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                fontFamily: 'Raleway, sans-serif',
-                textAlign: 'right',
-                whiteSpace: 'nowrap'
+                fontWeight: 500,
+                color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)',
+                lineHeight: 1.2,
+                flex: 1,
+                minWidth: window.innerWidth <= 480 ? '100%' : 'auto',
+                marginBottom: window.innerWidth <= 480 ? '4px' : '0'
               }}>
-                £{deal.Amount.toLocaleString()}
+                {deal?.ServiceDescription || 'Legal Service'}
               </div>
-            )}
-          </div>
+              {typeof deal?.Amount === 'number' && (
+                <div style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                  fontFamily: 'Raleway, sans-serif',
+                  textAlign: 'right',
+                  whiteSpace: 'nowrap'
+                }}>
+                  £{deal.Amount.toLocaleString()}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -821,10 +1099,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     selectors: {
                       ':hover': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? { 
                       background: colours.blue, 
-                      borderColor: colours.blue 
+                      borderColor: colours.blue,
+                      color: '#fff'
                     } : {},
                     ':active': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? { 
                       background: colours.blue, 
+                      color: '#fff',
                       transform: 'scale(0.95)' 
                     } : {},
                   },
@@ -836,6 +1116,44 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               </button>
             );
           })}
+          
+          {/* Edit Deal Button - Between Pills */}
+          {onDealEdit && deal?.DealId && (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleEditDealClick(); }}
+              className={mergeStyles({
+                background: 'transparent',
+                border: `1.5px solid ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}`,
+                color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+                padding: '6px 14px',
+                borderRadius: 20,
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                opacity: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 1 : 0,
+                transform: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 'translateY(0) scale(1)' : 'translateY(2px) scale(.98)',
+                transition: 'opacity .3s ease-out, transform .3s ease-out, background .2s, color .2s, border .2s',
+                transitionDelay: '320ms', // Appear after pills
+                selectors: {
+                  ':hover': {
+                    background: colours.blue,
+                    borderColor: colours.blue,
+                    color: '#fff'
+                  },
+                  ':active': {
+                    transform: 'scale(0.95)'
+                  }
+                }
+              })}
+            >
+              <FaEdit style={{ fontSize: 10 }} />
+              Edit
+            </button>
+          )}
+          
           </div>
           
           {/* Next Action Arrow - aligned on same row as timeline bubbles */}

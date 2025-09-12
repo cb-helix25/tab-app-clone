@@ -267,7 +267,7 @@ const App: React.FC<AppProps> = ({
       const isAdmin = isAdminUser(currentUser);
 
       if (useLocalData) {
-        console.log('🔧 Using local test instruction data for development');
+
         // Merge local instruction data with ID verification data
         const instructionsWithIdVerifications = (localInstructionData as InstructionData[]).map(prospect => ({
           ...prospect,
@@ -292,7 +292,7 @@ const App: React.FC<AppProps> = ({
       }
 
       try {
-        console.log('🔵 Fetching instruction data from unified server endpoint');
+
         
         // Call our new unified server endpoint
         const params = new URLSearchParams();
@@ -303,7 +303,7 @@ const App: React.FC<AppProps> = ({
         }
         
         const url = `/api/instructions?${params.toString()}`;
-        console.log('🌐 Calling unified endpoint:', url);
+
         
         const res = await fetch(url);
         if (!res.ok) {
@@ -311,16 +311,12 @@ const App: React.FC<AppProps> = ({
         }
         
         const data = await res.json();
-        console.log('✅ Received clean instruction data:', {
-          count: data.count,
-          computedServerSide: data.computedServerSide,
-          timestamp: data.timestamp
-        });
+
 
         // Debug: Check if Luke Test instruction is in the response
-        console.log('🔍 Debug: Instructions in API response:', data.instructions?.length || 0);
+
         const lukeTest = data.instructions?.find((i: any) => i.InstructionRef?.includes('27367-94842'));
-        console.log('🔍 Debug: Luke Test found in instructions:', !!lukeTest, lukeTest?.FirstName, lukeTest?.LastName);
+
         
         // Backend now returns all items (instructions + deals) in the instructions array
         // Transform each item into our frontend format
@@ -381,28 +377,28 @@ const App: React.FC<AppProps> = ({
         setInstructionData(transformedData);
         
         // Debug: Check what was actually set
-        console.log('🔍 Debug: Transformed data count:', transformedData.length);
+
         const instructionsCount = transformedData.filter(item => item.instructions.length > 0).length;
         const pitchedDealsCount = transformedData.filter(item => item.instructions.length === 0).length;
-        console.log('🔍 Debug: Real instructions count:', instructionsCount);
-        console.log('🔍 Debug: Pitched deals count:', pitchedDealsCount);
+
+
         const lukeTransformed = transformedData.find(item => 
           item.instructions?.[0]?.InstructionRef?.includes('27367-94842') ||
           String(item.prospectId)?.includes('27367-94842')
         );
-        console.log('🔍 Debug: Luke Test in transformed data:', !!lukeTransformed);
+
         
         if (isAdmin) {
           setAllInstructionData(transformedData);
         }
         
-        console.log('✅ Clean instruction data loaded successfully');
+
 
       } catch (err) {
         console.error("❌ Error fetching instruction data from unified endpoint:", err);
         
         // Fallback: try the legacy endpoint as backup
-        console.log('🔄 Attempting legacy endpoint as fallback...');
+
         const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
         const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
         if (path && code) {
@@ -436,7 +432,7 @@ const App: React.FC<AppProps> = ({
                 return acc;
               }, []);
               setInstructionData(filtered);
-              console.log('✅ Legacy endpoint worked as fallback');
+
             } else {
               console.error("Failed to fetch instructions from legacy endpoint");
             }
@@ -466,13 +462,7 @@ const App: React.FC<AppProps> = ({
     const showReportsTab = isAdmin;
 
     // Debug logging for tab permissions
-    console.log(`📑 Tab permissions for ${currentUser?.Initials || 'Unknown'}:`, {
-      user: currentUser?.Initials,
-      isAdmin,
-      showInstructionsTab,
-      showReportsTab,
-      isLocalhost
-    });
+
 
     return [
       { key: 'enquiries', text: 'Enquiries' },
