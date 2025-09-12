@@ -3132,9 +3132,19 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     // Try to get solicitor from Call_Taker field or other relevant fields
     const solicitorInitials = enquiry.Call_Taker || enquiry.pocname;
     if (solicitorInitials && solicitorInitials.trim()) {
+      // If solicitor is the current user, prefer the initials alias (lz@) over personal mailbox (luke@)
+      if ((solicitorInitials || '').trim().toUpperCase() === userInitials.trim().toUpperCase()) {
+        return getAliasFromInitials(userInitials);
+      }
       return await getEmailFromTeamTable(solicitorInitials);
     }
     return '';
+  }
+
+  /** Build canonical helix-law alias from initials (e.g., 'LZ' -> 'lz@helix-law.com'). */
+  function getAliasFromInitials(initials: string | undefined | null): string {
+    const v = (initials || '').trim();
+    return v ? `${v.toLowerCase()}@helix-law.com` : '';
   }
 
   /**
@@ -3265,16 +3275,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     // Use fee earner's email as sender, fallback to automations
     const senderEmail = userEmailAddress || 'automations@helix-law.com';
     
-    // Build CC list including solicitor and BCC list with safety addresses
-    const ccList = await buildCcList(true); // Include solicitor for client emails
-    const bccList = buildBccList(senderEmail); // Include sender and safety addresses
+  // No CC on send. BCC the sender (self) and safety addresses (LZ/CB).
+  const bccList = buildBccList(senderEmail);
     
     const requestBody = {
       email_contents: fullEmailHtml,
       user_email: to, // Client's email as recipient
       subject: subject, // Use 'subject' not 'subject_line' for decoupled function
       from_email: senderEmail, // Send from fee earner's email
-      cc_emails: ccList, // CC solicitor
       bcc_emails: bccList // BCC sender + safety addresses
     };
 
@@ -3436,17 +3444,16 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       <EmailSignature bodyHtml={finalHtml} userData={userData} />
     );
 
-    // Build CC list including solicitor and BCC list with safety addresses for draft email
-    const ccList = await buildCcList(true); // Include solicitor for client emails
-    const bccList = buildBccList(); // Include safety addresses
+  // Draft: send to the user themselves; BCC only safety addresses (no CC)
+  const bccList = buildBccList(); // LZ/CB only
 
     const requestBody = {
       email_contents: fullEmailHtml,
-      user_email: userEmailAddress,
+      user_email: userEmailAddress, // Draft to self
       subject: subject, // Use 'subject' for consistency with sendEmail function
       to,
-      cc_emails: ccList, // Use cc_emails for consistency with sendEmail function
-      bcc_emails: bccList, // Use bcc_emails for consistency with sendEmail function
+      from_email: userEmailAddress || undefined,
+      bcc_emails: bccList, // Safety only
     };
 
     // Guard: ensure we have a valid recipient email for the drafted message

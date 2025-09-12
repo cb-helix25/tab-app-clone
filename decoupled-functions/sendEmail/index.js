@@ -28,8 +28,8 @@ module.exports = async function (context, req) {
   const userEmail = body.user_email;
   const subject = body.subject || 'Your Enquiry from Helix';
   const fromEmail = body.from_email || 'automations@helix-law.com';
-  const ccEmails = body.cc_emails; // Optional CC field - can be array or single string
-  const bccEmails = body.bcc_emails; // Optional BCC field - can be array or single string
+  const ccEmails = body.cc_emails; // Optional CC field - can be array or single string (may be comma/semicolon separated)
+  const bccEmails = body.bcc_emails; // Optional BCC field - can be array or single string (may be comma/semicolon separated)
   const bccEmail = body.bcc_email; // Backward compatibility
 
   if (!emailContents || !userEmail) {
@@ -54,27 +54,38 @@ module.exports = async function (context, req) {
 
     const accessToken = tokenResponse.data.access_token;
 
-    // Helper function to format email recipients
-    const formatRecipients = (emails) => {
+    // Normalize a string or array of emails into a flat, de-duplicated array of addresses
+    const normalizeEmails = (emails) => {
       if (!emails) return [];
-      const emailArray = Array.isArray(emails) ? emails : [emails];
-      return emailArray.filter(email => email && email.trim()).map(email => ({
-        emailAddress: { address: email.trim() }
-      }));
+      const raw = Array.isArray(emails) ? emails : [emails];
+      const splitRegex = /[,;]+/; // split on comma or semicolon
+      const flattened = raw
+        .flatMap((e) => (typeof e === 'string' ? e.split(splitRegex) : []))
+        .map((e) => (e || '').trim())
+        .filter((e) => e.length > 0);
+      // de-duplicate while preserving order
+      const seen = new Set();
+      const unique = [];
+      for (const addr of flattened) {
+        if (!seen.has(addr)) {
+          seen.add(addr);
+          unique.push(addr);
+        }
+      }
+      return unique;
+    };
+
+    // Helper to convert array of email strings to Graph recipient objects
+    const formatRecipients = (emails) => {
+      const list = normalizeEmails(emails);
+      return list.map((address) => ({ emailAddress: { address } }));
     };
 
     // Build CC recipients
     const ccRecipients = formatRecipients(ccEmails);
     
     // Build BCC recipients (combine new bccEmails with old bccEmail for backward compatibility)
-    const allBccEmails = [];
-    if (bccEmails) {
-      const bccArray = Array.isArray(bccEmails) ? bccEmails : [bccEmails];
-      allBccEmails.push(...bccArray);
-    }
-    if (bccEmail) {
-      allBccEmails.push(bccEmail);
-    }
+    const allBccEmails = normalizeEmails([bccEmails, bccEmail].filter(Boolean));
     const bccRecipients = formatRecipients(allBccEmails);
 
     const messagePayload = {

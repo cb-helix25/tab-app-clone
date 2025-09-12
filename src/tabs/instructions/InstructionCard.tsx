@@ -330,7 +330,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         (latestPayment.internal_status === 'completed' || latestPayment.internal_status === 'paid')) {
       return 'complete';
     }
-    
+    // Explicitly surface processing status when gateway reports it
+    if (latestPayment.payment_status === 'processing') {
+      return 'processing';
+    }
+
     return 'pending';
   };
   
@@ -1016,7 +1020,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               // Standard instruction workflow
               [
                 pitchStage,
-                { key:'payment', label: paymentStatus === 'complete' ? 'Paid' : 'Pay', icon:<FaPoundSign />, colour: paymentStatus === 'complete' ? colours.green : (nextActionStep === 'payment' ? colours.blue : colours.greyText) },
+                { key:'payment', label: paymentStatus === 'complete' ? 'Paid' : (paymentStatus === 'processing' ? 'Processing' : 'Pay'), icon:<FaPoundSign />, colour: paymentStatus === 'complete' ? colours.green : (paymentStatus === 'processing' ? colours.yellow : (nextActionStep === 'payment' ? colours.blue : colours.greyText)) },
                 { key:'documents', label:'Docs', icon:<FaFileAlt />, colour: documentStatus === 'complete' ? colours.green : documentStatus === 'neutral' ? colours.greyText : (nextActionStep === 'documents' ? colours.blue : colours.greyText) },
                 { key:'id', label: idVerificationLoading ? 'Verifying...' : 'ID', icon: idVerificationLoading ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> : <FaIdCard />, colour: idVerificationLoading ? colours.orange : (verifyIdStatus === 'complete' ? colours.green : verifyIdStatus === 'review' ? colours.red : (nextActionStep === 'id' ? colours.blue : colours.greyText)) },
                 { key:'risk', label:'Risk', icon:<FaShieldAlt />, colour: riskStatus === 'complete' ? colours.green : (nextActionStep === 'risk' ? colours.blue : (riskStatus === 'review' ? colours.red : colours.greyText)) },
@@ -1423,7 +1427,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                       fontSize: '13px',
                       fontWeight: 600,
                       color: payment.payment_status === 'succeeded' ? colours.green : 
-                             payment.payment_status === 'pending' ? colours.yellow :
+                             payment.payment_status === 'processing' ? colours.yellow :
+                             payment.payment_status === 'pending' ? (isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)') :
                              colours.red
                     }}>
                       {payment.payment_status}
