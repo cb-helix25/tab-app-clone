@@ -293,6 +293,17 @@ router.get('/', async (req, res) => {
       inst.riskAssessments = riskAssessRes.recordset || [];
       allIdVerifications.push(...inst.idVerifications);
 
+      // Fetch matter data to populate MatterId
+      const matterRes = await pool.request()
+        .input('ref', sql.NVarChar, inst.InstructionRef)
+        .query('SELECT MatterID, DisplayNumber FROM Matters WHERE InstructionRef=@ref ORDER BY OpenDate DESC');
+      const matter = matterRes.recordset[0];
+      if (matter) {
+        inst.MatterId = matter.MatterID;
+        inst.DisplayNumber = matter.DisplayNumber;
+        inst.matters = [matter]; // Also provide as array for compatibility
+      }
+
       const dealRes = await pool.request()
         .input('ref', sql.NVarChar, inst.InstructionRef)
         .query('SELECT * FROM Deals WHERE InstructionRef=@ref');
@@ -335,6 +346,17 @@ router.get('/', async (req, res) => {
           .input('ref', sql.NVarChar, instructionRef)
           .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
         instruction.riskAssessments = riskAssessRes.recordset || [];
+
+        // Fetch matter data to populate MatterId
+        const matterRes = await pool.request()
+          .input('ref', sql.NVarChar, instructionRef)
+          .query('SELECT MatterID, DisplayNumber FROM Matters WHERE InstructionRef=@ref ORDER BY OpenDate DESC');
+        const matter = matterRes.recordset[0];
+        if (matter) {
+          instruction.MatterId = matter.MatterID;
+          instruction.DisplayNumber = matter.DisplayNumber;
+          instruction.matters = [matter]; // Also provide as array for compatibility
+        }
 
         const dealRes = await pool.request()
           .input('ref', sql.NVarChar, instructionRef)

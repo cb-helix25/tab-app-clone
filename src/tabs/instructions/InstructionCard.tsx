@@ -71,6 +71,7 @@ export interface InstructionCardProps {
   onClick?: () => void;
   onProofOfIdClick?: () => void;
   onEIDClick?: () => void;
+  onOpenMatter?: (instruction: any) => void;
   idVerificationLoading?: boolean;
   animationDelay?: number;
   getClientNameByProspectId?: (prospectId: string | number | undefined) => { firstName: string; lastName: string };
@@ -169,6 +170,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   style,
   onClick,
   onEIDClick,
+  onOpenMatter,
   idVerificationLoading = false,
   animationDelay = 0,
   getClientNameByProspectId,
@@ -596,6 +598,18 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // If this is the next action step for matter and we have a handler, call it
+    if (nextActionStep === 'matter' && onOpenMatter && instruction) {
+      onOpenMatter(instruction);
+      return;
+    }
+    
+    // If there's a general onClick handler and it's not a pitched deal, call it
+    if (onClick && !isPitchedDeal) {
+      onClick();
+      return;
+    }
     
     // Toggle clicked state for actions visibility in pitches
     if (isPitchedDeal) {
@@ -1075,7 +1089,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                       } else if (step.key === 'documents') {
                         setShowDocumentDetails(prev => !prev);
                       } else if (step.key === 'matter') {
-                        setShowMatterDetails(prev => !prev);
+                        // If onOpenMatter handler is provided and we have an instruction, call it
+                        if (onOpenMatter && instruction) {
+                          onOpenMatter(instruction);
+                        } else {
+                          // Fallback to showing matter details
+                          setShowMatterDetails(prev => !prev);
+                        }
                       } else {
                         // Other pills - if it's for a pitched deal, make it clickable
                         if (isPitchedDeal) {

@@ -1,6 +1,7 @@
 const express = require('express');
 const { getSecret } = require('../utils/getSecret');
 const { PRACTICE_AREAS } = require('../utils/clioConstants');
+const { sendMatterOpeningSuccess, sendMatterOpeningFailure } = require('../utils/emailNotifications');
 
 const router = express.Router();
 
@@ -348,7 +349,10 @@ router.post('/', async (req, res) => {
             folder_structure
         } = formData.matter_details || {};
 
-        if (!matterClientId || !description) {
+        // Provide a default description if none provided
+        const matterDescription = description || `${practice_area || 'Legal'} matter for ${formData.client_information?.[0]?.first_name} ${formData.client_information?.[0]?.last_name}`.trim();
+
+        if (!matterClientId || !matterDescription) {
             throw new Error('Missing client_id or description for matter creation');
         }
 
@@ -360,7 +364,7 @@ router.post('/', async (req, res) => {
             data: {
                 billable: true,
                 client: { id: matterClientId },
-                description,
+                description: matterDescription,
                 stage,
                 opened_at: date_created || new Date().toISOString(),
                 matter_type: client_type,
@@ -394,10 +398,41 @@ router.post('/', async (req, res) => {
         const matterResult = await matterResp.json();
         results.push(matterResult);
 
+        // Send success notification email
+        await sendMatterOpeningSuccess({
+            formData,
+            instructionRef: formData.matter_details?.instruction_ref,
+            result: {
+                contactResults: results.slice(0, -1), // All results except the last (matter)
+                matterResult: matterResult
+            },
+            debugInfo: {
+                initials,
+                matterClientId,
+                practiceArea: practice_area,
+                practiceAreaId: paId,
+                matterDescription,
+                timestamp: new Date().toISOString()
+            }
+        });
 
         res.json({ ok: true, results });
     } catch (err) {
         console.error('Clio contact error', err);
+        
+        // Send failure notification email
+        await sendMatterOpeningFailure({
+            formData,
+            instructionRef: formData?.matter_details?.instruction_ref,
+            error: err,
+            debugInfo: {
+                initials,
+                timestamp: new Date().toISOString(),
+                endpoint: '/api/clio-contacts',
+                requestBody: req.body
+            }
+        });
+        
         res.status(500).json({ error: 'Failed to sync contacts' });
     }
 });

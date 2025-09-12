@@ -2907,6 +2907,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                         selected={selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
                         getClientNameByProspectId={getClientNameByProspectId}
                         onDealEdit={handleDealEdit}
+                        onOpenMatter={handleOpenMatter}
                         onSelect={() => {
                           // Toggle selection: if already selected, unselect; otherwise select
                           flushSync(() => {
