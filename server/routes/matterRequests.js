@@ -1,6 +1,5 @@
 const express = require('express');
 const { getSecret } = require('../utils/getSecret');
-const { sendMatterOpeningSuccess, sendMatterOpeningFailure } = require('../utils/emailNotifications');
 
 const router = express.Router();
 
@@ -25,55 +24,12 @@ router.post('/', async (req, res) => {
         if (!resp.ok) {
             const text = await resp.text();
             console.error('Matter request failed', text);
-            
-            // Send failure notification email
-            await sendMatterOpeningFailure({
-                formData: req.body,
-                instructionRef: req.body?.matter_details?.instruction_ref,
-                error: new Error(`Matter request failed: ${resp.status} ${resp.statusText} - ${text}`),
-                debugInfo: {
-                    endpoint: '/api/matter-requests',
-                    azureFunctionUrl: url,
-                    responseStatus: resp.status,
-                    responseText: text,
-                    timestamp: new Date().toISOString()
-                }
-            });
-            
             return res.status(500).json({ error: 'Matter request failed' });
         }
-
-        const responseData = await resp.text();
-        
-        // Send success notification email
-        await sendMatterOpeningSuccess({
-            formData: req.body,
-            instructionRef: req.body?.matter_details?.instruction_ref,
-            result: {
-                azureFunctionResponse: responseData
-            },
-            debugInfo: {
-                endpoint: '/api/matter-requests',
-                azureFunctionUrl: url,
-                timestamp: new Date().toISOString()
-            }
-        });
 
         res.json({ message: 'Matter request recorded; further IDs will be patched in later steps' });
     } catch (err) {
         console.error('Matter request error', err);
-        
-        // Send failure notification email
-        await sendMatterOpeningFailure({
-            formData: req.body,
-            instructionRef: req.body?.matter_details?.instruction_ref,
-            error: err,
-            debugInfo: {
-                endpoint: '/api/matter-requests',
-                timestamp: new Date().toISOString()
-            }
-        });
-        
         res.status(500).json({ error: 'Matter request failed' });
     }
 });

@@ -57,12 +57,12 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
 
     // Live time state
     const [liveTime, setLiveTime] = React.useState<string>(
-        new Date().toLocaleTimeString()
+        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' } as any)
     );
     React.useEffect(() => {
         const interval = setInterval(
-            () => setLiveTime(new Date().toLocaleTimeString()),
-            1000
+            () => setLiveTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' } as any)),
+            15000
         );
         return () => clearInterval(interval);
     }, []);
@@ -73,27 +73,14 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                 {/* Live System Data Panel */}
                 <div
                     style={{
-                        background: 'linear-gradient(135deg, #f8fafb 0%, #f1f4f6 100%)',
-                        border: '1px solid #e1e5e9',
-                        borderRadius: '0px',
-                        padding: '12px 16px',
-                        marginBottom: '8px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: 0,
+                        padding: '8px 12px',
+                        marginBottom: '4px',
                         position: 'relative',
-                        overflow: 'hidden',
                     }}
                 >
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            right: 0,
-                            width: '120px',
-                            height: '100%',
-                            background:
-                                'linear-gradient(90deg, transparent 0%, rgba(54, 144, 206, 0.03) 100%)',
-                            pointerEvents: 'none',
-                        }}
-                    />
                     <div
                         style={{
                             display: 'flex',
@@ -108,21 +95,21 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                             <div>
                                 <div
                                     style={{
-                                        fontSize: '11px',
-                                        fontWeight: '600',
-                                        color: '#6B7280',
+                                        fontSize: '10px',
+                                        fontWeight: 500,
+                                        color: '#9CA3AF',
                                         textTransform: 'uppercase',
-                                        letterSpacing: '0.5px',
-                                        marginBottom: '2px',
+                                        letterSpacing: '0.3px',
+                                        marginBottom: '1px',
                                     }}
                                 >
                                     Opening Date & Time
                                 </div>
                                 <div
                                     style={{
-                                        fontSize: '15px',
+                                        fontSize: '13px',
                                         fontWeight: '400',
-                                        color: '#1F2937',
+                                        color: '#4B5563',
                                         fontFamily: 'Raleway, sans-serif',
                                     }}
                                 >
@@ -138,12 +125,12 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                         <div style={{ textAlign: 'right' }}>
                             <div
                                 style={{
-                                    fontSize: '11px',
-                                    fontWeight: '600',
-                                    color: '#6B7280',
+                                    fontSize: '10px',
+                                    fontWeight: 500,
+                                    color: '#9CA3AF',
                                     textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
-                                    marginBottom: '2px',
+                                    letterSpacing: '0.3px',
+                                    marginBottom: '1px',
                                 }}
                             >
                                 User Requesting File
@@ -158,9 +145,9 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                             >
                                 <div
                                     style={{
-                                        fontSize: '15px',
+                                        fontSize: '13px',
                                         fontWeight: '400',
-                                        color: '#3690CE',
+                                        color: '#4B5563',
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '6px',
@@ -168,23 +155,26 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                                 >
                                     <i
                                         className="ms-Icon ms-Icon--Contact"
-                                        style={{ fontSize: '14px' }}
+                                        style={{ fontSize: '14px', color: '#9CA3AF' }}
                                     />
                                     {requestingUser}
-                                    {requestingUserClioId ? ` | ${requestingUserClioId}` : ''}
+                                    {requestingUserClioId ? (
+                                        <span
+                                            style={{
+                                                marginLeft: 6,
+                                                padding: '2px 6px',
+                                                background: '#F4F6F9',
+                                                border: '1px solid #e1e5ea',
+                                                borderRadius: 6,
+                                                color: '#6B7280',
+                                                fontSize: '12px',
+                                                lineHeight: 1.2,
+                                            }}
+                                        >
+                                            {requestingUserClioId}
+                                        </span>
+                                    ) : ''}
                                 </div>
-                                {requestingUserClioId && (
-                                    <div
-                                        style={{
-                                            width: '8px',
-                                            height: '8px',
-                                            borderRadius: '50%',
-                                            background: '#10B981',
-                                            animation: 'pulse 2s infinite',
-                                            boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.7)',
-                                        }}
-                                    />
-                                )}
                             </div>
                         </div>
                     </div>

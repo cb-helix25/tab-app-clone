@@ -2672,11 +2672,25 @@ const Instructions: React.FC<InstructionsProps> = ({
       });
       preselectedPoidIds = Array.from(unique.values());
     }
+    // Build instruction-sourced records for Select Client cards (new space only)
+    const instructionRecords = (() => {
+      if (selectedInstruction) {
+        // Instruction entry: focus on the selected instruction only
+        return [selectedInstruction];
+      }
+      // Generic entry: flatten all instructions from effectiveInstructionData
+      const all: any[] = [];
+      effectiveInstructionData.forEach((prospect) => {
+        (prospect.instructions || []).forEach((inst: any) => all.push(inst));
+      });
+      return all;
+    })();
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
         <FlatMatterOpening
           key={forceNewMatter ? `new-${Date.now()}` : `matter-${selectedInstruction?.InstructionRef || 'default'}`}
           poidData={idVerificationOptions}
+          instructionRecords={instructionRecords}
           setPoidData={setPoidData}
           teamData={teamData}
           userInitials={userInitials}
@@ -2684,7 +2698,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           instructionRef={selectedInstruction?.InstructionRef}
           stage={selectedInstruction?.Stage}
           clientId={selectedInstruction?.prospectId?.toString()}
-          hideClientSections={!selectedInstruction}
+          hideClientSections={!!selectedInstruction}
           initialClientType={selectedInstruction?.ClientType}
           preselectedPoidIds={preselectedPoidIds}
           instructionPhone={selectedInstruction?.Phone}
@@ -3092,10 +3106,20 @@ const Instructions: React.FC<InstructionsProps> = ({
             </button>
             <button
               className={`global-action-btn${matterLinked ? ' completed' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
-              onClick={canOpenMatter ? handleGlobalOpenMatter : undefined}
-              onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
-              onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
+              onClick={() => {
+                if (selectedInstruction) {
+                  if (canOpenMatter) handleGlobalOpenMatter();
+                } else {
+                  // Generic entry: allow starting a new matter without instruction context
+                  setShowNewMatterPage(true);
+                }
+              }}
+              onMouseDown={e => {
+                const disabled = !!selectedInstruction && !canOpenMatter;
+                if (!disabled) e.currentTarget.classList.add('pressed');
+              }}
+              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
                 borderColor: matterLinked
                   ? '#d4ddd4'
@@ -3104,22 +3128,22 @@ const Instructions: React.FC<InstructionsProps> = ({
                   : undefined,
                 backgroundColor: matterLinked
                   ? '#f8faf8'
-                  : canOpenMatter 
-                  ? undefined 
-                  : '#f5f5f5',
-                opacity: matterLinked ? 0.75 : canOpenMatter ? 1 : 0.5,
+                  : (selectedInstruction && !canOpenMatter)
+                  ? '#f5f5f5' 
+                  : undefined,
+                opacity: matterLinked ? 0.75 : (selectedInstruction && !canOpenMatter) ? 0.5 : 1,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s, border-color 0.2s ease',
                 position: 'relative',
-                pointerEvents: canOpenMatter ? 'auto' : 'none',
-                cursor: canOpenMatter ? 'pointer' : 'not-allowed',
+                pointerEvents: (selectedInstruction && !canOpenMatter) ? 'none' : 'auto',
+                cursor: (selectedInstruction && !canOpenMatter) ? 'not-allowed' : 'pointer',
               }}
               title={
-                !canOpenMatter
+                selectedInstruction && !canOpenMatter
                   ? `${!poidPassed ? "ID verification" : ""} ${
                       !poidPassed && !paymentCompleted ? " and " : ""
                     } ${!paymentCompleted ? "payment" : ""} required to open matter`
-                  : ""
+                  : ''
               }
             >
               <span className="global-action-icon icon-hover" style={{
@@ -3157,26 +3181,20 @@ const Instructions: React.FC<InstructionsProps> = ({
             </button>
             <button
               className={`global-action-btn${selectedInstruction || nextReadyAction === 'ccl' ? ' selected' : ''}${nextReadyAction === 'ccl' ? ' next-action-pulse' : ''}`}
-              onClick={canOpenMatter ? () => setShowCclDraftPage(true) : undefined}
-              onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
-              onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
+              onClick={() => setShowCclDraftPage(true)}
+              onMouseDown={e => e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
                 borderColor: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
-                opacity: canOpenMatter ? 1 : 0.5,
+                opacity: 1,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
-                pointerEvents: canOpenMatter ? 'auto' : 'none',
-                cursor: canOpenMatter ? 'pointer' : 'not-allowed',
-                backgroundColor: canOpenMatter ? undefined : '#f5f5f5',
+                pointerEvents: 'auto',
+                cursor: 'pointer',
+                backgroundColor: undefined,
               }}
-              title={
-                !canOpenMatter
-                  ? `${!poidPassed ? "ID verification" : ""} ${
-                      !poidPassed && !paymentCompleted ? " and " : ""
-                    } ${!paymentCompleted ? "payment" : ""} required to draft CCL`
-                  : ""
-              }
+              title={''}
             >
               <span className="global-action-icon icon-hover" style={{
                 color: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
@@ -3205,22 +3223,86 @@ const Instructions: React.FC<InstructionsProps> = ({
         }}
         modalProps={{ isBlocking: true }}
       >
-        <DialogFooter>
-          <PrimaryButton
+        {/* Modernized content and buttons to match branded entry modal style */}
+        <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
+          {/* Resume card */}
+          <button
+            type="button"
             onClick={() => {
               setIsResumeDialogOpen(false);
               setSelectedInstruction(pendingInstruction);
               setForceNewMatter(false);
               setShowNewMatterPage(true);
-              // Scroll to top when resuming matter opening
               setTimeout(() => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }, 100);
             }}
-            text="Resume"
-          />
-          <DefaultButton onClick={handleStartNewMatter} text="Start New" />
-        </DialogFooter>
+            style={{
+              flex: '1 1 280px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '16px 18px',
+              border: '1px solid #e1e5ea',
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
+              cursor: 'pointer',
+              transition: 'transform 0.18s, box-shadow 0.18s, border 0.18s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
+              e.currentTarget.style.border = '1px solid #3690CE';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.07)';
+              e.currentTarget.style.border = '1px solid #e1e5ea';
+            }}
+          >
+            <i className="ms-Icon ms-Icon--Play" style={{ fontSize: 18, color: '#3690CE' }} />
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: 700, color: '#061733' }}>Resume</div>
+              <div style={{ fontSize: 12, color: '#6B6B6B' }}>Pick up where you left off.</div>
+            </div>
+          </button>
+
+          {/* Start New card */}
+          <button
+            type="button"
+            onClick={handleStartNewMatter}
+            style={{
+              flex: '1 1 280px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '16px 18px',
+              border: '1px solid #e1e5ea',
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
+              cursor: 'pointer',
+              transition: 'transform 0.18s, box-shadow 0.18s, border 0.18s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
+              e.currentTarget.style.border = '1px solid #3690CE';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.07)';
+              e.currentTarget.style.border = '1px solid #e1e5ea';
+            }}
+          >
+            <i className="ms-Icon ms-Icon--Add" style={{ fontSize: 18, color: '#3690CE' }} />
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: 700, color: '#061733' }}>Start New</div>
+              <div style={{ fontSize: 12, color: '#6B6B6B' }}>Begin a fresh matter opening.</div>
+            </div>
+          </button>
+  </div>
       </Dialog>
 
       {/* Data Flow Workbench Modal */}

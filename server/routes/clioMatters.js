@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const teamLookup = require('../utils/teamLookup');
 const createOrUpdate = require('../utils/createOrUpdate');
-const { sendMatterOpeningSuccess, sendMatterOpeningFailure } = require('../utils/emailNotifications');
 
 const { PRACTICE_AREAS } = require('../utils/clioConstants');
 
@@ -175,35 +174,9 @@ router.post('/', async (req, res) => {
         const mr = await fetch('https://eu.app.clio.com/api/v4/matters.json', { method: 'POST', headers, body: JSON.stringify(payload) });
         if (!mr.ok) throw new Error(await mr.text());
         const matter = (await mr.json()).data;
-        
-        // Send success notification email
-        await sendMatterOpeningSuccess({
-            formData: req.body,
-            instructionRef: req.body?.InstructionRef,
-            result: { matter },
-            debugInfo: {
-                endpoint: '/api/clio-matters',
-                practiceArea: req.body?.PracticeArea,
-                clientType: req.body?.ClientType,
-                timestamp: new Date().toISOString()
-            }
-        });
-        
         res.json({ ok: true, matter });
     } catch (e) {
         console.error(e);
-        
-        // Send failure notification email
-        await sendMatterOpeningFailure({
-            formData: req.body,
-            instructionRef: req.body?.InstructionRef,
-            error: e,
-            debugInfo: {
-                endpoint: '/api/clio-matters',
-                timestamp: new Date().toISOString()
-            }
-        });
-        
         res.status(500).json({ error: e.message });
     }
 });

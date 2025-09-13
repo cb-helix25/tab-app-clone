@@ -92,28 +92,32 @@ interface PoidCardProps {
     onClick: () => void;
     teamData?: TeamData[] | null;
     companyName?: string; // invisible change 3: now passed from parent, not POID
+    /** Optional explicit instruction reference to display (overrides POID-derived) */
+    instructionRefOverride?: string;
+    /** Optional explicit matter reference to display */
+    matterRefOverride?: string;
 }
 
 // Updated card dimensions to fit nicely in a 2-column grid
 const baseCardStyle = mergeStyles({
     position: 'relative',
     padding: '15px',
-    borderRadius: '0px',
+    borderRadius: '8px',
     width: '100%',
     minWidth: '280px', // Adjusted for 2-card layout
     maxWidth: '450px', // Increased maximum width for better use of space
     cursor: 'pointer',
-    background: 'linear-gradient(135deg, #ffffff, #f9f9f9)',
+    background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
     boxSizing: 'border-box',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
     fontFamily: 'Raleway, sans-serif',
     transition: 'transform 0.2s ease, box-shadow 0.2s ease, height 0.3s ease, z-index 0.2s ease',
     overflow: 'visible',
     zIndex: 1, // Default z-index for cards
     selectors: {
         ':hover': {
-            transform: 'translateY(-2px)', // Reduced movement to avoid too much overlap
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            transform: 'translateY(-1px)', // Professional subtle lift
+            boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
         },
         // Show icon in full opacity on hover
         ':hover .backgroundIcon': {
@@ -130,8 +134,8 @@ const darkCardStyle = mergeStyles({
 
 const selectedCardStyle = mergeStyles({
     // Keep border on selection, matching instruction card styling
-    border: `1px solid ${colours.highlight}`,
-    background: `linear-gradient(135deg, #3690CE22, #3690CE33)`,
+    border: `2px solid ${colours.highlight}`,
+    background: `linear-gradient(135deg, #EAF3FB 0%, #DDEBF7 100%)`,
     fontFamily: 'Raleway, sans-serif',
     selectors: {
         // Keep icon at full opacity when selected
@@ -242,24 +246,12 @@ const cardWithLinksHover = mergeStyles({
     },
 });
 
-// Expandable contact section
-const expandableContactStyle = mergeStyles({
-    maxHeight: '0px',
-    opacity: 0,
-    overflow: 'hidden',
-    transition: 'max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease',
+// Compact contact block (always visible)
+const contactBlockStyle = mergeStyles({
+    padding: '8px',
     backgroundColor: '#f8f9fb',
     border: '1px solid #e1e5ea',
-    borderTop: 'none', // Connect seamlessly to the header
-    padding: '0px',
-    marginTop: '0px',
-    selectors: {
-        '.contact-item': {
-            opacity: 0,
-            transform: 'translateY(8px)',
-            transition: 'none', // Disable default transitions for cascade effect
-        }
-    }
+    marginTop: '4px',
 });
 
 // New style for profile link buttons - same size and behaviour as client type buttons
@@ -297,7 +289,7 @@ const profileButtonStyle = mergeStyles({
     },
 });
 
-const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, companyName }) => {
+const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, companyName, instructionRefOverride, matterRefOverride }) => {
     const { isDarkMode } = useTheme();
 
 
@@ -346,8 +338,8 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
     const idType = (poid as any).id_type || (poid as any).IdType;
     const passport = (poid as any).passport_number || (poid as any).PassportNumber;
     const driversLicense = (poid as any).drivers_license_number || (poid as any).DriversLicenseNumber;
-    const instructionRef = (poid as any).instruction_ref || (poid as any).InstructionRef;
-    const matterId = (poid as any).matter_id || (poid as any).MatterId;
+    const instructionRef = instructionRefOverride || (poid as any).instruction_ref || (poid as any).InstructionRef;
+    const matterId = matterRefOverride || (poid as any).matter_id || (poid as any).MatterId;
     const prospectId = (poid as any).prospect_id || (poid as any).ProspectId;
     const paymentResult = (poid as any).payment_result || (poid as any).PaymentResult;
     const paymentAmount = (poid as any).payment_amount || (poid as any).PaymentAmount;
@@ -366,6 +358,8 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
     const addressVerificationResult = (poid as any).address_verification_result || poid.address_verification_result || (poid as any).AddressVerificationResult;
     const checkExpiry = (poid as any).check_expiry || poid.check_expiry || (poid as any).CheckExpiry;
     const checkId = (poid as any).check_id || poid.check_id || (poid as any).EIDCheckId;
+    const eidStatus = (poid as any).EIDStatus || (poid as any).eid_status || '';
+    const eidCheckedDate = (poid as any).EIDCheckedDate || (poid as any).eid_checked_date || '';
     
     const verificationColors = getVerificationColor(checkResult || '');
     const pepColors = getVerificationColor(pepSanctionsResult || '');
@@ -416,60 +410,107 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                             }}
                             className="inlinePersonCompanyIcon"
                         />
-                        {checkResult && (
-                            <div
-                                style={{
-                                    padding: '2px 8px',
-                                    borderRadius: 0,
+                    </Stack>
+                    {/* Trace chips under name: Instruction & Matter */}
+                    {(instructionRef || matterId) && (
+                        <Stack horizontal tokens={{ childrenGap: 6 }} verticalAlign="center">
+                            {instructionRef && (
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '2px 6px', border: '1px solid #e1e5ea', borderRadius: 6,
+                                    background: '#F4F6F9', color: '#425466', fontSize: '0.7rem', fontWeight: 600
+                                }}>
+                                    <Icon iconName="TextDocument" styles={{ root: { fontSize: 10, color: '#6B7280' } }} />
+                                    {instructionRef}
+                                </span>
+                            )}
+                            {matterId && (
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '2px 6px', border: '1px solid #e1e5ea', borderRadius: 6,
+                                    background: '#F4F6F9', color: '#425466', fontSize: '0.7rem', fontWeight: 600
+                                }}>
+                                    <Icon iconName="FabricFolder" styles={{ root: { fontSize: 10, color: '#6B7280' } }} />
+                                    {matterId}
+                                </span>
+                            )}
+                        </Stack>
+                    )}
+                    {/* Compact status chips row */}
+                    {(checkResult || pepSanctionsResult || addressVerificationResult || paymentResult) && (
+                        <Stack horizontal wrap tokens={{ childrenGap: 8 }} verticalAlign="center">
+                            {checkResult && (
+                                <div style={{
+                                    padding: '2px 6px',
                                     backgroundColor: verificationColors.background,
                                     color: verificationColors.text,
-                                    border: `1px solid ${verificationColors.border}40`,
-                                    fontSize: '0.75rem',
+                                    border: `1px solid ${verificationColors.border}30`,
+                                    fontSize: '0.7rem',
                                     fontWeight: 600,
-                                    marginLeft: 8,
-                                }}
-                            >
-                                {checkResult}
-                            </div>
-                        )}
-                    </Stack>
-                    {/* Instruction Ref - right under the name */}
-                    {instructionRef && (
-                        <Text variant="xSmall" styles={{ root: { 
-                            color: '#aaa', 
-                            fontFamily: 'Raleway, sans-serif', 
-                            fontSize: '0.65rem',
-                            letterSpacing: '0.5px'
-                        }}}>
-                            {instructionRef}
-                        </Text>
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                }}>
+                                    <Icon iconName="Shield" styles={{ root: { fontSize: 10 } }} />
+                                    ID: {checkResult}
+                                </div>
+                            )}
+                            {pepSanctionsResult && (
+                                <div style={{
+                                    padding: '2px 6px',
+                                    backgroundColor: pepColors.background,
+                                    color: pepColors.text,
+                                    border: `1px solid ${pepColors.border}30`,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                }}>
+                                    <Icon iconName="PageShield" styles={{ root: { fontSize: 10 } }} />
+                                    PEP: {pepSanctionsResult}
+                                </div>
+                            )}
+                            {addressVerificationResult && (
+                                <div style={{
+                                    padding: '2px 6px',
+                                    backgroundColor: addressColors.background,
+                                    color: addressColors.text,
+                                    border: `1px solid ${addressColors.border}30`,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                }}>
+                                    <Icon iconName="POI" styles={{ root: { fontSize: 10 } }} />
+                                    Address: {addressVerificationResult}
+                                </div>
+                            )}
+                            {paymentResult && (
+                                <div style={{
+                                    padding: '2px 6px',
+                                    backgroundColor: paymentResult === 'successful' ? '#e6f4ea' : paymentResult === 'failed' ? '#fde7e9' : '#fffbe6',
+                                    color: paymentResult === 'successful' ? '#107C10' : paymentResult === 'failed' ? '#d13438' : '#b88600',
+                                    border: `1px solid ${paymentResult === 'successful' ? '#107C10' : paymentResult === 'failed' ? '#d13438' : '#FFB900'}30`,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                }}>
+                                    <Icon iconName="PaymentCard" styles={{ root: { fontSize: 10 } }} />
+                                    Payment: {paymentResult}
+                                </div>
+                            )}
+                        </Stack>
                     )}
                     {/* Service Description and Amount - REMOVED to avoid duplication */}
-                    {/* Expandable Contact & ID Details */}
-                    <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between',
-                        gap: '8px', 
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        border: '1px solid #e1e5ea',
-                        backgroundColor: '#f8f9fb',
-                        marginBottom: '0px'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Icon iconName="ContactInfo" styles={{ root: { fontSize: '14px', color: '#666' } }} />
-                            <Text variant="small" styles={{ root: { color: '#666', fontSize: '0.8rem', fontFamily: 'Raleway, sans-serif' } }}>
-                                Contact & ID Details
-                            </Text>
-                        </div>
-                        <Icon iconName="ChevronDown" styles={{ root: { fontSize: '12px', color: '#666', transition: 'transform 0.3s ease' } }} className="chevron-indicator" />
-                    </div>
-                    <div className={expandableContactStyle + ' expandableContact'}>
+                    {/* Compact Contact & ID Details */}
+                    <div className={contactBlockStyle}>
                         <Stack tokens={{ childrenGap: 6 }}>
-                            {/* Contact Information */}
                             {email && (
-                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <Icon iconName="Mail" styles={{ root: { fontSize: '12px', color: '#666' } }} />
                                     <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
                                         {email}
@@ -477,25 +518,23 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                                 </div>
                             )}
                             {phone && (
-                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <Icon iconName="Phone" styles={{ root: { fontSize: '12px', color: '#666' } }} />
                                     <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
                                         {phone}
                                     </Text>
                                 </div>
                             )}
-                            {/* Address */}
                             {address && (
-                                <div className="contact-item" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
                                     <Icon iconName="MapPin" styles={{ root: { fontSize: '12px', color: '#666', marginTop: '1px' } }} />
                                     <Text variant="xSmall" styles={{ root: { color: '#666', fontSize: '0.75rem', fontStyle: 'italic', fontFamily: 'Raleway, sans-serif' } }}>
                                         {address}
                                     </Text>
                                 </div>
                             )}
-                            {/* ID Documents */}
                             {idType && (
-                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <Icon iconName="ContactCard" styles={{ root: { fontSize: '12px', color: '#666' } }} />
                                     <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
                                         ID Type: {idType}
@@ -503,7 +542,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                                 </div>
                             )}
                             {passport && (
-                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <Icon iconName="Permissions" styles={{ root: { fontSize: '12px', color: '#666' } }} />
                                     <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
                                         Passport: {passport}
@@ -511,7 +550,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                                 </div>
                             )}
                             {driversLicense && (
-                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <Icon iconName="Car" styles={{ root: { fontSize: '12px', color: '#666' } }} />
                                     <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
                                         License: {driversLicense}
@@ -556,6 +595,16 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                                 </div>
                             )}
                         </Stack>
+                    )}
+                    {/* EID checked date & status */}
+                    {(eidStatus || eidCheckedDate) && (
+                        <Text variant="xSmall" styles={{ root: { 
+                            color: '#888', 
+                            fontFamily: 'Raleway, sans-serif', 
+                            fontSize: '0.7rem'
+                        }}}>
+                            {eidStatus ? `EID ${eidStatus}` : ''}{eidStatus && eidCheckedDate ? ' • ' : ''}{eidCheckedDate ? `Checked ${new Date(eidCheckedDate).toLocaleDateString()}` : ''}
+                        </Text>
                     )}
                     {/* Correlation ID - on its own line */}
                     {checkId && (

@@ -31,7 +31,7 @@ import BudgetStep from './BudgetStep';
 
 import { CompletionProvider } from './CompletionContext';
 import ProcessingSection, { ProcessingStep } from './ProcessingSection';
-import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback } from './processingActions';
+import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback, registerOperationObserver, setCurrentActionIndex } from './processingActions';
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
@@ -86,6 +86,13 @@ interface FlatMatterOpeningProps {
     preselectedPoidIds?: string[];
     instructionPhone?: string;
     /**
+     * Preferred source for Select Client cards: pass records directly from the
+     * new Instructions DB (instructions table). When provided, the Select Client
+     * grid will be sourced exclusively from these records (mapped to POID shape),
+     * while legacy POID/idVerification fallback remains available for other flows.
+     */
+    instructionRecords?: unknown[];
+    /**
      * Optional callback triggered when the user chooses to draft the CCL
      * immediately after opening the matter.
      */
@@ -108,6 +115,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     initialClientType = '',
     preselectedPoidIds = [],
     instructionPhone,
+    instructionRecords,
     onDraftCclNow,
 }) => {
     const idExpiry = useMemo(() => {
@@ -132,8 +140,72 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     const showPoidSelection = !instructionRef;
     const defaultPoidData: POID[] = useMemo(() => {
+        // 1) Preferred: map from new Instructions table records if provided
+        if (Array.isArray(instructionRecords) && instructionRecords.length > 0) {
+            const mappedFromInstructions = (instructionRecords as any[]).map((inst) => ({
+                poid_id: String(inst.InstructionRef || inst.id || inst.Email || `${inst.FirstName || ''}|${inst.LastName || ''}`),
+                first: inst.FirstName,
+                last: inst.LastName,
+                email: inst.Email,
+                best_number: inst.Phone,
+                nationality: inst.Nationality,
+                nationality_iso: inst.NationalityAlpha2,
+                date_of_birth: inst.DOB || inst.DateOfBirth,
+                passport_number: inst.PassportNumber,
+                drivers_license_number: inst.DriversLicenseNumber,
+                house_building_number: inst.HouseNumber,
+                street: inst.Street,
+                city: inst.City,
+                county: inst.County,
+                post_code: inst.Postcode,
+                country: inst.Country,
+                country_code: inst.CountryCode,
+                company_name: inst.CompanyName,
+                company_number: inst.CompanyNumber,
+                company_house_building_number: inst.CompanyHouseNumber,
+                company_street: inst.CompanyStreet,
+                company_city: inst.CompanyCity,
+                company_county: inst.CompanyCounty,
+                company_post_code: inst.CompanyPostcode,
+                company_country: inst.CompanyCountry,
+                company_country_code: inst.CompanyCountryCode,
+                // Verification fields may not exist on instructions records – leave undefined
+                stage: inst.Stage,
+                check_result: inst.EIDOverallResult,
+                pep_sanctions_result: inst.PEPAndSanctionsCheckResult,
+                address_verification_result: inst.AddressVerificationResult,
+                check_expiry: inst.CheckExpiry,
+                check_id: inst.EIDCheckId,
+                // Linkage/traceability
+                client_id: String(inst.ClientId || inst.ProspectId || ''),
+                matter_id: String(inst.MatterId || ''),
+                // Also include references for downstream consumers
+                InstructionRef: inst.InstructionRef,
+            })) as POID[];
+
+            // Deduplicate by email or InstructionRef, prefer matching active instruction
+            const uniqueMap = new Map<string, POID>();
+            mappedFromInstructions.forEach((p) => {
+                const key = (p.email || '').toLowerCase() || (p as any).InstructionRef || p.poid_id;
+                if (!key) return;
+                const instRef = (p as any).InstructionRef || '';
+                if (!uniqueMap.has(key)) {
+                    uniqueMap.set(key, p);
+                    return;
+                }
+                const existing = uniqueMap.get(key)!;
+                const existingInst = (existing as any).InstructionRef || '';
+                if (instructionRef && instRef === instructionRef && existingInst !== instructionRef) {
+                    uniqueMap.set(key, p);
+                }
+            });
+            return Array.from(uniqueMap.values());
+        }
+
+        // 2) Fallback: use provided POID data if available
         const mapped = (poidData && poidData.length > 0
             ? poidData
+            // 3) Legacy/local fallback: map EID/idVerifications when nothing else provided
             : (idVerifications as any[]).map((v) => ({
                   poid_id: String(v.InternalId),
                   first: v.FirstName,
@@ -192,17 +264,26 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
             }
         });
         return Array.from(uniqueMap.values());
-    }, [poidData, instructionRef]);
+    }, [instructionRecords, poidData, instructionRef]);
     
     // Filter out any invalid POID entries that might be causing issues
     const validPoidData = useMemo(() => {
-        return defaultPoidData.filter(poid => 
-            // Ensure each POID has at least first and last name populated
-            poid && poid.first && poid.last && 
-            // Make sure it's not just a number
-            isNaN(Number(poid.first)) && isNaN(Number(poid.last))
-        );
-    }, [defaultPoidData]);
+        const preselected = new Set(preselectedPoidIds || []);
+        return defaultPoidData.filter((poid) => {
+            if (!poid) return false;
+            // Always allow explicitly preselected POIDs (e.g., instruction-driven/direct entries)
+            if (preselected.has(poid.poid_id)) return true;
+            // Accept either a valid person (first+last not numeric) or a company-only record
+            const hasPerson = Boolean(
+                poid.first &&
+                poid.last &&
+                isNaN(Number(poid.first)) &&
+                isNaN(Number(poid.last))
+            );
+            const hasCompany = Boolean(poid.company_name);
+            return hasPerson || hasCompany;
+        });
+    }, [defaultPoidData, preselectedPoidIds]);
     
     // Force use of only validated local POID data
     const effectivePoidData: POID[] = validPoidData;
@@ -210,6 +291,14 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     // Debug logging removed
 
     const [selectedDate, setSelectedDate] = useDraftedState<Date | null>('selectedDate', null);
+    // Ensure an opening date is always present (default to today on first use)
+    useEffect(() => {
+        if (!selectedDate) {
+            setSelectedDate(new Date());
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    // Note: additional effect to guarantee date on step change is defined after currentStep declaration
     const localTeamData = useMemo(() => localTeamDataJson, []);
     const defaultPartnerOptions = defaultPartners;
     const partnerOptionsList = useMemo(() => {
@@ -299,6 +388,15 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [noConflict, setNoConflict] = useDraftedState<boolean>('noConflict', false);
     const [opponentChoiceMade, setOpponentChoiceMade] = useDraftedState<boolean>('opponentChoiceMade', false);
     const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false); // UI only, not persisted
+    
+    // Workbench states
+    const [workbenchMode, setWorkbenchMode] = useState(false);
+    const [debugPanelOpen, setDebugPanelOpen] = useState(false);
+    const [supportPanelOpen, setSupportPanelOpen] = useState(false);
+    const [supportMessage, setSupportMessage] = useState('');
+    const [supportCategory, setSupportCategory] = useState<'technical' | 'process' | 'data'>('technical');
+    const [supportSending, setSupportSending] = useState(false);
+    
     // If preselectedPoidIds is provided, set the initial activePoid to the first matching POID
     useEffect(() => {
         if (preselectedPoidIds && preselectedPoidIds.length > 0 && effectivePoidData.length > 0) {
@@ -340,6 +438,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     // Summary review confirmation state
     const [summaryConfirmed, setSummaryConfirmed] = useDraftedState<boolean>('summaryConfirmed', false);
+    // Acknowledgement checkbox for formal confirmation (not persisted)
+    const [confirmAcknowledge, setConfirmAcknowledge] = useState<boolean>(false);
 
     // Processing state for matter submission
     const [isProcessing, setIsProcessing] = useState(false);
@@ -347,6 +447,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
     const [generatedCclUrl, setGeneratedCclUrl] = useState<string>('');
+    const [operationEvents, setOperationEvents] = useState<Array<{ index: number; label: string; phase: string; url?: string; method?: string; status?: number; payloadSummary?: string; responseSummary?: string }>>([]);
     const [openedMatterId, setOpenedMatterId] = useState<string | null>(null);
 
     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
@@ -409,18 +510,20 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                         const p = effectivePoidData.find(poid => poid.poid_id === id);
                         return p && !(p.company_name || p.company_number); // Keep individuals (directors)
                     });
-                    setSelectedPoidIds([...newSelections, poid.poid_id]);
+                    // Ensure uniqueness
+                    const next = Array.from(new Set([...newSelections, poid.poid_id]));
+                    setSelectedPoidIds(next);
                 } else {
                     // Selecting an individual (director) - only allowed if company is already selected
                     if (hasCompanySelected) {
                         // Allow multiple directors - just add to existing selections
-                        setSelectedPoidIds((prev: string[]) => [...prev, poid.poid_id]);
+                        setSelectedPoidIds((prev: string[]) => (prev.includes(poid.poid_id) ? prev : [...prev, poid.poid_id]));
                     }
                 }
                 setActivePoid(poid);
             } else if (pendingClientType === 'Multiple Individuals') {
                 // Multiple individuals allowed - unlimited selections
-                setSelectedPoidIds((prev: string[]) => [...prev, poid.poid_id]);
+                setSelectedPoidIds((prev: string[]) => (prev.includes(poid.poid_id) ? prev : [...prev, poid.poid_id]));
                 setActivePoid(poid);
             }
         }
@@ -497,8 +600,28 @@ const handleClearAll = () => {
     // Determine requesting user Clio ID based on environment
     const requestingUserClioId = getClioId(userInitials, teamData || localTeamDataJson);
 
+    // Environment/admin flags for gated backend details
+    const isLocalDev = process.env.NODE_ENV !== 'production';
+    const isAdminUser = useMemo(() => {
+        try {
+            const dataset = (teamData || localTeamDataJson) as any[];
+            const me = dataset.find(t => (t.Initials || '').toLowerCase() === userInitials.toLowerCase());
+            const roleText = (me?.Role || '').toLowerCase();
+            return roleText.includes('admin') || roleText.includes('owner') || roleText.includes('manager');
+        } catch {
+            return false;
+        }
+    }, [teamData, userInitials]);
+    const adminEligible = isLocalDev || isAdminUser;
+
     // Horizontal sliding carousel approach
     const [currentStep, setCurrentStep] = useDraftedState<number>('currentStep', 0); // 0: select, 1: form, 2: review
+    // Guarantee a date when entering the Matter or Review steps
+    useEffect(() => {
+        if ((currentStep === 1 || currentStep === 2) && !selectedDate) {
+            setSelectedDate(new Date());
+        }
+    }, [currentStep, selectedDate, setSelectedDate]);
     // Removed pendingClientType state - now handled directly in clientType state
 
     // Calculate completion percentages for progressive dots
@@ -669,12 +792,20 @@ const handleClearAll = () => {
     };
 
     // Determine completion status for each step
-    const clientsStepComplete = selectedPoidIds.length > 0 && clientType;
+    const clientsStepComplete = (() => {
+        if (!clientType) return false;
+        if (clientType === 'Multiple Individuals') {
+            const hasDirectEntry = Boolean(clientAsOnFile && clientAsOnFile.trim());
+            return selectedPoidIds.length > 0 || hasDirectEntry;
+        }
+        // Individual, Company, Existing Client require at least one POID selected
+        return selectedPoidIds.length > 0;
+    })();
     const matterStepComplete = selectedDate && supervisingPartner && originatingSolicitor && areaOfWork && practiceArea && description;
     const reviewStepComplete = false; // Review step doesn't have a "next" - it's the final step
 
     const handleContinueToForm = () => {
-        if (selectedPoidIds.length > 0 && clientType) {
+        if (clientsStepComplete) {
             setClientType(clientType);
             setCurrentStep(1);
             // Scroll to top when changing steps
@@ -697,6 +828,7 @@ const handleClearAll = () => {
     const handleBackToForm = () => {
         setCurrentStep(1);
         setSummaryConfirmed(false); // Reset confirmation when going back to edit
+        setConfirmAcknowledge(false); // Reset acknowledgement checkbox
         // Scroll to top when changing steps
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -931,11 +1063,20 @@ const handleClearAll = () => {
         setProcessingOpen(true);
         setProcessingLogs([]);
         setProcessingSteps(initialSteps);
+        
+        // Activate workbench mode immediately on submission
+        setTimeout(() => setWorkbenchMode(true), 300);
+        
         let url = '';
 
         try {
+            // Wire observer to capture sent/response/success/error phases
+            registerOperationObserver((e) => {
+                setOperationEvents(prev => [...prev, e]);
+            });
             for (let i = 0; i < processingActions.length; i++) {
                 const action = processingActions[i];
+                setCurrentActionIndex(i);
                 const result = await action.run(generateSampleJson(), userInitials, userData);
                 const message = typeof result === 'string' ? result : result.message;
                 setProcessingSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'success', message } : s));
@@ -953,6 +1094,7 @@ const handleClearAll = () => {
             setProcessingLogs(prev => [...prev, `❌ Error: ${msg}`]);
             setProcessingSteps(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: 'error' } : s));
         } finally {
+            registerOperationObserver(null);
             setTimeout(() => setIsProcessing(false), 2000);
             setProcessingOpen(false);
         }
@@ -960,7 +1102,93 @@ const handleClearAll = () => {
         return { url };
     };
 
+    // Support email functionality (adapted from PitchBuilder)
+    const sendSupportRequest = async () => {
+        if (!supportMessage.trim()) return;
+        
+        setSupportSending(true);
+        
+        try {
+            // Get user email from userData
+            const userEmailCandidate = (userData && userData[0]) || {} as any;
+            const userEmailAddress = 
+                (userEmailCandidate.Email && String(userEmailCandidate.Email).trim()) ||
+                (userEmailCandidate.WorkEmail && String(userEmailCandidate.WorkEmail).trim()) ||
+                (userEmailCandidate.Mail && String(userEmailCandidate.Mail).trim()) ||
+                `${userInitials?.toLowerCase()}@helix-law.com`;
+
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                user: userInitials,
+                instructionRef,
+                stage,
+                clientType,
+                selectedPoidIds: selectedPoidIds?.length,
+                processingSteps: processingSteps.map(s => ({ label: s.label, status: s.status })),
+                systemData: generateSampleJson()
+            };
+
+            const emailBody = `
+                <h3>Matter Opening Support Request - ${supportCategory.toUpperCase()}</h3>
+                <p><strong>Category:</strong> ${supportCategory}</p>
+                <p><strong>User:</strong> ${userInitials} (${userEmailAddress})</p>
+                <p><strong>Instruction:</strong> ${instructionRef || 'N/A'}</p>
+                <p><strong>Issue Description:</strong></p>
+                <div style="background: #f5f5f5; padding: 12px; border-left: 3px solid #3690CE; margin: 12px 0;">
+                    ${supportMessage.replace(/\n/g, '<br/>')}
+                </div>
+                <h4>Debug Information</h4>
+                <pre style="background: #f8f8f8; padding: 12px; font-size: 11px; overflow: auto;">
+${JSON.stringify(debugInfo, null, 2)}
+                </pre>
+            `;
+
+            const response = await fetch('/api/sendEmail', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email_contents: emailBody,
+                    user_email: 'support@helix-law.com',
+                    subject: `Matter Opening Support: ${supportCategory} - ${instructionRef || 'Generic'}`,
+                    from_email: userEmailAddress,
+                    bcc_emails: 'automations@helix-law.com'
+                })
+            });
+
+            if (response.ok) {
+                setSupportMessage('');
+                setSupportPanelOpen(false);
+                // Show success notification
+                alert('Support request sent successfully!');
+            } else {
+                throw new Error('Failed to send support request');
+            }
+        } catch (error) {
+            console.error('Support request failed:', error);
+            alert('Failed to send support request. Please try again.');
+        } finally {
+            setSupportSending(false);
+        }
+    };
+
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+
+    // Entry choice: New vs Existing/Carry On
+    const [entryMode, setEntryMode] = useDraftedState<'unset' | 'new' | 'existing'>('entryMode', 'unset');
+    // Generic entry no longer shows Start New vs Existing here; the client type question covers it
+    const shouldShowEntryModal = false;
+
+    const handleChooseNew = () => {
+        // No-op: generic choice handled by client type control now
+        setEntryMode('new');
+        setPendingClientType('');
+    };
+    const handleChooseExisting = () => {
+        // No-op: generic choice handled by client type control now
+        setEntryMode('existing');
+        setPendingClientType('Existing Client');
+        setSearchBoxFocused(true);
+    };
 
     // Clear all selections and inputs
     const doClearAll = () => {
@@ -1301,8 +1529,8 @@ const handleClearAll = () => {
                             gap: 8,
                             flexShrink: 0
                         }}>
-                            {/* POID search - only in step 0 with POID selection AND client type selected */}
-                            {currentStep === 0 && showPoidSelection && pendingClientType && (
+                            {/* POID search - available in step 0 when selection UI is shown */}
+                            {currentStep === 0 && showPoidSelection && (
                                 <>
                                     {/* MinimalSearchBox - hide when Individual/Company has selection */}
                                     {!(
@@ -1483,6 +1711,8 @@ const handleClearAll = () => {
                         }
                     `}</style>
 
+                    {/* Generic entry choice modal removed: client type question handles this selection */}
+
                     {/* Add CSS animation for completion ticks */}
                     <style>{`
                         @keyframes tickPop {
@@ -1524,6 +1754,7 @@ const handleClearAll = () => {
                             {/* Step 1: Client Selection */}
                             <div style={{ width: '33.333%', padding: '16px', boxSizing: 'border-box' }}>
                                 <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto 16px auto' }}>
+                                    {/** Hide the selection UI entirely for instruction-driven entry */}
                                     <PoidSelectionStep
                                         poidData={effectivePoidData}
                                         teamData={teamData}
@@ -1540,6 +1771,9 @@ const handleClearAll = () => {
                                         onClientTypeChange={handleClientTypeChange}
                                         clientAsOnFile={clientAsOnFile}
                                         setClientAsOnFile={setClientAsOnFile}
+                                        hideClientSections={hideClientSections || !!instructionRef}
+                                        instructionRef={instructionRef}
+                                        matterRef={matterIdState || matterRef || ''}
                                     />
                                 </div>
                                 
@@ -1627,9 +1861,9 @@ const handleClearAll = () => {
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
                                     <div
                                         className="nav-button forward-button"
-                                        onClick={opponentChoiceMade ? handleContinueToForm : undefined}
-                                        aria-disabled={!opponentChoiceMade}
-                                        tabIndex={opponentChoiceMade ? 0 : -1}
+                                        onClick={clientsStepComplete ? handleContinueToForm : undefined}
+                                        aria-disabled={!clientsStepComplete}
+                                        tabIndex={clientsStepComplete ? 0 : -1}
                                         style={{
                                             background: '#f4f4f6',
                                             border: '2px solid #e1dfdd',
@@ -1639,22 +1873,22 @@ const handleClearAll = () => {
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            cursor: opponentChoiceMade ? 'pointer' : 'not-allowed',
-                                            opacity: opponentChoiceMade ? 1 : 0.5,
+                                            cursor: clientsStepComplete ? 'pointer' : 'not-allowed',
+                                            opacity: clientsStepComplete ? 1 : 0.5,
                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                             boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
                                             position: 'relative',
                                             overflow: 'hidden',
-                                            pointerEvents: opponentChoiceMade ? 'auto' : 'none',
+                                            pointerEvents: clientsStepComplete ? 'auto' : 'none',
                                         }}
-                                        onMouseEnter={opponentChoiceMade ? (e) => {
+                                        onMouseEnter={clientsStepComplete ? (e) => {
                                             e.currentTarget.style.background = '#ffefed';
                                             e.currentTarget.style.border = '2px solid #D65541';
                                             e.currentTarget.style.borderRadius = '0px';
                                             e.currentTarget.style.width = '220px';
                                             e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
                                         } : undefined}
-                                        onMouseLeave={opponentChoiceMade ? (e) => {
+                                        onMouseLeave={clientsStepComplete ? (e) => {
                                             e.currentTarget.style.background = '#f4f4f6';
                                             e.currentTarget.style.border = '2px solid #e1dfdd';
                                             e.currentTarget.style.borderRadius = '0px';
@@ -1977,21 +2211,22 @@ const handleClearAll = () => {
                                 </div>
                             </div>
 
-                            {/* Step 3: Review Summary */}
+                            {/* Step 3: Review Summary / Matter Opening Workbench */}
                             <div style={{ width: '33.333%', padding: '16px', boxSizing: 'border-box' }}>
                                 <div
-                                    className="review-summary-box review-summary-hoverable"
-                                    onClick={() => setSummaryConfirmed(true)}
+                                    className="review-summary-box"
                                     style={{
-                                        border: summaryConfirmed ? '2px solid #49B670' : '2px solid #D65541',
-                                        borderRadius: 0,
-                                        background: summaryConfirmed ? '#f5fdf7' : '#fff',
+                                        border: workbenchMode ? '2px solid #3690CE' : summaryConfirmed ? '2px solid #49B670' : '1px solid #e1e5ea',
+                                        borderRadius: 10,
+                                        background: workbenchMode ? 'linear-gradient(135deg, #F0F7FF 0%, #E6F3FF 100%)' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                                         padding: 24,
                                         margin: '0 0 16px 0',
                                         width: '100%',
                                         boxSizing: 'border-box',
-                                        transition: 'border-color 0.2s, background 0.2s',
-                                        cursor: summaryConfirmed ? 'default' : 'pointer',
+                                        transition: 'all 0.4s ease',
+                                        cursor: 'default',
+                                        boxShadow: workbenchMode ? '0 8px 16px rgba(54, 144, 206, 0.15)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
+                                        minHeight: workbenchMode ? '600px' : 'auto'
                                     }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -1999,7 +2234,7 @@ const handleClearAll = () => {
                                             margin: 0, 
                                             fontWeight: 600, 
                                             fontSize: 18, 
-                                            color: summaryConfirmed ? '#15803d' : '#061733',
+                                            color: workbenchMode ? '#3690CE' : summaryConfirmed ? '#15803d' : '#061733',
                                             animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                                             animationDelay: '0ms',
                                             opacity: 0,
@@ -2008,51 +2243,412 @@ const handleClearAll = () => {
                                             alignItems: 'center',
                                             gap: 8
                                         }}>
-                                            {summaryConfirmed && (
-                                                <i className="ms-Icon ms-Icon--CheckMark" style={{ 
-                                                    fontSize: 16, 
-                                                    color: '#22c55e'
-                                                }} />
-                                            )}
-                                            Review Summary {summaryConfirmed ? '- Confirmed' : ''}
+                                            {workbenchMode ? (
+                                                <i className="ms-Icon ms-Icon--WorkItem" style={{ fontSize: 16, color: '#3690CE' }} />
+                                            ) : summaryConfirmed ? (
+                                                <i className="ms-Icon ms-Icon--CheckMark" style={{ fontSize: 16, color: '#22c55e' }} />
+                                            ) : null}
+                                            {workbenchMode ? 'Matter Opening Workbench' : `Review Summary ${summaryConfirmed ? '- Confirmed' : ''}`}
                                         </h4>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation(); // Prevent event bubbling to parent
-                                                setJsonPreviewOpen(!jsonPreviewOpen);
-                                            }}
-                                            style={{
-                                                background: '#f8f9fa',
-                                                border: '1px solid #e1dfdd',
-                                                borderRadius: 6,
-                                                padding: '8px 12px',
-                                                fontSize: 12,
-                                                fontWeight: 500,
-                                                color: '#3690CE',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 6,
-                                                transition: 'background 0.2s ease, border-color 0.2s ease',
-                                                animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                                animationDelay: '150ms',
-                                                opacity: 0,
-                                                transform: 'translateX(20px)'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = '#e7f1ff';
-                                                e.currentTarget.style.borderColor = '#3690CE';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = '#f8f9fa';
-                                                e.currentTarget.style.borderColor = '#e1dfdd';
-                                            }}
-                                        >
-                                            <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 12 }} />
-                                            {jsonPreviewOpen ? 'Hide JSON' : 'View JSON'}
-                                        </button>
+                                        
+                                        {/* Workbench Tools removed from header; support integrated into processing summary */}
+                                        
+                                        {/* Original JSON Toggle for review mode */}
+                                        {!workbenchMode && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setJsonPreviewOpen(!jsonPreviewOpen);
+                                                }}
+                                                style={{
+                                                    background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                    border: '1px solid #e1e5ea',
+                                                    borderRadius: 8,
+                                                    padding: '8px 12px',
+                                                    fontSize: 12,
+                                                    fontWeight: 600,
+                                                    color: '#3690CE',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    transition: 'transform 0.15s ease, background 0.2s ease, border-color 0.2s ease',
+                                                    animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                                    animationDelay: '150ms',
+                                                    opacity: 0,
+                                                    transform: 'translateX(20px)'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                                    e.currentTarget.style.borderColor = '#3690CE';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.borderColor = '#e1e5ea';
+                                                }}
+                                            >
+                                                <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 12 }} />
+                                                {jsonPreviewOpen ? 'Hide JSON' : 'View JSON'}
+                                            </button>
+                                        )}
                                     </div>
                                     
+                                    {/* Workbench Content */}
+                                    {workbenchMode ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100% - 80px)' }}>
+                                            {/* Processing Summary (professional, on-brand) */}
+                                            {(() => {
+                                                const total = processingSteps.length || 0;
+                                                const done = processingSteps.filter(s => s.status === 'success').length;
+                                                const failed = processingSteps.filter(s => s.status === 'error').length;
+                                                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                                                const statusText = failed > 0 ? 'Attention required' : (done === total && total > 0 ? 'Completed' : 'In progress');
+                                                return (
+                                                    <div style={{
+                                                        border: '1px solid #e1e5ea',
+                                                        borderRadius: 10,
+                                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                        overflow: 'hidden',
+                                                        padding: 16,
+                                                        boxShadow: '0 4px 6px rgba(0,0,0,0.07)'
+                                                    }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                <i className="ms-Icon ms-Icon--ProgressLoopOuter" style={{ fontSize: 14, color: '#D65541' }} />
+                                                                <span style={{ fontSize: 13, fontWeight: 700, color: '#061733' }}>Processing</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                <span style={{ fontSize: 12, fontWeight: 700, color: failed ? '#D65541' : '#374151' }}>{statusText}</span>
+                                                                <button
+                                                                    onClick={() => setSupportPanelOpen(!supportPanelOpen)}
+                                                                    style={{
+                                                                        background: supportPanelOpen ? '#D65541' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                                        color: supportPanelOpen ? '#fff' : '#D65541',
+                                                                        border: '1px solid #D65541',
+                                                                        borderRadius: 6,
+                                                                        padding: '6px 10px',
+                                                                        fontSize: 11,
+                                                                        fontWeight: 600,
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.2s ease'
+                                                                    }}
+                                                                    title="Support Request"
+                                                                >
+                                                                    <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 12 }} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
+                                                            <div style={{ fontSize: 28, fontWeight: 800, color: '#061733', minWidth: 64, textAlign: 'right' }}>{pct}%</div>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ height: 10, background: '#eef2f7', borderRadius: 999, overflow: 'hidden' }}>
+                                                                    <div style={{
+                                                                        width: `${pct}%`,
+                                                                        height: '100%',
+                                                                        background: 'linear-gradient(135deg, #49B670 0%, #15803d 100%)',
+                                                                        transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                                    }} />
+                                                                </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                                                                    <span style={{ fontSize: 12, color: '#6b7280' }}>Completed</span>
+                                                                    <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>{done} of {total}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        {/* Compact icon grid representing operations */}
+                                                        {total > 0 && (
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))', gap: 8, marginBottom: 8 }}>
+                                                                {processingSteps.map((s, idx) => (
+                                                                    <div key={`mini-${idx}`} title={s.label} style={{
+                                                                        height: 36,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        borderRadius: 6,
+                                                                        border: '1px solid #e5e7eb',
+                                                                        background: s.status === 'success' ? '#f0fdf4' : s.status === 'error' ? '#fef2f2' : '#fff'
+                                                                    }}>
+                                                                        {s.icon ? (
+                                                                            <img src={s.icon} alt="" style={{ width: 18, height: 18, opacity: s.status === 'pending' ? 0.6 : 1 }} />
+                                                                        ) : (
+                                                                            <i className={`ms-Icon ${s.status === 'success' ? 'ms-Icon--CheckMark' : s.status === 'error' ? 'ms-Icon--ErrorBadge' : 'ms-Icon--Clock'}`} style={{ fontSize: 16, color: s.status === 'success' ? '#16a34a' : s.status === 'error' ? '#dc2626' : '#6b7280' }} />
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {adminEligible ? (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <span style={{ fontSize: 11, color: '#64748b' }}>Admins & local dev can view backend operation details</span>
+                                                                <button
+                                                                    onClick={() => setDebugPanelOpen(!debugPanelOpen)}
+                                                                    style={{
+                                                                        background: debugPanelOpen ? '#D65541' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                                        color: debugPanelOpen ? '#fff' : '#D65541',
+                                                                        border: '1px solid #D65541',
+                                                                        borderRadius: 6,
+                                                                        padding: '6px 10px',
+                                                                        fontSize: 11,
+                                                                        fontWeight: 700,
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.2s ease'
+                                                                    }}
+                                                                >
+                                                                    {debugPanelOpen ? 'Hide admin details' : 'Show admin details'}
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ fontSize: 11, color: '#94a3b8' }}>Backend details are restricted to admins</div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {/* Debug Panel */}
+                                            {adminEligible && debugPanelOpen && (
+                                                <div style={{
+                                                    border: '1px solid #e1e5ea',
+                                                    borderRadius: 8,
+                                                    background: '#fff',
+                                                    overflow: 'hidden',
+                                                    flex: '1 1 auto'
+                                                }}>
+                                                    <div style={{
+                                                        padding: '12px 16px',
+                                                        background: 'linear-gradient(135deg, #111827 0%, #1f2937 100%)',
+                                                        color: '#fff',
+                                                        fontSize: 13,
+                                                        fontWeight: 700,
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center'
+                                                    }}>
+                                                        <span>Backend Operations (Admin)</span>
+                                                        <button
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(JSON.stringify(generateSampleJson(), null, 2));
+                                                            }}
+                                                            style={{
+                                                                background: 'rgba(255,255,255,0.1)',
+                                                                border: '1px solid rgba(255,255,255,0.2)',
+                                                                borderRadius: 4,
+                                                                padding: '4px 8px',
+                                                                fontSize: 10,
+                                                                color: '#fff',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 4
+                                                            }}
+                                                        >
+                                                            <i className="ms-Icon ms-Icon--Copy" style={{ fontSize: 10 }} />
+                                                            Copy JSON
+                                                        </button>
+                                                    </div>
+                                                    <div style={{ padding: 12, display: 'grid', gap: 12 }}>
+                                                        {/* Operations list with statuses */}
+                                                        <div style={{
+                                                            border: '1px solid #e5e7eb',
+                                                            borderRadius: 6,
+                                                            overflow: 'hidden'
+                                                        }}>
+                                                            <div style={{
+                                                                padding: '8px 12px',
+                                                                background: '#f8fafc',
+                                                                fontSize: 12,
+                                                                fontWeight: 700,
+                                                                color: '#374151'
+                                                            }}>
+                                                                Operations
+                                                            </div>
+                                                            <div style={{ maxHeight: 240, overflow: 'auto', padding: 8 }}>
+                                                                {processingSteps.map((step, idx) => {
+                                                                    const events = operationEvents.filter(e => e.index === idx);
+                                                                    const sent = events.find(e => e.phase === 'sent');
+                                                                    const responded = events.find(e => e.phase === 'response');
+                                                                    const succeeded = events.find(e => e.phase === 'success');
+                                                                    const errored = events.find(e => e.phase === 'error');
+                                                                    return (
+                                                                        <div key={`op-${idx}`} style={{ display: 'grid', gap: 6, padding: '8px 4px', borderBottom: '1px solid #f1f5f9' }}>
+                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                                <span style={{ fontSize: 12, color: '#111827', fontWeight: 700 }}>{step.label}</span>
+                                                                                <span style={{ fontSize: 11, fontWeight: 800, color: step.status === 'success' ? '#16a34a' : step.status === 'error' ? '#dc2626' : '#64748b' }}>
+                                                                                    {step.status.toUpperCase()}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                                                                <span style={{ fontSize: 11, color: sent ? '#334155' : '#94a3b8' }}>Sent{sent?.method ? ` (${sent.method})` : ''}</span>
+                                                                                <span style={{ fontSize: 11, color: responded ? '#334155' : '#94a3b8' }}>Responded{responded?.status ? ` (${responded.status})` : ''}</span>
+                                                                                <span style={{ fontSize: 11, color: succeeded ? '#16a34a' : '#94a3b8' }}>Succeeded</span>
+                                                                            </div>
+                                                                            {errored && (
+                                                                                <div style={{ display: 'grid', gap: 6 }}>
+                                                                                    <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 700 }}>Failure details</div>
+                                                                                    {errored.payloadSummary && (
+                                                                                        <div style={{
+                                                                                            padding: 8,
+                                                                                            background: '#fef2f2',
+                                                                                            border: '1px solid #fecaca',
+                                                                                            borderRadius: 6,
+                                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                                            fontSize: 11,
+                                                                                            whiteSpace: 'pre-wrap'
+                                                                                        }}>
+                                                                                            {errored.payloadSummary}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {errored.responseSummary && (
+                                                                                        <div style={{
+                                                                                            padding: 8,
+                                                                                            background: '#fef2f2',
+                                                                                            border: '1px solid #fecaca',
+                                                                                            borderRadius: 6,
+                                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                                            fontSize: 11,
+                                                                                            whiteSpace: 'pre-wrap'
+                                                                                        }}>
+                                                                                            {errored.responseSummary}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Request payload & logs */}
+                                                        <div style={{ display: 'grid', gap: 8 }}>
+                                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Request payload</div>
+                                                            <div style={{
+                                                                padding: 10,
+                                                                background: '#f8fafc',
+                                                                border: '1px solid #e5e7eb',
+                                                                borderRadius: 6,
+                                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                fontSize: 11,
+                                                                maxHeight: 220,
+                                                                overflow: 'auto'
+                                                            }}>
+                                                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                                    {JSON.stringify(generateSampleJson(), null, 2)}
+                                                                </pre>
+                                                            </div>
+                                                            {processingLogs.length > 0 && (
+                                                                <>
+                                                                    <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Responses & logs</div>
+                                                                    <div style={{
+                                                                        padding: 10,
+                                                                        background: '#f8fafc',
+                                                                        border: '1px solid #e5e7eb',
+                                                                        borderRadius: 6,
+                                                                        fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                        fontSize: 11,
+                                                                        maxHeight: 220,
+                                                                        overflow: 'auto'
+                                                                    }}>
+                                                                        {processingLogs.map((log, idx) => (
+                                                                            <div key={`log-${idx}`}>{log}</div>
+                                                                        ))}
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Support Panel */}
+                                            {supportPanelOpen && (
+                                                <div style={{
+                                                    border: '1px solid #e1e5ea',
+                                                    borderRadius: 8,
+                                                    background: '#fff',
+                                                    overflow: 'hidden',
+                                                    flex: '0 0 auto'
+                                                }}>
+                                                    <div style={{
+                                                        padding: '12px 16px',
+                                                        background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                        color: '#fff',
+                                                        fontSize: 13,
+                                                        fontWeight: 600,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 8
+                                                    }}>
+                                                        <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 14 }} />
+                                                        Support Request
+                                                    </div>
+                                                    <div style={{ padding: 16 }}>
+                                                        <div style={{ marginBottom: 12 }}>
+                                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
+                                                                Category
+                                                            </label>
+                                                            <select
+                                                                value={supportCategory}
+                                                                onChange={(e) => setSupportCategory(e.target.value as any)}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    padding: '8px 12px',
+                                                                    border: '1px solid #d1d5db',
+                                                                    borderRadius: 6,
+                                                                    fontSize: 12,
+                                                                    background: '#fff'
+                                                                }}
+                                                            >
+                                                                <option value="technical">Technical Issue</option>
+                                                                <option value="process">Process Question</option>
+                                                                <option value="data">Data Problem</option>
+                                                            </select>
+                                                        </div>
+                                                        <div style={{ marginBottom: 12 }}>
+                                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
+                                                                Describe the issue
+                                                            </label>
+                                                            <textarea
+                                                                value={supportMessage}
+                                                                onChange={(e) => setSupportMessage(e.target.value)}
+                                                                placeholder="Please describe what's happening and any steps to reproduce the issue..."
+                                                                style={{
+                                                                    width: '100%',
+                                                                    height: 80,
+                                                                    padding: '8px 12px',
+                                                                    border: '1px solid #d1d5db',
+                                                                    borderRadius: 6,
+                                                                    fontSize: 12,
+                                                                    resize: 'vertical',
+                                                                    fontFamily: 'inherit'
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            onClick={sendSupportRequest}
+                                                            disabled={!supportMessage.trim() || supportSending}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '8px 16px',
+                                                                background: supportSending ? '#9ca3af' : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                                color: '#fff',
+                                                                border: 'none',
+                                                                borderRadius: 6,
+                                                                fontSize: 12,
+                                                                fontWeight: 600,
+                                                                cursor: supportSending || !supportMessage.trim() ? 'not-allowed' : 'pointer',
+                                                                opacity: supportSending || !supportMessage.trim() ? 0.6 : 1,
+                                                                transition: 'all 0.2s ease'
+                                                            }}
+                                                        >
+                                                            {supportSending ? 'Sending...' : 'Send Support Request'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        /* Original Review Content */
+                                        <>
                                     {/* JSON Preview Panel */}
                                     {jsonPreviewOpen && (
                                         <div style={{
@@ -2113,300 +2709,580 @@ const handleClearAll = () => {
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Formal confirmation control moved near submission buttons */}
                                     
-                                    {/* Client Information Section */}
-                                    <div style={{ marginBottom: 24 }}>
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 8, 
-                                            marginBottom: 12,
-                                            paddingBottom: 8,
-                                            borderBottom: '1px solid #f0f0f0'
+                                    {/* Meta chips under header */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                                        {instructionRef && (
+                                            <span style={{
+                                                padding: '4px 8px',
+                                                border: '1px solid #e1e5ea',
+                                                borderRadius: 999,
+                                                background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                color: '#061733'
+                                            }}>
+                                                Instruction: {instructionRef}
+                                            </span>
+                                        )}
+                                        {(matterIdState || matterRef) && (
+                                            <span style={{
+                                                padding: '4px 8px',
+                                                border: '1px solid #e1e5ea',
+                                                borderRadius: 999,
+                                                background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                color: '#061733'
+                                            }}>
+                                                Matter: {matterIdState || matterRef}
+                                            </span>
+                                        )}
+                                        {stage && (
+                                            <span style={{
+                                                padding: '4px 8px',
+                                                border: '1px solid #e1e5ea',
+                                                borderRadius: 999,
+                                                background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                color: '#061733'
+                                            }}>
+                                                Stage: {stage}
+                                            </span>
+                                        )}
+                                        <span style={{
+                                            padding: '4px 8px',
+                                            border: '1px solid #e1e5ea',
+                                            borderRadius: 999,
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            color: '#061733'
                                         }}>
-                                            <i className="ms-Icon ms-Icon--People" style={{ fontSize: 14, color: '#3690CE' }} />
-                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Client Information</span>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Type:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{clientType || '-'}</span>
+                                            Opening Date: {selectedDate ? selectedDate.toLocaleDateString('en-GB') : '-'}
+                                        </span>
+                                    </div>
+
+                                    {/* Two-column layout */}
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: '1fr 1fr',
+                                        gap: 20,
+                                        marginBottom: 8
+                                    }}>
+                                        {/* Client Information Card */}
+                                        <div style={{
+                                            border: '1px solid #e1e5ea',
+                                            borderRadius: 8,
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            padding: 14,
+                                            position: 'relative'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                                <i className="ms-Icon ms-Icon--People" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Client Information</span>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Client(s):</span>
-                                                <div style={{ textAlign: 'right', maxWidth: '60%' }}>
-                                                    {selectedPoidIds && selectedPoidIds.length > 0 ? (
-                                                        selectedPoidIds.map((id: string, index: number) => {
-                                                            const client = effectivePoidData.find(p => p.poid_id === id);
-                                                            return (
-                                                                <div key={id} style={{ fontSize: 13, fontWeight: 500, marginBottom: index < selectedPoidIds.length - 1 ? 4 : 0 }}>
-                                                                    {client ? `${client.first} ${client.last}` : id}
+                                            {(() => {
+                                                // Unique selection list
+                                                const uniqueSelectedIds = Array.from(new Set(selectedPoidIds || []));
+                                                const clients = uniqueSelectedIds
+                                                    .map((id: string) => effectivePoidData.find(p => p.poid_id === id))
+                                                    .filter(Boolean) as POID[];
+
+                                                const isCompanyType = clientType === 'Company';
+                                                const isMultiple = clientType === 'Multiple Individuals';
+
+                                                const company = clients.find(c => c.company_name || (c as any).company_number);
+                                                const directors = clients.filter(c => !(c.company_name || (c as any).company_number));
+
+                                                // Utility formatters
+                                                const formatPersonName = (p: POID) => `${p.first || ''} ${p.last || ''}`.trim();
+                                                const formatPersonAddress = (p: POID) => {
+                                                    const line1 = [p.house_building_number, p.street].filter(Boolean).join(' ').trim();
+                                                    return [line1 || undefined, p.city, p.county, p.post_code, p.country].filter(Boolean).join(', ');
+                                                };
+                                                const formatCompanyAddress = (p: POID) => {
+                                                    const line1 = [p.company_house_building_number, p.company_street].filter(Boolean).join(' ').trim();
+                                                    return [line1 || undefined, p.company_city, p.company_county, p.company_post_code, p.company_country].filter(Boolean).join(', ');
+                                                };
+                                                const getPersonAddressLines = (p: POID): string[] => {
+                                                    const l1 = [p.house_building_number, p.street].filter(Boolean).join(' ').trim();
+                                                    const l2 = [p.city, p.county].filter(Boolean).join(', ').trim();
+                                                    const l3 = [p.post_code, p.country].filter(Boolean).join(' ').trim();
+                                                    return [l1, l2, l3].filter(Boolean);
+                                                };
+                                                const getCompanyAddressLines = (p: POID): string[] => {
+                                                    const l1 = [p.company_house_building_number, p.company_street].filter(Boolean).join(' ').trim();
+                                                    const l2 = [p.company_city, p.company_county].filter(Boolean).join(', ').trim();
+                                                    const l3 = [p.company_post_code, p.company_country].filter(Boolean).join(' ').trim();
+                                                    return [l1, l2, l3].filter(Boolean);
+                                                };
+                                                const formatDob = (dob?: string | null) => {
+                                                    if (!dob) return undefined;
+                                                    const d = new Date(dob);
+                                                    return isNaN(d.getTime()) ? String(dob) : d.toLocaleDateString('en-GB');
+                                                };
+                                                const getBestPhone = (p: POID): string | undefined => {
+                                                    const v = (p as unknown as Record<string, unknown>);
+                                                    const raw = p.best_number ||
+                                                        (v.phone as string | undefined) ||
+                                                        (v.phone_number as string | undefined) ||
+                                                        (v.phoneNumber as string | undefined) ||
+                                                        (v.Phone as string | undefined) ||
+                                                        instructionPhone ||
+                                                        undefined;
+                                                    return raw && String(raw).trim() ? String(raw).trim() : undefined;
+                                                };
+
+                                                // Build individuals list (for Individual / Multiple Individuals / Existing)
+                                                let individualItems: Array<{ name: string; address?: string; email?: string }> = directors.map(p => ({
+                                                    name: formatPersonName(p) || (p.email || ''),
+                                                    address: formatPersonAddress(p) || undefined,
+                                                    email: p.email || undefined
+                                                }));
+
+                                                // Include POIDs that are individuals when not a company flow
+                                                if (!isCompanyType) {
+                                                    const otherIndividuals = clients.filter(c => !(c.company_name || (c as any).company_number));
+                                                    individualItems = otherIndividuals.map(p => ({
+                                                        name: formatPersonName(p) || (p.email || ''),
+                                                        address: formatPersonAddress(p) || undefined,
+                                                        email: p.email || undefined
+                                                    }));
+                                                }
+
+                                                // Add direct entry for Multiple Individuals if not duplicate
+                                                const directEntryName = (isMultiple && clientAsOnFile && clientAsOnFile.trim()) ? clientAsOnFile.trim() : '';
+                                                if (directEntryName) {
+                                                    const exists = individualItems.some(i => i.name.toLowerCase() === directEntryName.toLowerCase());
+                                                    if (!exists) individualItems.push({ name: directEntryName });
+                                                }
+
+                                                // Dedupe individuals by name (case-insensitive)
+                                                const seen = new Set<string>();
+                                                individualItems = individualItems.filter(i => {
+                                                    const k = i.name.toLowerCase();
+                                                    if (seen.has(k)) return false;
+                                                    seen.add(k);
+                                                    return true;
+                                                });
+
+                                                return (
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Type</span>
+                                                            <span style={{ fontWeight: 600, fontSize: 12 }}>{clientType || '-'}</span>
+                                                        </div>
+
+                                                        {/* Company flow: render company + directors */}
+                                                        {isCompanyType && company && (
+                                                            <>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Company</span>
+                                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{company.company_name || '-'}</span>
                                                                 </div>
-                                                            );
-                                                        })
-                                                    ) : (
-                                                        <span style={{ fontSize: 13, fontWeight: 500 }}>-</span>
-                                                    )}
+                                                                {(company as any).company_number && (
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Company No.</span>
+                                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{(company as any).company_number}</span>
+                                                                    </div>
+                                                                )}
+                                                                {(() => {
+                                                                    const lines = getCompanyAddressLines(company);
+                                                                    return lines.length > 0 ? (
+                                                                        <>
+                                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
+                                                                                <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>{lines[0]}</span>
+                                                                            </div>
+                                                                            {lines[1] && (
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>{lines[1]}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {lines[2] && (
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>{lines[2]}</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </>
+                                                                    ) : (
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
+                                                                            <span style={{ fontWeight: 600, fontSize: 12 }}>-</span>
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                                {company.address_verification_result && (
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Check Result</span>
+                                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{company.address_verification_result}</span>
+                                                                    </div>
+                                                                )}
+                                                                {directors.length > 0 && (
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Directors</span>
+                                                                        <div style={{ textAlign: 'right', display: 'grid', gap: 8, maxWidth: '55%' }}>
+                                                                            {directors.map((d, idx) => {
+                                                                                const lines = getPersonAddressLines(d);
+                                                                                return (
+                                                                                    <div key={`dir-${d.poid_id}-${idx}`} style={{ display: 'grid', gap: 4 }}>
+                                                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Name</span>
+                                                                                            <span style={{ fontWeight: 600, fontSize: 12 }}>{formatPersonName(d) || '-'}</span>
+                                                                                        </div>
+                                                                                        {lines.length > 0 && (
+                                                                                            <>
+                                                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
+                                                                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>{lines[0]}</span>
+                                                                                                </div>
+                                                                                                {lines[1] && (
+                                                                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>{lines[1]}</span>
+                                                                                                    </div>
+                                                                                                )}
+                                                                                                {lines[2] && (
+                                                                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>{lines[2]}</span>
+                                                                                                    </div>
+                                                                                                )}
+                                                                                            </>
+                                                                                        )}
+                                                                                        {d.email && (
+                                                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Email</span>
+                                                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>{d.email}</span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {getBestPhone(d) && (
+                                                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Phone</span>
+                                                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>{getBestPhone(d)}</span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {d.date_of_birth && (
+                                                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>DOB</span>
+                                                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>{formatDob(d.date_of_birth)}</span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {d.address_verification_result && (
+                                                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Check</span>
+                                                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>{d.address_verification_result}</span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {idx < directors.length - 1 && (
+                                                                                            <div style={{ height: 1, background: '#eee', marginTop: 6 }} />
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        )}
+
+                                                        {/* Individuals flow: render list */}
+                                                        {!isCompanyType && individualItems.length > 0 && (
+                                                            <div style={{ display: 'grid', gap: 8 }}>
+                                                                {individualItems.map((i, idx) => {
+                                                                    // Find backing POID to surface additional details
+                                                                    const backing = clients.find(p => (formatPersonName(p) || (p.email || '')).toLowerCase() === i.name.toLowerCase());
+                                                                    const lines = backing ? getPersonAddressLines(backing) : [];
+                                                                    const check = backing && backing.address_verification_result ? backing.address_verification_result : undefined;
+                                                                    const phone = backing ? getBestPhone(backing) : undefined;
+                                                                    const dob = backing && backing.date_of_birth ? formatDob(backing.date_of_birth) : undefined;
+                                                                    return (
+                                                                        <div key={`ind-${idx}`} style={{ display: 'grid', gap: 4 }}>
+                                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Name</span>
+                                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>{i.name}</span>
+                                                                            </div>
+                                                                            {lines.length > 0 && (
+                                                                                <>
+                                                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
+                                                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>{lines[0]}</span>
+                                                                                    </div>
+                                                                                    {lines[1] && (
+                                                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>{lines[1]}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {lines[2] && (
+                                                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>{lines[2]}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </>
+                                                                            )}
+                                                                            {i.email && (
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Email</span>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{i.email}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {phone && (
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Phone</span>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{phone}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {dob && (
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>DOB</span>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{dob}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {check && (
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Check</span>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{check}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {idx < individualItems.length - 1 && (
+                                                                                <div style={{ height: 1, background: '#eee', marginTop: 6 }} />
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Fallback when nothing selected */}
+                                                        {(!company && individualItems.length === 0) && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Selected</span>
+                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>-</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+
+                                        {/* Matter Details Card */}
+                                        <div style={{
+                                            border: '1px solid #e1e5ea',
+                                            borderRadius: 8,
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            padding: 14
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                                <i className="ms-Icon ms-Icon--OpenFolderHorizontal" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Matter Details</span>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Area of Work</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{areaOfWork || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Practice Area</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{practiceArea || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Description</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12, maxWidth: '55%', textAlign: 'right', lineHeight: '1.3' }}>
+                                                        {description ? (description.length > 50 ? `${description.substring(0, 50)}...` : description) : '-'}
+                                                    </span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Dispute Value</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{disputeValue || '-'}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* Matter Details Section */}
-                                    <div style={{ marginBottom: 24 }}>
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 8, 
-                                            marginBottom: 12,
-                                            paddingBottom: 8,
-                                            borderBottom: '1px solid #f0f0f0'
+                                        {/* Team & Management Card */}
+                                        <div style={{
+                                            border: '1px solid #e1e5ea',
+                                            borderRadius: 8,
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            padding: 14
                                         }}>
-                                            <i className="ms-Icon ms-Icon--OpenFolderHorizontal" style={{ fontSize: 14, color: '#3690CE' }} />
-                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Matter Details</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                                <i className="ms-Icon ms-Icon--ContactCard" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Team & Management</span>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Opening Date</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{selectedDate ? selectedDate.toLocaleDateString('en-GB') : '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Solicitor</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{teamMember || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Supervising Partner</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{supervisingPartner || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Originating Solicitor</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{originatingSolicitor || '-'}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Area of Work:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{areaOfWork || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Practice Area:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{practiceArea || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Description:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right', lineHeight: '1.4' }}>
-                                                    {description ? (description.length > 50 ? `${description.substring(0, 50)}...` : description) : '-'}
-                                                </span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Dispute Value:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{disputeValue || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Budget Required:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{budgetRequired}</span>
-                                            </div>
-                                            {budgetRequired === 'Yes' && (
-                                                <>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ color: '#666', fontSize: 13 }}>Budget Amount:</span>
-                                                        <span style={{ fontWeight: 500, fontSize: 13 }}>{budgetAmount ? `£${budgetAmount}` : '-'}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ color: '#666', fontSize: 13 }}>Notify Threshold:</span>
-                                                        <span style={{ fontWeight: 500, fontSize: 13 }}>{budgetThreshold ? `${budgetThreshold}%` : '-'}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                        <span style={{ color: '#666', fontSize: 13 }}>Notify Users:</span>
-                                                        <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{budgetNotifyUsers || '-'}</span>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
 
-                                    {/* Team & Management Section */}
-                                    <div style={{ marginBottom: 24 }}>
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 8, 
-                                            marginBottom: 12,
-                                            paddingBottom: 8,
-                                            borderBottom: '1px solid #f0f0f0'
+                                        {/* Additional Details Card */}
+                                        <div style={{
+                                            border: '1px solid #e1e5ea',
+                                            borderRadius: 8,
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            padding: 14
                                         }}>
-                                            <i className="ms-Icon ms-Icon--ContactCard" style={{ fontSize: 14, color: '#3690CE' }} />
-                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Team & Management</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                                <i className="ms-Icon ms-Icon--Info" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Additional Details</span>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Source</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>
+                                                        {source}{source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
+                                                    </span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Folder Structure</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{folderStructure || '-'}</span>
+                                                </div>
+                                                {budgetRequired === 'Yes' && (
+                                                    <>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Budget Amount</span>
+                                                            <span style={{ fontWeight: 600, fontSize: 12 }}>{budgetAmount ? `£${budgetAmount}` : '-'}</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Notify Threshold</span>
+                                                            <span style={{ fontWeight: 600, fontSize: 12 }}>{budgetThreshold ? `${budgetThreshold}%` : '-'}</span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Date:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{selectedDate ? selectedDate.toLocaleDateString() : '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Solicitor:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{teamMember || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Supervising Partner:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{supervisingPartner || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Originating Solicitor:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{originatingSolicitor || '-'}</span>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    {/* Additional Information Section */}
-                                    <div style={{ marginBottom: 16 }}>
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 8, 
-                                            marginBottom: 12,
-                                            paddingBottom: 8,
-                                            borderBottom: '1px solid #f0f0f0'
+                                        {/* Opponent Details Card */}
+                                        <div style={{
+                                            border: '1px solid #e1e5ea',
+                                            borderRadius: 8,
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            padding: 14
                                         }}>
-                                            <i className="ms-Icon ms-Icon--Info" style={{ fontSize: 14, color: '#3690CE' }} />
-                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Additional Details</span>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Source:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>
-                                                    {source}{source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
-                                                </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                                <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Opponent Details</span>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Folder Structure:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{folderStructure || '-'}</span>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Company Name</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentCompanyName || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Title</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentTitle || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Name</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{`${opponentFirst || ''} ${opponentLast || ''}`.trim() || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Email</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentEmail || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Phone</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentPhone || '-'}</span>
+                                                </div>
+                                                {/* Compressed address display */}
+                                                {(opponentHouseNumber || opponentStreet || opponentCity || opponentCounty || opponentPostcode || opponentCountry) && (
+                                                    <>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
+                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
+                                                                {[opponentHouseNumber, opponentStreet].filter(Boolean).join(' ')}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
+                                                                {[opponentCity, opponentCounty].filter(Boolean).join(', ')}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
+                                                                {[opponentPostcode, opponentCountry].filter(Boolean).join(' ')}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* Opponent Details Section */}
-                                    <div style={{ marginBottom: 16 }}>
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 8, 
-                                            marginBottom: 12,
-                                            paddingBottom: 8,
-                                            borderBottom: '1px solid #f0f0f0'
+                                        {/* Opponent Solicitor Details Card */}
+                                        <div style={{
+                                            border: '1px solid #e1e5ea',
+                                            borderRadius: 8,
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            padding: 14
                                         }}>
-                                            <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 14, color: '#3690CE' }} />
-                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Opponent Details</span>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, padding: '0 0 8px 22px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Company Name:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCompanyName || '-'}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                                <i className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Opponent Solicitor</span>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Company Number:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCompanyNumber || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Has Company:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentHasCompany ? 'Yes' : 'No'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Title:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentTitle || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>First Name:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentFirst || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Last Name:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentLast || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Email:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentEmail || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Phone:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPhone || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>House/Building:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentHouseNumber || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Street:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentStreet || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>City:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCity || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>County:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCounty || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Postcode:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPostcode || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Country:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCountry || '-'}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* ...removed duplicate Value/Dispute Value section... */}
-
-                                    {/* Opponent Solicitor Details Section */}
-                                    <div style={{ marginBottom: 16 }}>
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 8, 
-                                            marginBottom: 12,
-                                            paddingBottom: 8,
-                                            borderBottom: '1px solid #f0f0f0'
-                                        }}>
-                                            <i className="ms-Icon ms-Icon--Legal" style={{ fontSize: 14, color: '#3690CE' }} />
-                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Opponent Solicitor Details</span>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Company Name:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentSolicitorCompany || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Company Number:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCompanyNumber || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Title:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorTitle || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>First Name:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorFirst || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Last Name:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorLast || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Email:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentSolicitorEmail || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Phone:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPhone || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>House/Building:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorHouseNumber || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Street:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorStreet || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>City:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCity || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>County:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCounty || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Postcode:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPostcode || '-'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Country:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCountry || '-'}</span>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Company Name</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentSolicitorCompany || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Name</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{`${solicitorFirst || ''} ${solicitorLast || ''}`.trim() || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Email</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentSolicitorEmail || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Phone</span>
+                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{solicitorPhone || '-'}</span>
+                                                </div>
+                                                {/* Compressed address display */}
+                                                {(solicitorHouseNumber || solicitorStreet || solicitorCity || solicitorCounty || solicitorPostcode || solicitorCountry) && (
+                                                    <>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
+                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
+                                                                {[solicitorHouseNumber, solicitorStreet].filter(Boolean).join(' ')}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
+                                                                {[solicitorCity, solicitorCounty].filter(Boolean).join(', ')}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
+                                                                {[solicitorPostcode, solicitorCountry].filter(Boolean).join(' ')}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -2434,19 +3310,22 @@ const handleClearAll = () => {
                                         <div style={{ 
                                             marginTop: 16,
                                             padding: 12,
-                                            background: '#fef2f2',
-                                            border: '1px solid #D65541',
-                                            borderRadius: 0,
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            border: '1px solid #e1e5ea',
+                                            borderRadius: 8,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 8
+                                            gap: 8,
+                                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)'
                                         }}>
-                                            <i className="ms-Icon ms-Icon--Touch" 
-                                               style={{ fontSize: 14, color: '#D65541' }} />
-                                            <span style={{ fontSize: 13, fontWeight: 500, color: '#D65541' }}>
-                                                Click anywhere in this box to confirm these details are accurate
+                                            <i className="ms-Icon ms-Icon--Info" 
+                                               style={{ fontSize: 14, color: '#3690CE' }} />
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: '#061733' }}>
+                                                Confirmation required before submission
                                             </span>
                                         </div>
+                                    )}
+                                        </>
                                     )}
                                 </div>
 
@@ -2476,6 +3355,96 @@ const handleClearAll = () => {
                                                 <a href={generatedCclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
                                             </div>
                                         )}
+                                    </div>
+                                )}
+
+                                {/* Formal confirmation control (bottom, before submission) */}
+                                {!summaryConfirmed && (
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: 16,
+                                        padding: '16px 20px',
+                                        border: '1px solid #e1e5ea',
+                                        borderRadius: 8,
+                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                        marginTop: 20,
+                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.04)'
+                                    }}>
+                                        <label style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 12,
+                                            cursor: 'pointer',
+                                            flex: 1
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={confirmAcknowledge}
+                                                onChange={(e) => setConfirmAcknowledge(e.currentTarget.checked)}
+                                                style={{ 
+                                                    width: 18, 
+                                                    height: 18,
+                                                    cursor: 'pointer',
+                                                    accentColor: '#D65541'
+                                                }}
+                                            />
+                                            <span style={{
+                                                fontSize: 14,
+                                                color: '#374151',
+                                                lineHeight: 1.4
+                                            }}>
+                                                I confirm that all client and matter details shown above are accurate and complete
+                                                {instructionRef && (
+                                                    <span style={{ 
+                                                        marginLeft: 6,
+                                                        padding: '1px 6px',
+                                                        background: '#f1f5f9',
+                                                        color: '#475569',
+                                                        borderRadius: 4,
+                                                        fontSize: 12,
+                                                        fontWeight: 500
+                                                    }}>
+                                                        {instructionRef}
+                                                    </span>
+                                                )}.
+                                            </span>
+                                        </label>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => confirmAcknowledge && setSummaryConfirmed(true)}
+                                            disabled={!confirmAcknowledge}
+                                            style={{
+                                                background: confirmAcknowledge 
+                                                    ? 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)' 
+                                                    : '#f3f4f6',
+                                                color: confirmAcknowledge ? '#fff' : '#9ca3af',
+                                                border: confirmAcknowledge ? '1px solid #B83C2B' : '1px solid #d1d5db',
+                                                borderRadius: 6,
+                                                padding: '10px 16px',
+                                                fontSize: 13,
+                                                fontWeight: 600,
+                                                cursor: confirmAcknowledge ? 'pointer' : 'not-allowed',
+                                                transition: 'all 0.15s ease',
+                                                minWidth: 110
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (confirmAcknowledge) {
+                                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                                    e.currentTarget.style.boxShadow = '0 3px 8px rgba(214, 85, 65, 0.2)';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (confirmAcknowledge) {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                }
+                                            }}
+                                        >
+                                            Confirm
+                                        </button>
                                     </div>
                                 )}
 

@@ -3,6 +3,8 @@ import activeIcon from '../../../assets/activecampaign.svg';
 import clioIcon from '../../../assets/clio.svg';
 import asanaIcon from '../../../assets/asana.svg';
 import cclIcon from '../../../assets/ccl.svg';
+import netdocsIcon from '../../../assets/netdocuments.svg';
+import helixBlueMark from '../../../assets/dark blue mark.svg';
 
 // locally cached values so refresh endpoints can be called in sequence
 let acToken = '';
@@ -43,12 +45,96 @@ export interface ProcessingAction {
     ) => Promise<string | ProcessingResult>;
 }
 
+// Lightweight operation observer for admin/local dev diagnostics
+export type OperationObserverEvent = {
+    index: number; // current action index set by caller
+    label: string;
+    phase: 'sent' | 'response' | 'success' | 'error';
+    url?: string;
+    method?: string;
+    status?: number;
+    payloadSummary?: string;
+    responseSummary?: string;
+};
+
+let operationObserver: ((e: OperationObserverEvent) => void) | null = null;
+export function registerOperationObserver(cb: ((e: OperationObserverEvent) => void) | null) {
+    operationObserver = cb;
+}
+
+// The current action index is set by the caller (simulateProcessing)
+let currentActionIndex = -1;
+export function setCurrentActionIndex(i: number) {
+    currentActionIndex = i;
+}
+
+// Helper to keep requests observable without leaking sensitive bodies by default
+async function instrumentedFetch(
+    label: string,
+    url: string,
+    options: RequestInit = {},
+    payloadForSummary?: unknown
+): Promise<Response> {
+    try {
+        if (operationObserver) {
+            const method = (options.method || 'GET').toString().toUpperCase();
+            const payloadSummary = payloadForSummary ? summarize(payloadForSummary) : undefined;
+            operationObserver({ index: currentActionIndex, label, phase: 'sent', url, method, payloadSummary });
+        }
+    } catch {}
+    const resp = await fetch(url, options);
+    try {
+        if (operationObserver) {
+            operationObserver({ index: currentActionIndex, label, phase: 'response', url, method: (options.method || 'GET').toString().toUpperCase(), status: resp.status });
+        }
+    } catch {}
+    if (!resp.ok) {
+        // On failure, include payload + response snippet
+        let respText = '';
+        try { respText = await resp.clone().text(); } catch {}
+        try {
+            if (operationObserver) {
+                operationObserver({
+                    index: currentActionIndex,
+                    label,
+                    phase: 'error',
+                    url,
+                    method: (options.method || 'GET').toString().toUpperCase(),
+                    status: resp.status,
+                    payloadSummary: payloadForSummary ? summarize(payloadForSummary) : undefined,
+                    responseSummary: truncate(respText, 400)
+                });
+            }
+        } catch {}
+    } else {
+        try {
+            if (operationObserver) {
+                operationObserver({ index: currentActionIndex, label, phase: 'success', url, method: (options.method || 'GET').toString().toUpperCase(), status: resp.status });
+            }
+        } catch {}
+    }
+    return resp;
+}
+
+function summarize(obj: unknown): string {
+    try {
+        return truncate(JSON.stringify(obj, (_k, v) => (typeof v === 'string' && v.length > 200 ? v.slice(0, 200) + '…' : v), 2), 600);
+    } catch {
+        return '[unserializable payload]';
+    }
+}
+
+function truncate(text: string, max = 600): string {
+    if (!text) return '';
+    return text.length > max ? text.slice(0, max) + '…' : text;
+}
+
 export const processingActions: ProcessingAction[] = [
     {
         label: 'Retrieve ActiveCampaign Token',
         icon: activeIcon,
         run: async () => {
-            const res = await fetch('/api/keys/ac-automations-apitoken');
+            const res = await instrumentedFetch('Retrieve ActiveCampaign Token', '/api/keys/ac-automations-apitoken');
             if (!res.ok) throw new Error('Failed to fetch secret');
             const data = await res.json();
             acToken = data.value;
@@ -59,7 +145,7 @@ export const processingActions: ProcessingAction[] = [
         label: 'Refresh ActiveCampaign Token',
         icon: activeIcon,
         run: async () => {
-            const resp = await fetch('/api/refresh/activecampaign', { method: 'POST' });
+            const resp = await instrumentedFetch('Refresh ActiveCampaign Token', '/api/refresh/activecampaign', { method: 'POST' });
             if (!resp.ok) throw new Error('ActiveCampaign token refresh failed');
             return 'Token refreshed';
         }
@@ -68,7 +154,7 @@ export const processingActions: ProcessingAction[] = [
         label: 'Retrieve Clio Client ID',
         icon: clioIcon,
         run: async (_form, initials) => {
-            const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientid`);
+            const res = await instrumentedFetch('Retrieve Clio Client ID', `/api/keys/${initials.toLowerCase()}-clio-v1-clientid`);
             if (!res.ok) throw new Error('Failed to fetch secret');
             const data = await res.json();
             clioClientId = data.value;
@@ -79,7 +165,7 @@ export const processingActions: ProcessingAction[] = [
         label: 'Retrieve Clio Client Secret',
         icon: clioIcon,
         run: async (_form, initials) => {
-            const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientsecret`);
+            const res = await instrumentedFetch('Retrieve Clio Client Secret', `/api/keys/${initials.toLowerCase()}-clio-v1-clientsecret`);
             if (!res.ok) throw new Error('Failed to fetch secret');
             const data = await res.json();
             clioClientSecret = data.value;
@@ -90,7 +176,7 @@ export const processingActions: ProcessingAction[] = [
         label: 'Retrieve Clio Refresh Token',
         icon: clioIcon,
         run: async (_form, initials) => {
-            const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-refreshtoken`);
+            const res = await instrumentedFetch('Retrieve Clio Refresh Token', `/api/keys/${initials.toLowerCase()}-clio-v1-refreshtoken`);
             if (!res.ok) throw new Error('Failed to fetch secret');
             const data = await res.json();
             clioRefreshToken = data.value;
@@ -101,7 +187,7 @@ export const processingActions: ProcessingAction[] = [
         label: 'Refresh Clio Access Token',
         icon: clioIcon,
         run: async (_form, initials) => {
-            const resp = await fetch(`/api/refresh/clio/${initials.toLowerCase()}`, {
+            const resp = await instrumentedFetch('Refresh Clio Access Token', `/api/refresh/clio/${initials.toLowerCase()}`, {
                 method: 'POST'
             });
             if (!resp.ok) throw new Error('Clio token refresh failed');
@@ -142,11 +228,12 @@ export const processingActions: ProcessingAction[] = [
         label: 'Refresh Asana Access Token',
         icon: asanaIcon,
         run: async () => {
-            const resp = await fetch('/api/refresh/asana', {
+            const payload = { clientId: asanaClientId, clientSecret: asanaSecret, refreshToken: asanaRefreshToken };
+            const resp = await instrumentedFetch('Refresh Asana Access Token', '/api/refresh/asana', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId: asanaClientId, clientSecret: asanaSecret, refreshToken: asanaRefreshToken })
-            });
+                body: JSON.stringify(payload)
+            }, payload);
             if (!resp.ok) throw new Error('Asana token refresh failed');
             return 'Access token refreshed';
         }
@@ -161,11 +248,11 @@ export const processingActions: ProcessingAction[] = [
                 createdBy: userInitials
             };
 
-            const resp = await fetch('/api/opponents', {
+            const resp = await instrumentedFetch('Opponent Details Updated', '/api/opponents', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            });
+            }, payload);
 
             if (!resp.ok) throw new Error('Failed to update opponent details');
             const data = await resp.json();
@@ -199,11 +286,11 @@ export const processingActions: ProcessingAction[] = [
                 // MatterID is excluded
             };
 
-            const resp = await fetch('/api/matter-requests', {
+            const resp = await instrumentedFetch('Matter Request Created', '/api/matter-requests', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            });
+            }, payload);
 
             if (!resp.ok) throw new Error('Failed to record matter request');
             const data = await resp.json();
@@ -211,17 +298,18 @@ export const processingActions: ProcessingAction[] = [
         }
     },
 
-    { label: 'Contact Created/Updated', run: async () => 'Done' },
-    { label: 'Databases Updated', run: async () => 'Done' },
+    { label: 'Contact Created/Updated', icon: activeIcon, run: async () => 'Done' },
+    { label: 'Databases Updated', icon: helixBlueMark, run: async () => 'Done' },
     {
         label: 'Clio Contact Created/Updated',
         icon: clioIcon,
         run: async (formData, userInitials) => {
-            const resp = await fetch('/api/clio-contacts', {
+            const payload = { formData, initials: userInitials };
+            const resp = await instrumentedFetch('Clio Contact Created/Updated', '/api/clio-contacts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ formData, initials: userInitials })
-            });
+                body: JSON.stringify(payload)
+            }, payload);
             if (!resp.ok) throw new Error('Failed to sync Clio contact');
             const data = await resp.json();
             if (!data.ok) throw new Error(data.error || 'Failed to sync Clio contact');
@@ -255,17 +343,18 @@ export const processingActions: ProcessingAction[] = [
             return `Clio contacts synced: ${names.join(', ')} (${emptyTotal} empty fields)`;
         }
     },
-    { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-    { label: 'Databases Updated', run: async () => 'Done' },
+    { label: 'NetDocument Workspace Triggered', icon: netdocsIcon, run: async () => 'Done' },
+    { label: 'Databases Updated', icon: helixBlueMark, run: async () => 'Done' },
     {
         label: 'Clio Matter Opened',
         icon: clioIcon,
         run: async (formData, userInitials) => {
-            const resp = await fetch('/api/clio-matters', {
+            const payload = { formData, initials: userInitials, contactIds: clioContactIds, companyId: clioCompanyId };
+            const resp = await instrumentedFetch('Clio Matter Opened', '/api/clio-matters', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ formData, initials: userInitials, contactIds: clioContactIds, companyId: clioCompanyId })
-            });
+                body: JSON.stringify(payload)
+            }, payload);
             if (!resp.ok) throw new Error('Failed to create Clio matter');
             const data = await resp.json();
             if (!data.ok) throw new Error(data.error || 'Failed to create Clio matter');
@@ -282,11 +371,12 @@ export const generateDraftCclAction: ProcessingAction = {
     icon: cclIcon,
     run: async (formData, _initials) => {
         const id = matterId || formData.matter_details.matter_ref;
-        const resp = await fetch('/api/ccl', {
+        const payload = { matterId: id, draftJson: formData };
+        const resp = await instrumentedFetch('Generate Draft CCL', '/api/ccl', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ matterId: id, draftJson: formData })
-        });
+            body: JSON.stringify(payload)
+        }, payload);
         if (!resp.ok) throw new Error('CCL generation failed');
         const { url } = await resp.json();
         return { message: 'Draft CCL created', url };

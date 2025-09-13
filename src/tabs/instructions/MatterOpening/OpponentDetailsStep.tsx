@@ -2,12 +2,22 @@
 import React from "react"; // invisible change
 // invisible change 2.2
 import { Stack, TextField, Dropdown, IDropdownOption, Checkbox, PrimaryButton, Icon, FontIcon } from "@fluentui/react";
+import type { ICheckboxStyles } from "@fluentui/react";
 import { sharedPrimaryButtonStyles } from "../../../app/styles/ButtonStyles";
 import "../../../app/styles/MultiSelect.css";
 import BubbleTextField from "../../../app/styles/BubbleTextField";
 import { useTheme } from "../../../app/functionality/ThemeContext";
 import { countries } from "../../../data/referenceData";
 import ModernMultiSelect from './ModernMultiSelect';
+import {
+  isPlaceholderValue,
+  loadDataSheetFromStorage,
+  saveDataSheetToStorage,
+  markFieldAsPlaceholder,
+  markFieldAsRealData,
+  OpponentDataSheet
+} from "../../../utils/opponentDataTracker";
+import { colours } from "../../../app/styles/colours";
 
 // Local persistence helper mirroring FlatMatterOpening behaviour
 function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -110,33 +120,103 @@ const titleOptions: IDropdownOption[] = [
   { key: "Other", text: "Other" },
 ];
 
-const containerStyle: React.CSSProperties = { /* invisible change */
-  background: "#F4F4F6",
-  border: "none",
-  borderRadius: 0,
-  boxShadow: "0 2px 8px rgba(54, 144, 206, 0.07)",
-  padding: "18px 18px 12px 18px",
-  marginBottom: 14,
+const containerStyle: React.CSSProperties = { /* compact, consistent card */
+  background: "#F8FAFC",
+  border: "1px solid #e3e8ef",
+  borderRadius: 8,
+  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)",
+  padding: "14px 14px 10px 14px",
+  marginBottom: 12,
   marginTop: 4,
   transition: "box-shadow 0.2s, border-color 0.2s"
 };
 
 const answeredFieldStyle = {
-  background: "#3690CE22",
+  background: "rgba(54, 144, 206, 0.10)",
   color: "#061733",
   border: "none",
   borderRadius: 0,
   boxShadow: "none",
   transition: "background 0.2s, color 0.2s, border 0.2s"
 };
+const placeholderFieldStyle = {
+  background: "#fafbfc",
+  color: "#9ca3af",
+  border: "none",
+  borderRadius: 0,
+  boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+  transition: "background 0.2s, color 0.2s, border 0.2s"
+};
 const unansweredFieldStyle = {
-  background: "#fff",
+  background: "#FFFFFF",
   color: "#061733",
   border: "none",
   borderRadius: 0,
   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
   transition: "background 0.2s, color 0.2s, border 0.2s"
 };
+
+// Inline validators (touched-gated)
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phoneAllowed = /[0-9+()\-\s]/g;
+const companyNumberRegex = /^(?:[A-Z]{2}\d{6}|\d{8})$/i; // Simplified UK formats
+
+function getEmailErrorMessage(value: string, touched: boolean): string {
+  if (!touched || !value) return "";
+  return emailRegex.test(value) ? "" : "Enter a valid email";
+}
+
+function getPhoneErrorMessage(value: string, touched: boolean): string {
+  if (!touched || !value) return "";
+  const digits = (value.match(/\d/g) || []).length;
+  const validChars = value.replace(phoneAllowed, "");
+  if (validChars.length > 0) return "Phone contains invalid characters";
+  return digits >= 7 ? "" : "Enter a valid phone number";
+}
+
+function getCompanyNumberErrorMessage(value: string, touched: boolean): string {
+  if (!touched || !value) return "";
+  return companyNumberRegex.test(value.trim()) ? "" : "Enter a valid UK company number";
+}
+
+// UK address parser (lightweight heuristic)
+const UK_POSTCODE = /\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b/i;
+function parseUKAddress(text: string) {
+  const lines = text
+    .split(/\n|,/) // allow comma or newline separated
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  let postcode = "";
+  // Find postcode in any line
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = lines[i].match(UK_POSTCODE);
+    if (m) {
+      postcode = m[1].toUpperCase().replace(/\s+/, " ");
+      lines[i] = lines[i].replace(UK_POSTCODE, "").trim();
+      if (!lines[i]) lines.splice(i, 1);
+      break;
+    }
+  }
+
+  const first = lines[0] || "";
+  let houseNumber = "";
+  let street = "";
+  const firstParts = first.split(/\s+/);
+  if (firstParts.length && /^\d+[A-Z]?$/i.test(firstParts[0])) {
+    houseNumber = firstParts[0];
+    street = firstParts.slice(1).join(" ");
+  } else {
+    street = first;
+  }
+
+  const tail = lines.slice(1);
+  let city = tail.length ? tail[0] : "";
+  let county = tail.length > 1 ? tail[1] : "";
+
+  // Fallback: if only one tail element, treat it as city
+  return { houseNumber, street, city, county, postcode };
+}
 // Pressed state mimics .navigatorPivot .ms-Pivot-link:active from NavigatorPivot.css
 const pressedFieldStyle = {
   background: "rgba(0, 0, 0, 0.05)",
@@ -149,7 +229,7 @@ const pressedFieldStyle = {
 };
 
 const addressFields = [
-  { id: "houseNumber", placeholder: "House/Building Number" },
+  { id: "houseNumber", placeholder: "House/Building Number or Name" },
   { id: "street", placeholder: "Street" },
   { id: "city", placeholder: "City/Town" },
   { id: "county", placeholder: "County" },
@@ -158,32 +238,32 @@ const addressFields = [
 ];
 
 const dummyData = {
-  opponentTitle: "AI",
-  opponentFirst: "A. Placeholder",
-  opponentLast: "Entity",
-  opponentEmail: "ae@hlx.place",
-  opponentPhone: "00000000000",
-  opponentHouseNumber: "0",
-  opponentStreet: "Trace Null Row",
-  opponentCity: "Lowlight",
-  opponentCounty: "Eidolonshire",
-  opponentPostcode: "NX01 0AE",
+  opponentTitle: "Mr",
+  opponentFirst: "Invent",
+  opponentLast: "Name",
+  opponentEmail: "opponent@helix-law.com",
+  opponentPhone: "0345 314 2044",
+  opponentHouseNumber: "Second Floor",
+  opponentStreet: "Britannia House, 21 Station Street",
+  opponentCity: "Brighton",
+  opponentCounty: "East Sussex",
+  opponentPostcode: "BN1 4DE",
   opponentCountry: "United Kingdom",
   opponentHasCompany: true,
-  opponentCompanyName: "Phantom Entity Ltd",
-  opponentCompanyNumber: "AE001",
-  opponentSolicitorCompany: "Null Proxy LLP",
-  solicitorCompanyNumber: "AE-LAW-00X",
-  solicitorTitle: "AI",
-  solicitorFirst: "A. Placeholder",
-  solicitorLast: "Solicitor",
-  opponentSolicitorEmail: "relay@hlx.place",
-  solicitorPhone: "00000000001",
-  solicitorHouseNumber: "1",
-  solicitorStreet: "Obscura Street",
-  solicitorCity: "Lowlight",
-  solicitorCounty: "Eidolonshire",
-  solicitorPostcode: "NX01 0AE",
+  opponentCompanyName: "Helix Law Ltd",
+  opponentCompanyNumber: "07845461",
+  opponentSolicitorCompany: "Helix Law Ltd",
+  solicitorCompanyNumber: "07845461",
+  solicitorTitle: "Mr",
+  solicitorFirst: "Invent",
+  solicitorLast: "Solicitor Name",
+  opponentSolicitorEmail: "opponentsolicitor@helix-law.com",
+  solicitorPhone: "0345 314 2044",
+  solicitorHouseNumber: "Second Floor",
+  solicitorStreet: "Britannia House, 21 Station Street",
+  solicitorCity: "Brighton",
+  solicitorCounty: "East Sussex",
+  solicitorPostcode: "BN1 4DE",
   solicitorCountry: "United Kingdom"
 };
 
@@ -265,11 +345,22 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   const [localOpponentHasCompany, setLocalOpponentHasCompany] = React.useState(false);
   const [localOpponentCompanyName, setLocalOpponentCompanyName] = React.useState("");
   const [localOpponentCompanyNumber, setLocalOpponentCompanyNumber] = React.useState("");
+  // Opponent company address (for Individual opponents too)
+  const [localOpponentCompanyHouseNumber, setLocalOpponentCompanyHouseNumber] = useDraftedState<string>('opponentCompanyHouseNumber', "");
+  const [localOpponentCompanyStreet, setLocalOpponentCompanyStreet] = useDraftedState<string>('opponentCompanyStreet', "");
+  const [localOpponentCompanyCity, setLocalOpponentCompanyCity] = useDraftedState<string>('opponentCompanyCity', "");
+  const [localOpponentCompanyCounty, setLocalOpponentCompanyCounty] = useDraftedState<string>('opponentCompanyCounty', "");
+  const [localOpponentCompanyPostcode, setLocalOpponentCompanyPostcode] = useDraftedState<string>('opponentCompanyPostcode', "");
+  const [localOpponentCompanyCountry, setLocalOpponentCompanyCountry] = useDraftedState<string>('opponentCompanyCountry', "");
   const [localSolicitorTitle, setLocalSolicitorTitle] = React.useState("");
   const [localSolicitorFirst, setLocalSolicitorFirst] = React.useState("");
   const [localSolicitorLast, setLocalSolicitorLast] = React.useState("");
   const [localSolicitorPhone, setLocalSolicitorPhone] = React.useState("");
   const [localSolicitorCompanyNumber, setLocalSolicitorCompanyNumber] = React.useState("");
+
+  // Add local state for email fields if not provided by parent
+  const [localOpponentEmail, setLocalOpponentEmail] = useDraftedState<string>('opponentEmail', "");
+  const [localOpponentSolicitorEmail, setLocalOpponentSolicitorEmail] = useDraftedState<string>('opponentSolicitorEmail', "");
 
   // Add local state for address fields if not provided by parent
   const [localOpponentHouseNumber, setLocalOpponentHouseNumber] = useDraftedState<string>('opponentHouseNumber', "");
@@ -293,6 +384,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   const _setOpponentFirst = setOpponentFirst ?? setLocalOpponentFirst;
   const _opponentLast = opponentLast ?? localOpponentLast;
   const _setOpponentLast = setOpponentLast ?? setLocalOpponentLast;
+  const _opponentEmail = opponentEmail ?? localOpponentEmail;
+  const _setOpponentEmail = setOpponentEmail ?? setLocalOpponentEmail;
   const _opponentPhone = opponentPhone ?? localOpponentPhone;
   const _setOpponentPhone = setOpponentPhone ?? setLocalOpponentPhone;
   const _opponentHouseNumber = opponentHouseNumber ?? localOpponentHouseNumber;
@@ -313,6 +406,18 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   const _setOpponentCompanyName = setOpponentCompanyName ?? setLocalOpponentCompanyName;
   const _opponentCompanyNumber = opponentCompanyNumber ?? localOpponentCompanyNumber;
   const _setOpponentCompanyNumber = setOpponentCompanyNumber ?? setLocalOpponentCompanyNumber;
+  const _opponentCompanyHouseNumber = localOpponentCompanyHouseNumber;
+  const _setOpponentCompanyHouseNumber = setLocalOpponentCompanyHouseNumber;
+  const _opponentCompanyStreet = localOpponentCompanyStreet;
+  const _setOpponentCompanyStreet = setLocalOpponentCompanyStreet;
+  const _opponentCompanyCity = localOpponentCompanyCity;
+  const _setOpponentCompanyCity = setLocalOpponentCompanyCity;
+  const _opponentCompanyCounty = localOpponentCompanyCounty;
+  const _setOpponentCompanyCounty = setLocalOpponentCompanyCounty;
+  const _opponentCompanyPostcode = localOpponentCompanyPostcode;
+  const _setOpponentCompanyPostcode = setLocalOpponentCompanyPostcode;
+  const _opponentCompanyCountry = localOpponentCompanyCountry;
+  const _setOpponentCompanyCountry = setLocalOpponentCompanyCountry;
   const _solicitorTitle = solicitorTitle ?? localSolicitorTitle;
   const _setSolicitorTitle = setSolicitorTitle ?? setLocalSolicitorTitle;
   const _solicitorFirst = solicitorFirst ?? localSolicitorFirst;
@@ -335,8 +440,183 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   const _setSolicitorCountry = setSolicitorCountry ?? setLocalSolicitorCountry;
   const _solicitorCompanyNumber = solicitorCompanyNumber ?? localSolicitorCompanyNumber;
   const _setSolicitorCompanyNumber = setSolicitorCompanyNumber ?? setLocalSolicitorCompanyNumber;
+  const _opponentSolicitorEmail = opponentSolicitorEmail ?? localOpponentSolicitorEmail;
+  const _setOpponentSolicitorEmail = setOpponentSolicitorEmail ?? setLocalOpponentSolicitorEmail;
 
   const { isDarkMode } = useTheme();
+  // Modern chip-like styles for selector checkboxes
+  const checkboxChipStyles: ICheckboxStyles = React.useMemo(() => {
+    const lightGrad = "linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)";
+    const darkGrad = "linear-gradient(135deg, #1F2937 0%, #111827 100%)";
+  const accent = colours.highlight; // project blue (#3690CE)
+    const baseBorder = isDarkMode ? "#334155" : "#e3e8ef";
+    const shadow = isDarkMode ? "0 4px 6px rgba(0, 0, 0, 0.3)" : "0 4px 6px rgba(0, 0, 0, 0.07)";
+    const hoverShadow = isDarkMode ? "0 6px 10px rgba(0, 0, 0, 0.35)" : "0 6px 12px rgba(0, 0, 0, 0.12)";
+    const textColor = isDarkMode ? "#E5E7EB" : "#061733";
+    return {
+      root: {
+        selectors: {
+          ".ms-Checkbox-label": {
+            background: "transparent",
+            border: "none",
+            borderRadius: 0,
+            padding: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            boxShadow: "none",
+            transition: "color 120ms ease"
+          },
+          ":hover .ms-Checkbox-label": {},
+          "&:hover .ms-Checkbox-checkbox": {
+            borderColor: accent,
+            background: isDarkMode ? "#0B1220" : "#FFFFFF"
+          },
+          "&:hover .ms-Checkbox-text": {
+            color: textColor
+          },
+          "&.is-checked .ms-Checkbox-label": {},
+          "&.is-checked:hover .ms-Checkbox-label": {},
+          "&.is-checked .ms-Checkbox-checkbox": {
+            background: accent,
+            borderColor: accent
+          },
+          "&.is-checked:hover .ms-Checkbox-checkbox": {
+            background: accent,
+            borderColor: accent
+          },
+          "&.is-checked .ms-Checkbox-checkmark": {
+            color: "#ffffff"
+          },
+          "&.is-checked:hover .ms-Checkbox-checkmark": {
+            color: "#ffffff"
+          },
+          "&.is-checked .ms-Checkbox-text": {
+            color: isDarkMode ? "#E6ECFF" : accent
+          },
+          "&.is-checked:hover .ms-Checkbox-text": {
+            color: isDarkMode ? "#E6ECFF" : accent
+          },
+          ":focus-within .ms-Checkbox-label": {}
+        }
+      },
+      checkbox: {
+        borderRadius: 3,
+        borderColor: baseBorder,
+        backgroundColor: isDarkMode ? "#0B1220" : "#FFFFFF"
+      },
+      checkmark: {
+        color: isDarkMode ? "#D1D5DB" : "#1F2937"
+      },
+      text: {
+        color: textColor,
+        fontWeight: 500
+      }
+    };
+  }, [isDarkMode]);
+
+  // Unified pill container styling (encapsulates header, hint, and fields)
+  const chipContainer = (checked: boolean): React.CSSProperties => {
+    const lightGrad = "linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)";
+    const darkGrad = "linear-gradient(135deg, #1F2937 0%, #111827 100%)";
+    const accent = colours.highlight;
+    const baseBorder = isDarkMode ? "#334155" : "#e3e8ef";
+    const shadow = isDarkMode ? "0 4px 6px rgba(0, 0, 0, 0.3)" : "0 4px 6px rgba(0, 0, 0, 0.07)";
+    return {
+      background: checked
+        ? (isDarkMode ? `linear-gradient(135deg, ${accent}26 0%, ${accent}1f 100%)` : "rgba(54, 144, 206, 0.10)")
+        : (isDarkMode ? darkGrad : lightGrad),
+      border: `1px solid ${checked ? (isDarkMode ? `${accent}66` : "#c9dfef") : baseBorder}`,
+      borderRadius: 8,
+      boxShadow: shadow,
+      padding: "8px 10px",
+      margin: "4px 0 8px 0",
+      transition: "background 120ms ease, border-color 120ms ease, box-shadow 120ms ease"
+    };
+  };
+
+  // Section visibility selection (persisted)
+  type SectionKey = 'name' | 'contact' | 'address' | 'company';
+  type PartyKey = 'opponent' | 'solicitor';
+  const [visibleSections, setVisibleSections] = useDraftedState<{
+    opponent: Record<SectionKey, boolean>;
+    solicitor: Record<SectionKey, boolean>;
+  }>('visibleSections', {
+    opponent: { name: false, contact: false, address: false, company: false },
+    solicitor: { name: false, contact: false, address: false, company: false }
+  });
+  const toggleSection = (party: PartyKey, section: SectionKey) => {
+    setVisibleSections(prev => ({
+      ...prev,
+      [party]: { ...prev[party], [section]: !prev[party][section] }
+    }));
+  };
+
+  // On load, screen prefilled data against static indicators/sheet and mark placeholders
+  React.useEffect(() => {
+    try {
+      let sheet: OpponentDataSheet = loadDataSheetFromStorage();
+      const entries: Array<[string, string]> = [
+        ['opponentTitle', _opponentTitle],
+        ['opponentFirst', _opponentFirst],
+        ['opponentLast', _opponentLast],
+        ['opponentEmail', _opponentEmail],
+        ['opponentPhone', _opponentPhone],
+        ['opponentHouseNumber', _opponentHouseNumber],
+        ['opponentStreet', _opponentStreet],
+        ['opponentCity', _opponentCity],
+        ['opponentCounty', _opponentCounty],
+        ['opponentPostcode', _opponentPostcode],
+        ['opponentCountry', _opponentCountry],
+        ['opponentCompanyName', _opponentCompanyName],
+        ['opponentCompanyNumber', _opponentCompanyNumber],
+  ['opponentCompanyHouseNumber', _opponentCompanyHouseNumber],
+  ['opponentCompanyStreet', _opponentCompanyStreet],
+  ['opponentCompanyCity', _opponentCompanyCity],
+  ['opponentCompanyCounty', _opponentCompanyCounty],
+  ['opponentCompanyPostcode', _opponentCompanyPostcode],
+  ['opponentCompanyCountry', _opponentCompanyCountry],
+        ['opponentSolicitorCompany', opponentSolicitorCompany],
+        ['solicitorCompanyNumber', _solicitorCompanyNumber],
+        ['solicitorTitle', _solicitorTitle],
+        ['solicitorFirst', _solicitorFirst],
+        ['solicitorLast', _solicitorLast],
+        ['opponentSolicitorEmail', _opponentSolicitorEmail],
+        ['solicitorPhone', _solicitorPhone],
+        ['solicitorHouseNumber', _solicitorHouseNumber],
+        ['solicitorStreet', _solicitorStreet],
+        ['solicitorCity', _solicitorCity],
+        ['solicitorCounty', _solicitorCounty],
+        ['solicitorPostcode', _solicitorPostcode],
+        ['solicitorCountry', _solicitorCountry]
+      ];
+
+      const newFlags: { [k: string]: boolean } = {};
+      let changed = false;
+      entries.forEach(([key, val]) => {
+        const v = (val ?? '').trim();
+        if (!v) return;
+        const existing = sheet.fields?.[key];
+        // Treat known dummyData values as placeholders when reloading
+        const dummyMatch = (dummyData as Record<string, unknown>)[key] === val;
+        const isPh = existing ? existing.isPlaceholder : (isPlaceholderValue(v) || !!dummyMatch);
+        newFlags[key] = isPh;
+        const nextSheet = isPh
+          ? markFieldAsPlaceholder(sheet, key, v)
+          : markFieldAsRealData(sheet, key, v);
+        if (nextSheet !== sheet) {
+          sheet = nextSheet;
+          changed = true;
+        }
+      });
+      if (Object.keys(newFlags).length) {
+        setPlaceholderFilledFields(prev => ({ ...prev, ...newFlags }));
+      }
+      if (changed) saveDataSheetToStorage(sheet);
+    } catch {}
+    // We only want to screen once on load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Add this function inside the component
   const fillDummyData = () => {
@@ -344,10 +624,10 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
       setOpponentType('Company');
     }
 
-    _setOpponentTitle('AI');
+    _setOpponentTitle(dummyData.opponentTitle);
     _setOpponentFirst(dummyData.opponentFirst);
     _setOpponentLast(dummyData.opponentLast);
-    setOpponentEmail(dummyData.opponentEmail);
+    _setOpponentEmail(dummyData.opponentEmail);
     _setOpponentPhone(dummyData.opponentPhone);
     _setOpponentHouseNumber(dummyData.opponentHouseNumber);
     _setOpponentStreet(dummyData.opponentStreet);
@@ -355,15 +635,23 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
     _setOpponentCounty(dummyData.opponentCounty);
     _setOpponentPostcode(dummyData.opponentPostcode);
     _setOpponentCountry(dummyData.opponentCountry);
+    _setOpponentHasCompany(dummyData.opponentHasCompany);
     _setOpponentCompanyName(dummyData.opponentCompanyName);
     _setOpponentCompanyNumber(dummyData.opponentCompanyNumber);
+  // Use opponent address dummy values for company address as defaults
+  _setOpponentCompanyHouseNumber(dummyData.opponentHouseNumber);
+  _setOpponentCompanyStreet(dummyData.opponentStreet);
+  _setOpponentCompanyCity(dummyData.opponentCity);
+  _setOpponentCompanyCounty(dummyData.opponentCounty);
+  _setOpponentCompanyPostcode(dummyData.opponentPostcode);
+  _setOpponentCompanyCountry(dummyData.opponentCountry);
 
     setOpponentSolicitorCompany(dummyData.opponentSolicitorCompany);
     _setSolicitorCompanyNumber(dummyData.solicitorCompanyNumber);
-    _setSolicitorTitle('AI');
+    _setSolicitorTitle(dummyData.solicitorTitle);
     _setSolicitorFirst(dummyData.solicitorFirst);
     _setSolicitorLast(dummyData.solicitorLast);
-    setOpponentSolicitorEmail(dummyData.opponentSolicitorEmail);
+    _setOpponentSolicitorEmail(dummyData.opponentSolicitorEmail);
     _setSolicitorPhone(dummyData.solicitorPhone);
     _setSolicitorHouseNumber(dummyData.solicitorHouseNumber);
     _setSolicitorStreet(dummyData.solicitorStreet);
@@ -372,7 +660,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
     _setSolicitorPostcode(dummyData.solicitorPostcode);
     _setSolicitorCountry(dummyData.solicitorCountry);
 
-    setTouchedFields(prev => ({
+    // Mark these fields as placeholder-filled (but NOT as touched by user)
+    setPlaceholderFilledFields(prev => ({
       ...prev,
       opponentTitle: true,
       opponentFirst: true,
@@ -387,6 +676,12 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
       opponentCountry: true,
       opponentCompanyName: true,
       opponentCompanyNumber: true,
+  opponentCompanyHouseNumber: true,
+  opponentCompanyStreet: true,
+  opponentCompanyCity: true,
+  opponentCompanyCounty: true,
+  opponentCompanyPostcode: true,
+  opponentCompanyCountry: true,
       opponentSolicitorCompany: true,
       solicitorCompanyNumber: true,
       solicitorTitle: true,
@@ -403,12 +698,41 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
     }));
   };
 
+  const copyCompanyAddressToPersonal = () => {
+    _setOpponentHouseNumber(_opponentCompanyHouseNumber);
+    _setOpponentStreet(_opponentCompanyStreet);
+    _setOpponentCity(_opponentCompanyCity);
+    _setOpponentCounty(_opponentCompanyCounty);
+    _setOpponentPostcode(_opponentCompanyPostcode);
+    _setOpponentCountry(_opponentCompanyCountry);
+    setTouchedFields(prev => ({
+      ...prev,
+      opponentHouseNumber: true,
+      opponentStreet: true,
+      opponentCity: true,
+      opponentCounty: true,
+      opponentPostcode: true,
+      opponentCountry: true,
+    }));
+    // Ensure style updates from placeholder grey to answered blue
+    setPlaceholderFilledFields(prev => ({
+      ...prev,
+      opponentHouseNumber: false,
+      opponentStreet: false,
+      opponentCity: false,
+      opponentCounty: false,
+      opponentPostcode: false,
+      opponentCountry: false,
+    }));
+  };
+
   // Persisted state for preview and opponent choices
   const [showSummary, setShowSummary] = useDraftedState<boolean>('showSummary', false);
   // Toggle: does user want to enter opponent details now?
   const [enterOpponentNow, setEnterOpponentNow] = useDraftedState<null | boolean>('enterOpponentNow', null);
   // Add new state for opponent type (Individual or Company)
   const [opponentType, setOpponentType] = useDraftedState<string>('opponentType', "");
+  // removed address paste helpers (opponent & solicitor) per spec
 
   // Skip details and show summary (user can return to edit later)
   const skipAndShowSummary = () => {
@@ -437,7 +761,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   // Helper to render address summary (compact)
   const AddressSummary = (data: any) => (
     <div>
-      <SummaryRow label="House/Building" value={data.houseNumber} />
+      <SummaryRow label="House/Building or Name" value={data.houseNumber} />
       <SummaryRow label="Street" value={data.street} />
       <SummaryRow label="City/Town" value={data.city} />
       <SummaryRow label="County" value={data.county} />
@@ -498,15 +822,34 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   // Add local state for focus/blur/active for each field group
   const [activeField, setActiveField] = React.useState<string | null>(null);
   const [touchedFields, setTouchedFields] = useDraftedState<{ [key: string]: boolean }>('touchedFields', {});
+  const [placeholderFilledFields, setPlaceholderFilledFields] = useDraftedState<{ [key: string]: boolean }>('placeholderFilledFields', {});
 
   // Helper to get field style
   function getFieldStyle(fieldKey: string, value: string, isDropdown = false) {
     const isActive = activeField === fieldKey;
     const isTouched = touchedFields[fieldKey];
+    const isPlaceholderFilled = placeholderFilledFields[fieldKey];
+    
     if (isActive) return pressedFieldStyle;
+    if (isPlaceholderFilled && value) return placeholderFieldStyle;
     if (isTouched && value) return answeredFieldStyle;
     return unansweredFieldStyle;
   }
+
+  // Helper to handle field focus - clears placeholder status when user starts typing
+  const handleFieldFocus = (fieldKey: string) => {
+    setActiveField(fieldKey);
+    // Clear placeholder status when user focuses on field
+    if (placeholderFilledFields[fieldKey]) {
+      setPlaceholderFilledFields(prev => ({ ...prev, [fieldKey]: false }));
+    }
+  };
+
+  // Helper to handle field blur - marks field as touched
+  const handleFieldBlur = (fieldKey: string) => {
+    setActiveField(null);
+    setTouchedFields((prev) => ({ ...prev, [fieldKey]: true }));
+  };
 
   // Remove blue border on focus for all intake fields using inline style override
   // (for TextField, Dropdown, etc.)
@@ -516,6 +859,43 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
     boxShadow: "none",
     borderColor: "transparent"
   };
+
+  // Prefill default countries to reduce clicks; show as answered (blue)
+  React.useEffect(() => {
+    const UK = 'United Kingdom';
+    const updates: Record<string, string> = {};
+    if (!_opponentCountry) {
+      _setOpponentCountry(UK);
+      updates.opponentCountry = UK;
+    }
+    if (!_opponentCompanyCountry) {
+      _setOpponentCompanyCountry(UK);
+      updates.opponentCompanyCountry = UK;
+    }
+    if (!_solicitorCountry) {
+      _setSolicitorCountry(UK);
+      updates.solicitorCountry = UK;
+    }
+    if (Object.keys(updates).length) {
+      // Mark as answered (blue): clear placeholder flags and set touched
+      setPlaceholderFilledFields(prev => ({
+        ...prev,
+        ...Object.fromEntries(Object.keys(updates).map(k => [k, false]))
+      }));
+      setTouchedFields(prev => ({
+        ...prev,
+        ...Object.fromEntries(Object.keys(updates).map(k => [k, true]))
+      }));
+      try {
+        let sheet = loadDataSheetFromStorage();
+        Object.entries(updates).forEach(([k, v]) => {
+          sheet = markFieldAsRealData(sheet, k, v);
+        });
+        saveDataSheetToStorage(sheet);
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Stack tokens={{ childrenGap: 8 }}>
@@ -797,6 +1177,11 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                   setEnterOpponentNow(willEnter);
                   if (willEnter) {
                     setShowSummary(false);
+                    // Reset to folded state (all sections unchecked) when starting entry
+                    setVisibleSections({
+                      opponent: { name: false, contact: false, address: false, company: false },
+                      solicitor: { name: false, contact: false, address: false, company: false }
+                    });
                   } else {
                     setShowSummary(true);
                     fillDummyData();
@@ -816,6 +1201,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
               opacity: 0,
               transform: 'translateY(20px)'
             }}>
+              {/* Integrated toggles now appear inline with each section header below */}
               {/* Opponent Details Fields */}
               <div style={containerStyle}>
                 <Stack tokens={{ childrenGap: 6 }}>
@@ -829,79 +1215,254 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     Opponent
                   </div>
                   {/* Company sublabel - shown first for Company opponent type */}
-                  {opponentType === 'Company' && (
-                    <>
-                      <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span className="ms-Icon ms-Icon--CityNext" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
-                        Company
+                  <div style={chipContainer(visibleSections.opponent.company)}>
+                      <div style={{ display:'flex', alignItems:'center', gap: 10, justifyContent:'space-between', marginBottom: visibleSections.opponent.company ? 8 : 0 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, flex: '1 1 auto' }}>
+                          <Checkbox
+                            styles={checkboxChipStyles}
+                            label="Company"
+                            boxSide="start"
+                            checked={visibleSections.opponent.company}
+                            onChange={() => toggleSection('opponent','company')}
+                          />
+                          <span style={{ fontSize: 11, color: '#6b7280' }}>Company name, number and address</span>
+                        </div>
+                        <span className="ms-Icon ms-Icon--CityNext" style={{ fontSize: 18, color: '#6b8bbd' }} />
                       </div>
-                      {/* Company fields */}
-                      <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 8, width: "100%" }}>
-                        <TextField
-                          placeholder="Company Name"
-                          value={_opponentCompanyName}
-                          onChange={(_, v) => _setOpponentCompanyName(v || "")}
-                          styles={{
-                            root: {
-                              flex: 1,
-                              minWidth: 180,
-                              height: 38,
-                              ...(touchedFields["opponentCompanyName"] && _opponentCompanyName ? answeredFieldStyle : unansweredFieldStyle)
-                            },
-                            fieldGroup: {
-                              borderRadius: 0,
-                              height: 38,
-                              background: "transparent",
-                              border: "none"
-                            },
-                            field: {
-                              color: "#061733",
-                              background: "transparent"
-                            }
-                          }}
-                          onFocus={() => setActiveField("opponentCompanyName")}
-                          onBlur={() => {
-                            setActiveField(null);
-                            setTouchedFields((prev) => ({ ...prev, opponentCompanyName: true }));
-                          }}
-                        />
-                        <TextField
-                          placeholder="Company Number"
-                          value={_opponentCompanyNumber}
-                          onChange={(_, v) => _setOpponentCompanyNumber(v || "")}
-                          styles={{
-                            root: {
-                              flex: 1,
-                              minWidth: 140,
-                              height: 38,
-                              ...(touchedFields["opponentCompanyNumber"] && _opponentCompanyNumber ? answeredFieldStyle : unansweredFieldStyle)
-                            },
-                            fieldGroup: {
-                              borderRadius: 0,
-                              height: 38,
-                              background: "transparent",
-                              border: "none"
-                            },
-                            field: {
-                              color: "#061733",
-                              background: "transparent"
-                            }
-                          }}
-                          onFocus={() => setActiveField("opponentCompanyNumber")}
-                          onBlur={() => {
-                            setActiveField(null);
-                            setTouchedFields((prev) => ({ ...prev, opponentCompanyNumber: true }));
-                          }}
-                        />
-                      </Stack>
-                    </>
-                  )}
+                      {visibleSections.opponent.company && (
+                        <>
+                          <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 6, width: "100%" }}>
+                            <TextField
+                              placeholder="Company Name"
+                              value={_opponentCompanyName}
+                              onChange={(_, v) => _setOpponentCompanyName(v || "")}
+                              styles={{
+                                root: {
+                                  flex: 1,
+                                  minWidth: 180,
+                                  height: 38,
+                                  ...(touchedFields["opponentCompanyName"] && _opponentCompanyName ? answeredFieldStyle : unansweredFieldStyle)
+                                },
+                                fieldGroup: {
+                                  borderRadius: 0,
+                                  height: 38,
+                                  background: "transparent",
+                                  border: "none"
+                                },
+                                field: {
+                                  color: "#061733",
+                                  background: "transparent"
+                                }
+                              }}
+                              onFocus={() => handleFieldFocus("opponentCompanyName")}
+                              onBlur={() => {
+                                setActiveField(null);
+                                setTouchedFields((prev) => ({ ...prev, opponentCompanyName: true }));
+                              }}
+                            />
+                            <TextField
+                              placeholder="Company Number"
+                              value={_opponentCompanyNumber}
+                              onChange={(_, v) => _setOpponentCompanyNumber(v || "")}
+                              onGetErrorMessage={() => getCompanyNumberErrorMessage(_opponentCompanyNumber, !!touchedFields["opponentCompanyNumber"]) }
+                              styles={{
+                                root: {
+                                  flex: 1,
+                                  minWidth: 140,
+                                  height: 38,
+                                  ...(touchedFields["opponentCompanyNumber"] && _opponentCompanyNumber ? answeredFieldStyle : unansweredFieldStyle)
+                                },
+                                fieldGroup: {
+                                  borderRadius: 0,
+                                  height: 38,
+                                  background: "transparent",
+                                  border: "none"
+                                },
+                                field: {
+                                  color: "#061733",
+                                  background: "transparent"
+                                }
+                              }}
+                              onFocus={() => handleFieldFocus("opponentCompanyNumber")}
+                              onBlur={() => {
+                                setActiveField(null);
+                                setTouchedFields((prev) => ({ ...prev, opponentCompanyNumber: true }));
+                              }}
+                            />
+                          </Stack>
+                          {/* Company address grid */}
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(180px, 1fr))", gap: 6, marginBottom: 0 }}>
+                            <TextField
+                              placeholder="House/Building Number or Name"
+                              value={_opponentCompanyHouseNumber}
+                              onChange={(_, v) => _setOpponentCompanyHouseNumber(v || "")}
+                              styles={{
+                                root: {
+                                  minWidth: 80,
+                                  flex: 1,
+                                  height: 38,
+                                  ...getFieldStyle("opponentCompanyHouseNumber", _opponentCompanyHouseNumber)
+                                },
+                                fieldGroup: {
+                                  borderRadius: 0,
+                                  height: 38,
+                                  background: "transparent",
+                                  border: "none",
+                                  ...noFocusOutline
+                                },
+                                field: {
+                                  color: "#061733",
+                                  background: "transparent"
+                                }
+                              }}
+                              onFocus={() => handleFieldFocus("opponentCompanyHouseNumber")}
+                              onBlur={() => setTouchedFields(prev => ({ ...prev, opponentCompanyHouseNumber: true }))}
+                            />
+                            <TextField
+                              placeholder="Street"
+                              value={_opponentCompanyStreet}
+                              onChange={(_, v) => _setOpponentCompanyStreet(v || "")}
+                              styles={{
+                                root: {
+                                  minWidth: 100,
+                                  flex: 1,
+                                  height: 38,
+                                  ...getFieldStyle("opponentCompanyStreet", _opponentCompanyStreet)
+                                },
+                                fieldGroup: {
+                                  borderRadius: 0,
+                                  height: 38,
+                                  background: "transparent",
+                                  border: "none",
+                                  ...noFocusOutline
+                                },
+                                field: {
+                                  color: "#061733",
+                                  background: "transparent"
+                                }
+                              }}
+                              onFocus={() => handleFieldFocus("opponentCompanyStreet")}
+                              onBlur={() => setTouchedFields(prev => ({ ...prev, opponentCompanyStreet: true }))}
+                            />
+                            <TextField
+                              placeholder="City/Town"
+                              value={_opponentCompanyCity}
+                              onChange={(_, v) => _setOpponentCompanyCity(v || "")}
+                              styles={{
+                                root: {
+                                  minWidth: 100,
+                                  flex: 1,
+                                  height: 38,
+                                  ...getFieldStyle("opponentCompanyCity", _opponentCompanyCity)
+                                },
+                                fieldGroup: {
+                                  borderRadius: 0,
+                                  height: 38,
+                                  background: "transparent",
+                                  border: "none",
+                                  ...noFocusOutline
+                                },
+                                field: {
+                                  color: "#061733",
+                                  background: "transparent"
+                                }
+                              }}
+                              onFocus={() => handleFieldFocus("opponentCompanyCity")}
+                              onBlur={() => setTouchedFields(prev => ({ ...prev, opponentCompanyCity: true }))}
+                            />
+                            <TextField
+                              placeholder="County"
+                              value={_opponentCompanyCounty}
+                              onChange={(_, v) => _setOpponentCompanyCounty(v || "")}
+                              styles={{
+                                root: {
+                                  minWidth: 80,
+                                  flex: 1,
+                                  height: 38,
+                                  ...getFieldStyle("opponentCompanyCounty", _opponentCompanyCounty)
+                                },
+                                fieldGroup: {
+                                  borderRadius: 0,
+                                  height: 38,
+                                  background: "transparent",
+                                  border: "none",
+                                  ...noFocusOutline
+                                },
+                                field: {
+                                  color: "#061733",
+                                  background: "transparent"
+                                }
+                              }}
+                              onFocus={() => handleFieldFocus("opponentCompanyCounty")}
+                              onBlur={() => setTouchedFields(prev => ({ ...prev, opponentCompanyCounty: true }))}
+                            />
+                            <TextField
+                              placeholder="Post Code"
+                              value={_opponentCompanyPostcode}
+                              onChange={(_, v) => _setOpponentCompanyPostcode(v || "")}
+                              styles={{
+                                root: {
+                                  minWidth: 80,
+                                  flex: 1,
+                                  height: 38,
+                                  ...getFieldStyle("opponentCompanyPostcode", _opponentCompanyPostcode)
+                                },
+                                fieldGroup: {
+                                  borderRadius: 0,
+                                  height: 38,
+                                  background: "transparent",
+                                  border: "none",
+                                  ...noFocusOutline
+                                },
+                                field: {
+                                  color: "#061733",
+                                  background: "transparent"
+                                }
+                              }}
+                              onFocus={() => handleFieldFocus("opponentCompanyPostcode")}
+                              onBlur={() => setTouchedFields(prev => ({ ...prev, opponentCompanyPostcode: true }))}
+                            />
+                            <Dropdown
+                              placeholder="Country"
+                              options={countries.map((c: { name: string; code: string }) => ({ key: c.name, text: `${c.name} (${c.code})` }))}
+                              selectedKey={_opponentCompanyCountry}
+                              onChange={(_, o) => _setOpponentCompanyCountry(o?.key as string || "")}
+                              styles={{
+                                root: {
+                                  minWidth: 100,
+                                  flex: 1,
+                                  height: 38,
+                                  alignSelf: 'flex-end',
+                                  ...getFieldStyle("opponentCompanyCountry", _opponentCompanyCountry, true)
+                                },
+                                dropdown: { borderRadius: 0, height: 38, background: "transparent", ...noFocusOutline },
+                                title: { borderRadius: 0, height: 38, background: "transparent", color: "#061733", display: 'flex', alignItems: 'center', ...noFocusOutline }
+                              }}
+                              calloutProps={{ styles: { calloutMain: { borderRadius: 0 } } }}
+                              onFocus={() => handleFieldFocus("opponentCompanyCountry")}
+                              onBlur={() => setTouchedFields(prev => ({ ...prev, opponentCompanyCountry: true }))}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
                   {/* Name sublabel */}
-                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: opponentType === 'Company' ? 8 : 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
-                    Name
-                  </div>
-                  <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 8, width: "100%" }}>
+                  <div style={chipContainer(visibleSections.opponent.name)}>
+                    <div style={{ display:'flex', alignItems:'center', gap: 10, justifyContent:'space-between', marginBottom: visibleSections.opponent.name ? 8 : 0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10, flex: '1 1 auto' }}>
+                        <Checkbox
+                          styles={checkboxChipStyles}
+                          label="Name"
+                          boxSide="start"
+                          checked={visibleSections.opponent.name}
+                          onChange={() => toggleSection('opponent','name')}
+                        />
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>Title, first and last name</span>
+                      </div>
+                      <span className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 18, color: '#6b8bbd' }} />
+                    </div>
+                  {visibleSections.opponent.name && (
+                  <Stack horizontal tokens={{ childrenGap: 4 }} style={{ marginBottom: 0, width: "100%" }}>
                     <Dropdown
                       placeholder="Title"
                       options={titleOptions}
@@ -928,11 +1489,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                         }
                       }}
                       calloutProps={{ styles: { calloutMain: { borderRadius: 0 } } }}
-                      onFocus={() => setActiveField("opponentTitle")}
-                      onBlur={() => {
-                        setActiveField(null);
-                        setTouchedFields((prev) => ({ ...prev, opponentTitle: true }));
-                      }}
+                      onFocus={() => handleFieldFocus("opponentTitle")}
+                      onBlur={() => handleFieldBlur("opponentTitle")}
                     />
                     <TextField
                       placeholder="First Name"
@@ -957,11 +1515,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                      onFocus={() => setActiveField("opponentFirst")}
-                      onBlur={() => {
-                        setActiveField(null);
-                        setTouchedFields((prev) => ({ ...prev, opponentFirst: true }));
-                      }}
+                      onFocus={() => handleFieldFocus("opponentFirst")}
+                      onBlur={() => handleFieldBlur("opponentFirst")}
                     />
                     <TextField
                       placeholder="Last Name"
@@ -986,32 +1541,42 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                      onFocus={() => setActiveField("opponentLast")}
-                      onBlur={() => {
-                        setActiveField(null);
-                        setTouchedFields((prev) => ({ ...prev, opponentLast: true }));
-                      }}
+                      onFocus={() => handleFieldFocus("opponentLast")}
+                      onBlur={() => handleFieldBlur("opponentLast")}
                     />
                   </Stack>
-                  {/* Separator before Contact Details */}
-                  <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0 4px 0' }} />
-                  {/* Contact Details sublabel (icon-labeled only) */}
-                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="ms-Icon ms-Icon--Mail" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
-                    Contact Details
+                  )}
                   </div>
-                  <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 8, width: "100%" }}>
+                  {/* Separator removed for cleaner layout */}
+                  {/* Contact Details sublabel (icon-labeled only) */}
+                  <div style={chipContainer(visibleSections.opponent.contact)}>
+                    <div style={{ display:'flex', alignItems:'center', gap: 10, justifyContent:'space-between', marginBottom: visibleSections.opponent.contact ? 8 : 0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10, flex: '1 1 auto' }}>
+                        <Checkbox
+                          styles={checkboxChipStyles}
+                          label="Contact Details"
+                          boxSide="start"
+                          checked={visibleSections.opponent.contact}
+                          onChange={() => toggleSection('opponent','contact')}
+                        />
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>Email and phone</span>
+                      </div>
+                      <span className="ms-Icon ms-Icon--Mail" style={{ fontSize: 18, color: '#6b8bbd' }} />
+                    </div>
+                  {visibleSections.opponent.contact && (
+                  <Stack horizontal tokens={{ childrenGap: 4 }} style={{ marginBottom: 0, width: "100%" }}>
                     <TextField
                       placeholder="Email"
-                      value={opponentEmail}
-                      onChange={(_, v) => setOpponentEmail(v || "")}
+                      value={_opponentEmail}
+                      onChange={(_, v) => _setOpponentEmail(v || "")}
+                      onGetErrorMessage={() => getEmailErrorMessage(_opponentEmail, !!touchedFields["opponentEmail"]) }
                       styles={{
                         root: {
                           flex: 1,
                           minWidth: 0,
                           maxWidth: 'none',
                           height: 38,
-                          ...getFieldStyle("opponentEmail", opponentEmail)
+                          ...getFieldStyle("opponentEmail", _opponentEmail)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1025,16 +1590,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                      onFocus={() => setActiveField("opponentEmail")}
-                      onBlur={() => {
-                        setActiveField(null);
-                        setTouchedFields((prev) => ({ ...prev, opponentEmail: true }));
-                      }}
+                      onFocus={() => handleFieldFocus("opponentEmail")}
+                      onBlur={() => handleFieldBlur("opponentEmail")}
                     />
                     <TextField
                       placeholder="Phone"
                       value={_opponentPhone}
                       onChange={(_, v) => _setOpponentPhone(v || "")}
+                      onGetErrorMessage={() => getPhoneErrorMessage(_opponentPhone, !!touchedFields["opponentPhone"]) }
                       styles={{
                         root: {
                           flex: 1,
@@ -1055,23 +1618,53 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                      onFocus={() => setActiveField("opponentPhone")}
+                      onFocus={() => handleFieldFocus("opponentPhone")}
                       onBlur={() => {
                         setActiveField(null);
                         setTouchedFields((prev) => ({ ...prev, opponentPhone: true }));
                       }}
                     />
                   </Stack>
-                  {/* Separator before Address */}
-                  <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0 4px 0' }} />
-                  {/* Address sublabel (icon-labeled only) */}
-                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="ms-Icon ms-Icon--Home" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
-                    Address
+                  )}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, marginBottom: 8 }}>
+                  {/* Separator removed for cleaner layout */}
+                  {/* Address sublabel (opponent personal address) */}
+                  <div style={chipContainer(visibleSections.opponent.address)}>
+                    <div style={{ display:'flex', alignItems:'center', gap: 10, justifyContent:'space-between', marginBottom: visibleSections.opponent.address ? 8 : 0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10, flex: '1 1 auto' }}>
+                        <Checkbox
+                          styles={checkboxChipStyles}
+                          label="Address"
+                          boxSide="start"
+                          checked={visibleSections.opponent.address}
+                          onChange={() => toggleSection('opponent','address')}
+                        />
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>House number, street, city, county, postcode, country</span>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        {opponentType === 'Individual' && (
+                          <button type="button" onClick={copyCompanyAddressToPersonal} disabled={!(_opponentCompanyHouseNumber || _opponentCompanyStreet || _opponentCompanyCity || _opponentCompanyCounty || _opponentCompanyPostcode || _opponentCompanyCountry)}
+                            style={{
+                              background:'transparent',
+                              border:'none',
+                              padding:0,
+                              margin:0,
+                              fontSize:11,
+                              color: '#3690CE',
+                              cursor: 'pointer',
+                              opacity: (_opponentCompanyHouseNumber || _opponentCompanyStreet || _opponentCompanyCity || _opponentCompanyCounty || _opponentCompanyPostcode || _opponentCompanyCountry) ? 1 : 0.5
+                            }}
+                          >
+                            Use company address
+                          </button>
+                        )}
+                        <span className="ms-Icon ms-Icon--Home" style={{ fontSize: 18, color: '#6b8bbd' }} />
+                      </div>
+                    </div>
+                  {visibleSections.opponent.address && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(180px, 1fr))", gap: 6, marginBottom: 0 }}>
                     <TextField
-                      placeholder="House/Building Number"
+                      placeholder="House/Building Number or Name"
                       value={_opponentHouseNumber}
                       onChange={(_, v) => _setOpponentHouseNumber(v || "")}
                       styles={{
@@ -1093,7 +1686,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("opponentHouseNumber")}
+                    onFocus={() => handleFieldFocus("opponentHouseNumber")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, opponentHouseNumber: true }));
@@ -1122,7 +1715,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("opponentStreet")}
+                    onFocus={() => handleFieldFocus("opponentStreet")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, opponentStreet: true }));
@@ -1151,7 +1744,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("opponentCity")}
+                    onFocus={() => handleFieldFocus("opponentCity")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, opponentCity: true }));
@@ -1180,7 +1773,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("opponentCounty")}
+                    onFocus={() => handleFieldFocus("opponentCounty")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, opponentCounty: true }));
@@ -1209,7 +1802,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("opponentPostcode")}
+                    onFocus={() => handleFieldFocus("opponentPostcode")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, opponentPostcode: true }));
@@ -1244,12 +1837,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                         }
                       }}
                       calloutProps={{ styles: { calloutMain: { borderRadius: 0 } } }}
-                      onFocus={() => setActiveField("opponentCountry")}
+                      onFocus={() => handleFieldFocus("opponentCountry")}
                       onBlur={() => {
                         setActiveField(null);
                         setTouchedFields((prev) => ({ ...prev, opponentCountry: true }));
                       }}
                     />
+                    </div>
+                  )}
                   </div>
                 </Stack>
               </div>
@@ -1266,12 +1861,23 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                   }}>
                     Opponent's Solicitor
                   </div>
-                  {/* Name & Company sublabel */}
-                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
-                    Name & Company
-                  </div>
-                  <Stack horizontal tokens={{ childrenGap: 5 }} style={{ width: "100%", marginBottom: 8 }}>
+                  {/* Firm (Company) section */}
+                  <div style={chipContainer(visibleSections.solicitor.company)}>
+                    <div style={{ display:'flex', alignItems:'center', gap: 10, justifyContent:'space-between', marginBottom: visibleSections.solicitor.company ? 8 : 0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10, flex: '1 1 auto' }}>
+                        <Checkbox
+                          styles={checkboxChipStyles}
+                          label="Firm"
+                          boxSide="start"
+                          checked={visibleSections.solicitor.company}
+                          onChange={() => toggleSection('solicitor','company')}
+                        />
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>Company name and number</span>
+                      </div>
+                      <span className="ms-Icon ms-Icon--CityNext" style={{ fontSize: 18, color: '#6b8bbd' }} />
+                    </div>
+                  {visibleSections.solicitor.company && (
+                  <Stack horizontal tokens={{ childrenGap: 5 }} style={{ width: "100%", marginBottom: 0 }}>
                     <TextField
                       placeholder="Company Name"
                       value={opponentSolicitorCompany}
@@ -1295,7 +1901,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                      onFocus={() => setActiveField("opponentSolicitorCompany")}
+                      onFocus={() => handleFieldFocus("opponentSolicitorCompany")}
                       onBlur={() => {
                         setActiveField(null);
                         setTouchedFields((prev) => ({ ...prev, opponentSolicitorCompany: true }));
@@ -1324,184 +1930,34 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                      onFocus={() => setActiveField("solicitorCompanyNumber")}
+                      onFocus={() => handleFieldFocus("solicitorCompanyNumber")}
                       onBlur={() => {
                         setActiveField(null);
                         setTouchedFields((prev) => ({ ...prev, solicitorCompanyNumber: true }));
                       }}
                     />
                   </Stack>
-                  <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 8, width: "100%" }}>
-                    <Dropdown
-                      placeholder="Title"
-                      options={titleOptions}
-                      selectedKey={_solicitorTitle}
-                      onChange={(_, o) => _setSolicitorTitle(o?.key as string)}
-                      styles={{
-                        root: {
-                          flex: '0 0 auto',
-                          minWidth: 80,
-                          width: '18%',
-                          height: 38,
-                          alignSelf: 'flex-end',
-                          ...getFieldStyle("solicitorTitle", _solicitorTitle, true)
-                        },
-                        dropdown: { borderRadius: 0, height: 38, background: "transparent", ...noFocusOutline },
-                        title: {
-                          borderRadius: 0,
-                          height: 38,
-                          background: "transparent",
-                          color: "#061733",
-                          display: 'flex',
-                          alignItems: 'center',
-                          ...noFocusOutline
-                        }
-                      }}
-                      calloutProps={{ styles: { calloutMain: { borderRadius: 0 } } }}
-                      onFocus={() => setActiveField("solicitorTitle")}
-                      onBlur={() => {
-                        setActiveField(null);
-                        setTouchedFields((prev) => ({ ...prev, solicitorTitle: true }));
-                      }}
-                    />
-                    <TextField
-                      placeholder="First Name"
-                      value={_solicitorFirst}
-                      onChange={(_, v) => _setSolicitorFirst(v || "")}
-                      styles={{
-                        root: {
-                          flex: '1 1 auto',
-                          minWidth: 100,
-                          height: 38,
-                          ...getFieldStyle("solicitorFirst", _solicitorFirst)
-                        },
-                        fieldGroup: {
-                          borderRadius: 0,
-                          height: 38,
-                          background: "transparent",
-                          border: "none",
-                          ...noFocusOutline
-                        },
-                        field: {
-                          color: "#061733",
-                          background: "transparent"
-                        }
-                      }}
-                      onFocus={() => setActiveField("solicitorFirst")}
-                      onBlur={() => {
-                        setActiveField(null);
-                        setTouchedFields((prev) => ({ ...prev, solicitorFirst: true }));
-                      }}
-                    />
-                    <TextField
-                      placeholder="Last Name"
-                      value={_solicitorLast}
-                      onChange={(_, v) => _setSolicitorLast(v || "")}
-                      styles={{
-                        root: {
-                          flex: '1 1 auto',
-                          minWidth: 100,
-                          height: 38,
-                          ...getFieldStyle("solicitorLast", _solicitorLast)
-                        },
-                        fieldGroup: {
-                          borderRadius: 0,
-                          height: 38,
-                          background: "transparent",
-                          border: "none",
-                          ...noFocusOutline
-                        },
-                        field: {
-                          color: "#061733",
-                          background: "transparent"
-                        }
-                      }}
-                      onFocus={() => setActiveField("solicitorLast")}
-                      onBlur={() => {
-                        setActiveField(null);
-                        setTouchedFields((prev) => ({ ...prev, solicitorLast: true }));
-                      }}
-                    />
-                  </Stack>
-                  {/* Separator before Contact Details */}
-                  <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0 4px 0' }} />
-                  {/* Contact Details sublabel */}
-                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="ms-Icon ms-Icon--Mail" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
-                    Contact Details
+                  )}
                   </div>
-                  <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 8, width: "100%" }}>
+                  {/* Solicitor Address (moved under Firm as Firm Address) */}
+                  <div style={chipContainer(visibleSections.solicitor.address)}>
+                    <div style={{ display:'flex', alignItems:'center', gap: 10, justifyContent:'space-between', marginBottom: visibleSections.solicitor.name ? 8 : 0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10, flex: '1 1 auto' }}>
+                        <Checkbox
+                          styles={checkboxChipStyles}
+                          label="Address"
+                          boxSide="start"
+                          checked={visibleSections.solicitor.address}
+                          onChange={() => toggleSection('solicitor','address')}
+                        />
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>House number, street, city, county, postcode, country</span>
+                      </div>
+                      <span className="ms-Icon ms-Icon--Home" style={{ fontSize: 18, color: '#6b8bbd' }} />
+                    </div>
+                  {visibleSections.solicitor.address && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(180px, 1fr))", gap: 5, marginBottom: 0 }}>
                     <TextField
-                      placeholder="Email"
-                      value={opponentSolicitorEmail}
-                      onChange={(_, v) => setOpponentSolicitorEmail(v || "")}
-                      styles={{
-                        root: {
-                          flex: 1,
-                          minWidth: 0,
-                          maxWidth: 'none',
-                          height: 38,
-                          ...getFieldStyle("opponentSolicitorEmail", opponentSolicitorEmail)
-                        },
-                        fieldGroup: {
-                          borderRadius: 0,
-                          height: 38,
-                          background: "transparent",
-                          border: "none",
-                          ...noFocusOutline
-                        },
-                        field: {
-                          color: "#061733",
-                          background: "transparent"
-                        }
-                      }}
-                      onFocus={() => setActiveField("opponentSolicitorEmail")}
-                      onBlur={() => {
-                        setActiveField(null);
-                        setTouchedFields((prev) => ({ ...prev, opponentSolicitorEmail: true }));
-                      }}
-                    />
-                    <TextField
-                      placeholder="Phone"
-                      value={_solicitorPhone}
-                      onChange={(_, v) => _setSolicitorPhone(v || "")}
-                      styles={{
-                        root: {
-                          flex: 1,
-                          minWidth: 0,
-                          maxWidth: 'none',
-                          height: 38,
-                          ...getFieldStyle("solicitorPhone", _solicitorPhone)
-                        },
-                        fieldGroup: {
-                          borderRadius: 0,
-                          height: 38,
-                          background: "transparent",
-                          border: "none",
-                          ...noFocusOutline
-                        },
-                        field: {
-                          color: "#061733",
-                          background: "transparent"
-                        }
-                      }}
-                      onFocus={() => setActiveField("solicitorPhone")}
-                      onBlur={() => {
-                        setActiveField(null);
-                        setTouchedFields((prev) => ({ ...prev, solicitorPhone: true }));
-                      }}
-                    />
-                  </Stack>
-                  {/* Separator before Address */}
-                  <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0 4px 0' }} />
-                  {/* Address sublabel */}
-                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="ms-Icon ms-Icon--Home" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
-                    Address
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, marginBottom: 8 }}>
-                    <TextField
-                      placeholder="House/Building Number"
+                      placeholder="House/Building Number or Name"
                       value={_solicitorHouseNumber}
                       onChange={(_, v) => _setSolicitorHouseNumber(v || "")}
                       styles={{
@@ -1522,7 +1978,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("solicitorHouseNumber")}
+                    onFocus={() => handleFieldFocus("solicitorHouseNumber")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, solicitorHouseNumber: true }));
@@ -1550,7 +2006,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("solicitorStreet")}
+                    onFocus={() => handleFieldFocus("solicitorStreet")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, solicitorStreet: true }));
@@ -1578,7 +2034,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("solicitorCity")}
+                    onFocus={() => handleFieldFocus("solicitorCity")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, solicitorCity: true }));
@@ -1606,7 +2062,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("solicitorCounty")}
+                    onFocus={() => handleFieldFocus("solicitorCounty")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, solicitorCounty: true }));
@@ -1634,7 +2090,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           background: "transparent"
                         }
                       }}
-                    onFocus={() => setActiveField("solicitorPostcode")}
+                    onFocus={() => handleFieldFocus("solicitorPostcode")}
                     onBlur={() => {
                       setActiveField(null);
                       setTouchedFields((prev) => ({ ...prev, solicitorPostcode: true }));
@@ -1669,13 +2125,208 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                         }
                       }}
                       calloutProps={{ styles: { calloutMain: { borderRadius: 0 } } }}
-                      onFocus={() => setActiveField("solicitorCountry")}
+                      onFocus={() => handleFieldFocus("solicitorCountry")}
                       onBlur={() => {
                         setActiveField(null);
                         setTouchedFields((prev) => ({ ...prev, solicitorCountry: true }));
                       }}
                     />
                   </div>
+                  )}
+                  </div>
+
+                  {/* Solicitor Name section (moved below Address) */}
+                  <div style={chipContainer(visibleSections.solicitor.name)}>
+                    <div style={{ display:'flex', alignItems:'center', gap: 10, justifyContent:'space-between', marginBottom: visibleSections.solicitor.name ? 8 : 0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10, flex: '1 1 auto' }}>
+                        <Checkbox
+                          styles={checkboxChipStyles}
+                          label="Name"
+                          boxSide="start"
+                          checked={visibleSections.solicitor.name}
+                          onChange={() => toggleSection('solicitor','name')}
+                        />
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>Title, first and last name</span>
+                      </div>
+                      <span className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 18, color: '#6b8bbd' }} />
+                    </div>
+                  {visibleSections.solicitor.name && (
+                  <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 0, width: "100%" }}>
+                    <Dropdown
+                      placeholder="Title"
+                      options={titleOptions}
+                      selectedKey={_solicitorTitle}
+                      onChange={(_, o) => _setSolicitorTitle(o?.key as string)}
+                      styles={{
+                        root: {
+                          flex: '0 0 auto',
+                          minWidth: 80,
+                          width: '18%',
+                          height: 38,
+                          alignSelf: 'flex-end',
+                          ...getFieldStyle("solicitorTitle", _solicitorTitle, true)
+                        },
+                        dropdown: { borderRadius: 0, height: 38, background: "transparent", ...noFocusOutline },
+                        title: {
+                          borderRadius: 0,
+                          height: 38,
+                          background: "transparent",
+                          color: "#061733",
+                          display: 'flex',
+                          alignItems: 'center',
+                          ...noFocusOutline
+                        }
+                      }}
+                      calloutProps={{ styles: { calloutMain: { borderRadius: 0 } } }}
+                      onFocus={() => handleFieldFocus("solicitorTitle")}
+                      onBlur={() => {
+                        setActiveField(null);
+                        setTouchedFields((prev) => ({ ...prev, solicitorTitle: true }));
+                      }}
+                    />
+                    <TextField
+                      placeholder="First Name"
+                      value={_solicitorFirst}
+                      onChange={(_, v) => _setSolicitorFirst(v || "")}
+                      styles={{
+                        root: {
+                          flex: '1 1 auto',
+                          minWidth: 100,
+                          height: 38,
+                          ...getFieldStyle("solicitorFirst", _solicitorFirst)
+                        },
+                        fieldGroup: {
+                          borderRadius: 0,
+                          height: 38,
+                          background: "transparent",
+                          border: "none",
+                          ...noFocusOutline
+                        },
+                        field: {
+                          color: "#061733",
+                          background: "transparent"
+                        }
+                      }}
+                      onFocus={() => handleFieldFocus("solicitorFirst")}
+                      onBlur={() => {
+                        setActiveField(null);
+                        setTouchedFields((prev) => ({ ...prev, solicitorFirst: true }));
+                      }}
+                    />
+                    <TextField
+                      placeholder="Last Name"
+                      value={_solicitorLast}
+                      onChange={(_, v) => _setSolicitorLast(v || "")}
+                      styles={{
+                        root: {
+                          flex: '1 1 auto',
+                          minWidth: 100,
+                          height: 38,
+                          ...getFieldStyle("solicitorLast", _solicitorLast)
+                        },
+                        fieldGroup: {
+                          borderRadius: 0,
+                          height: 38,
+                          background: "transparent",
+                          border: "none",
+                          ...noFocusOutline
+                        },
+                        field: {
+                          color: "#061733",
+                          background: "transparent"
+                        }
+                      }}
+                      onFocus={() => handleFieldFocus("solicitorLast")}
+                      onBlur={() => {
+                        setActiveField(null);
+                        setTouchedFields((prev) => ({ ...prev, solicitorLast: true }));
+                      }}
+                    />
+                  </Stack>
+                  )}
+                  </div>
+                  {/* Separator removed for cleaner layout */}
+                  {/* Contact Details sublabel */}
+                  <div style={chipContainer(visibleSections.solicitor.contact)}>
+                    <div style={{ display:'flex', alignItems:'center', gap: 10, justifyContent:'space-between', marginBottom: visibleSections.solicitor.contact ? 8 : 0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10, flex: '1 1 auto' }}>
+                        <Checkbox
+                          styles={checkboxChipStyles}
+                          label="Contact Details"
+                          boxSide="start"
+                          checked={visibleSections.solicitor.contact}
+                          onChange={() => toggleSection('solicitor','contact')}
+                        />
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>Email and phone</span>
+                      </div>
+                      <span className="ms-Icon ms-Icon--Mail" style={{ fontSize: 18, color: '#6b8bbd' }} />
+                    </div>
+                  {visibleSections.solicitor.contact && (
+                  <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 0, width: "100%" }}>
+                    <TextField
+                      placeholder="Email"
+                      value={_opponentSolicitorEmail}
+                      onChange={(_, v) => _setOpponentSolicitorEmail(v || "")}
+                      styles={{
+                        root: {
+                          flex: 1,
+                          minWidth: 0,
+                          maxWidth: 'none',
+                          height: 38,
+                          ...getFieldStyle("opponentSolicitorEmail", _opponentSolicitorEmail)
+                        },
+                        fieldGroup: {
+                          borderRadius: 0,
+                          height: 38,
+                          background: "transparent",
+                          border: "none",
+                          ...noFocusOutline
+                        },
+                        field: {
+                          color: "#061733",
+                          background: "transparent"
+                        }
+                      }}
+                      onFocus={() => handleFieldFocus("opponentSolicitorEmail")}
+                      onBlur={() => {
+                        setActiveField(null);
+                        setTouchedFields((prev) => ({ ...prev, opponentSolicitorEmail: true }));
+                      }}
+                    />
+                    <TextField
+                      placeholder="Phone"
+                      value={_solicitorPhone}
+                      onChange={(_, v) => _setSolicitorPhone(v || "")}
+                      styles={{
+                        root: {
+                          flex: 1,
+                          minWidth: 0,
+                          maxWidth: 'none',
+                          height: 38,
+                          ...getFieldStyle("solicitorPhone", _solicitorPhone)
+                        },
+                        fieldGroup: {
+                          borderRadius: 0,
+                          height: 38,
+                          background: "transparent",
+                          border: "none",
+                          ...noFocusOutline
+                        },
+                        field: {
+                          color: "#061733",
+                          background: "transparent"
+                        }
+                      }}
+                      onFocus={() => handleFieldFocus("solicitorPhone")}
+                      onBlur={() => {
+                        setActiveField(null);
+                        setTouchedFields((prev) => ({ ...prev, solicitorPhone: true }));
+                      }}
+                    />
+                  </Stack>
+                  )}
+                  </div>
+                  {/* Separator removed for cleaner layout */}
                 </Stack>
               </div>
             </div>
