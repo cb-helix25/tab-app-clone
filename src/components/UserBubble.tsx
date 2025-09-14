@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DataInspector from './DataInspector';
+import AdminDashboard from './AdminDashboard';
 // invisible change 2
 import { UserData } from '../app/functionality/types';
 import '../app/styles/UserBubble.css';
@@ -38,6 +39,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
     const [open, setOpen] = useState(false);
     const [isClickToggled, setIsClickToggled] = useState(false);
     const [showDataInspector, setShowDataInspector] = useState(false);
+    const [showAdminDashboard, setShowAdminDashboard] = useState(false);
     const bubbleRef = useRef<HTMLButtonElement | null>(null);
     const popoverRef = useRef<HTMLDivElement | null>(null);
     const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -684,6 +686,43 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                 </div>
                             )}
 
+                            {/* Admin Dashboard */}
+                            {isAdminUser(user) && (
+                                <div style={{ marginBottom: '16px' }}>
+                                    <button
+                                        onClick={() => {
+                                            setShowAdminDashboard(true);
+                                            setOpen(false);
+                                            setIsClickToggled(false);
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            background: 'linear-gradient(135deg, #3690CE 0%, #2563eb 100%)',
+                                            color: '#ffffff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, #3690CE 0%, #2563eb 100%)';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                        }}
+                                    >
+                                        Admin Dashboard
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Dark Mode Settings */}
                             <div style={{ marginBottom: '16px' }}>
                                 <h4 style={{
@@ -730,6 +769,13 @@ const UserBubble: React.FC<UserBubbleProps> = ({
             
             {showDataInspector && (
                 <DataInspector data={user} onClose={() => setShowDataInspector(false)} />
+            )}
+            
+            {showAdminDashboard && (
+                <AdminDashboard 
+                    isOpen={showAdminDashboard} 
+                    onClose={() => setShowAdminDashboard(false)} 
+                />
             )}
         </div>
     );

@@ -14,6 +14,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const { init: initOpLog, append: opAppend, sessionId: opSessionId } = require('./utils/opLog');
 const keysRouter = require('./routes/keys');
 const refreshRouter = require('./routes/refresh');
 const matterRequestsRouter = require('./routes/matterRequests');
@@ -35,9 +36,23 @@ const verifyIdRouter = require('./routes/verify-id');
 const testDbRouter = require('./routes/test-db');
 const teamLookupRouter = require('./routes/team-lookup');
 const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
+const fileMapRouter = require('./routes/fileMap');
+const opsRouter = require('./routes/ops');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+
+// Initialize persistent operations log and add request logging middleware
+initOpLog();
+app.use((req, res, next) => {
+    const start = Date.now();
+    const ctx = { type: 'http', action: `${req.method} ${req.path}`, status: 'started' };
+    opAppend(ctx);
+    res.on('finish', () => {
+        opAppend({ type: 'http', action: `${req.method} ${req.path}`, status: (res.statusCode >= 400 ? 'error' : 'success'), httpStatus: res.statusCode, durationMs: Date.now() - start });
+    });
+    next();
+});
 
 // Enable CORS for all routes to allow frontend on port 3000 to access API on port 8080
 app.use(cors({
@@ -65,6 +80,7 @@ app.use('/api/ccl', cclRouter);
 app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
+app.use('/api/ops', opsRouter);
 // app.post('/api/update-enquiry', require('../api/update-enquiry')); // Moved to enquiries-unified/update
 // Register deal update endpoints (used by instruction cards editing)
 console.log('🔧 REGISTERING UPDATE DEAL ROUTES');
@@ -75,6 +91,7 @@ app.use('/api/instructions', instructionsRouter);
 app.use('/api/verify-id', verifyIdRouter);
 app.use('/api/test-db', testDbRouter);
 app.use('/api/team-lookup', teamLookupRouter);
+app.use('/api/file-map', fileMapRouter);
 app.use('/ccls', express.static(CCL_DIR));
 
 // Temporary debug helper: allow GET /api/update-deal?dealId=...&ServiceDescription=...&Amount=...
@@ -110,11 +127,13 @@ console.log('  ✅ /api/ccl');
 console.log('  ✅ /api/enquiries');
 console.log('  ✅ /api/enquiries-unified');
 console.log('  ✅ /api/enquiry-emails');
+console.log('  🆕 /api/ops (OPERATIONS LOG)');
 // console.log('  ✅ /api/update-enquiry'); // Moved to enquiries-unified/update
 console.log('  ✅ /api/pitches');
 console.log('  🆕 /api/instructions (UNIFIED ENDPOINT)');
 console.log('  🆕 /api/verify-id (ID VERIFICATION)');
 console.log('  🆕 /api/team-lookup (TEAM EMAIL LOOKUP)');
+console.log('  🆕 /api/file-map (REPO FILE MAP)');
 
 // Proxy routes to Azure Functions - these handle requests without /api/ prefix
 app.use('/', proxyToAzureFunctionsRouter);
@@ -149,4 +168,5 @@ if (fs.existsSync(buildPath)) {
 
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
+    console.log(`Ops session: ${opSessionId}`);
 });

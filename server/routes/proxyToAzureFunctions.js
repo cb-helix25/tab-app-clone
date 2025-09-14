@@ -3,6 +3,7 @@ const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 
 const router = express.Router();
+const { append, redact } = require('../utils/opLog');
 
 // Set up Key Vault client for retrieving secrets
 const credential = new DefaultAzureCredential();
@@ -24,6 +25,8 @@ async function getFunctionKey(functionName) {
 async function proxyToAzureFunction(req, res, functionName, port = 7072, method = 'POST') {
     try {
         console.log(`Proxying ${method} request to ${functionName} on port ${port}`);
+        const op = { type: 'function', action: functionName, method, port, status: 'started' };
+        append(op);
         
         // Check if code is provided in query params (from frontend)
         let functionKey = req.query.code;
@@ -72,10 +75,12 @@ async function proxyToAzureFunction(req, res, functionName, port = 7072, method 
             }
         }
 
-        console.log(`Making request to: ${urlWithQuery.replace(/code=[^&]+/, 'code=***')}`);
+    console.log(`Making request to: ${urlWithQuery.replace(/code=[^&]+/, 'code=***')}`);
+    const startedAt = Date.now();
         
         const response = await fetch(urlWithQuery, requestOptions);
         const data = await response.text();
+    const durationMs = Date.now() - startedAt;
         
         // Set CORS headers
         res.header('Access-Control-Allow-Origin', '*');
@@ -91,9 +96,35 @@ async function proxyToAzureFunction(req, res, functionName, port = 7072, method 
         } catch {
             res.send(data);
         }
+        append({
+            type: 'function',
+            action: functionName,
+            method,
+            status: response.ok ? 'success' : 'error',
+            httpStatus: response.status,
+            url: redact(urlWithQuery),
+            durationMs,
+        });
+        if (functionName === 'sendEmail') {
+            const toCount = Array.isArray(req.body?.to) ? req.body.to.length : (req.body?.to ? 1 : 0);
+            const hasAttachments = Array.isArray(req.body?.attachments) && req.body.attachments.length > 0;
+            append({
+                type: 'email',
+                action: 'sendEmail',
+                status: response.ok ? 'success' : 'error',
+                httpStatus: response.status,
+                durationMs,
+                details: `toCount=${toCount}${hasAttachments ? ' attachments' : ''}`,
+            });
+        }
         
     } catch (error) {
         console.error(`Error proxying to ${functionName}:`, error);
+        append({ type: 'function', action: functionName, method, status: 'error', error: String(error) });
+        if (functionName === 'sendEmail') {
+            const toCount = Array.isArray(req.body?.to) ? req.body.to.length : (req.body?.to ? 1 : 0);
+            append({ type: 'email', action: 'sendEmail', status: 'error', error: String(error), details: `toCount=${toCount}` });
+        }
         res.status(500).json({ 
             error: `Failed to proxy request to ${functionName}`, 
             details: error.message 

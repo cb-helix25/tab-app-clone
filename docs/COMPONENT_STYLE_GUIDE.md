@@ -62,3 +62,8 @@ const headerStyle = {
 ```
 
 These tokens are intended to be minimal and framework‑agnostic. They capture the visual language of the original instruction form so that the same look and feel can easily be reused in other parts of the application.
+
+## Brand Notes (Workbench)
+- Header blue: `#3690CE` for primary workbench headings.
+- Card background gradient: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`.
+- Progress bar (success emphasis): `linear-gradient(135deg, #49B670 0%, #15803d 100%)`.

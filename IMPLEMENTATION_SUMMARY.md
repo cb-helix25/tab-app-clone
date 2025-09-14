@@ -7,6 +7,22 @@
 
 ## ✅ Recent Accomplishments (September 2025)
 
+### Matter Opening Workbench & Processing Pipeline (This Session)
+- Professionalised review into a “monitoring workbench” with subtle, on‑brand styling
+- Integrated Support Request inside the processing component; removed header icons
+- Added admin/local-dev diagnostics with per‑operation phases (sent/responded/succeeded/error)
+- Implemented `instrumentedFetch` + observer to emit phases and summarize payload/response on failures only
+- Normalised heading color to brand blue `#3690CE`, compact icon grid for operations
+- Progress bar uses green two‑tone gradient for success emphasis
+- Completed client info rendering: phone, DOB, compact multi‑line addresses, verification results
+- Fixed gating: use `pendingClientType` to unlock Continue; commit `clientType` on Continue
+- Icon coverage: ActiveCampaign, Clio, Asana, CCL, NetDocuments, Helix mark for internal steps
+
+Docs updated:
+- `docs/matter-opening-workbench.md` (new): end‑to‑end workbench, diagnostics, branding, endpoints
+- `docs/matter-opening-workflow.md`: updated to reflect pipeline and deprecate `importInstructionData`
+- `docs/COMPONENT_STYLE_GUIDE.md`: brand notes for header blue and green progress gradient
+
 ### 1. Pill Functionality Overhaul (COMPLETE)
 - ✅ **Risk Color Fix**: Fixed risk assessment display showing green for "Low Risk" instead of red
 - ✅ **Interactive Pills**: Implemented clickable pill system for instruction cards
