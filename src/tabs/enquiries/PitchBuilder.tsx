@@ -55,6 +55,7 @@ import { PitchDebugPanel, useLocalFetchLogger } from './pitch-builder';
 import EmailSignature from './EmailSignature';
 // EmailPreview panel deprecated in favour of inline preview
 import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
+import VerificationSummary from './pitch-builder/VerificationSummary';
 
 import OperationStatusToast from './pitch-builder/OperationStatusToast';
 // import InstructionCard from '../instructions/InstructionCard';
@@ -670,6 +671,75 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     (userEmailCandidate.UserPrincipalName && String(userEmailCandidate.UserPrincipalName).trim()) ||
     (userEmailCandidate['Email Address'] && String(userEmailCandidate['Email Address']).trim()) ||
     (userInitials ? `${userInitials.toLowerCase()}@helix-law.com` : '');
+
+  // Pitch Builder-specific: fetch team data via new server route and derive effective user data
+  const [pitchUserData, setPitchUserData] = useState<any[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const init = async () => {
+      try {
+        const res = await fetch('/api/pitch-team');
+        if (!res.ok) return;
+        const all = await res.json();
+        if (!Array.isArray(all)) return;
+        const initials = (userData?.[0]?.Initials || '').toString().trim().toUpperCase();
+        const email = (typeof userEmailAddress === 'string' ? userEmailAddress : '').trim().toLowerCase();
+        const fullNameLocal = (
+          (userData?.[0]?.['Full Name'])
+          || [userData?.[0]?.First, userData?.[0]?.Last].filter(Boolean).join(' ')
+        )?.toString().trim().toLowerCase().replace(/\s+/g, ' ');
+
+        // Try to find a matching record by Initials, then Email, then Full Name
+        const rec = all.find((r: any) => {
+          const rInitials = (r?.Initials || r?.initials || '').toString().trim().toUpperCase();
+          const rEmail = (r?.Email || r?.email || '').toString().trim().toLowerCase();
+          const rFullName = (
+            r?.['Full Name']
+            || [r?.First, r?.Last].filter(Boolean).join(' ')
+          )?.toString().trim().toLowerCase().replace(/\s+/g, ' ');
+          return (
+            (!!initials && rInitials === initials)
+            || (!!email && rEmail && rEmail === email)
+            || (!!fullNameLocal && rFullName && rFullName === fullNameLocal)
+          );
+        });
+        if (!rec) {
+          // No direct match: still provide the server dataset so previews can use it (e.g., first item)
+          if (!cancelled) setPitchUserData(all);
+          return;
+        }
+        const current = (userData && userData[0]) || {};
+        const merged = {
+          ...current,
+          Role: rec.Role ?? current.Role,
+          Rate: rec.Rate ?? current.Rate,
+          Initials: initials,
+          Email: rec.Email ?? current.Email,
+          First: current.First ?? rec.First,
+          Last: current.Last ?? rec.Last,
+          'Full Name': current['Full Name'] ?? rec['Full Name'] ?? `${rec.First ?? ''} ${rec.Last ?? ''}`.trim(),
+        };
+        if (!cancelled) setPitchUserData([merged]);
+      } catch (_) {
+        // Silent fallback to existing userData
+      }
+    };
+    init();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userInitials]);
+
+  const effectiveUserData = React.useMemo(() => {
+    if (pitchUserData && pitchUserData.length) {
+      // If merged single record provided, use it; otherwise prefer first server record
+      if (pitchUserData.length === 1) return pitchUserData;
+      return [pitchUserData[0]];
+    }
+    return userData;
+  }, [pitchUserData, userData]);
+  const usedPitchRoute = !!(pitchUserData && pitchUserData.length);
 
   // Local fetch logging
   const { apiCalls, clear: clearApiCalls } = useLocalFetchLogger(isLocalhost);
@@ -1317,7 +1387,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       generateBaseTemplate(blocks),
       '',
       enquiry,
-      userData,
+      effectiveUserData,
       blocks
     );
     const withInserts = wrapInsertPlaceholders(replaced);
@@ -2107,7 +2177,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     let html = option.previewText.trim().replace(/\n/g, '<br />');
     html = applyDynamicSubstitutions(
       html,
-      userData,
+      effectiveUserData,
       enquiry,
       amount,
       dealPasscode,
@@ -2141,7 +2211,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         if (text === null) return;
         text = applyDynamicSubstitutions(
           text,
-          userData,
+          effectiveUserData,
           enquiry,
           amount,
           dealPasscode,
@@ -2181,7 +2251,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       if (text !== null) {
         text = applyDynamicSubstitutions(
           text,
-          userData,
+          effectiveUserData,
           enquiry,
           amount,
           dealPasscode,
@@ -2378,7 +2448,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     let text = option.previewText.trim().replace(/\n/g, '<br />');
     text = applyDynamicSubstitutions(
       text,
-      userData,
+    effectiveUserData,
       enquiry,
       amount,
       dealPasscode,
@@ -2496,7 +2566,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     let text = option.previewText.trim().replace(/\n/g, '<br />');
     text = applyDynamicSubstitutions(
       text,
-      userData,
+      effectiveUserData,
       enquiry,
       amount,
       dealPasscode,
@@ -2990,6 +3060,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         leadClientEmail: enquiry.Email,
         // LeadClientId must mirror prospectId for single-client deals
         leadClientId: resolvedProspectId,
+        // Include email recipient details for monitoring notification
+        emailRecipients: {
+          to: to || enquiry.Point_of_Contact || enquiry.Email,
+          cc: cc || '',
+          bcc: buildBccList(),
+          feeEarnerEmail: userEmailAddress
+        },
         ...(isMultiClientFlag && {
           clients: dealClients.map((c) => ({
             clientEmail: c.email,
@@ -3249,7 +3326,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     let rawHtml = removeHighlightSpans(body);
     rawHtml = applyDynamicSubstitutions(
       rawHtml,
-      userData,
+      effectiveUserData,
       enquiry,
       amount,
       normalizePasscode(dealPasscode, enquiry?.ID) || dealPasscode,
@@ -3269,7 +3346,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     });
 
     const fullEmailHtml = ReactDOMServer.renderToStaticMarkup(
-      <EmailSignature bodyHtml={finalHtml} userData={userData} />
+  <EmailSignature bodyHtml={finalHtml} userData={effectiveUserData} />
     );
 
     // Use fee earner's email as sender, fallback to automations
@@ -3283,7 +3360,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       user_email: to, // Client's email as recipient
       subject: subject, // Use 'subject' not 'subject_line' for decoupled function
       from_email: senderEmail, // Send from fee earner's email
-      bcc_emails: bccList // BCC sender + safety addresses
+      bcc_emails: bccList, // BCC sender + safety addresses
+      // Include recipient details for monitoring notification
+      recipient_details: {
+        to: to,
+        cc: cc || '',
+        bcc: bccList,
+        fee_earner: senderEmail
+      }
     };
 
     // Guard: ensure we have a valid recipient email
@@ -3419,7 +3503,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     // Use the fresh passcode from the API call, not the state variable
     rawHtml = applyDynamicSubstitutions(
       rawHtml,
-      userData,
+      effectiveUserData,
       enquiry,
       amount,
       normalizePasscode(currentPasscode, enquiry?.ID) || currentPasscode,
@@ -3441,7 +3525,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     });
 
     const fullEmailHtml = ReactDOMServer.renderToStaticMarkup(
-      <EmailSignature bodyHtml={finalHtml} userData={userData} />
+  <EmailSignature bodyHtml={finalHtml} userData={effectiveUserData} />
     );
 
   // Draft: send to the user themselves; BCC only safety addresses (no CC)
@@ -3938,7 +4022,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
               const preview = option ? option.previewText.trim() : doc;
               const dynamicPreview = applyDynamicSubstitutions(
                 formatPreviewText(preview),
-                userData,
+                effectiveUserData,
                 enquiry,
                 amount,
                 dealPasscode,
@@ -3962,7 +4046,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       const preview = option ? option.previewText.trim() : '';
       const dynamicPreviewText = applyDynamicSubstitutions(
         formatPreviewText(preview),
-        userData,
+        effectiveUserData,
         enquiry,
         amount,
         dealPasscode,
@@ -4344,7 +4428,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       let raw = opt.previewText.trim();
       raw = applyDynamicSubstitutions(
         raw,
-        userData,
+        effectiveUserData,
         enquiry,
         amount,
         dealPasscode,
@@ -4456,23 +4540,23 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       {/* Client Info Header - Simplified (admin controls moved to Navigator) */}
       <div style={{ padding: '12px 20px', borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ display: 'flex', alignItems: 'center' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="#3690CE" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="8" r="4" />
-              <rect x="4" y="15" width="16" height="6" rx="3" />
-            </svg>
-          </span>
-          <div style={{ fontWeight: 600, fontSize: '1.1rem', color: '#24292f' }}>
-            {enquiry.First_Name} {enquiry.Last_Name}
-          </div>
-          <div style={{ flex: 1 }} />
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {enquiry.Email && (
-              <RevealCopyField iconName="Mail" value={enquiry.Email} color="#3690CE" label="Email" />
-            )}
-            {enquiry.Phone_Number && (
-              <RevealCopyField iconName="Phone" value={enquiry.Phone_Number} color="#666" label="Phone" />
-            )}
+          {/* Integrated verification & client header */}
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <VerificationSummary
+              isDarkMode={isDarkMode}
+              userData={effectiveUserData}
+              enquiry={enquiry}
+              amount={amount}
+              passcode={dealPasscode}
+              usedPitchRoute={usedPitchRoute}
+              onPreview={(url) => {
+                try {
+                  window.open(url, '_blank', 'noopener');
+                } catch (_) {
+                  // no-op fallback
+                }
+              }}
+            />
           </div>
         </div>
       </div>
@@ -4600,12 +4684,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           amount={amount}
           onAmountChange={handleAmountChange}
           // Inline preview props
-          userData={userData}
+          userData={effectiveUserData}
           enquiry={enquiry}
           passcode={dealPasscode}
           handleDraftEmail={handleDraftEmail}
           sendEmail={sendEmail}
           isDraftConfirmed={isDraftConfirmed}
+          // Email recipient props for send confirmation
+          to={to}
+          cc={cc}
+          bcc={bcc}
+          feeEarnerEmail={userEmailAddress}
         // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
         // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
         // highlightBlock prop removed; not needed by EditorAndTemplateBlocks

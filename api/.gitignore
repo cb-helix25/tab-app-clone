@@ -23,3 +23,5 @@ local.settings.json
 env/.env.*.user
 env/.env.local
 env/.env.dev
+# Operation logs
+server/logs/ops.log.jsonl

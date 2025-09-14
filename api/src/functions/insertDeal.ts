@@ -165,7 +165,7 @@ async function sendDealCapturedEmail(context: InvocationContext, dealInfo: any) 
       PitchedBy: dealInfo.pitchedBy ?? '',
       IsMultiClient: dealInfo.isMultiClient ? 'yes' : 'no',
       LeadClientEmail: dealInfo.leadClientEmail ?? '',
-  Clients: Array.isArray(dealInfo.clients) ? dealInfo.clients.map((c: any) => c.clientEmail || c.email || '').join(', ') : '',
+  Recipients: Array.isArray(dealInfo.clients) ? dealInfo.clients.map((c: any) => c.clientEmail || c.email || '').filter(Boolean).join(', ') || (dealInfo.leadClientEmail ? dealInfo.leadClientEmail : 'N/A') : (dealInfo.leadClientEmail ? dealInfo.leadClientEmail : 'N/A'),
       InstructionsUrl: instructionsUrl,
       GeneratedAt: now.toISOString(),
     };

@@ -35,6 +35,7 @@ const enquiriesUnifiedRouter = require('./routes/enquiries-unified');
 const verifyIdRouter = require('./routes/verify-id');
 const testDbRouter = require('./routes/test-db');
 const teamLookupRouter = require('./routes/team-lookup');
+const pitchTeamRouter = require('./routes/pitchTeam');
 const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 const fileMapRouter = require('./routes/fileMap');
 const opsRouter = require('./routes/ops');
@@ -91,6 +92,7 @@ app.use('/api/instructions', instructionsRouter);
 app.use('/api/verify-id', verifyIdRouter);
 app.use('/api/test-db', testDbRouter);
 app.use('/api/team-lookup', teamLookupRouter);
+app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api/file-map', fileMapRouter);
 app.use('/ccls', express.static(CCL_DIR));
 
@@ -133,6 +135,7 @@ console.log('  ✅ /api/pitches');
 console.log('  🆕 /api/instructions (UNIFIED ENDPOINT)');
 console.log('  🆕 /api/verify-id (ID VERIFICATION)');
 console.log('  🆕 /api/team-lookup (TEAM EMAIL LOOKUP)');
+console.log('  🆕 /api/pitch-team (PITCH TEAM DATA)');
 console.log('  🆕 /api/file-map (REPO FILE MAP)');
 
 // Proxy routes to Azure Functions - these handle requests without /api/ prefix

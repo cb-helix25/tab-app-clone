@@ -7,7 +7,7 @@
  * any local state derived from these scenarios without requiring a manual remount.
  * Only increment this manually when you change the scenarios content.
  */
-export const SCENARIOS_VERSION: number = 1;
+export const SCENARIOS_VERSION: number = 2;
 
 export type Scenario = {
   /** Stable id for persistence */
@@ -29,7 +29,7 @@ export const SCENARIOS: Scenario[] = [
     id: 'before-call-call',
     name: 'Before call — Call',
     subject: 'Pitch before call — Call',
-    body: `Thank you for your enquiry to Helix Law. I have set out below some details that I hope help in relation to your enquiry. We’re a specialist firm of solicitors and we only dealt with litigation and disputes. We act nationally.
+  body: `Thank you for your enquiry to Helix Law. I have set out below some details that I hope help in relation to your enquiry. We’re a specialist firm of solicitors and we only deal with litigation and disputes. We act nationally.
 
 We often deal with disputes such as yours and I am confident we are well-placed to assist in relation to your matter.
 
@@ -45,7 +45,7 @@ I look forward to speaking with you.`
     id: 'before-call-no-call',
     name: 'Before call — No call',
     subject: 'Pitch before call — No call',
-    body: `Thank you for your enquiry to Helix Law. We’re a specialist firm of solicitors and we only dealt with litigation and disputes. We act nationally. Before taking things further it is obviously incredibly important that you consider cost; benefit, and that it stacks up for you and for us for you to incur legal costs. With this in mind I have set out below some details that I hope help in relation to your enquiry so that you make a decision before we go ahead with a call or a paid review and advice.
+  body: `Thank you for your enquiry to Helix Law. We’re a specialist firm of solicitors and we only deal with litigation and disputes. We act nationally. Before taking things further it is obviously incredibly important that you consider cost; benefit, and that it stacks up for you and for us for you to incur legal costs. With this in mind I have set out below some details that I hope help in relation to your enquiry so that you make a decision before we go ahead with a call or a paid review and advice.
 
 We haven’t yet spoken but I have reviewed the details and information you have helpfully provided, thank you. You appear to be in a dispute with [INSERT] relating to [INSERT] and you have confirmed that [INSERT].
 

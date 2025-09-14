@@ -127,10 +127,3 @@ app.http("getVerificationDetails", {
     route: "instructions/{instructionRef}/verification-details",
     handler: getVerificationDetailsHandler,
 });
-
-app.http("getVerificationDetails", {
-    methods: ["GET"],
-    authLevel: "function",
-    route: "instructions/{instructionRef}/verification-details",
-    handler: getVerificationDetailsHandler,
-});

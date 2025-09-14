@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Stack, Text, Icon, Pivot, PivotItem, TextField } from '@fluentui/react';
-import { FaBolt, FaEdit, FaFileAlt, FaEraser, FaCopy, FaEye, FaInfoCircle, FaThumbtack, FaCalculator, FaExclamationTriangle, FaEnvelope, FaCheck, FaPaperPlane, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaBolt, FaEdit, FaFileAlt, FaEraser, FaInfoCircle, FaThumbtack, FaCalculator, FaExclamationTriangle, FaEnvelope, FaPaperPlane, FaChevronDown, FaChevronUp, FaCopy, FaEye, FaCheck } from 'react-icons/fa';
 import DealCapture from './DealCapture';
 import { colours } from '../../../app/styles/colours';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
@@ -85,7 +85,7 @@ function useAutoInsertRateRole(
     };
     const rateNumber = parseRate(rateRaw);
     const formatRateGBP = (n: number) =>
-      `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + VAT`;
 
     if (!body || (!roleStr && rateNumber == null)) {
       // No changes; clear any prior transient highlights
@@ -569,8 +569,8 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
       ref={wrapperRef}
       style={{
         position: 'relative',
-        fontSize: 13,
-        lineHeight: 1.4,
+  fontSize: 13,
+  lineHeight: 1,
         border: 'none',
         background: 'transparent',
         borderRadius: 0,
@@ -615,7 +615,7 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
             }}
             title="Undo (Ctrl+Z)"
           >
-            <Icon iconName="Undo" styles={{ root: { fontSize: 12 } }} />
+            <FaEdit style={{ fontSize: 12, transform: 'scaleX(-1)' }} />
           </button>
           <button
             onClick={handleRedo}
@@ -634,7 +634,7 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
             }}
             title="Redo (Ctrl+Y)"
           >
-            <Icon iconName="Redo" styles={{ root: { fontSize: 12 } }} />
+            <FaEdit style={{ fontSize: 12 }} />
           </button>
           <div style={{
             width: 1,
@@ -663,7 +663,7 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
             }}
             title="Clear all (Ctrl+Backspace)"
           >
-            <Icon iconName="Clear" styles={{ root: { fontSize: 12 } }} />
+            <FaEraser style={{ fontSize: 12 }} />
           </button>
         </div>
       )}
@@ -677,7 +677,7 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
       font: 'inherit',
-      lineHeight: 1.4,
+  lineHeight: 1,
       color: '#222',
           pointerEvents: 'none',
           visibility: 'visible'
@@ -735,7 +735,8 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
                   const num = m[2] ?? '';
                   const after = m[3] ?? '';
                   const rest = line.slice(m[0].length);
-                  html += `${escapeHtml(pre)}<span style="color:#D65541;font-weight:700;">${escapeHtml(num + '.')}<\/span>${escapeHtml(after + rest)}`;
+                  // Color only; avoid bold to preserve exact text metrics
+                  html += `${escapeHtml(pre)}<span style="color:#D65541;">${escapeHtml(num + '.')}<\/span>${escapeHtml(after + rest)}`;
                 } else {
                   html += escapeHtml(line);
                 }
@@ -756,10 +757,9 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
               // Use outline (doesn't affect layout) for dashed box appearance and avoid padding which would change width.
               html += `<span style="display:inline;background:#e0f0ff;outline:1px dashed #8bbbe8;padding:0;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${escapeHtml(segment)}</span>`;
             } else if (mark.type === 'instructLink') {
-              // Preserve the original marker href (includes passcode when available) instead of hardcoding base URL
-              const href = (mark.href || 'https://instruct.helix-law.com/pitch').trim();
-              const safe = escapeHtml(href);
-              html += `<a href="${safe}" style="color:#174ea6;font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
+              // Render the literal marker text so overlay width exactly matches textarea content
+              // Style it to be recognizable without altering layout
+              html += `<span style="color:#174ea6;text-decoration:underline">${escapeHtml(segment)}</span>`;
             } else {
               // Updated edited highlight: subtle green background only (no border/box), accessible text color
               html += `<span style="display:inline;background:#e9f9f1;padding:0;margin:0;border:none;font-style:inherit;color:#0b3d2c">${escapeHtml(segment)}</span>`;
@@ -767,18 +767,8 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
             cursor = mark.end;
           });
           pushPlain(value.length);
-          // Render any [[INSTRUCT_LINK::href]] markers as visible link text in the overlay
-          try {
-            const replaced = html.replace(/\[\[INSTRUCT_LINK::([^\]]+)\]\]/g, (_m, href) => {
-              // Use the actual href from the marker, not a hardcoded URL
-              const safeHref = escapeHtml(href.trim());
-              // Render a friendly, bold blue anchor label for instruct links in the overlay
-              return `<a href="${safeHref}" style="color:#174ea6;font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
-            });
-            return replaced || '';
-          } catch (e) {
-            return html || '';
-          }
+          // Keep markers literal in the overlay to preserve spacing/line wraps
+          return html || '';
         })() }}
       />
     <textarea
@@ -803,7 +793,7 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
       color: 'transparent', // hide raw text, rely on highlighted layer
       caretColor: '#222',
       font: 'inherit',
-      lineHeight: 1.4,
+  lineHeight: 1,
       border: 'none',
       padding: '4px 6px',
       outline: 'none',
@@ -858,6 +848,11 @@ interface EditorAndTemplateBlocksProps {
   handleDraftEmail?: () => void;
   sendEmail?: () => void;
   isDraftConfirmed?: boolean;
+  // Email recipient props for send confirmation
+  to?: string;
+  cc?: string;
+  bcc?: string;
+  feeEarnerEmail?: string;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
@@ -898,7 +893,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   passcode,
   handleDraftEmail,
   sendEmail,
-  isDraftConfirmed
+  isDraftConfirmed,
+  // Email recipient props for send confirmation
+  to,
+  cc,
+  bcc,
+  feeEarnerEmail
 }) => {
   // State for removed blocks
   const [removedBlocks, setRemovedBlocks] = useState<{ [key: string]: boolean }>({});
@@ -916,8 +916,13 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
   const [isTemplatesCollapsed, setIsTemplatesCollapsed] = useState(false); // Start expanded for immediate selection
   const [showInlinePreview, setShowInlinePreview] = useState(false);
+  // Email confirmation modal state
+  const [showSendConfirmModal, setShowSendConfirmModal] = useState(false);
   const [confirmReady, setConfirmReady] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  // Copy feedback flags
+  const [copiedToolbar, setCopiedToolbar] = useState(false);
+  const [copiedFooter, setCopiedFooter] = useState(false);
   // HMR tick to force re-render when scenarios module hot-reloads
   const [hmrTick, setHmrTick] = useState(0);
   // Helper: apply simple [RATE]/[ROLE] substitutions and dynamic tokens ([InstructLink])
@@ -936,7 +941,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       return isFinite(n) ? n : null;
     };
     const rateNumber = parseRate(rateRaw);
-    const formatRateGBP = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formatRateGBP = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + VAT`;
     let out = text;
     if (rateNumber != null) out = out.replace(/\[RATE\]/gi, formatRateGBP(rateNumber));
     if (roleStr) out = out.replace(/\[ROLE\]/gi, roleStr);
@@ -1250,9 +1255,19 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           --helix-font: 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         
-        /* Apply Raleway to all elements in this component */
+        /* Apply Raleway to most elements in this component */
         .helix-professional-content * {
           font-family: var(--helix-font) !important;
+        }
+        /* EXCEPTION: Fluent UI font icons must keep their icon font family */
+        .helix-professional-content .ms-Icon,
+        .helix-professional-content i.ms-Icon,
+        .helix-professional-content span.ms-Icon,
+        .helix-professional-content [class*="ms-Icon"] {
+          font-family: 'FabricMDL2Icons','Segoe MDL2 Assets' !important;
+          speak: none;
+          font-weight: normal;
+          font-style: normal;
         }
         
         /* Custom text selection styling - softer blue for brand consistency */
@@ -1740,47 +1755,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 <div style={{ display: 'inline-flex', gap: 8 }}>
                   <button
                     onClick={() => {
-                      const plain = htmlToPlainText(body);
-                      if (plain !== body) {
-                        setBody(plain);
-                      }
-                    }}
-                    style={{
-                      padding: '6px 12px',
-                      fontSize: '12px',
-                      borderRadius: '6px',
-                      border: '1px solid #CBD5E1',
-                      color: '#64748B',
-                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      fontWeight: 500,
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#3690CE';
-                      e.currentTarget.style.color = '#3690CE';
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.15)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#CBD5E1';
-                      e.currentTarget.style.color = '#64748B';
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-                    }}
-                    title="Convert current content to plain text"
-                  >
-                    <FaEraser style={{ fontSize: 12 }} /> Plain text
-                  </button>
-                  <button
-                    onClick={() => {
                       if (showInlinePreview) {
                         if (!previewRef.current) return;
                         const text = previewRef.current.innerText || '';
@@ -1794,6 +1768,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           try { document.execCommand('copy'); } catch {}
                           document.body.removeChild(ta);
                         }
+                        setCopiedToolbar(true);
+                        setTimeout(() => setCopiedToolbar(false), 1200);
                         return;
                       }
                       const plain = htmlToPlainText(body);
@@ -1808,14 +1784,16 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         try { document.execCommand('copy'); } catch {}
                         document.body.removeChild(ta);
                       }
+                      setCopiedToolbar(true);
+                      setTimeout(() => setCopiedToolbar(false), 1200);
                     }}
                     style={{
                       padding: '6px 12px',
                       fontSize: '12px',
                       borderRadius: '6px',
-                      border: '1px solid #3690CE',
-                      color: '#3690CE',
-                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      border: copiedToolbar ? '1px solid #16a34a' : '1px solid #3690CE',
+                      color: copiedToolbar ? '#166534' : '#3690CE',
+                      background: copiedToolbar ? '#e8f5e8' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                       cursor: 'pointer',
                       fontFamily: 'inherit',
                       fontWeight: 500,
@@ -1823,65 +1801,80 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 4,
-                      boxShadow: '0 1px 3px rgba(54, 144, 206, 0.15)'
+                      boxShadow: copiedToolbar ? '0 2px 4px rgba(22, 163, 74, 0.2)' : '0 1px 3px rgba(54, 144, 206, 0.15)'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.2)';
+                      if (!copiedToolbar) {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.2)';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(54, 144, 206, 0.15)';
+                      if (!copiedToolbar) {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(54, 144, 206, 0.15)';
+                      }
                     }}
                     title={showInlinePreview ? 'Copy preview text' : 'Copy plain text'}
                   >
-                    <FaCopy style={{ fontSize: 12 }} /> Copy
+                    {copiedToolbar ? (
+                      <>
+                        <FaCheck style={{ fontSize: 12 }} /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <FaCopy style={{ fontSize: 12 }} /> Copy
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={() => setShowInlinePreview(v => !v)}
                     style={{
                       padding: '6px 12px',
                       fontSize: '12px',
-                      borderRadius: '6px',
-                      border: `1px solid ${showInlinePreview ? '#3690CE' : '#CBD5E1'}`,
-                      color: showInlinePreview ? '#3690CE' : '#64748B',
-                      background: showInlinePreview 
-                        ? 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)' 
-                        : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      borderRadius: '8px',
+                      border: showInlinePreview ? '1px solid #CBD5E1' : '1px solid #D65541',
+                      color: showInlinePreview ? '#64748B' : '#ffffff',
+                      background: showInlinePreview
+                        ? 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)'
+                        : `linear-gradient(135deg, ${colours.red} 0%, #b04434 100%)`,
                       cursor: 'pointer',
                       fontFamily: 'inherit',
-                      fontWeight: 500,
+                      fontWeight: showInlinePreview ? 600 : 700,
                       transition: 'all 0.2s ease',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 4,
-                      boxShadow: showInlinePreview 
-                        ? '0 2px 4px rgba(54, 144, 206, 0.2)' 
-                        : '0 1px 3px rgba(0, 0, 0, 0.1)'
+                      gap: 6,
+                      boxShadow: showInlinePreview ? '0 1px 3px rgba(0, 0, 0, 0.08)' : '0 2px 4px rgba(214, 85, 65, 0.25)'
                     }}
                     onMouseEnter={(e) => {
-                      if (!showInlinePreview) {
-                        e.currentTarget.style.borderColor = '#3690CE';
-                        e.currentTarget.style.color = '#3690CE';
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.15)';
+                      if (showInlinePreview) {
+                        e.currentTarget.style.borderColor = '#94A3B8';
+                        e.currentTarget.style.color = '#475569';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #F0F4F8 0%, #EFF6FF 100%)';
+                      } else {
+                        e.currentTarget.style.background = `linear-gradient(135deg, #c24a39 0%, #9e3d30 100%)`;
+                        e.currentTarget.style.boxShadow = '0 3px 6px rgba(214, 85, 65, 0.30)';
                       }
+                      e.currentTarget.style.transform = 'translateY(-1px)';
                     }}
                     onMouseLeave={(e) => {
-                      if (!showInlinePreview) {
+                      if (showInlinePreview) {
                         e.currentTarget.style.borderColor = '#CBD5E1';
                         e.currentTarget.style.color = '#64748B';
                         e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.08)';
+                      } else {
+                        e.currentTarget.style.background = `linear-gradient(135deg, ${colours.red} 0%, #b04434 100%)`;
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(214, 85, 65, 0.25)';
                       }
+                      e.currentTarget.style.transform = 'translateY(0)';
                     }}
                     title="Toggle inline preview"
                   >
-                    <FaEye style={{ fontSize: 12 }} /> {showInlinePreview ? 'Back to editor' : 'Preview here'}
+                    <FaEye style={{ fontSize: 12 }} /> {showInlinePreview ? 'Back to editor' : 'Preview'}
                   </button>
                 </div>
               </div>
@@ -2008,7 +2001,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       return (
                         <>
                           <button
-                            onClick={() => sendEmail?.()}
+                            onClick={() => setShowSendConfirmModal(true)}
                             disabled={disableSend}
                             title={unresolvedAny ? 'Resolve placeholders before sending' : 'Send Email'}
                             style={{
@@ -2107,42 +2100,60 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         if (!previewRef.current) return;
                         const text = previewRef.current.innerText || '';
                         navigator.clipboard.writeText(text);
+                        setCopiedFooter(true);
+                        setTimeout(() => setCopiedFooter(false), 1200);
                       }}
                       style={{ 
                         padding: '6px 12px', 
                         borderRadius: 6, 
-                        border: '1px solid #e1e5e9', 
-                        background: '#fff', 
-                        color: '#3c4043', 
+                        border: copiedFooter ? '1px solid #16a34a' : '1px solid #e1e5e9', 
+                        background: copiedFooter ? '#e8f5e8' : '#fff', 
+                        color: copiedFooter ? '#166534' : '#3c4043', 
                         fontWeight: 500,
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
                         transform: 'translateY(0)'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#3690CE';
-                        e.currentTarget.style.background = '#f8fafc';
-                        e.currentTarget.style.color = '#3690CE';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(54, 144, 206, 0.15)';
+                        if (!copiedFooter) {
+                          e.currentTarget.style.borderColor = '#3690CE';
+                          e.currentTarget.style.background = '#f8fafc';
+                          e.currentTarget.style.color = '#3690CE';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(54, 144, 206, 0.15)';
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#e1e5e9';
-                        e.currentTarget.style.background = '#fff';
-                        e.currentTarget.style.color = '#3c4043';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = 'none';
+                        if (!copiedFooter) {
+                          e.currentTarget.style.borderColor = '#e1e5e9';
+                          e.currentTarget.style.background = '#fff';
+                          e.currentTarget.style.color = '#3c4043';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }
                       }}
                       onMouseDown={(e) => {
-                        e.currentTarget.style.transform = 'translateY(1px)';
-                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(54, 144, 206, 0.1)';
+                        if (!copiedFooter) {
+                          e.currentTarget.style.transform = 'translateY(1px)';
+                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(54, 144, 206, 0.1)';
+                        }
                       }}
                       onMouseUp={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(54, 144, 206, 0.15)';
+                        if (!copiedFooter) {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(54, 144, 206, 0.15)';
+                        }
                       }}
                     >
-                      <FaCopy style={{ marginRight: 4 }} /> Copy
+                      {copiedFooter ? (
+                        <>
+                          <FaCheck style={{ marginRight: 4 }} /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <FaCopy style={{ marginRight: 4 }} /> Copy
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -2326,6 +2337,288 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         ol.hlx-numlist li::before { content: none !important; }
         ol.hlx-numlist > li > span:first-child { color: #D65541; font-weight: 700; display: inline-block; min-width: 1.6em; }
       `}</style>
+
+      {/* Email Send Confirmation Modal */}
+      {showSendConfirmModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            background: isDarkMode 
+              ? colours.dark.cardBackground 
+              : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+            padding: '24px',
+            borderRadius: '12px',
+            maxWidth: '520px',
+            width: '90%',
+            maxHeight: '85vh',
+            overflowY: 'auto',
+            boxShadow: isDarkMode 
+              ? '0 20px 40px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3)' 
+              : '0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.08)',
+            border: isDarkMode 
+              ? `1px solid ${colours.dark.borderColor}` 
+              : '1px solid rgba(255, 255, 255, 0.8)'
+          }}>
+            <h3 style={{
+              margin: '0 0 20px 0',
+              color: isDarkMode ? colours.dark.text : colours.darkBlue,
+              fontSize: '20px',
+              fontWeight: '600',
+              letterSpacing: '-0.01em'
+            }}>
+              Confirm Email Send
+            </h3>
+            
+            {/* Recipients Section - Primary Focus */}
+            <div style={{ 
+              marginBottom: '20px',
+              padding: '16px',
+              background: isDarkMode 
+                ? 'rgba(59, 130, 246, 0.08)' 
+                : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+              border: `1px solid ${isDarkMode ? colours.dark.borderColor : '#E5E7EB'}`,
+              borderRadius: '8px'
+            }}>
+              <h4 style={{
+                margin: '0 0 12px 0',
+                fontSize: '16px',
+                fontWeight: '600',
+                color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                letterSpacing: '-0.005em'
+              }}>
+                Email Recipients
+              </h4>
+              
+              {to && (
+                <div style={{ marginBottom: '8px', fontSize: '14px' }}>
+                  <span style={{ 
+                    fontWeight: '600', 
+                    color: isDarkMode ? colours.blue : colours.darkBlue, 
+                    minWidth: '40px', 
+                    display: 'inline-block' 
+                  }}>To:</span>
+                  <span style={{ color: isDarkMode ? colours.dark.text : colours.darkBlue }}>{to}</span>
+                </div>
+              )}
+              
+              {cc && (
+                <div style={{ marginBottom: '8px', fontSize: '14px' }}>
+                  <span style={{ 
+                    fontWeight: '600', 
+                    color: isDarkMode ? colours.blue : colours.darkBlue, 
+                    minWidth: '40px', 
+                    display: 'inline-block' 
+                  }}>CC:</span>
+                  <span style={{ color: isDarkMode ? colours.dark.text : colours.darkBlue }}>{cc}</span>
+                </div>
+              )}
+              
+              {/* Show current BCC plus fee earner email */}
+              <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                <span style={{ 
+                  fontWeight: '600', 
+                  color: isDarkMode ? colours.blue : colours.darkBlue, 
+                  minWidth: '40px', 
+                  display: 'inline-block' 
+                }}>BCC:</span>
+                <span style={{ color: isDarkMode ? colours.dark.text : colours.darkBlue }}>
+                  {[bcc, feeEarnerEmail].filter(Boolean).join(', ')}
+                </span>
+              </div>
+            </div>
+            
+            {/* Email Summary Section - Secondary */}
+            <div style={{
+              background: isDarkMode 
+                ? colours.dark.inputBackground 
+                : 'linear-gradient(135deg, #FEFEFE 0%, #F9FAFB 100%)',
+              border: `1px solid ${isDarkMode ? colours.dark.border : '#E5E7EB'}`,
+              borderRadius: '8px',
+              padding: '14px',
+              marginBottom: '16px'
+            }}>
+              <h4 style={{
+                margin: '0 0 10px 0',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: isDarkMode ? colours.dark.text : '#5F6368',
+                letterSpacing: '0.4px',
+                textTransform: 'uppercase'
+              }}>
+                Email Content Summary
+              </h4>
+              
+              {subject && (
+                <div style={{ marginBottom: '8px', fontSize: '13px' }}>
+                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Subject:</span>
+                  <div style={{ 
+                    marginTop: '2px',
+                    color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                    fontStyle: 'italic'
+                  }}>
+                    "{subject}"
+                  </div>
+                </div>
+              )}
+              
+              {amountValue && (
+                <div style={{ marginBottom: '8px', fontSize: '13px' }}>
+                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Amount:</span>
+                  <span style={{ 
+                    marginLeft: '8px',
+                    color: isDarkMode ? colours.blue : colours.darkBlue,
+                    fontWeight: '600'
+                  }}>
+                    £{parseFloat(amountValue).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + VAT
+                  </span>
+                </div>
+              )}
+              
+              {scopeDescription && (
+                <div style={{ fontSize: '13px' }}>
+                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Scope:</span>
+                  <div style={{ 
+                    marginTop: '4px',
+                    color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                    lineHeight: '1.4',
+                    maxHeight: '60px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {scopeDescription.length > 150 ? `${scopeDescription.substring(0, 150)}...` : scopeDescription}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Debug/Support Info Box */}
+            <div style={{
+              background: isDarkMode 
+                ? 'rgba(59, 130, 246, 0.1)' 
+                : 'linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(147, 197, 253, 0.08) 100%)',
+              border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.15)'}`,
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '24px',
+              fontSize: '13px'
+            }}>
+              <div style={{ 
+                fontWeight: '600', 
+                marginBottom: '6px',
+                color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                fontSize: '12px',
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase'
+              }}>
+                Additional BCC (Support & Debug)
+              </div>
+              <div style={{ 
+                color: isDarkMode ? colours.blue : colours.darkBlue,
+                fontFamily: 'Monaco, Consolas, "SF Mono", monospace',
+                fontSize: '12px',
+                fontWeight: '500'
+              }}>
+                lz@helix-law.com, cb@helix-law.com
+              </div>
+              <div style={{ 
+                color: isDarkMode ? colours.dark.text : '#6B7280',
+                fontSize: '11px',
+                marginTop: '4px',
+                fontStyle: 'italic',
+                opacity: 0.8
+              }}>
+                Automatically BCC'd for support and troubleshooting
+              </div>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowSendConfirmModal(false)}
+                style={{
+                  padding: '10px 20px',
+                  border: `1px solid ${isDarkMode ? colours.dark.borderColor : '#D1D5DB'}`,
+                  background: isDarkMode 
+                    ? 'transparent' 
+                    : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                  color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease',
+                  letterSpacing: '-0.005em'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDarkMode 
+                    ? colours.dark.inputBackground 
+                    : 'linear-gradient(135deg, #F0F4F8 0%, #EFF6FF 100%)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = isDarkMode 
+                    ? 'transparent' 
+                    : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowSendConfirmModal(false);
+                  sendEmail?.();
+                }}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  background: `linear-gradient(90deg, ${colours.blue}, #60A5FA)`,
+                  color: '#FFFFFF',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s ease',
+                  letterSpacing: '-0.005em',
+                  boxShadow: isDarkMode 
+                    ? '0 4px 8px rgba(0, 0, 0, 0.3)' 
+                    : '0 4px 8px rgba(54, 144, 206, 0.25)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(90deg, #2563EB, #3B82F6)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = isDarkMode 
+                    ? '0 6px 12px rgba(0, 0, 0, 0.4)' 
+                    : '0 6px 12px rgba(54, 144, 206, 0.35)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = `linear-gradient(90deg, ${colours.blue}, #60A5FA)`;
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = isDarkMode 
+                    ? '0 4px 8px rgba(0, 0, 0, 0.3)' 
+                    : '0 4px 8px rgba(54, 144, 206, 0.25)';
+                }}
+              >
+                Send Email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
