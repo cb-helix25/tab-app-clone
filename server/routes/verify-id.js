@@ -9,59 +9,7 @@ const router = express.Router();
 const { submitVerification } = require('../utils/tillerApi');
 const { insertIDVerification } = require('../utils/idVerificationDb');
 
-// Cache for team data to avoid repeated API calls
-let teamDataCache = null;
-let teamDataCacheTime = null;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Fetch team data from API with caching
- */
-async function getTeamData() {
-  const now = Date.now();
-  
-  // Return cached data if still valid
-  if (teamDataCache && teamDataCacheTime && (now - teamDataCacheTime) < CACHE_DURATION) {
-    return teamDataCache;
-  }
-  
-  try {
-    const axios = require('axios');
-    const teamApiKey = process.env.REACT_APP_GET_TEAM_DATA_CODE;
-    
-    if (!teamApiKey) {
-      console.warn('[verify-id] No REACT_APP_GET_TEAM_DATA_CODE found, using fallback team data');
-      // Fallback to hardcoded data if API key not available
-      return require('../../data/team-sql-data.json');
-    }
-    
-    const response = await axios.get(
-      'https://helix-hub-api.azurewebsites.net/api/getTeamData',
-      {
-        params: { code: teamApiKey }
-      }
-    );
-    
-    if (response.data && Array.isArray(response.data)) {
-      teamDataCache = response.data;
-      teamDataCacheTime = now;
-      console.log(`[verify-id] Team data refreshed from API (${response.data.length} records)`);
-      return teamDataCache;
-    } else {
-      throw new Error('Invalid team data response format');
-    }
-  } catch (error) {
-    console.error('[verify-id] Failed to fetch team data from API:', error.message);
-    
-    // Fallback to hardcoded data if API fails
-    if (!teamDataCache) {
-      console.log('[verify-id] Using fallback hardcoded team data');
-      teamDataCache = require('../../data/team-sql-data.json');
-    }
-    
-    return teamDataCache;
-  }
-}
+const { getTeamData } = require('../utils/teamData');
 
 /**
  * Convert Helix contact name or initials to email address

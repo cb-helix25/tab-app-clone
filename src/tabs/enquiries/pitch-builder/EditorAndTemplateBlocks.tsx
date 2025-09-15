@@ -915,6 +915,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [modalError, setModalError] = useState<string | null>(null);
   // HMR tick to force re-render when scenarios module hot-reloads
   const [hmrTick, setHmrTick] = useState(0);
+  // Prevent Draft visual state from being triggered by Send action
+  const [hasSentEmail, setHasSentEmail] = useState(false);
   // Helper: apply simple [RATE]/[ROLE] substitutions and dynamic tokens ([InstructLink])
   const applyRateRolePlaceholders = useCallback((text: string) => {
     const u: any = Array.isArray(userData) ? (userData?.[0] ?? null) : userData;
@@ -1987,6 +1989,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       const unresolvedBody = findPlaceholders(substitutedBody);
                       const unresolvedAny = unresolvedSubject.length > 0 || unresolvedBody.length > 0;
                       const disableDraft = !confirmReady || isDraftConfirmed || unresolvedAny;
+                      const draftVisualConfirmed = isDraftConfirmed && !hasSentEmail;
                       const missingServiceSummary = !scopeDescription || !String(scopeDescription).trim();
                       const disableSend = unresolvedAny || missingServiceSummary; // Disable if placeholders unresolved or summary missing
                       const sendBtnTitle = unresolvedAny
@@ -2045,9 +2048,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                             style={{
                               padding: '6px 12px', 
                               borderRadius: 6, 
-                              border: `1px solid ${isDraftConfirmed ? colours.green : '#e1e5e9'}`,
-                              background: isDraftConfirmed ? '#e8f5e8' : '#fff', 
-                              color: isDraftConfirmed ? colours.green : '#3c4043', 
+                              border: `1px solid ${draftVisualConfirmed ? colours.green : '#e1e5e9'}`,
+                              background: draftVisualConfirmed ? '#e8f5e8' : '#fff', 
+                              color: draftVisualConfirmed ? colours.green : '#3c4043', 
                               fontWeight: 600,
                               cursor: disableDraft ? 'not-allowed' : 'pointer',
                               transition: 'all 0.2s ease',
@@ -2055,7 +2058,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                               opacity: disableDraft ? 0.6 : 1
                             }}
                             onMouseEnter={(e) => {
-                              if (!disableDraft && !isDraftConfirmed) {
+                              if (!disableDraft && !draftVisualConfirmed) {
                                 e.currentTarget.style.borderColor = colours.green;
                                 e.currentTarget.style.background = '#f0f9f0';
                                 e.currentTarget.style.transform = 'translateY(-1px)';
@@ -2063,7 +2066,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                               }
                             }}
                             onMouseLeave={(e) => {
-                              if (!disableDraft && !isDraftConfirmed) {
+                              if (!disableDraft && !draftVisualConfirmed) {
                                 e.currentTarget.style.borderColor = '#e1e5e9';
                                 e.currentTarget.style.background = '#fff';
                                 e.currentTarget.style.transform = 'translateY(0)';
@@ -2071,20 +2074,20 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                               }
                             }}
                             onMouseDown={(e) => {
-                              if (!disableDraft && !isDraftConfirmed) {
+                              if (!disableDraft && !draftVisualConfirmed) {
                                 e.currentTarget.style.transform = 'translateY(1px)';
                                 e.currentTarget.style.boxShadow = '0 1px 2px rgba(32, 178, 108, 0.1)';
                               }
                             }}
                             onMouseUp={(e) => {
-                              if (!disableDraft && !isDraftConfirmed) {
+                              if (!disableDraft && !draftVisualConfirmed) {
                                 e.currentTarget.style.transform = 'translateY(-1px)';
                                 e.currentTarget.style.boxShadow = '0 2px 4px rgba(32, 178, 108, 0.15)';
                               }
                             }}
-                            title={isDraftConfirmed ? 'Drafted' : (unresolvedAny ? 'Resolve placeholders before drafting' : 'Draft Email')}
+                            title={draftVisualConfirmed ? 'Drafted' : (unresolvedAny ? 'Resolve placeholders before drafting' : 'Draft Email')}
                           >
-                            {isDraftConfirmed ? <FaCheck style={{ marginRight: 4 }} /> : <FaEnvelope style={{ marginRight: 4 }} />} {isDraftConfirmed ? 'Drafted' : 'Draft Email'}
+                            {draftVisualConfirmed ? <FaCheck style={{ marginRight: 4 }} /> : <FaEnvelope style={{ marginRight: 4 }} />} {draftVisualConfirmed ? 'Drafted' : 'Draft Email'}
                           </button>
                         </>
                       );
@@ -2583,6 +2586,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   }
                   setModalError(null);
                   setShowSendConfirmModal(false);
+                  setHasSentEmail(true);
                   sendEmail?.();
                 }}
                 style={{
