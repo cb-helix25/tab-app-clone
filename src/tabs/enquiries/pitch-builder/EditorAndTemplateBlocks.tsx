@@ -649,18 +649,6 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
               onChange(newValue);
               addToHistory(newValue);
             }}
-            style={{
-              padding: '4px 6px',
-              fontSize: 11,
-              backgroundColor: 'transparent',
-              color: '#666',
-              border: 'none',
-              borderRadius: 2,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2
-            }}
             title="Clear all (Ctrl+Backspace)"
           >
             <FaEraser style={{ fontSize: 12 }} />
@@ -923,6 +911,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   // Copy feedback flags
   const [copiedToolbar, setCopiedToolbar] = useState(false);
   const [copiedFooter, setCopiedFooter] = useState(false);
+  // Modal validation error
+  const [modalError, setModalError] = useState<string | null>(null);
   // HMR tick to force re-render when scenarios module hot-reloads
   const [hmrTick, setHmrTick] = useState(0);
   // Helper: apply simple [RATE]/[ROLE] substitutions and dynamic tokens ([InstructLink])
@@ -1997,13 +1987,17 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       const unresolvedBody = findPlaceholders(substitutedBody);
                       const unresolvedAny = unresolvedSubject.length > 0 || unresolvedBody.length > 0;
                       const disableDraft = !confirmReady || isDraftConfirmed || unresolvedAny;
-                      const disableSend = unresolvedAny; // Enable send when no unresolved placeholders
+                      const missingServiceSummary = !scopeDescription || !String(scopeDescription).trim();
+                      const disableSend = unresolvedAny || missingServiceSummary; // Disable if placeholders unresolved or summary missing
+                      const sendBtnTitle = unresolvedAny
+                        ? 'Resolve placeholders before sending'
+                        : (missingServiceSummary ? 'Service summary is required' : 'Send Email');
                       return (
                         <>
                           <button
                             onClick={() => setShowSendConfirmModal(true)}
                             disabled={disableSend}
-                            title={unresolvedAny ? 'Resolve placeholders before sending' : 'Send Email'}
+                            title={sendBtnTitle}
                             style={{
                               padding: '6px 12px', 
                               borderRadius: 6, 
@@ -2449,45 +2443,19 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               marginBottom: '16px'
             }}>
               <h4 style={{
-                margin: '0 0 10px 0',
-                fontSize: '14px',
+                margin: '0 0 12px 0',
+                fontSize: '16px',
                 fontWeight: '600',
-                color: isDarkMode ? colours.dark.text : '#5F6368',
-                letterSpacing: '0.4px',
-                textTransform: 'uppercase'
+                color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                letterSpacing: '-0.005em'
               }}>
                 Email Content Summary
               </h4>
               
-              {subject && (
-                <div style={{ marginBottom: '8px', fontSize: '13px' }}>
-                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Subject:</span>
-                  <div style={{ 
-                    marginTop: '2px',
-                    color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                    fontStyle: 'italic'
-                  }}>
-                    "{subject}"
-                  </div>
-                </div>
-              )}
-              
-              {amountValue && (
-                <div style={{ marginBottom: '8px', fontSize: '13px' }}>
-                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Amount:</span>
-                  <span style={{ 
-                    marginLeft: '8px',
-                    color: isDarkMode ? colours.blue : colours.darkBlue,
-                    fontWeight: '600'
-                  }}>
-                    £{parseFloat(amountValue).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + VAT
-                  </span>
-                </div>
-              )}
-              
+              {/* Replace Subject with Service Description */}
               {scopeDescription && (
-                <div style={{ fontSize: '13px' }}>
-                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Scope:</span>
+                <div style={{ fontSize: '13px', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Service Description:</span>
                   <div style={{ 
                     marginTop: '4px',
                     color: isDarkMode ? colours.dark.text : colours.darkBlue,
@@ -2497,6 +2465,19 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     textOverflow: 'ellipsis'
                   }}>
                     {scopeDescription.length > 150 ? `${scopeDescription.substring(0, 150)}...` : scopeDescription}
+                  </div>
+                </div>
+              )}
+              
+              {amountValue && (
+                <div style={{ marginBottom: '8px', fontSize: '13px' }}>
+                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Amount:</span>
+                  <div style={{ 
+                    marginTop: '4px',
+                    color: isDarkMode ? colours.blue : colours.darkBlue,
+                    fontWeight: 600
+                  }}>
+                    £{parseFloat(amountValue).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + VAT
                   </div>
                 </div>
               )}
@@ -2511,36 +2492,42 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               borderRadius: '8px',
               padding: '12px',
               marginBottom: '24px',
-              fontSize: '13px'
+              fontSize: '13px',
+              fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
             }}>
-              <div style={{ 
-                fontWeight: '600', 
-                marginBottom: '6px',
+              <h4 style={{
+                margin: '0 0 12px 0',
+                fontSize: '16px',
+                fontWeight: '600',
                 color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                fontSize: '12px',
-                letterSpacing: '0.3px',
-                textTransform: 'uppercase'
+                letterSpacing: '-0.005em'
               }}>
-                Additional BCC (Support & Debug)
-              </div>
+                Support BCC (auto-added)
+              </h4>
               <div style={{ 
                 color: isDarkMode ? colours.blue : colours.darkBlue,
-                fontFamily: 'Monaco, Consolas, "SF Mono", monospace',
+                fontFamily: 'inherit',
                 fontSize: '12px',
                 fontWeight: '500'
               }}>
                 lz@helix-law.com, cb@helix-law.com
               </div>
-              <div style={{ 
-                color: isDarkMode ? colours.dark.text : '#6B7280',
-                fontSize: '11px',
-                marginTop: '4px',
-                fontStyle: 'italic',
-                opacity: 0.8
-              }}>
-                Automatically BCC'd for support and troubleshooting
-              </div>
             </div>
+            {/* Inline validation error (modal) */}
+            {modalError && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid #ffa39e',
+                background: '#fff1f0',
+                color: '#a8071a',
+                fontSize: 12,
+              }}>
+                <FaExclamationTriangle style={{ fontSize: 12, color: '#a8071a', marginRight: 6 }} />
+                {modalError}
+              </div>
+            )}
             
             <div style={{
               display: 'flex',
@@ -2580,6 +2567,21 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               </button>
               <button
                 onClick={() => {
+                  // Validate essential fields locally before closing modal
+                  const numericAmt = parseFloat(String(amountValue || '').replace(/[^0-9.]/g, ''));
+                  const err = (() => {
+                    if (!to || !to.trim()) return 'Recipient (To) is required.';
+                    if (!subject || !subject.trim()) return 'Subject is required.';
+                    if (!body || !body.trim()) return 'Email body is required.';
+                    if (!scopeDescription || !scopeDescription.trim()) return 'Service description is required.';
+                    if (!amountValue || !amountValue.trim() || isNaN(numericAmt) || numericAmt <= 0) return 'Estimated fee must be a positive number.';
+                    return null;
+                  })();
+                  if (err) {
+                    setModalError(err);
+                    return;
+                  }
+                  setModalError(null);
                   setShowSendConfirmModal(false);
                   sendEmail?.();
                 }}

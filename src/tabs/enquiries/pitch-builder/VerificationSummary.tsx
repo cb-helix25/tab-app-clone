@@ -98,7 +98,7 @@ export const VerificationSummary: React.FC<VerificationSummaryProps> = ({
   // Inline styling (no outer container box)
   const text = isDarkMode ? colours.dark.text : '#0f172a';
   const subtle = isDarkMode ? '#9aa4af' : '#64748b';
-  // const rowBorder = isDarkMode ? '#1f2937' : '#eef2f7';
+  const rowBorder = isDarkMode ? colours.dark.border : '#E2E8F0';
 
   const buttonGradient = isDarkMode
     ? 'linear-gradient(135deg, #2b6cb0 0%, #2a4365 100%)'
@@ -116,62 +116,30 @@ export const VerificationSummary: React.FC<VerificationSummaryProps> = ({
       <div className="vs-columns">
         {/* Left: Prospect details (under the name) */}
         <div>
-          <div
-            style={{
-              background: isDarkMode
-                ? 'linear-gradient(135deg, rgba(30,41,59,1) 0%, rgba(17,24,39,1) 100%)'
-                : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-              borderRadius: 8,
-              boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
-              padding: 12
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                {/* Client icon */}
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#3690CE" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="8" r="4" />
-                  <rect x="4" y="15" width="16" height="6" rx="3" />
+          <div style={{ padding: '4px 0 8px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ color: subtle, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="8" r="4" stroke={subtle} strokeWidth="2" />
+                  <rect x="4" y="15" width="16" height="6" rx="3" stroke={subtle} strokeWidth="2" />
                 </svg>
-                {/* Name */}
-                <div style={{ fontWeight: 600, fontSize: 14, color: text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {clientName}
-                </div>
-                <span style={{ color: subtle, fontSize: 12 }}>• Prospect</span>
+                Prospect details
               </div>
             </div>
+            <div style={{ height: 1, background: rowBorder, margin: '6px 0 10px 0' }} />
             <div className="vs-prospect-grid">
-              <KV label="Enquiry ID" value={enquiryId} text={text} subtle={subtle} />
-              <KV label="Passcode" value={passcode || '—'} text={text} subtle={subtle} copyable mono />
+              <KV label="Client name" value={clientName} text={text} subtle={subtle} copyable />
+              <KV label="Enquiry ID" value={enquiryId} text={text} subtle={subtle} copyable />
+              {clientEmail && <KV label="Email" value={clientEmail} text={text} subtle={subtle} copyable />}
+              {clientPhone && <KV label="Phone" value={clientPhone} text={text} subtle={subtle} copyable />}
             </div>
-            {(clientEmail || clientPhone) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-                {clientEmail && (
-                  <ContactChip label={clientEmail} kind="mail" subtle={subtle} isDarkMode={isDarkMode} />
-                )}
-                {clientPhone && (
-                  <ContactChip label={clientPhone} kind="phone" subtle={subtle} isDarkMode={isDarkMode} />
-                )}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Right: Prefill data used in placeholders (container) */}
+        {/* Right: Prefill data used in placeholders (no box; separator only) */}
         <div>
-          <div
-            style={{
-              background: isDarkMode
-                ? 'linear-gradient(135deg, rgba(30,41,59,1) 0%, rgba(17,24,39,1) 100%)'
-                : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-              borderRadius: 8,
-              boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
-              padding: 12
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ padding: '4px 0 8px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ color: subtle, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="12" cy="12" r="10" stroke={subtle} strokeWidth="2" />
@@ -179,63 +147,13 @@ export const VerificationSummary: React.FC<VerificationSummaryProps> = ({
                 </svg>
                 Prefill data
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span
-                  className={flipNow ? 'vs-flip vs-pulse' : undefined}
-                  title={usedPitchRoute ? 'Team data via server route' : 'Default user data'}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '4px 10px',
-                    borderRadius: 999,
-                    background: isDarkMode ? 'rgba(16,185,129,0.08)' : '#f1f5f9',
-                    color: text,
-                    fontSize: 12,
-                    border: `1px solid ${isDarkMode ? '#0f766e' : '#e2e8f0'}`,
-                    transformOrigin: 'right center'
-                  }}
-                >
-                  <span style={{ width: 8, height: 8, borderRadius: 999, background: usedPitchRoute ? '#16a34a' : '#94a3b8' }} />
-                  {usedPitchRoute ? 'Live data' : 'Default'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onPreview?.(link)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '6px 10px',
-                    borderRadius: 8,
-                    background: hasPasscode ? buttonGradient : (isDarkMode ? '#334155' : '#94a3b8'),
-                    color: '#fff',
-                    border: 'none',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    boxShadow: hasPasscode ? buttonShadow : 'none',
-                    transform: 'translateY(0)',
-                    transition: 'transform 0.15s ease',
-                    opacity: hasPasscode ? 1 : 0.7,
-                    cursor: hasPasscode ? 'pointer' : 'not-allowed'
-                  }}
-                  title={hasPasscode ? link : 'Generating passcode…'}
-                  disabled={!hasPasscode}
-                  onMouseEnter={(e) => { if (hasPasscode) (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; }}
-                >
-                  {hasPasscode ? 'Preview' : 'Preview'}
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M5 12h14M13 5l7 7-7 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </div>
             </div>
+            <div style={{ height: 1, background: rowBorder, margin: '6px 0 10px 0' }} />
             <div className="vs-grid">
-              <KV label="Fee earner" value={fullName || '—'} text={text} subtle={subtle} />
-              <KV label="Initials" value={initials || '—'} text={text} subtle={subtle} />
-              <KV label="Role" value={role || '—'} text={text} subtle={subtle} />
-              <KV label="Rate" value={rateFmt} text={text} subtle={subtle} />
+              <KV label="Fee earner" value={fullName || '—'} text={text} subtle={subtle} copyable />
+              <KV label="Initials" value={initials || '—'} text={text} subtle={subtle} copyable />
+              <KV label="Role" value={role || '—'} text={text} subtle={subtle} copyable />
+              <KV label="Rate" value={rateFmt} text={text} subtle={subtle} copyable />
             </div>
           </div>
         </div>

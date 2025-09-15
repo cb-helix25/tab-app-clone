@@ -33,6 +33,13 @@ interface DealRequest {
   leadClientId: number;
   clients?: ClientInfo[];
   passcode?: string;
+  /** Optional: frontend-provided email recipients used for the client email */
+  emailRecipients?: {
+    to?: string;
+    cc?: string;
+    bcc?: string;
+    feeEarnerEmail?: string;
+  };
 }
 
 import axios from "axios";
@@ -165,7 +172,12 @@ async function sendDealCapturedEmail(context: InvocationContext, dealInfo: any) 
       PitchedBy: dealInfo.pitchedBy ?? '',
       IsMultiClient: dealInfo.isMultiClient ? 'yes' : 'no',
       LeadClientEmail: dealInfo.leadClientEmail ?? '',
-  Recipients: Array.isArray(dealInfo.clients) ? dealInfo.clients.map((c: any) => c.clientEmail || c.email || '').filter(Boolean).join(', ') || (dealInfo.leadClientEmail ? dealInfo.leadClientEmail : 'N/A') : (dealInfo.leadClientEmail ? dealInfo.leadClientEmail : 'N/A'),
+      To: (dealInfo.emailRecipients?.to || dealInfo.leadClientEmail || 'N/A'),
+      CC: (dealInfo.emailRecipients?.cc || '—'),
+      BCC: (dealInfo.emailRecipients?.bcc || '—'),
+      AllClientEmails: Array.isArray(dealInfo.clients)
+        ? dealInfo.clients.map((c: any) => c.clientEmail || c.email || '').filter(Boolean).join(', ') || (dealInfo.leadClientEmail ? dealInfo.leadClientEmail : 'N/A')
+        : (dealInfo.leadClientEmail ? dealInfo.leadClientEmail : 'N/A'),
       InstructionsUrl: instructionsUrl,
       GeneratedAt: now.toISOString(),
     };
@@ -304,37 +316,14 @@ const {
   isMultiClient,
   leadClientEmail,
   leadClientId,
-  clients
+  clients,
+  emailRecipients
 } = body;
 
 // Frontend sometimes sends `initialScopeDescription` — treat it as `serviceDescription` when needed
 let serviceDescription = svcDesc ?? initialScopeDescription;
 
-// If the frontend accidentally sends an email message or the full email body
-// as the description (we've seen production do this), replace with a short
-// monitored message so the DB doesn't store PII or large email bodies.
-const FALLBACK_DESCRIPTION = 'Automated capture — appears turned off, processing continues under the hood';
-const looksLikeEmailOrMessage = (s?: string) => {
-  if (!s) return false;
-  const t = String(s).trim();
-  // exact single-email check (e.g. 'foo@bar.com')
-  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (emailRe.test(t)) return true;
-
-  // If it's long and contains typical email/body markers (greeting, thanks, signoff), treat as an email body
-  if (t.length > 120 && (/\bDear\b/i.test(t) || /\bRegards\b/i.test(t) || /thank you/i.test(t) || /\bKind regards\b/i.test(t) || /\bSincerely\b/i.test(t))) {
-    return true;
-  }
-
-  // If it contains an email address inside a longer text, assume it's an email copy
-  if (/@[^\s@]+\.[^\s@]+/.test(t) && t.length > 40) return true;
-
-  return false;
-};
-if (looksLikeEmailOrMessage(serviceDescription)) {
-  context.log('insertDeal: serviceDescription appears to be an email/body; replacing with fallback description');
-  serviceDescription = FALLBACK_DESCRIPTION;
-}
+// Removed legacy sanitiser that replaced serviceDescription when it resembled an email body.
 
   // Generate a 5 digit numerical passcode if not provided
   const passcode = body.passcode || Math.floor(10000 + Math.random() * 90000).toString();
@@ -478,6 +467,7 @@ if (looksLikeEmailOrMessage(serviceDescription)) {
   leadClientId: leadClientId ?? normalizedProspectId,
     clients: clients || [],
     dealId: upstreamDealId,
+    emailRecipients: emailRecipients || undefined,
   };
 
   await sendDealCapturedEmail(context, dealInfo);

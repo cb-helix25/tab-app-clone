@@ -4182,7 +4182,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     borderBottomRightRadius: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
     position: 'relative',
   });
 
@@ -4564,7 +4563,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       <main className={bodyWrapperStyle}>
         {/* Content Sections - Streamlined */}
         {EXTRACTED_BLOCKS.length > 0 && (
-          <div style={{ marginBottom: 8 }}>
+          <div>
             {EXTRACTED_BLOCKS.map(title => {
               const block = blocks.find(b => b.title === title);
               if (!block) return null;
