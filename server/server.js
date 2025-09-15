@@ -12,6 +12,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), override: fals
 require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
 const express = require('express');
 const morgan = require('morgan');
+const opLog = require('./utils/opLog');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 const refreshRouter = require('./routes/refresh');
@@ -36,7 +37,11 @@ const instructionsRouter = require('./routes/instructions');
 const verifyIdRouter = require('./routes/verify-id');
 const teamLookupRouter = require('./routes/team-lookup');
 const pitchTeamRouter = require('./routes/pitchTeam');
+const sendEmailRouter = require('./routes/sendEmail');
 // const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
+
+// Initialize ops log (loads recent entries and ensures log dir)
+try { opLog.init(); } catch { /* best effort */ }
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -95,6 +100,7 @@ app.use('/api/deals', require('./routes/dealUpdate'));
 app.use('/api/verify-id', verifyIdRouter);
 app.use('/api/team-lookup', teamLookupRouter);
 app.use('/api/pitch-team', pitchTeamRouter);
+app.use('/api', sendEmailRouter);
 
 // Proxy routes to Azure Functions
 app.use('/', proxyToAzureFunctionsRouter);

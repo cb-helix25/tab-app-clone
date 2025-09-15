@@ -1525,6 +1525,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   const [clientIds, setClientIds] = useState<number[]>([]);
   const [dealClients, setDealClients] = useState<ClientInfo[]>([]);
   const [isMultiClientFlag, setIsMultiClientFlag] = useState<boolean>(false);
+  // Inline email send/draft status for confirmation modal
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'processing' | 'sent' | 'error'>('idle');
+  const [emailMessage, setEmailMessage] = useState<string>('');
 
 
   // Tracks selected template options for each block
@@ -3283,6 +3286,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       return;
     }
 
+    setEmailStatus('processing');
+    setEmailMessage('Preparing to send…');
     showToast('Preparing to send email...', 'info', {
       loading: true,
       details: 'Validating form data and deal information',
@@ -3292,6 +3297,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
     const dealPasscode = await insertDealIfNeeded();
     if (!dealPasscode) {
+      setEmailStatus('error');
+      setEmailMessage('Deal save failed');
       showToast('Failed to save deal', 'error', {
         details: 'Cannot send email without valid deal reference',
         duration: 5000
@@ -3313,6 +3320,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     }
 
     // Step 2: Content processing
+    setEmailMessage('Processing content…');
     showToast('Processing email content...', 'info', {
       loading: true,
       details: 'Applying substitutions and formatting',
@@ -3338,6 +3346,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     const finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
 
     // Step 3: Email composition with signature
+    setEmailMessage('Generating final email…');
     showToast('Generating final email...', 'info', {
       loading: true,
       details: 'Creating formatted email with signature',
@@ -3386,6 +3395,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       setIsErrorVisible(false);
 
       // Step 4: Send email via API
+      setEmailMessage(`Sending to ${enquiry.Point_of_Contact || to}…`);
       showToast('Sending email...', 'info', {
         loading: true,
         details: `Delivering to ${enquiry.Point_of_Contact || to}`,
@@ -3394,7 +3404,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       });
 
       const response = await fetch(
-        `${getProxyBaseUrl()}/sendEmail${process.env.REACT_APP_SEND_EMAIL_CODE ? `?code=${process.env.REACT_APP_SEND_EMAIL_CODE}` : ''}`,
+        `/api/sendEmail`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3414,6 +3424,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         duration: 4000
       });
 
+      setEmailStatus('sent');
+      setEmailMessage('Sent');
+
       setIsSuccessVisible(true);
       // Don't reset form after sending - users may want to send follow-ups or make edits
       setIsDraftConfirmed(true);
@@ -3425,6 +3438,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       
       setErrorMessage(`Failed to send email: ${errorMsg}`);
       setIsErrorVisible(true);
+      setEmailStatus('error');
+      setEmailMessage(errorMsg);
       
       showToast('Failed to send email', 'error', {
         details: errorMsg,
@@ -3457,6 +3472,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       setIsErrorVisible(true);
       return;
     }
+    setEmailStatus('processing');
+    setEmailMessage('Preparing draft…');
     if (bodyEditorRef.current) {
       Object.entries(selectedTemplateOptions).forEach(
         ([blockTitle, selectedOption]) => {
@@ -3479,6 +3496,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
     const currentPasscode = await insertDealIfNeeded();
     if (!currentPasscode) {
+      setEmailStatus('error');
+      setEmailMessage('Deal save failed');
       showToast('Failed to save deal', 'error', {
         details: 'Cannot proceed without valid deal reference',
         duration: 5000
@@ -3487,6 +3506,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     }
 
     // Step 2: Content processing
+    setEmailMessage('Processing content…');
     showToast('Processing email content...', 'info', {
       loading: true,
       details: 'Applying substitutions and formatting',
@@ -3517,6 +3537,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     const finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
 
     // Step 3: Email composition
+    setEmailMessage('Generating email draft…');
     showToast('Generating email draft...', 'info', {
       loading: true,
       details: 'Creating formatted email with signature',
@@ -3556,6 +3577,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       setIsErrorVisible(false);
 
       // Step 4: Sending to Outlook
+      setEmailMessage('Creating draft…');
       showToast('Opening Outlook draft...', 'info', {
         loading: true,
         details: 'Launching email application',
@@ -3563,7 +3585,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         duration: 0
       });
       const response = await fetch(
-        `${getProxyBaseUrl()}/sendEmail?code=${process.env.REACT_APP_SEND_EMAIL_CODE}`,
+        `/api/sendEmail`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3582,6 +3604,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         duration: 4000
       });
 
+      setEmailStatus('sent');
+      setEmailMessage('Draft created');
+
       setIsSuccessVisible(true);
       setIsDraftConfirmed(true); // **Set confirmation state**
       setTimeout(() => {
@@ -3591,6 +3616,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       console.error('Error drafting email:', error);
       setErrorMessage(error.message || 'An unknown error occurred.');
       setIsErrorVisible(true);
+      setEmailStatus('error');
+      setEmailMessage(error.message || 'Unable to create email draft');
       showToast('Failed to draft email', 'error', {
         details: error.message || 'Unable to create email draft',
         icon: 'MailSolid',
@@ -4694,6 +4721,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           cc={cc}
           bcc={bcc}
           feeEarnerEmail={userEmailAddress}
+          // Inline status feedback
+          dealCreationInProgress={dealCreationInProgress}
+          dealStatus={dealStatus}
+          emailStatus={emailStatus}
+          emailMessage={emailMessage}
         // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
         // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
         // highlightBlock prop removed; not needed by EditorAndTemplateBlocks

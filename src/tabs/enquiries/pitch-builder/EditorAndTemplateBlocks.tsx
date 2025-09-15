@@ -13,6 +13,62 @@ import EmailSignature from '../EmailSignature';
 import { applyDynamicSubstitutions, convertDoubleBreaksToParagraphs } from './emailUtils';
 import markUrl from '../../../assets/dark blue mark.svg';
 
+// CSS animations for processing status icons
+const animationStyles = `
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    transform: scale(1); 
+  }
+  50% { 
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+    transform: scale(1.02); 
+  }
+}
+
+@keyframes morphToCheck {
+  0% { 
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  30% { 
+    opacity: 0.3;
+    transform: scale(0.8) rotate(180deg);
+  }
+  60% { 
+    opacity: 0.3;
+    transform: scale(0.8) rotate(270deg);
+  }
+  100% { 
+    opacity: 1;
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+@keyframes subtleFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-1px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+`;
+
+// Inject animations into head
+if (typeof document !== 'undefined' && !document.getElementById('processing-animations')) {
+  const style = document.createElement('style');
+  style.id = 'processing-animations';
+  style.textContent = animationStyles;
+  document.head.appendChild(style);
+}
+
 // NOTE: renderWithPlaceholders was removed; we use a simple highlighter overlay instead.
 // Escape HTML for safe injection in the overlay layer
 function escapeHtml(str: string) {
@@ -841,6 +897,11 @@ interface EditorAndTemplateBlocksProps {
   cc?: string;
   bcc?: string;
   feeEarnerEmail?: string;
+  // Inline status feedback
+  dealCreationInProgress?: boolean;
+  dealStatus?: 'idle' | 'processing' | 'ready' | 'error';
+  emailStatus?: 'idle' | 'processing' | 'sent' | 'error';
+  emailMessage?: string;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
@@ -886,7 +947,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   to,
   cc,
   bcc,
-  feeEarnerEmail
+  feeEarnerEmail,
+  // Inline status feedback
+  dealCreationInProgress,
+  dealStatus,
+  emailStatus,
+  emailMessage
 }) => {
   // State for removed blocks
   const [removedBlocks, setRemovedBlocks] = useState<{ [key: string]: boolean }>({});
@@ -913,6 +979,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [copiedFooter, setCopiedFooter] = useState(false);
   // Modal validation error
   const [modalError, setModalError] = useState<string | null>(null);
+  // Track in-modal sending to disable actions and show progress inline
+  const [modalSending, setModalSending] = useState<boolean>(false);
   // HMR tick to force re-render when scenarios module hot-reloads
   const [hmrTick, setHmrTick] = useState(0);
   // Prevent Draft visual state from being triggered by Send action
@@ -2396,13 +2464,26 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               }}>
                 Email Recipients
               </h4>
+
+              {/* Sender (From) field - shows who the email will be sent from */}
+              <div style={{ marginBottom: '8px', fontSize: '14px' }}>
+                <span style={{ 
+                  fontWeight: '600', 
+                  color: isDarkMode ? colours.blue : colours.darkBlue, 
+                  minWidth: '50px', 
+                  display: 'inline-block' 
+                }}>From:</span>
+                <span style={{ color: isDarkMode ? colours.dark.text : colours.darkBlue }}>
+                  {userData?.[0]?.['Full Name'] || [userData?.[0]?.First, userData?.[0]?.Last].filter(Boolean).join(' ') || 'Fee Earner'} ({userData?.[0]?.Email || userData?.[0]?.WorkEmail || userData?.[0]?.Mail || userData?.[0]?.UserPrincipalName || userData?.[0]?.['Email Address'] || (userData?.[0]?.Initials ? `${userData[0].Initials.toLowerCase()}@helix-law.com` : 'automations@helix-law.com')})
+                </span>
+              </div>
               
               {to && (
                 <div style={{ marginBottom: '8px', fontSize: '14px' }}>
                   <span style={{ 
                     fontWeight: '600', 
                     color: isDarkMode ? colours.blue : colours.darkBlue, 
-                    minWidth: '40px', 
+                    minWidth: '50px', 
                     display: 'inline-block' 
                   }}>To:</span>
                   <span style={{ color: isDarkMode ? colours.dark.text : colours.darkBlue }}>{to}</span>
@@ -2516,6 +2597,222 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 lz@helix-law.com, cb@helix-law.com
               </div>
             </div>
+
+            {/* Processing Status Section - Animated Processing Feedback */}
+            <div style={{
+              background: isDarkMode
+                ? 'rgba(16, 185, 129, 0.06)'
+                : 'linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
+              border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.25)' : '#E5E7EB'}`,
+              borderRadius: 8,
+              padding: '12px 14px',
+              marginBottom: 16
+            }}>
+              <h4 style={{
+                margin: '0 0 16px 0',
+                fontSize: 16,
+                fontWeight: 600,
+                color: isDarkMode ? colours.dark.text : colours.darkBlue
+              }}>
+                Processing Status
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Deal creation status with animated icon */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 12, 
+                  fontSize: 14,
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  background: (dealCreationInProgress || dealStatus === 'processing') ? 
+                    (isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)') : 
+                    dealStatus === 'ready' ? 
+                      (isDarkMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)') :
+                      'transparent',
+                  border: (dealCreationInProgress || dealStatus === 'processing') ? 
+                    '1px solid rgba(59, 130, 246, 0.25)' : 
+                    dealStatus === 'ready' ? 
+                      '1px solid rgba(34, 197, 94, 0.25)' :
+                      '1px solid transparent',
+                  transition: 'all 0.3s ease'
+                }}>
+                  {/* Animated Deal Icon */}
+                  <div style={{ 
+                    width: 28, 
+                    height: 28, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    background: (dealCreationInProgress || dealStatus === 'processing') ? 
+                      'linear-gradient(135deg, #3B82F6, #60A5FA)' : 
+                      dealStatus === 'ready' ? 
+                        'linear-gradient(135deg, #22C55E, #4ADE80)' :
+                        dealStatus === 'error' ? 
+                          'linear-gradient(135deg, #EF4444, #F87171)' :
+                          isDarkMode ? colours.dark.border : '#E5E7EB',
+                    boxShadow: (dealCreationInProgress || dealStatus === 'processing') ? 
+                      '0 0 0 2px rgba(59, 130, 246, 0.15)' : 
+                      dealStatus === 'ready' ? 
+                        '0 0 0 2px rgba(34, 197, 94, 0.15)' : 'none',
+                    animation: (dealCreationInProgress || dealStatus === 'processing') ? 
+                      'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 
+                      dealStatus === 'ready' ? 
+                        'fadeIn 0.4s ease-out' : 'none',
+                    transition: 'all 0.3s ease'
+                  }}>
+                    {(dealCreationInProgress || dealStatus === 'processing') ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
+                        <circle cx="12" cy="8" r="2" fill="currentColor"/>
+                        <path d="M12 14c-4 0-6 2-6 4v2h12v-2c0-2-2-4-6-4z" fill="currentColor"/>
+                        <path d="M16 8h4l-2-2m2 2l-2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"/>
+                      </svg>
+                    ) : dealStatus === 'ready' ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ 
+                        color: 'white',
+                        animation: 'morphToCheck 0.6s ease-in-out'
+                      }}>
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ) : dealStatus === 'error' ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: isDarkMode ? colours.dark.text : '#9CA3AF' }}>
+                        <circle cx="12" cy="8" r="2" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M12 14c-4 0-6 2-6 4v2h12v-2c0-2-2-4-6-4z" stroke="currentColor" strokeWidth="2"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#1F2937', marginBottom: 2 }}>Deal capture</div>
+                    <div style={{ 
+                      fontSize: 13, 
+                      color: (dealStatus === 'ready' ? '#166534' : dealStatus === 'error' ? '#991B1B' : isDarkMode ? colours.dark.text : '#6B7280'),
+                      fontWeight: dealStatus === 'ready' ? 600 : 500
+                    }}>
+                      {dealCreationInProgress || dealStatus === 'processing' ? 'Processing deal information...' :
+                        dealStatus === 'ready' ? 'Deal captured successfully' :
+                        dealStatus === 'error' ? 'Failed to capture deal' : 'Waiting to process'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email sending status with animated icon */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 12, 
+                  fontSize: 14,
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  background: (emailStatus === 'processing' || modalSending) ? 
+                    (isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)') : 
+                    emailStatus === 'sent' ? 
+                      (isDarkMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)') :
+                      emailStatus === 'error' ?
+                        (isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)') :
+                        'transparent',
+                  border: (emailStatus === 'processing' || modalSending) ? 
+                    '1px solid rgba(59, 130, 246, 0.25)' : 
+                    emailStatus === 'sent' ? 
+                      '1px solid rgba(34, 197, 94, 0.25)' :
+                      emailStatus === 'error' ?
+                        '1px solid rgba(239, 68, 68, 0.25)' :
+                        '1px solid transparent',
+                  transition: 'all 0.3s ease'
+                }}>
+                  {/* Animated Email Icon */}
+                  <div style={{ 
+                    width: 28, 
+                    height: 28, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    background: (emailStatus === 'processing' || modalSending) ? 
+                      'linear-gradient(135deg, #3B82F6, #60A5FA)' : 
+                      emailStatus === 'sent' ? 
+                        'linear-gradient(135deg, #22C55E, #4ADE80)' :
+                        emailStatus === 'error' ? 
+                          'linear-gradient(135deg, #EF4444, #F87171)' :
+                          isDarkMode ? colours.dark.border : '#E5E7EB',
+                    boxShadow: (emailStatus === 'processing' || modalSending) ? 
+                      '0 0 0 2px rgba(59, 130, 246, 0.15)' : 
+                      emailStatus === 'sent' ? 
+                        '0 0 0 2px rgba(34, 197, 94, 0.15)' : 'none',
+                    animation: (emailStatus === 'processing' || modalSending) ? 
+                      'subtleFloat 2s ease-in-out infinite' : 
+                      emailStatus === 'sent' ? 
+                        'fadeIn 0.4s ease-out' : 'none',
+                    transition: 'all 0.3s ease'
+                  }}>
+                    {(emailStatus === 'processing' || modalSending) ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
+                        <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ) : emailStatus === 'sent' ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ 
+                        color: 'white',
+                        animation: 'morphToCheck 0.6s ease-in-out'
+                      }}>
+                        <path d="M4 12L8 16L20 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ) : emailStatus === 'error' ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
+                        <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: isDarkMode ? colours.dark.text : '#9CA3AF' }}>
+                        <path d="M3 8L10.89 13.26C11.2187 13.4793 11.6049 13.5963 12 13.5963C12.3951 13.5963 12.7813 13.4793 13.11 13.26L21 8M5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#1F2937', marginBottom: 2 }}>Email delivery</div>
+                    <div style={{ 
+                      fontSize: 13, 
+                      color: (emailStatus === 'sent' ? '#166534' : emailStatus === 'error' ? '#991B1B' : isDarkMode ? colours.dark.text : '#6B7280'),
+                      fontWeight: emailStatus === 'sent' ? 600 : 500
+                    }}>
+                      {emailStatus === 'processing' ? 'Sending via Microsoft Graph...' : 
+                       emailStatus === 'sent' ? 'Email delivered successfully' : 
+                       emailStatus === 'error' ? 'Failed to send email' : 
+                       modalSending ? 'Preparing to send...' : 'Ready to send'}
+                    </div>
+                    {!!emailMessage && emailMessage !== 'Sent' && emailMessage !== 'Error' && (
+                      <div style={{ fontSize: 12, color: isDarkMode ? colours.dark.text : '#6B7280', marginTop: 4, fontStyle: 'italic' }}>
+                        {emailMessage}
+                      </div>
+                    )}
+                    {/* Enhanced Recipient Breakdown - show when processing or sent */}
+                    {(emailStatus === 'processing' || emailStatus === 'sent' || modalSending) && (
+                      <div style={{ marginTop: 8, padding: '8px 10px', background: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(248, 250, 252, 0.8)', borderRadius: 6, border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.15)' : 'rgba(203, 213, 225, 0.5)'}` }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#475569', marginBottom: 6 }}>Delivery Details:</div>
+                        {to && (
+                          <div style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#64748B', marginBottom: 3 }}>
+                            <span style={{ fontWeight: 500 }}>Primary:</span> {to.split(',').length > 1 ? `${to.split(',').length} recipients` : to.trim()}
+                          </div>
+                        )}
+                        {cc && (
+                          <div style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#64748B', marginBottom: 3 }}>
+                            <span style={{ fontWeight: 500 }}>CC:</span> {cc.split(',').length > 1 ? `${cc.split(',').length} recipients` : cc.trim()}
+                          </div>
+                        )}
+                        {(bcc || feeEarnerEmail) && (
+                          <div style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#64748B', marginBottom: 3 }}>
+                            <span style={{ fontWeight: 500 }}>BCC:</span> {[bcc, feeEarnerEmail, 'lz@helix-law.com', 'cb@helix-law.com'].filter(Boolean).join(', ').split(',').length} monitoring addresses
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
             {/* Inline validation error (modal) */}
             {modalError && (
               <div style={{
@@ -2538,7 +2835,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               justifyContent: 'flex-end'
             }}>
               <button
-                onClick={() => setShowSendConfirmModal(false)}
+                onClick={() => { if (!modalSending) setShowSendConfirmModal(false); }}
                 style={{
                   padding: '10px 20px',
                   border: `1px solid ${isDarkMode ? colours.dark.borderColor : '#D1D5DB'}`,
@@ -2547,12 +2844,13 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                   color: isDarkMode ? colours.dark.text : colours.darkBlue,
                   borderRadius: '8px',
-                  cursor: 'pointer',
+                  cursor: modalSending ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
                   fontWeight: '500',
                   transition: 'all 0.2s ease',
                   letterSpacing: '-0.005em'
                 }}
+                disabled={modalSending}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = isDarkMode 
                     ? colours.dark.inputBackground 
@@ -2566,10 +2864,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                Cancel
+                {emailStatus === 'sent' ? 'Close' : 'Cancel'}
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   // Validate essential fields locally before closing modal
                   const numericAmt = parseFloat(String(amountValue || '').replace(/[^0-9.]/g, ''));
                   const err = (() => {
@@ -2585,17 +2883,21 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     return;
                   }
                   setModalError(null);
-                  setShowSendConfirmModal(false);
-                  setHasSentEmail(true);
-                  sendEmail?.();
+                  try {
+                    setModalSending(true);
+                    setHasSentEmail(true);
+                    await sendEmail?.();
+                  } finally {
+                    setModalSending(false);
+                  }
                 }}
                 style={{
                   padding: '10px 20px',
                   border: 'none',
-                  background: `linear-gradient(90deg, ${colours.blue}, #60A5FA)`,
+                  background: modalSending ? 'linear-gradient(90deg, #94A3B8, #CBD5E1)' : `linear-gradient(90deg, ${colours.blue}, #60A5FA)`,
                   color: '#FFFFFF',
                   borderRadius: '8px',
-                  cursor: 'pointer',
+                  cursor: modalSending ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
                   fontWeight: '600',
                   transition: 'all 0.2s ease',
@@ -2604,6 +2906,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     ? '0 4px 8px rgba(0, 0, 0, 0.3)' 
                     : '0 4px 8px rgba(54, 144, 206, 0.25)'
                 }}
+                disabled={modalSending}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(90deg, #2563EB, #3B82F6)';
                   e.currentTarget.style.transform = 'translateY(-1px)';
@@ -2612,14 +2915,14 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     : '0 6px 12px rgba(54, 144, 206, 0.35)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = `linear-gradient(90deg, ${colours.blue}, #60A5FA)`;
+                  e.currentTarget.style.background = modalSending ? 'linear-gradient(90deg, #94A3B8, #CBD5E1)' : `linear-gradient(90deg, ${colours.blue}, #60A5FA)`;
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = isDarkMode 
                     ? '0 4px 8px rgba(0, 0, 0, 0.3)' 
                     : '0 4px 8px rgba(54, 144, 206, 0.25)';
                 }}
               >
-                Send Email
+                {modalSending ? 'Sending…' : 'Send Email'}
               </button>
             </div>
           </div>

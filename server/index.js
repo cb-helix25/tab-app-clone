@@ -39,12 +39,17 @@ const pitchTeamRouter = require('./routes/pitchTeam');
 const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 const fileMapRouter = require('./routes/fileMap');
 const opsRouter = require('./routes/ops');
+const sendEmailRouter = require('./routes/sendEmail');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Initialize persistent operations log and add request logging middleware
 initOpLog();
+// Simple liveness check
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
 app.use((req, res, next) => {
     const start = Date.now();
     const ctx = { type: 'http', action: `${req.method} ${req.path}`, status: 'started' };
@@ -82,6 +87,9 @@ app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 app.use('/api/ops', opsRouter);
+// Email route (server-based). Expose under both /api and / to match existing callers.
+app.use('/api', sendEmailRouter);
+app.use('/', sendEmailRouter);
 // app.post('/api/update-enquiry', require('../api/update-enquiry')); // Moved to enquiries-unified/update
 // Register deal update endpoints (used by instruction cards editing)
 console.log('🔧 REGISTERING UPDATE DEAL ROUTES');

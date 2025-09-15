@@ -20,6 +20,7 @@ module.exports = function(app) {
     '/api/pitches',
     '/api/instructions',
     '/api/verify-id',
+    '/api/sendEmail', // Centralized server email route
     '/ccls'
   ];
 
@@ -45,8 +46,8 @@ module.exports = function(app) {
     '/fetchEnquiriesData',
     '/fetchSnippetEdits',
     '/insertEnquiry',
-    '/processEnquiry',
-    '/sendEmail'  // Added for email sending
+    '/processEnquiry'
+    // Removed /sendEmail - now handled by Express server
   ];
 
   // Proxy Express server routes to port 8080
