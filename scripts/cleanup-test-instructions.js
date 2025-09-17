@@ -1,46 +1,46 @@
+const fs = require('fs');
+const path = require('path');
+// Load env vars from .env.local or .env for connection strings
+try {
+  const envLocal = path.resolve(process.cwd(), '.env.local');
+  const envRoot = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envLocal)) {
+    require('dotenv').config({ path: envLocal });
+  } else if (fs.existsSync(envRoot)) {
+    require('dotenv').config({ path: envRoot });
+  }
+} catch {}
+
+const sql = require('mssql');
 const { getSqlPool } = require('../decoupled-functions/sqlClient');
+
+let instructionsPoolPromise;
+function getPool() {
+  const cs = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
+  if (cs && typeof cs === 'string' && cs.trim().length > 0) {
+    if (!instructionsPoolPromise) {
+      instructionsPoolPromise = sql.connect(cs);
+    }
+    return instructionsPoolPromise;
+  }
+  return getSqlPool();
+}
 
 async function identifyTestRecords() {
   try {
-    const pool = await getSqlPool();
-    
-    // Query to identify potential test records
+    const pool = await getPool();
+    // Query to identify potential test records using only InstructionRef
     const query = `
-      SELECT 
-        InstructionRef, 
-        FirstName, 
-        LastName, 
-        CompanyName, 
-        DateOfEnquiry, 
-        EnquiryType,
-        ServiceDescription
+      SELECT InstructionRef
       FROM Instructions 
       WHERE 
-        -- Test patterns in instruction ref
-        InstructionRef LIKE '%TEST%' 
+        InstructionRef LIKE '%TEST%'
         OR InstructionRef LIKE '%test%'
         OR InstructionRef LIKE '%ABCD%'
         OR InstructionRef LIKE '%12345%'
-        
-        -- Test patterns in names  
-        OR FirstName LIKE '%Test%'
-        OR LastName LIKE '%Test%'
-        OR CompanyName LIKE '%Test%'
-        
-        -- Obvious dummy data
-        OR FirstName IN ('John', 'Jane', 'Bob', 'Alice', 'Emma', 'Sarah', 'David', 'James', 'Rebecca')
-        OR CompanyName LIKE '%Lorem%'
-        OR CompanyName LIKE '%Ipsum%'
-        OR CompanyName LIKE '%Example%'
-        
-        -- Luke records (check if these are test data)
-        OR (FirstName = 'Luke' AND LastName LIKE '%Test%')
-        
-        -- Malformed instruction refs
         OR InstructionRef NOT LIKE 'HLX-%'
         OR LEN(InstructionRef) < 10
-        
-      ORDER BY DateOfEnquiry DESC, InstructionRef
+      ORDER BY InstructionRef DESC
     `;
     
     const result = await pool.request().query(query);
@@ -50,31 +50,16 @@ async function identifyTestRecords() {
     // Group by type for easier review
     const testPatterns = {
       'Test in InstructionRef': [],
-      'Test in Names': [],
-      'Common Test Names': [],
-      'Luke Test Records': [],
-      'Malformed Refs': [],
-      'Other Patterns': []
+      'Malformed Refs': []
     };
     
     result.recordset.forEach(record => {
       const ref = record.InstructionRef || '';
-      const firstName = record.FirstName || '';
-      const lastName = record.LastName || '';
-      const companyName = record.CompanyName || '';
-      
       if (ref.toLowerCase().includes('test') || ref.includes('ABCD') || ref.includes('12345')) {
-        testPatterns['Test in InstructionRef'].push(record);
-      } else if (firstName.includes('Test') || lastName.includes('Test') || companyName.includes('Test')) {
-        testPatterns['Test in Names'].push(record);
-      } else if (['John', 'Jane', 'Bob', 'Alice', 'Emma', 'Sarah', 'David', 'James', 'Rebecca'].includes(firstName)) {
-        testPatterns['Common Test Names'].push(record);
-      } else if (firstName === 'Luke' && lastName.includes('Test')) {
-        testPatterns['Luke Test Records'].push(record);
-      } else if (!ref.startsWith('HLX-') || ref.length < 10) {
-        testPatterns['Malformed Refs'].push(record);
-      } else {
-        testPatterns['Other Patterns'].push(record);
+        testPatterns['Test in InstructionRef'].push({ InstructionRef: ref });
+      }
+      if (!ref.startsWith('HLX-') || ref.length < 10) {
+        testPatterns['Malformed Refs'].push({ InstructionRef: ref });
       }
     });
     
@@ -84,7 +69,7 @@ async function identifyTestRecords() {
       if (records.length > 0) {
         console.log(`\n=== ${category} (${records.length} records) ===`);
         records.forEach(record => {
-          console.log(`${record.InstructionRef} - ${record.FirstName || ''} ${record.LastName || ''} - ${record.CompanyName || ''}`);
+          console.log(`${record.InstructionRef}`);
         });
       }
     });
@@ -99,47 +84,29 @@ async function identifyTestRecords() {
 
 async function getProductionRecords() {
   try {
-    const pool = await getSqlPool();
-    
-    // Query for what appears to be real production data
+    const pool = await getPool();
+    // Query for what appears to be real production data using only InstructionRef
     const query = `
-      SELECT 
-        InstructionRef, 
-        FirstName, 
-        LastName, 
-        CompanyName, 
-        DateOfEnquiry, 
-        EnquiryType,
-        ServiceDescription
+      SELECT InstructionRef
       FROM Instructions 
       WHERE 
-        -- Keep Luke Test as it's our health indicator
-        (FirstName = 'Luke' AND LastName = 'Test' AND InstructionRef = 'HLX-27367-94842')
-        
-        -- Keep records that look like real client data
+        InstructionRef = 'HLX-27367-94842' -- health indicator
         OR (
-          InstructionRef LIKE 'HLX-%' 
+          InstructionRef LIKE 'HLX-%'
           AND LEN(InstructionRef) >= 10
           AND InstructionRef NOT LIKE '%TEST%'
           AND InstructionRef NOT LIKE '%test%'
           AND InstructionRef NOT LIKE '%ABCD%'
           AND InstructionRef NOT LIKE '%12345%'
-          AND (FirstName IS NULL OR FirstName NOT IN ('John', 'Jane', 'Bob', 'Alice', 'Emma', 'Sarah', 'David', 'James', 'Rebecca'))
-          AND (FirstName IS NULL OR FirstName NOT LIKE '%Test%')
-          AND (LastName IS NULL OR LastName NOT LIKE '%Test%')
-          AND (CompanyName IS NULL OR CompanyName NOT LIKE '%Test%')
-          AND (CompanyName IS NULL OR CompanyName NOT LIKE '%Lorem%')
-          AND (CompanyName IS NULL OR CompanyName NOT LIKE '%Ipsum%')
         )
-        
-      ORDER BY DateOfEnquiry DESC, InstructionRef
+      ORDER BY InstructionRef DESC
     `;
     
     const result = await pool.request().query(query);
     
     console.log(`\n=== Production Records to Keep (${result.recordset.length} records) ===`);
     result.recordset.forEach(record => {
-      console.log(`${record.InstructionRef} - ${record.FirstName || ''} ${record.LastName || ''} - ${record.CompanyName || ''}`);
+      console.log(`${record.InstructionRef}`);
     });
     
     return result.recordset;
@@ -203,22 +170,116 @@ async function createDeleteScript(testPatterns) {
   console.log('-- Luke Test record (HLX-27367-94842) will be PRESERVED as health indicator');
 }
 
+function collectTestRefs(testPatterns) {
+  const refs = [];
+  Object.values(testPatterns).forEach(records => {
+    records.forEach(record => {
+      if (record.InstructionRef && record.InstructionRef !== 'HLX-27367-94842') {
+        refs.push(record.InstructionRef);
+      }
+    });
+  });
+  return [...new Set(refs)];
+}
+
+async function deleteByRefs(uniqueRefs) {
+  if (!Array.isArray(uniqueRefs) || uniqueRefs.length === 0) return { deleted: 0 };
+  const MAX_DELETE = 2000;
+  if (uniqueRefs.length > MAX_DELETE) throw new Error(`Refusing to delete ${uniqueRefs.length} records (> ${MAX_DELETE}). Narrow selection.`);
+
+  const pool = await getPool();
+  const tx = new sql.Transaction(pool);
+  const relatedTables = ['RiskAssessment', 'IDVerifications', 'Documents', 'Matters', 'Deals'];
+  const chunkSize = 100;
+  let totalDeleted = 0;
+  await tx.begin();
+  try {
+    // Delete from related tables first
+    for (const table of relatedTables) {
+      for (let i = 0; i < uniqueRefs.length; i += chunkSize) {
+        const chunk = uniqueRefs.slice(i, i + chunkSize);
+        const req = new sql.Request(tx);
+        chunk.forEach((r, idx) => req.input(`r${idx}`, sql.VarChar, r));
+        const inList = chunk.map((_, idx) => `@r${idx}`).join(', ');
+        await req.query(`DELETE FROM ${table} WHERE InstructionRef IN (${inList})`);
+      }
+    }
+    // Delete from Instructions
+    for (let i = 0; i < uniqueRefs.length; i += chunkSize) {
+      const chunk = uniqueRefs.slice(i, i + chunkSize);
+      const req = new sql.Request(tx);
+      chunk.forEach((r, idx) => req.input(`r${idx}`, sql.VarChar, r));
+      const inList = chunk.map((_, idx) => `@r${idx}`).join(', ');
+      const res = await req.query(`DELETE FROM Instructions WHERE InstructionRef IN (${inList})`);
+      if (Array.isArray(res.rowsAffected) && res.rowsAffected.length > 0) {
+        totalDeleted += res.rowsAffected[0] || 0;
+      } else if (typeof res.rowsAffected === 'number') {
+        totalDeleted += res.rowsAffected;
+      }
+    }
+    await tx.commit();
+    return { deleted: totalDeleted };
+  } catch (err) {
+    await tx.rollback();
+    throw err;
+  }
+}
+
 async function main() {
   console.log('=== Instruction Data Cleanup Analysis ===\n');
   
   try {
+    const args = process.argv.slice(2);
+    const doList = args.includes('--list');
+    const doDelete = args.includes('--delete');
+    const confirmed = args.includes('--confirm');
+    const refsArg = (args.find(a => a.startsWith('--refs=')) || '').split('=')[1] || '';
+    const explicitRefs = refsArg
+      .split(',')
+      .map(s => s && s.trim())
+      .filter(Boolean)
+      .filter(r => r !== 'HLX-27367-94842'); // always preserve health indicator
+
+    // Identify targets
     console.log('1. Identifying test records...');
-    const testPatterns = await identifyTestRecords();
-    
-    console.log('\n2. Identifying production records to keep...');
-    await getProductionRecords();
-    
-    console.log('\n3. Generating cleanup script...');
-    await createDeleteScript(testPatterns);
-    
-    console.log('\n=== Analysis Complete ===');
-    console.log('Review the results above before executing any DELETE statements.');
-    console.log('Make sure to backup the database before running cleanup!');
+    let testPatterns;
+    if (explicitRefs.length > 0) {
+      testPatterns = { Explicit: explicitRefs.map(r => ({ InstructionRef: r })) };
+      console.log(`Using explicit refs (${explicitRefs.length}):`);
+      explicitRefs.forEach(r => console.log(` - ${r}`));
+    } else {
+      testPatterns = await identifyTestRecords();
+    }
+
+    const total = Object.values(testPatterns).reduce((s, a) => s + (a?.length || 0), 0);
+    console.log(`\nSummary: ${total} potential test records across ${Object.keys(testPatterns).length} categories.`);
+
+    if (doList || (!doDelete && !confirmed)) {
+      console.log('\n2. Identifying production records to keep...');
+      await getProductionRecords();
+
+      console.log('\n3. Generating cleanup script (dry-run)...');
+      await createDeleteScript(testPatterns);
+
+      if (!doDelete) {
+        console.log('\nRun with --delete --confirm to execute deletions.');
+        console.log('Make sure to backup the database before running cleanup!');
+        return;
+      }
+    }
+
+    if (doDelete) {
+      if (!confirmed) {
+        console.log('\nRefusing to delete without --confirm.');
+        return;
+      }
+      const refs = collectTestRefs(testPatterns);
+      console.log(`\nDeleting ${refs.length} Instructions (excluding health indicator HLX-27367-94842)...`);
+      const { deleted } = await deleteByRefs(refs);
+      console.log(`\nDeleted ${deleted} rows from Instructions (dependent tables cleaned first).`);
+    }
+
+    console.log('\n=== Complete ===');
     
   } catch (error) {
     console.error('Error during analysis:', error);

@@ -196,6 +196,7 @@ interface InlineEditableAreaProps {
   allReplacedRanges?: { start: number; end: number }[];
   passcode?: string;
   enquiry?: any;
+  isDarkMode?: boolean;
 }
 
 interface UndoRedoState {
@@ -203,7 +204,7 @@ interface UndoRedoState {
   currentIndex: number;
 }
 
-const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange, edited, minHeight = 48, externalHighlights, allReplacedRanges, passcode, enquiry }) => {
+const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange, edited, minHeight = 48, externalHighlights, allReplacedRanges, passcode, enquiry, isDarkMode }) => {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const preRef = useRef<HTMLPreElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -722,7 +723,7 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           wordBreak: 'break-word',
       font: 'inherit',
   lineHeight: 1,
-      color: '#222',
+      color: isDarkMode ? colours.dark.text : '#222',
           pointerEvents: 'none',
           visibility: 'visible'
         }}
@@ -799,14 +800,14 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
               if (mark.type === 'placeholder') {
               // Render the original token (including brackets) so the overlay text width exactly matches the textarea.
               // Use outline (doesn't affect layout) for dashed box appearance and avoid padding which would change width.
-              html += `<span style="display:inline;background:#e0f0ff;outline:1px dashed #8bbbe8;padding:0;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${escapeHtml(segment)}</span>`;
+              html += `<span style="display:inline;background:${isDarkMode ? 'rgba(59,130,246,0.18)' : '#e0f0ff'};outline:1px dashed ${isDarkMode ? 'rgba(96,165,250,0.5)' : '#8bbbe8'};padding:0;margin:0;border-radius:3px;font-style:inherit;color:${isDarkMode ? '#cbd5e1' : '#6b7280'};font-weight:400">${escapeHtml(segment)}</span>`;
             } else if (mark.type === 'instructLink') {
               // Render the literal marker text so overlay width exactly matches textarea content
               // Style it to be recognizable without altering layout
               html += `<span style="color:#174ea6;text-decoration:underline">${escapeHtml(segment)}</span>`;
             } else {
               // Updated edited highlight: subtle green background only (no border/box), accessible text color
-              html += `<span style="display:inline;background:#e9f9f1;padding:0;margin:0;border:none;font-style:inherit;color:#0b3d2c">${escapeHtml(segment)}</span>`;
+              html += `<span style="display:inline;background:${isDarkMode ? 'rgba(16,185,129,0.20)' : '#e9f9f1'};padding:0;margin:0;border:none;font-style:inherit;color:${isDarkMode ? '#bbf7d0' : '#0b3d2c'}">${escapeHtml(segment)}</span>`;
             }
             cursor = mark.end;
           });
@@ -835,7 +836,7 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
       resize: 'none',
       background: 'transparent',
       color: 'transparent', // hide raw text, rely on highlighted layer
-      caretColor: '#222',
+    caretColor: isDarkMode ? colours.dark.text : '#222',
       font: 'inherit',
   lineHeight: 1,
       border: 'none',
@@ -968,6 +969,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [isNotesPinned, setIsNotesPinned] = useState(false);
   const [showSubjectHint, setShowSubjectHint] = useState(false);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
+  const isBeforeCallCall = selectedScenarioId === 'before-call-call';
   const [isTemplatesCollapsed, setIsTemplatesCollapsed] = useState(false); // Start expanded for immediate selection
   const [showInlinePreview, setShowInlinePreview] = useState(false);
   // Email confirmation modal state
@@ -985,6 +987,35 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [hmrTick, setHmrTick] = useState(0);
   // Prevent Draft visual state from being triggered by Send action
   const [hasSentEmail, setHasSentEmail] = useState(false);
+
+  // Helper: reset editor to a fresh state
+  const resetEditor = useCallback(() => {
+    try {
+      setSelectedScenarioId('');
+      setBody('');
+      setSubject('Your Enquiry - Helix Law');
+      setScopeDescription('');
+      setAmountValue('1500');
+      setAmountError(null);
+      setIsTemplatesCollapsed(false);
+      setShowInlinePreview(false);
+      setConfirmReady(false);
+      setHasSentEmail(false);
+      setBlockContents({});
+      setRemovedBlocks({});
+      setAllBodyReplacedRanges([]);
+    } catch {}
+  }, [setBody, setSubject]);
+
+  // Auto-close the modal and restart editor when saving/sending finishes successfully
+  useEffect(() => {
+    const saved = dealStatus === 'ready';
+    const sent = emailStatus === 'sent';
+    if (showSendConfirmModal && (saved || sent)) {
+      setShowSendConfirmModal(false);
+      resetEditor();
+    }
+  }, [showSendConfirmModal, dealStatus, emailStatus, resetEditor]);
   // Helper: apply simple [RATE]/[ROLE] substitutions and dynamic tokens ([InstructLink])
   const applyRateRolePlaceholders = useCallback((text: string) => {
     const u: any = Array.isArray(userData) ? (userData?.[0] ?? null) : userData;
@@ -1472,11 +1503,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         <div style={{ padding: '0 0 16px 0' }}>
           {/* Scenario Picker (minimal, non-breaking) */}
           <div style={{
-            background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+            background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
             borderRadius: '16px',
             padding: '24px',
-            border: '1px solid #E2E8F0',
-            boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+            border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
+            boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.4)' : '0 2px 4px 0 rgba(0, 0, 0, 0.06)',
             marginBottom: 20,
             fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
             position: 'relative'
@@ -1497,27 +1528,37 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               style={{
                 fontSize: '16px',
                 fontWeight: 600,
-                color: '#0F172A',
+                color: isDarkMode ? colours.dark.text : '#0F172A',
                 marginBottom: isTemplatesCollapsed ? 0 : '16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: '8px',
                 padding: '8px 16px',
-                background: 'rgba(255, 255, 255, 0.7)',
+                background: isDarkMode ? colours.dark.inputBackground : 'rgba(255, 255, 255, 0.7)',
                 borderRadius: '10px',
-                border: '1px solid rgba(54, 144, 206, 0.1)',
+                border: isDarkMode ? `1px solid ${colours.dark.border}` : '1px solid rgba(54, 144, 206, 0.1)',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease'
               }}
               onClick={() => setIsTemplatesCollapsed(!isTemplatesCollapsed)}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
-                e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.2)';
+                if (isDarkMode) {
+                  e.currentTarget.style.background = colours.dark.cardBackground;
+                  e.currentTarget.style.borderColor = colours.blue;
+                } else {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+                  e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.2)';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)';
-                e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.1)';
+                if (isDarkMode) {
+                  e.currentTarget.style.background = colours.dark.inputBackground;
+                  e.currentTarget.style.borderColor = colours.dark.border;
+                } else {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)';
+                  e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.1)';
+                }
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1547,9 +1588,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 gridTemplateRows: 'repeat(2, 1fr)',
                 gap: '16px',
                 padding: '16px',
-                background: 'rgba(255, 255, 255, 0.5)',
+                background: isDarkMode ? colours.dark.cardBackground : 'rgba(255, 255, 255, 0.5)',
                 borderRadius: '12px',
-                border: '1px solid rgba(203, 213, 225, 0.6)',
+                border: `1px solid ${isDarkMode ? colours.dark.border : 'rgba(203, 213, 225, 0.6)'}`,
                 animation: 'cascadeIn 0.3s ease-out',
                 opacity: 1,
                 transform: 'translateY(0)'
@@ -1582,11 +1623,27 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       if (firstBlock) {
                         setBlockContents(prev => ({ ...prev, [firstBlock.title]: projected }));
                       }
+                      // For "Before call" scenarios, quietly seed deal-capture placeholders
+                      // so users aren't blocked by validation. Only apply if empty/default.
+                      const isBeforeCall = s.id.startsWith('before-call');
+                      if (isBeforeCall) {
+                        const placeholderDesc = 'Initial informal steer; scope to be confirmed after call';
+                        const needsDesc = !scopeDescription || scopeDescription.trim() === '';
+                        if (needsDesc) {
+                          setScopeDescription(placeholderDesc);
+                          onScopeDescriptionChange?.(placeholderDesc);
+                        }
+                        const needsAmount = !amountValue || amountValue.trim() === '' || amountValue.trim() === '1500';
+                        if (needsAmount) {
+                          setAmountValue('0.99');
+                          onAmountChange?.('0.99');
+                        }
+                      }
                     }}
                     style={{
                       position: 'relative',
-                      background: '#ffffff',
-                      border: '1px solid #e5e7eb',
+                      background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                      border: `1px solid ${isDarkMode ? colours.dark.border : '#e5e7eb'}`,
                       borderRadius: '8px',
                       padding: '20px 24px',
                       cursor: 'pointer',
@@ -1596,7 +1653,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       gap: '20px',
                       textAlign: 'left',
                       minHeight: '100px',
-                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                      boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)',
                       transform: 'translateY(0)',
                       animation: `cascadeIn 0.4s ease-out ${index * 0.1}s both`,
                       opacity: 0,
@@ -1607,17 +1664,17 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     onMouseEnter={(e) => {
                       if (selectedScenarioId !== s.id) {
                         e.currentTarget.style.borderColor = '#061733';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.12)';
+                        e.currentTarget.style.boxShadow = isDarkMode ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0, 0, 0, 0.12)';
                         e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.background = '#fafbfc';
+                        e.currentTarget.style.background = isDarkMode ? colours.dark.inputBackground : '#fafbfc';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (selectedScenarioId !== s.id) {
-                        e.currentTarget.style.borderColor = '#e5e7eb';
-                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.08)';
+                        e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#e5e7eb';
+                        e.currentTarget.style.boxShadow = isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)';
                         e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.background = '#ffffff';
+                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardBackground : '#ffffff';
                       }
                     }}
                   >
@@ -1642,7 +1699,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       <div className="premium-choice-title" style={{
                         fontSize: '16px',
                         fontWeight: 600,
-                        color: '#1E293B',
+                        color: isDarkMode ? colours.dark.text : '#1E293B',
                         lineHeight: '1.3',
                         marginBottom: '6px'
                       }}>
@@ -1650,7 +1707,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       </div>
                       <div className="premium-choice-description" style={{
                         fontSize: '14px',
-                        color: '#6b7280',
+                        color: isDarkMode ? '#CBD5E1' : '#6b7280',
                         lineHeight: '1.4',
                         fontWeight: 400
                       }}>
@@ -1672,14 +1729,14 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       <div className="premium-choice-radio" style={{
                         width: '20px',
                         height: '20px',
-                        border: '2px solid #d1d5db',
+                        border: `2px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
                         borderRadius: '50%',
-                        background: '#ffffff',
+                        background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
                         position: 'relative',
                         transition: 'all 0.25s ease',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-                        borderColor: selectedScenarioId === s.id ? '#061733' : '#d1d5db',
-                        backgroundColor: selectedScenarioId === s.id ? '#061733' : '#ffffff'
+                        boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)',
+                        borderColor: selectedScenarioId === s.id ? '#061733' : (isDarkMode ? colours.dark.border : '#d1d5db'),
+                        backgroundColor: selectedScenarioId === s.id ? '#061733' : (isDarkMode ? colours.dark.cardBackground : '#ffffff')
                       }}>
                         {selectedScenarioId === s.id && (
                           <div style={{
@@ -1713,18 +1770,18 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             
             {/* Subject Line - Primary Focus */}
             <div style={{
-              background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+              background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
               borderRadius: '12px',
               padding: '20px',
-              border: '1px solid #E2E8F0',
-              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+              border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
+              boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
               marginBottom: initialNotes ? 20 : 0,
               fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
             }}>
               <div style={{
                 fontSize: '14px',
                 fontWeight: 600,
-                color: '#1E293B',
+                color: isDarkMode ? colours.dark.text : '#1E293B',
                 marginBottom: '12px',
                 display: 'flex',
                 alignItems: 'center',
@@ -1732,7 +1789,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               }}>
                 <div style={{
                   padding: '6px',
-                  background: 'rgba(54, 144, 206, 0.1)',
+                  background: isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.1)',
                   borderRadius: '6px',
                   display: 'flex',
                   alignItems: 'center'
@@ -1751,10 +1808,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   padding: '14px 18px',
                   fontSize: '14px',
                   fontWeight: 400,
-                  border: '1px solid #CBD5E1',
+                  border: `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
                   borderRadius: '8px',
-                  backgroundColor: '#FFFFFF',
-                  color: '#0F172A',
+                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#FFFFFF',
+                  color: isDarkMode ? colours.dark.text : '#0F172A',
                   outline: 'none',
                   transition: 'all 0.2s ease',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -1767,7 +1824,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   e.target.style.boxShadow = '0 0 0 3px rgba(54, 144, 206, 0.1), 0 4px 6px rgba(0,0,0,0.1)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = '#CBD5E1';
+                  e.target.style.borderColor = isDarkMode ? colours.dark.border : '#CBD5E1';
                   e.target.style.borderWidth = '1px';
                   e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
                 }}
@@ -1778,32 +1835,32 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
             {/* Email body / Preview (swap in place) */}
             <div style={{
-              background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+              background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
               borderRadius: '12px',
               padding: '20px',
-              border: '1px solid #E2E8F0',
-              boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+              border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
+              boxShadow: isDarkMode ? '0 2px 4px rgba(0,0,0,0.5)' : '0 2px 4px 0 rgba(0, 0, 0, 0.06)',
               marginBottom: 18,
               fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
             }}>
               <div style={{
                 fontSize: '14px',
                 fontWeight: 600,
-                color: '#1E293B',
+                color: isDarkMode ? colours.dark.text : '#1E293B',
                 marginBottom: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
                 justifyContent: 'space-between',
                 padding: '8px 16px',
-                background: 'rgba(255, 255, 255, 0.7)',
+                background: isDarkMode ? colours.dark.inputBackground : 'rgba(255, 255, 255, 0.7)',
                 borderRadius: '10px',
-                border: '1px solid rgba(54, 144, 206, 0.1)'
+                border: isDarkMode ? `1px solid ${colours.dark.border}` : '1px solid rgba(54, 144, 206, 0.1)'
               }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   <div style={{
                     padding: '6px',
-                    background: 'rgba(54, 144, 206, 0.1)',
+                    background: isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.1)',
                     borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center'
@@ -1851,9 +1908,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       padding: '6px 12px',
                       fontSize: '12px',
                       borderRadius: '6px',
-                      border: copiedToolbar ? '1px solid #16a34a' : '1px solid #3690CE',
-                      color: copiedToolbar ? '#166534' : '#3690CE',
-                      background: copiedToolbar ? '#e8f5e8' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      border: copiedToolbar ? '1px solid #16a34a' : `1px solid ${isDarkMode ? colours.blue : '#3690CE'}`,
+                      color: copiedToolbar ? '#166534' : (isDarkMode ? colours.blue : '#3690CE'),
+                      background: copiedToolbar ? (isDarkMode ? 'rgba(22, 101, 52, 0.2)' : '#e8f5e8') : (isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)'),
                       cursor: 'pointer',
                       fontFamily: 'inherit',
                       fontWeight: 500,
@@ -1861,20 +1918,20 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 4,
-                      boxShadow: copiedToolbar ? '0 2px 4px rgba(22, 163, 74, 0.2)' : '0 1px 3px rgba(54, 144, 206, 0.15)'
+                      boxShadow: copiedToolbar ? '0 2px 4px rgba(22, 163, 74, 0.2)' : (isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(54, 144, 206, 0.15)')
                     }}
                     onMouseEnter={(e) => {
                       if (!copiedToolbar) {
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
+                        e.currentTarget.style.background = isDarkMode ? colours.dark.inputBackground : 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
                         e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.2)';
+                        e.currentTarget.style.boxShadow = isDarkMode ? '0 4px 6px rgba(0,0,0,0.5)' : '0 4px 6px rgba(54, 144, 206, 0.2)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!copiedToolbar) {
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
                         e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(54, 144, 206, 0.15)';
+                        e.currentTarget.style.boxShadow = isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(54, 144, 206, 0.15)';
                       }
                     }}
                     title={showInlinePreview ? 'Copy preview text' : 'Copy plain text'}
@@ -1895,10 +1952,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       padding: '6px 12px',
                       fontSize: '12px',
                       borderRadius: '8px',
-                      border: showInlinePreview ? '1px solid #CBD5E1' : '1px solid #D65541',
-                      color: showInlinePreview ? '#64748B' : '#ffffff',
+                      border: showInlinePreview ? `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}` : '1px solid #D65541',
+                      color: showInlinePreview ? (isDarkMode ? colours.dark.text : '#64748B') : '#ffffff',
                       background: showInlinePreview
-                        ? 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)'
+                        ? (isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)')
                         : `linear-gradient(135deg, ${colours.red} 0%, #b04434 100%)`,
                       cursor: 'pointer',
                       fontFamily: 'inherit',
@@ -1907,13 +1964,13 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
-                      boxShadow: showInlinePreview ? '0 1px 3px rgba(0, 0, 0, 0.08)' : '0 2px 4px rgba(214, 85, 65, 0.25)'
+                      boxShadow: showInlinePreview ? (isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)') : '0 2px 4px rgba(214, 85, 65, 0.25)'
                     }}
                     onMouseEnter={(e) => {
                       if (showInlinePreview) {
-                        e.currentTarget.style.borderColor = '#94A3B8';
-                        e.currentTarget.style.color = '#475569';
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #F0F4F8 0%, #EFF6FF 100%)';
+                        e.currentTarget.style.borderColor = isDarkMode ? colours.blue : '#94A3B8';
+                        e.currentTarget.style.color = isDarkMode ? colours.dark.text : '#475569';
+                        e.currentTarget.style.background = isDarkMode ? colours.dark.inputBackground : 'linear-gradient(135deg, #F0F4F8 0%, #EFF6FF 100%)';
                       } else {
                         e.currentTarget.style.background = `linear-gradient(135deg, #c24a39 0%, #9e3d30 100%)`;
                         e.currentTarget.style.boxShadow = '0 3px 6px rgba(214, 85, 65, 0.30)';
@@ -1922,10 +1979,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     }}
                     onMouseLeave={(e) => {
                       if (showInlinePreview) {
-                        e.currentTarget.style.borderColor = '#CBD5E1';
-                        e.currentTarget.style.color = '#64748B';
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.08)';
+                        e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#CBD5E1';
+                        e.currentTarget.style.color = isDarkMode ? colours.dark.text : '#64748B';
+                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                        e.currentTarget.style.boxShadow = isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)';
                       } else {
                         e.currentTarget.style.background = `linear-gradient(135deg, ${colours.red} 0%, #b04434 100%)`;
                         e.currentTarget.style.boxShadow = '0 2px 4px rgba(214, 85, 65, 0.25)';
@@ -1940,9 +1997,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               </div>
               {!showInlinePreview && (
                 <div className="smooth-appear" style={{
-                  border: '1px solid #CBD5E1',
+                  border: `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
                   borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #FFFFFF 0%, #FEFEFE 100%)',
+                  background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #FEFEFE 100%)',
                   padding: '6px',
                   position: 'relative',
                   overflow: 'hidden',
@@ -1959,6 +2016,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     allReplacedRanges={allBodyReplacedRanges}
                     passcode={passcode}
                     enquiry={enquiry}
+                    isDarkMode={isDarkMode}
                   />
                 </div>
               )}
@@ -1966,9 +2024,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               {showInlinePreview && (
                 <div className="smooth-appear" style={{
                 marginTop: 12,
-                border: '1px solid #CBD5E1',
+                border: `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
                 borderRadius: '8px',
-                background: 'linear-gradient(135deg, #FFFFFF 0%, #FEFEFE 100%)',
+                background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #FEFEFE 100%)',
                 overflow: 'hidden',
                 position: 'relative'
               }}>
@@ -2059,10 +2117,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       const disableDraft = !confirmReady || isDraftConfirmed || unresolvedAny;
                       const draftVisualConfirmed = isDraftConfirmed && !hasSentEmail;
                       const missingServiceSummary = !scopeDescription || !String(scopeDescription).trim();
-                      const disableSend = unresolvedAny || missingServiceSummary; // Disable if placeholders unresolved or summary missing
+                      const requireServiceSummary = !isBeforeCallCall; // not required for Before call — Call
+                      const disableSend = unresolvedAny || (requireServiceSummary && missingServiceSummary);
                       const sendBtnTitle = unresolvedAny
                         ? 'Resolve placeholders before sending'
-                        : (missingServiceSummary ? 'Service summary is required' : 'Send Email');
+                        : ((requireServiceSummary && missingServiceSummary) ? 'Service summary is required' : 'Send Email');
                       return (
                         <>
                           <button
@@ -2231,11 +2290,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             {/* Context Notes - Supporting Information */}
             {initialNotes && !isNotesPinned && (
               <div style={{
-                background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+                background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
                 borderRadius: '12px',
                 padding: '20px',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
+                boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
                 marginBottom: '16px',
                 transition: 'all 0.3s ease-in-out',
                 position: 'relative',
@@ -2244,16 +2303,16 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 <div style={{
                   fontSize: '14px',
                   fontWeight: 600,
-                  color: '#1E293B',
+                  color: isDarkMode ? colours.dark.text : '#1E293B',
                   marginBottom: '12px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   position: 'relative',
                   padding: '8px 16px',
-                  background: 'rgba(255, 255, 255, 0.7)',
+                  background: isDarkMode ? colours.dark.inputBackground : 'rgba(255, 255, 255, 0.7)',
                   borderRadius: '10px',
-                  border: '1px solid rgba(54, 144, 206, 0.1)'
+                  border: isDarkMode ? `1px solid ${colours.dark.border}` : '1px solid rgba(54, 144, 206, 0.1)'
                 }}>
                   <span
                     onMouseEnter={() => setShowSubjectHint(true)}
@@ -2262,7 +2321,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   >
                     <div style={{
                       padding: '6px',
-                      background: 'rgba(54, 144, 206, 0.1)',
+                      background: isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.1)',
                       borderRadius: '6px',
                       display: 'flex',
                       alignItems: 'center'
@@ -2277,18 +2336,18 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       left: 0,
                       top: '100%',
                       marginTop: 8,
-                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                      color: '#1E293B',
+                      background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      color: isDarkMode ? colours.dark.text : '#1E293B',
                       fontSize: '11px',
                       fontWeight: 400,
                       fontStyle: 'italic',
-                      border: '1px solid #CBD5E1',
+                      border: `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
                       borderRadius: '8px',
                       padding: '8px 12px',
                       zIndex: 10,
                       whiteSpace: 'normal',
                       maxWidth: 420,
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                      boxShadow: isDarkMode ? '0 6px 10px rgba(0,0,0,0.6)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                     }}>
                       Source confirmation: these notes may be intake rep call notes, a web form message, or an auto‑parsed email.
                     </span>
@@ -2297,12 +2356,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 <div style={{
                   fontSize: '14px',
                   lineHeight: 1.6,
-                  color: '#64748B',
+                  color: isDarkMode ? colours.dark.text : '#64748B',
                   whiteSpace: 'pre-wrap',
-                  background: 'rgba(255, 255, 255, 0.8)',
+                  background: isDarkMode ? colours.dark.inputBackground : 'rgba(255, 255, 255, 0.8)',
                   padding: '16px',
                   borderRadius: '8px',
-                  border: '1px solid rgba(203, 213, 225, 0.6)',
+                  border: `1px solid ${isDarkMode ? colours.dark.border : 'rgba(203, 213, 225, 0.6)'}`,
                   position: 'relative',
                   fontFamily: 'inherit'
                 }}>
@@ -2320,25 +2379,25 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                      border: '1px solid #CBD5E1',
-                      color: '#1E293B',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      border: `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
+                      color: isDarkMode ? colours.dark.text : '#1E293B',
+                      boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.1)',
                       cursor: 'pointer',
                       zIndex: 2,
                       transition: 'all 0.2s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#3690CE';
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
+                      e.currentTarget.style.borderColor = isDarkMode ? colours.blue : '#3690CE';
+                      e.currentTarget.style.background = isDarkMode ? colours.dark.inputBackground : 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
                       e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(54, 144, 206, 0.25)';
+                      e.currentTarget.style.boxShadow = isDarkMode ? '0 4px 8px rgba(0,0,0,0.5)' : '0 4px 8px rgba(54, 144, 206, 0.25)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#CBD5E1';
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                      e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#CBD5E1';
+                      e.currentTarget.style.background = isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
                       e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                      e.currentTarget.style.boxShadow = isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.1)';
                     }}
                   >
                     {/* Use a known glyph and strong contrast to ensure visibility */}
@@ -2349,14 +2408,16 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               </div>
             )}
 
-            <DealCapture
-              isDarkMode={isDarkMode}
-              scopeDescription={scopeDescription}
-              onScopeChange={(v) => { setScopeDescription(v); onScopeDescriptionChange?.(v); }}
-              amount={amountValue}
-              onAmountChange={(v) => { setAmountValue(v); onAmountChange?.(v); }}
-              amountError={amountError}
-            />
+            {!isBeforeCallCall && (
+              <DealCapture
+                isDarkMode={isDarkMode}
+                scopeDescription={scopeDescription}
+                onScopeChange={(v) => { setScopeDescription(v); onScopeDescriptionChange?.(v); }}
+                amount={amountValue}
+                onAmountChange={(v) => { setAmountValue(v); onAmountChange?.(v); }}
+                amountError={amountError}
+              />
+            )}
 
           {/* Template blocks removed in simplified flow */}
           </div>
@@ -2516,56 +2577,58 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               </div>
             </div>
             
-            {/* Email Summary Section - Secondary */}
-            <div style={{
-              background: isDarkMode 
-                ? colours.dark.inputBackground 
-                : 'linear-gradient(135deg, #FEFEFE 0%, #F9FAFB 100%)',
-              border: `1px solid ${isDarkMode ? colours.dark.border : '#E5E7EB'}`,
-              borderRadius: '8px',
-              padding: '14px',
-              marginBottom: '16px'
-            }}>
-              <h4 style={{
-                margin: '0 0 12px 0',
-                fontSize: '16px',
-                fontWeight: '600',
-                color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                letterSpacing: '-0.005em'
+            {/* Email Summary Section - Secondary (hidden for Before call — Call) */}
+            {!isBeforeCallCall && (
+              <div style={{
+                background: isDarkMode 
+                  ? colours.dark.inputBackground 
+                  : 'linear-gradient(135deg, #FEFEFE 0%, #F9FAFB 100%)',
+                border: `1px solid ${isDarkMode ? colours.dark.border : '#E5E7EB'}`,
+                borderRadius: '8px',
+                padding: '14px',
+                marginBottom: '16px'
               }}>
-                Email Content Summary
-              </h4>
-              
-              {/* Replace Subject with Service Description */}
-              {scopeDescription && (
-                <div style={{ fontSize: '13px', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Service Description:</span>
-                  <div style={{ 
-                    marginTop: '4px',
-                    color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                    lineHeight: '1.4',
-                    maxHeight: '60px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}>
-                    {scopeDescription.length > 150 ? `${scopeDescription.substring(0, 150)}...` : scopeDescription}
+                <h4 style={{
+                  margin: '0 0 12px 0',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                  letterSpacing: '-0.005em'
+                }}>
+                  Email Content Summary
+                </h4>
+                
+                {/* Replace Subject with Service Description */}
+                {scopeDescription && (
+                  <div style={{ fontSize: '13px', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Service Description:</span>
+                    <div style={{ 
+                      marginTop: '4px',
+                      color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                      lineHeight: '1.4',
+                      maxHeight: '60px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {scopeDescription.length > 150 ? `${scopeDescription.substring(0, 150)}...` : scopeDescription}
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {amountValue && (
-                <div style={{ marginBottom: '8px', fontSize: '13px' }}>
-                  <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Amount:</span>
-                  <div style={{ 
-                    marginTop: '4px',
-                    color: isDarkMode ? colours.blue : colours.darkBlue,
-                    fontWeight: 600
-                  }}>
-                    £{parseFloat(amountValue).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + VAT
+                )}
+                
+                {amountValue && (
+                  <div style={{ marginBottom: '8px', fontSize: '13px' }}>
+                    <span style={{ fontWeight: '600', color: isDarkMode ? colours.dark.text : '#6B7280' }}>Amount:</span>
+                    <div style={{ 
+                      marginTop: '4px',
+                      color: isDarkMode ? colours.blue : colours.darkBlue,
+                      fontWeight: 600
+                    }}>
+                      £{parseFloat(amountValue).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + VAT
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
             
             {/* Debug/Support Info Box */}
             <div style={{
@@ -2687,15 +2750,23 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#1F2937', marginBottom: 2 }}>Deal capture</div>
+                    <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#1F2937', marginBottom: 2 }}>
+                      {(dealCreationInProgress || dealStatus === 'processing')
+                        ? 'Saving Pitch'
+                        : (dealStatus === 'ready')
+                          ? 'Saved'
+                          : (dealStatus === 'error')
+                            ? 'Failed to save'
+                            : 'Pitch save'}
+                    </div>
                     <div style={{ 
                       fontSize: 13, 
                       color: (dealStatus === 'ready' ? '#166534' : dealStatus === 'error' ? '#991B1B' : isDarkMode ? colours.dark.text : '#6B7280'),
                       fontWeight: dealStatus === 'ready' ? 600 : 500
                     }}>
-                      {dealCreationInProgress || dealStatus === 'processing' ? 'Processing deal information...' :
-                        dealStatus === 'ready' ? 'Deal captured successfully' :
-                        dealStatus === 'error' ? 'Failed to capture deal' : 'Waiting to process'}
+                      {dealCreationInProgress || dealStatus === 'processing' ? 'Saving Pitch...' :
+                        dealStatus === 'ready' ? 'Saved' :
+                        dealStatus === 'error' ? 'Failed to save' : 'Ready to save'}
                     </div>
                   </div>
                 </div>
@@ -2874,8 +2945,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     if (!to || !to.trim()) return 'Recipient (To) is required.';
                     if (!subject || !subject.trim()) return 'Subject is required.';
                     if (!body || !body.trim()) return 'Email body is required.';
-                    if (!scopeDescription || !scopeDescription.trim()) return 'Service description is required.';
-                    if (!amountValue || !amountValue.trim() || isNaN(numericAmt) || numericAmt <= 0) return 'Estimated fee must be a positive number.';
+                    if (!isBeforeCallCall) {
+                      if (!scopeDescription || !scopeDescription.trim()) return 'Service description is required.';
+                      if (!amountValue || !amountValue.trim() || isNaN(numericAmt) || numericAmt <= 0) return 'Estimated fee must be a positive number.';
+                    }
                     return null;
                   })();
                   if (err) {

@@ -5,6 +5,7 @@ import { Stack } from '@fluentui/react';
 import { useTheme } from '../../../app/functionality/ThemeContext';
 import PoidCard from '../PoidCard';
 import { POID, TeamData } from '../../../app/functionality/types';
+import helixLogo from '../../../assets/dark blue mark.svg';
 
 interface PoidSelectionStepProps {
     poidData: POID[];
@@ -151,11 +152,15 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
     // Aggregate verification results from selected POIDs
     type Verif = 'passed' | 'review' | 'failed' | 'pending' | '';
     const norm = (v?: string): Verif => {
-        const s = (v || '').toLowerCase();
+        const s = (v || '').toLowerCase().trim();
+        if (!s) return '';
         if (s.startsWith('pass')) return 'passed';
         if (s.startsWith('rev')) return 'review';
         if (s.startsWith('fail') || s.startsWith('rej')) return 'failed';
         if (s.startsWith('pend')) return 'pending';
+        // Handle some other possible values
+        if (s === 'approved') return 'passed';
+        if (s === 'manual review' || s === 'manual_review') return 'review';
         return '';
     };
     const getFor = (p: POID) => ({
@@ -198,68 +203,300 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
     }, [pendingClientType]);
 
     const renderSelectionSummary = () => {
+        const selectedPoid = selectedPoids[0];
+        
         return (
             <div
                 className="instruction-card-banner"
                 style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                    gap: 12,
-                    padding: '8px 0',
-                    border: 'none',
-                    borderRadius: 0,
-                    background: 'transparent',
-                    boxShadow: 'none',
+                    background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: 12,
+                    padding: '16px 20px',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
                     color: '#061733',
-                    flexWrap: 'wrap'
+                    marginBottom: 16
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <i className={`ms-Icon ${companyPoid ? 'ms-Icon--CityNext' : 'ms-Icon--People'}`} style={{ fontSize: 18, color: '#3690CE' }} />
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>{bannerTitle}</div>
-                        {bannerSubtitle && (
-                            <div style={{ fontSize: 12, color: '#6B6B6B', lineHeight: 1.2 }}>{bannerSubtitle}</div>
-                        )}
+                {/* Main client header - compact */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: selectedPoids.length > 0 ? 16 : 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flex: 1 }}>
+                        <div style={{ 
+                            background: '#F4F4F6', // Helix grey
+                            border: '1px solid #E5E7EB',
+                            borderRadius: 10,
+                            padding: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            marginTop: 2,
+                            width: 42,
+                            height: 42,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                        }}>
+                            <img 
+                                src={helixLogo} 
+                                alt="Helix" 
+                                style={{ 
+                                    width: 28, 
+                                    height: 28,
+                                    objectFit: 'contain'
+                                }} 
+                            />
+                        </div>
+                        
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ 
+                                fontWeight: 700, 
+                                fontSize: 16, 
+                                lineHeight: 1.3, 
+                                color: '#061733',
+                                marginBottom: 2
+                            }}>
+                                {bannerTitle}
+                            </div>
+                            {bannerSubtitle && (
+                                <div style={{ 
+                                    fontSize: 13, 
+                                    color: '#6B7280', 
+                                    lineHeight: 1.3,
+                                    marginBottom: 8
+                                }}>
+                                    {bannerSubtitle}
+                                </div>
+                            )}
+                            
+                            {/* Contact details */}
+                            {selectedPoid && (
+                                <div style={{ 
+                                    display: 'flex', 
+                                    gap: 16, 
+                                    flexWrap: 'wrap', 
+                                    fontSize: 13, 
+                                    color: '#4B5563',
+                                    marginBottom: 8
+                                }}>
+                                    {selectedPoid.email && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <i className="ms-Icon ms-Icon--Mail" style={{ fontSize: 12, color: '#6B7280' }} />
+                                            <span>{selectedPoid.email}</span>
+                                        </div>
+                                    )}
+                                    {selectedPoid.best_number && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <i className="ms-Icon ms-Icon--Phone" style={{ fontSize: 12, color: '#6B7280' }} />
+                                            <span>{selectedPoid.best_number}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            
+                            {/* Address - separate line with pin icon */}
+                            {selectedPoid && (selectedPoid.house_building_number || selectedPoid.street || selectedPoid.city || selectedPoid.post_code) && (
+                                <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'flex-start', 
+                                    gap: 6,
+                                    fontSize: 13, 
+                                    color: '#4B5563',
+                                    marginBottom: 8
+                                }}>
+                                    <i className="ms-Icon ms-Icon--POI" style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }} />
+                                    <span>{[
+                                        selectedPoid.house_building_number,
+                                        selectedPoid.street,
+                                        selectedPoid.city,
+                                        selectedPoid.county,
+                                        selectedPoid.post_code,
+                                        selectedPoid.country
+                                    ].filter(Boolean).join(', ')}</span>
+                                </div>
+                            )}
+                            
+                            {/* Additional personal details */}
+                            {selectedPoid && (
+                                <div style={{ 
+                                    display: 'flex', 
+                                    gap: 16, 
+                                    flexWrap: 'wrap', 
+                                    fontSize: 12, 
+                                    color: '#6B7280',
+                                    marginTop: 4
+                                }}>
+                                    {selectedPoid.date_of_birth && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <i className="ms-Icon ms-Icon--Calendar" style={{ fontSize: 11, color: '#9CA3AF' }} />
+                                            <span>DOB: {new Date(selectedPoid.date_of_birth).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                                        </div>
+                                    )}
+                                    {selectedPoid.gender && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 11, color: '#9CA3AF' }} />
+                                            <span>{selectedPoid.gender}</span>
+                                        </div>
+                                    )}
+                                    {selectedPoid.nationality && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <i className="ms-Icon ms-Icon--Globe" style={{ fontSize: 11, color: '#9CA3AF' }} />
+                                            <span>{selectedPoid.nationality}</span>
+                                        </div>
+                                    )}
+                                    {selectedPoid.passport_number && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <i className="ms-Icon ms-Icon--Passport" style={{ fontSize: 11, color: '#9CA3AF' }} />
+                                            <span>Passport: {selectedPoid.passport_number}</span>
+                                        </div>
+                                    )}
+                                    {selectedPoid.drivers_license_number && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <i className="ms-Icon ms-Icon--Car" style={{ fontSize: 11, color: '#9CA3AF' }} />
+                                            <span>DL: {selectedPoid.drivers_license_number}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            
+                            {/* Company details and address for company clients */}
+                            {selectedPoid && (selectedPoid.company_name || selectedPoid.company_number) && (
+                                <div style={{ 
+                                    fontSize: 13, 
+                                    color: '#4B5563',
+                                    marginTop: 8,
+                                    marginBottom: 8
+                                }}>
+                                    {/* Company name and number */}
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 6,
+                                        marginBottom: 6
+                                    }}>
+                                        <i className="ms-Icon ms-Icon--BuildingRegular" style={{ fontSize: 12, color: '#6B7280' }} />
+                                        <span style={{ fontWeight: 600 }}>
+                                            {selectedPoid.company_name}
+                                            {selectedPoid.company_number && ` (${selectedPoid.company_number})`}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Company address if different from personal address */}
+                                    {(selectedPoid.company_house_building_number || selectedPoid.company_street || selectedPoid.company_city || selectedPoid.company_post_code) && (
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'flex-start', 
+                                            gap: 6,
+                                            fontSize: 12,
+                                            color: '#6B7280'
+                                        }}>
+                                            <i className="ms-Icon ms-Icon--POI" style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }} />
+                                            <span>{[
+                                                selectedPoid.company_house_building_number,
+                                                selectedPoid.company_street,
+                                                selectedPoid.company_city,
+                                                selectedPoid.company_county,
+                                                selectedPoid.company_post_code,
+                                                selectedPoid.company_country
+                                            ].filter(Boolean).join(', ')}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
+                    
+                    {/* Instruction ref - top right, no label */}
+                    {instructionRef && (
+                        <div style={{ 
+                            fontSize: 12, 
+                            color: '#6B7280',
+                            fontWeight: 600,
+                            flexShrink: 0,
+                            textAlign: 'right'
+                        }}>
+                            {instructionRef}
+                        </div>
+                    )}
                 </div>
-                {(meta.length > 0 || selectedPoids.length > 0) && (
-                    <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        {instructionRef && (
-                            <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                padding: '4px 8px', border: '1px solid #e1e5ea', borderRadius: 6,
-                                background: '#F4F6F9', color: '#425466', fontSize: 12, fontWeight: 600
+
+                {/* Remove the old reference info section since it's now moved to top right */}
+
+                {/* Verification status - clear visual hierarchy */}
+                {selectedPoids.length > 0 && (
+                    <div style={{
+                        borderTop: '1px solid #E5E7EB',
+                        paddingTop: 16,
+                        background: 'rgba(248, 250, 252, 0.5)',
+                        margin: '0 -20px -16px -20px',
+                        padding: '16px 20px',
+                        borderRadius: '0 0 12px 12px'
+                    }}>
+                        {/* Overall status indicator */}
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            marginBottom: 12
+                        }}>
+                            <div style={{ 
+                                fontSize: 12, 
+                                fontWeight: 700, 
+                                color: '#374151',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px'
                             }}>
-                                <i className="ms-Icon ms-Icon--TextDocument" style={{ fontSize: 12, color: '#6B7280' }} />
-                                Instruction: {instructionRef}
-                            </span>
-                        )}
-                        {matterRef && (
+                                Verification Status
+                            </div>
+                        </div>
+                        
+                        {/* Individual verification chips - ID is overall, others are sub-results */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {/* ID is the OVERALL result - make it prominent */}
                             <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                padding: '4px 8px', border: '1px solid #e1e5ea', borderRadius: 6,
-                                background: '#F4F6F9', color: '#425466', fontSize: 12, fontWeight: 600
+                                ...chipStyle(aggId),
+                                padding: '8px 14px',
+                                borderRadius: 8,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                minWidth: 'auto',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                             }}>
-                                <i className="ms-Icon ms-Icon--FabricFolder" style={{ fontSize: 12, color: '#6B7280' }} />
-                                Matter: {matterRef}
+                                <i className="ms-Icon ms-Icon--Shield" style={{ fontSize: 13 }} /> 
+                                ID: {aggId || 'pending'}
                             </span>
-                        )}
-                        {/* Aggregated verification chips when selection exists */}
-                        {selectedPoids.length > 0 && (
-                            <>
-                                <span style={chipStyle(aggId)}>
-                                    <i className="ms-Icon ms-Icon--Shield" style={{ fontSize: 12 }} /> ID: {aggId || 'n/a'}
-                                </span>
-                                <span style={chipStyle(aggPep)}>
-                                    <i className="ms-Icon ms-Icon--PageShield" style={{ fontSize: 12 }} /> PEP: {aggPep || 'n/a'}
-                                </span>
-                                <span style={chipStyle(aggAddr)}>
-                                    <i className="ms-Icon ms-Icon--POI" style={{ fontSize: 12 }} /> Address: {aggAddr || 'n/a'}
-                                </span>
-                            </>
-                        )}
+                            {/* PEP and Address are sub-results - smaller */}
+                            <span style={{
+                                ...chipStyle(aggPep),
+                                padding: '6px 10px',
+                                borderRadius: 6,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                minWidth: 'auto',
+                                opacity: 0.8
+                            }}>
+                                <i className="ms-Icon ms-Icon--PageShield" style={{ fontSize: 10 }} /> 
+                                PEP: {aggPep || 'pending'}
+                            </span>
+                            <span style={{
+                                ...chipStyle(aggAddr),
+                                padding: '6px 10px',
+                                borderRadius: 6,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                minWidth: 'auto',
+                                opacity: 0.8
+                            }}>
+                                <i className="ms-Icon ms-Icon--POI" style={{ fontSize: 10 }} /> 
+                                Address: {aggAddr || 'pending'}
+                            </span>
+                        </div>
                     </div>
                 )}
             </div>
@@ -282,7 +519,24 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
             {/* Client Type Question Section */}
             <div className="client-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
             <div style={{ padding: 4, background: 'transparent' }}>
-                <div className="question-banner" style={{ width: '100%', boxSizing: 'border-box' }}>What type of client is this matter for?</div>
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 8, 
+                    marginBottom: 12 
+                }}>
+                    <i className="ms-Icon ms-Icon--Contact" style={{ 
+                        fontSize: 16, 
+                        color: '#3690CE' 
+                    }} />
+                    <span style={{ 
+                        fontSize: 16, 
+                        fontWeight: 600, 
+                        color: '#0F172A' 
+                    }}>
+                        What type of client is this matter for?
+                    </span>
+                </div>
                 <div className="client-details-contact-bigrow" style={{ margin: '8px 0 12px 0', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     {[ 
                         { type: 'Individual', icon: 'Contact' },
@@ -310,64 +564,60 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                 aria-pressed={isActive}
                                 style={{
                                     position: 'relative',
-                                    overflow: 'hidden',
-                                    minWidth: 76.8, // 20% increase from 64
-                                    minHeight: 76.8, // 20% increase from 64
-                                    padding: 0,
                                     display: 'flex',
+                                    flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    background: isActive ? '#3690CE22' : '#F4F4F6', // 22 transparency or helix grey
-                                    border: isActive ? '1px solid #3690CE' : '1px solid #e0e0e0', // 1px blue or light border
-                                    borderRadius: 0, // no rounded corners
-                                    boxShadow: undefined,
-                                    transition: 'background 0.2s, border 0.2s',
+                                    padding: '12px 14px',
+                                    border: `1px solid ${isActive ? '#3690CE' : '#E2E8F0'}`,
+                                    borderRadius: '8px',
+                                    background: isActive 
+                                        ? 'linear-gradient(135deg, #3690CE15 0%, #3690CE08 100%)' 
+                                        : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    minHeight: '70px',
+                                    minWidth: '120px',
+                                    boxShadow: isActive 
+                                        ? '0 3px 10px rgba(54, 144, 206, 0.15), 0 1px 2px rgba(0,0,0,0.03)' 
+                                        : '0 1px 3px rgba(0,0,0,0.03)',
                                     outline: 'none',
+                                    transform: isActive ? 'translateY(-2px)' : 'translateY(0)',
                                 }}
-                                onMouseDown={e => e.currentTarget.classList.add('pressed')}
-                                onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-                                onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+                                onMouseEnter={(e) => {
+                                    if (!isActive) {
+                                        e.currentTarget.style.background = 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)';
+                                        e.currentTarget.style.borderColor = '#3690CE';
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                        e.currentTarget.style.boxShadow = '0 3px 6px rgba(0,0,0,0.06)';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!isActive) {
+                                        e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                                        e.currentTarget.style.borderColor = '#E2E8F0';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)';
+                                    }
+                                }}
                             >
+                                <i 
+                                    className={`ms-Icon ms-Icon--${icon}`} 
+                                    style={{ 
+                                        fontSize: 24, 
+                                        color: isActive ? '#3690CE' : '#64748B',
+                                        marginBottom: 6,
+                                        transition: 'color 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }} 
+                                />
                                 <span
-                                    className="client-type-icon"
                                     style={{
-                                        position: 'absolute',
-                                        left: 0,
-                                        right: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: 32,
-                                        opacity: isActive ? 0 : 1,
-                                        transition: 'opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1), color 0.2s',
-                                        zIndex: 1,
-                                        color: isActive ? '#3690CE' : '#6B6B6B',
-                                        pointerEvents: 'none',
-                                    }}
-                                >
-                                    <i className={`ms-Icon ms-Icon--${icon}`} aria-hidden="true" style={{ pointerEvents: 'none', color: isActive ? '#3690CE' : '#6B6B6B', transition: 'color 0.2s' }} />
-                                </span>
-                                <span
-                                    className="client-type-label"
-                                    style={{
-                                        position: 'absolute',
-                                        left: 0,
-                                        right: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontWeight: 'normal',
-                                        fontSize: 16,
-                                        color: isActive ? '#3690CE' : '#6B6B6B',
-                                        opacity: isActive ? 1 : 0,
-                                        transform: isActive ? 'translateY(0)' : 'translateY(8px)',
-                                        transition: 'opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1), color 0.2s',
-                                        zIndex: 2,
-                                        pointerEvents: 'none',
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        color: isActive ? '#3690CE' : '#64748B',
+                                        textAlign: 'center',
+                                        lineHeight: 1.2,
+                                        transition: 'color 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                                     }}
                                 >
                                     {type}
@@ -378,94 +628,10 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                 </div>
                 
                 {/* Removed helper text for selection rules for cleaner UI */}
-    <style>{`
-        .client-type-selection .client-type-icon-btn .client-type-label {
-            pointer-events: none;
-        }
-        .client-type-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover {
-            background: #e3f0fc !important; /* subtle blue hover */
-            border-color: #3690CE !important;
-        }
-        .client-type-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-icon,
-        .client-type-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-icon i {
-            color: #3690CE !important;
-        }
-        .client-type-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-label {
-            color: #3690CE !important;
-        }
-        .client-type-selection .client-type-icon-btn.pressed,
-        .client-type-selection .client-type-icon-btn:active {
-            background: #b3d3f7 !important; /* deeper blue for press */
-            border-color: #1565c0 !important;
-        }
-        .client-type-selection .client-type-icon-btn.active .client-type-icon {
-            opacity: 0 !important;
-        }
-        .client-type-selection .client-type-icon-btn.active .client-type-label {
-            opacity: 1 !important;
-            transform: translateY(0) !important;
-        }
-        /* Remove hover/focus label reveal, only show label for active */
-        
-        /* Animation for POID cards */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* Compact animation for selected cards */
-        @keyframes compactScale {
-            from {
-                transform: scale(1);
-            }
-            to {
-                transform: scale(0.9);
-            }
-        }
-        
-        /* POID grid container animation */
-        .poid-grid {
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }                        /* Ensure all POID cards have consistent dimensions */
-                        .poid-grid {
-                            display: grid;
-                            grid-template-columns: repeat(2, minmax(250px, 1fr));
-                            gap: 28px;
-                            grid-auto-rows: auto; /* Allow rows to adjust to content height */
-                            align-items: start; /* Align items to start to prevent stretching */
-                        }
-                        
-                        .poid-grid > div {
-                            min-height: 180px;
-                            display: flex;
-                            flex-direction: column;
-                            /* Remove max-height constraint to allow expansion */
-                        }
-        
-        .poid-grid > div > * {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        /* Stagger animation for cards */
-        .poid-grid > div:nth-child(1) { animation-delay: 0ms; }
-        .poid-grid > div:nth-child(2) { animation-delay: 100ms; }
-        .poid-grid > div:nth-child(3) { animation-delay: 200ms; }
-        .poid-grid > div:nth-child(4) { animation-delay: 300ms; }
-        .poid-grid > div:nth-child(5) { animation-delay: 400ms; }
-        .poid-grid > div:nth-child(6) { animation-delay: 500ms; }
-    `}</style>
-                {/* Removed preselected client type hints for a cleaner UI */
-                }
+                
+            {/* POID list section */}
             {/* Unified Client Selection section: header with chevron + collapsible content */}
-                <div style={{ marginTop: 16 }}>
+                <div style={{ marginTop: 32 }}>
                     <div
                         style={{
                             border: '1px solid #e1e5ea',
@@ -484,7 +650,7 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                                 gap: 12,
-                                padding: '12px 14px',
+                                padding: '0 14px 0 0',
                                 background: 'transparent',
                                 border: 'none',
                                 cursor: 'pointer'

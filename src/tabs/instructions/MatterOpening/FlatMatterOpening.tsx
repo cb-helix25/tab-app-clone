@@ -140,115 +140,133 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     const showPoidSelection = !instructionRef;
     const defaultPoidData: POID[] = useMemo(() => {
-        // 1) Preferred: map from new Instructions table records if provided
-        if (Array.isArray(instructionRecords) && instructionRecords.length > 0) {
-            const mappedFromInstructions = (instructionRecords as any[]).map((inst) => ({
-                poid_id: String(inst.InstructionRef || inst.id || inst.Email || `${inst.FirstName || ''}|${inst.LastName || ''}`),
-                first: inst.FirstName,
-                last: inst.LastName,
-                email: inst.Email,
-                best_number: inst.Phone,
-                nationality: inst.Nationality,
-                nationality_iso: inst.NationalityAlpha2,
-                date_of_birth: inst.DOB || inst.DateOfBirth,
-                passport_number: inst.PassportNumber,
-                drivers_license_number: inst.DriversLicenseNumber,
-                house_building_number: inst.HouseNumber,
-                street: inst.Street,
-                city: inst.City,
-                county: inst.County,
-                post_code: inst.Postcode,
-                country: inst.Country,
-                country_code: inst.CountryCode,
-                company_name: inst.CompanyName,
-                company_number: inst.CompanyNumber,
-                company_house_building_number: inst.CompanyHouseNumber,
-                company_street: inst.CompanyStreet,
-                company_city: inst.CompanyCity,
-                company_county: inst.CompanyCounty,
-                company_post_code: inst.CompanyPostcode,
-                company_country: inst.CompanyCountry,
-                company_country_code: inst.CompanyCountryCode,
-                // Verification fields may not exist on instructions records – leave undefined
-                stage: inst.Stage,
-                check_result: inst.EIDOverallResult,
-                pep_sanctions_result: inst.PEPAndSanctionsCheckResult,
-                address_verification_result: inst.AddressVerificationResult,
-                check_expiry: inst.CheckExpiry,
-                check_id: inst.EIDCheckId,
-                // Linkage/traceability
-                client_id: String(inst.ClientId || inst.ProspectId || ''),
-                matter_id: String(inst.MatterId || ''),
-                // Also include references for downstream consumers
-                InstructionRef: inst.InstructionRef,
-            })) as POID[];
+        // Step A: Build a robust POID list from provided poidData (preferred) or legacy idVerifications
+        const basePoids = ((poidData && poidData.length > 0)
+            ? poidData
+            : (idVerifications as any[]).map((v) => ({
+                poid_id: String(v.InternalId),
+                first: v.FirstName,
+                last: v.LastName,
+                email: v.Email,
+                best_number: (v as any).Phone || '',
+                nationality: v.Nationality,
+                nationality_iso: v.NationalityAlpha2,
+                date_of_birth: v.DOB,
+                passport_number: v.PassportNumber,
+                drivers_license_number: v.DriversLicenseNumber,
+                house_building_number: v.HouseNumber,
+                street: v.Street,
+                city: v.City,
+                county: v.County,
+                post_code: v.Postcode,
+                country: v.Country,
+                country_code: v.CountryCode,
+                company_name: v.company_name || v.CompanyName,
+                company_number: v.company_number || v.CompanyNumber,
+                company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
+                company_street: v.company_street || v.CompanyStreet,
+                company_city: v.company_city || v.CompanyCity,
+                company_county: v.company_county || v.CompanyCounty,
+                company_post_code: v.company_post_code || v.CompanyPostcode,
+                company_country: v.company_country || v.CompanyCountry,
+                company_country_code: v.company_country_code || v.CompanyCountryCode,
+                // Electronic ID verification fields
+                stage: v.stage,
+                check_result: v.EIDOverallResult,
+                pep_sanctions_result: v.PEPAndSanctionsCheckResult,
+                address_verification_result: v.AddressVerificationResult,
+                check_expiry: v.CheckExpiry,
+                check_id: v.EIDCheckId,
+                poc: v.poc,
+                prefix: v.prefix,
+                type: v.type,
+                client_id: v.ClientId,
+                matter_id: v.MatterId,
+                InstructionRef: v.InstructionRef,
+            }))
+        ) as POID[];
 
-            // Deduplicate by email or InstructionRef, prefer matching active instruction
-            const uniqueMap = new Map<string, POID>();
-            mappedFromInstructions.forEach((p) => {
-                const key = (p.email || '').toLowerCase() || (p as any).InstructionRef || p.poid_id;
-                if (!key) return;
-                const instRef = (p as any).InstructionRef || '';
-                if (!uniqueMap.has(key)) {
-                    uniqueMap.set(key, p);
-                    return;
+        // Index basePoids by common join keys for quick lookup
+        const byEmail = new Map<string, POID>();
+        const byInstRef = new Map<string, POID[]>();
+        basePoids.forEach((p) => {
+            const emailKey = (p.email || (p as any).Email || '').toLowerCase();
+            if (emailKey) byEmail.set(emailKey, p);
+            const inst = (p as any).InstructionRef || (p as any).instruction_ref;
+            if (inst) {
+                const arr = byInstRef.get(String(inst)) || [];
+                arr.push(p);
+                byInstRef.set(String(inst), arr);
+            }
+        });
+
+        // Step B: If instruction records provided, merge additional metadata onto matching basePoids
+        if (Array.isArray(instructionRecords) && instructionRecords.length > 0) {
+            const merged: POID[] = [];
+            (instructionRecords as any[]).forEach((inst) => {
+                const instRef = String(inst.InstructionRef || '');
+                const emailKey = String(inst.Email || '').toLowerCase();
+                // Prefer match by InstructionRef, fall back to email
+                let match: POID | undefined = undefined;
+                if (instRef && byInstRef.has(instRef)) {
+                    // If multiple, pick the one that also matches email when available
+                    const candidates = byInstRef.get(instRef)!;
+                    match = emailKey ? candidates.find(c => (c.email || '').toLowerCase() === emailKey) || candidates[0] : candidates[0];
+                } else if (emailKey) {
+                    match = byEmail.get(emailKey);
                 }
-                const existing = uniqueMap.get(key)!;
-                const existingInst = (existing as any).InstructionRef || '';
-                if (instructionRef && instRef === instructionRef && existingInst !== instructionRef) {
-                    uniqueMap.set(key, p);
+
+                if (match) {
+                    // Attach extra fields from instruction to the matched POID (without changing poid_id)
+                    merged.push({
+                        ...match,
+                        InstructionRef: instRef || (match as any).InstructionRef,
+                        best_number: match.best_number || inst.Phone,
+                        company_name: match.company_name || inst.CompanyName,
+                        company_number: match.company_number || inst.CompanyNumber,
+                        // Include verification fields from instruction if not present in matched POID
+                        check_result: match.check_result || inst.EIDOverallResult,
+                        pep_sanctions_result: match.pep_sanctions_result || inst.PEPAndSanctionsCheckResult,
+                        address_verification_result: match.address_verification_result || inst.AddressVerificationResult,
+                    } as POID);
+                } else {
+                    // No match in basePoids – include a minimal record for UI visibility (won't be preselected)
+                    merged.push({
+                        poid_id: String(instRef || inst.id || emailKey || `${inst.FirstName || ''}|${inst.LastName || ''}`),
+                        first: inst.FirstName,
+                        last: inst.LastName,
+                        email: inst.Email,
+                        best_number: inst.Phone,
+                        company_name: inst.CompanyName,
+                        company_number: inst.CompanyNumber,
+                        InstructionRef: instRef,
+                        // Include verification fields from instruction record
+                        check_result: inst.EIDOverallResult,
+                        pep_sanctions_result: inst.PEPAndSanctionsCheckResult,
+                        address_verification_result: inst.AddressVerificationResult,
+                    } as POID);
                 }
             });
-            return Array.from(uniqueMap.values());
+
+            // Deduplicate: prefer entries that have a real numeric poid_id (from basePoids)
+            const byKey = new Map<string, POID>();
+            merged.concat(basePoids).forEach((p) => {
+                const key = String(p.poid_id || (p.email || '').toLowerCase());
+                const existing = byKey.get(key);
+                if (!existing) {
+                    byKey.set(key, p);
+                    return;
+                }
+                // If one of them has more person/company detail, keep the richer one
+                const richness = (x: POID) => `${x.first || ''}${x.last || ''}${x.company_name || ''}`.length;
+                if (richness(p) > richness(existing)) byKey.set(key, p);
+            });
+            return Array.from(byKey.values());
         }
 
-        // 2) Fallback: use provided POID data if available
-        const mapped = (poidData && poidData.length > 0
-            ? poidData
-            // 3) Legacy/local fallback: map EID/idVerifications when nothing else provided
-            : (idVerifications as any[]).map((v) => ({
-                  poid_id: String(v.InternalId),
-                  first: v.FirstName,
-                  last: v.LastName,
-                  email: v.Email,
-                  best_number: (v as any).Phone || '',
-                  nationality: v.Nationality,
-                  nationality_iso: v.NationalityAlpha2,
-                  date_of_birth: v.DOB,
-                  passport_number: v.PassportNumber,
-                  drivers_license_number: v.DriversLicenseNumber,
-                  house_building_number: v.HouseNumber,
-                  street: v.Street,
-                  city: v.City,
-                  county: v.County,
-                  post_code: v.Postcode,
-                  country: v.Country,
-                  country_code: v.CountryCode,
-                  company_name: v.company_name || v.CompanyName,
-                  company_number: v.company_number || v.CompanyNumber,
-                  company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
-                  company_street: v.company_street || v.CompanyStreet,
-                  company_city: v.company_city || v.CompanyCity,
-                  company_county: v.company_county || v.CompanyCounty,
-                  company_post_code: v.company_post_code || v.CompanyPostcode,
-                  company_country: v.company_country || v.CompanyCountry,
-                  company_country_code: v.company_country_code || v.CompanyCountryCode,
-                  // Electronic ID verification fields
-                  stage: v.stage,
-                  check_result: v.EIDOverallResult,
-                  pep_sanctions_result: v.PEPAndSanctionsCheckResult,
-                  address_verification_result: v.AddressVerificationResult,
-                  check_expiry: v.CheckExpiry,
-                  check_id: v.EIDCheckId,
-                  poc: v.poc,
-                  prefix: v.prefix,
-                  type: v.type,
-                  client_id: v.ClientId,
-                  matter_id: v.MatterId,
-                InstructionRef: v.InstructionRef,
-            }))) as POID[];
+        // No instructionRecords – just return basePoids with email de-duplication
         const uniqueMap = new Map<string, POID>();
-        mapped.forEach((p) => {
+        basePoids.forEach((p) => {
             const key = (p.email || '').toLowerCase() || `${p.first?.toLowerCase() || ''}|${p.last?.toLowerCase() || ''}`;
             if (!key) return;
             const inst = (p as any).InstructionRef || (p as any).instruction_ref || '';
@@ -259,7 +277,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
             const existing = uniqueMap.get(key)!;
             const existingInst = (existing as any).InstructionRef || (existing as any).instruction_ref || '';
             if (instructionRef && inst === instructionRef && existingInst !== instructionRef) {
-                // Prefer POID belonging to the active instruction
                 uniqueMap.set(key, p);
             }
         });
@@ -301,42 +318,68 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     // Note: additional effect to guarantee date on step change is defined after currentStep declaration
     const localTeamData = useMemo(() => localTeamDataJson, []);
     const defaultPartnerOptions = defaultPartners;
+
+    // Helper to safely get full name
+    const getFullName = (t: unknown): string => {
+        const rec = t as any; // narrowed locally for index access to bracket keys
+        const full = rec?.['Full Name'] || `${rec?.First || ''} ${rec?.Last || ''}`.trim();
+        return String(full || '').trim();
+    };
+
+    // Active team only
+    const activeTeam = useMemo(() => {
+        const dataset = (teamData ?? localTeamData) as unknown;
+        if (!Array.isArray(dataset)) return [] as any[];
+        return dataset.filter((t: any) => String(t?.status ?? t?.Status ?? '').toLowerCase() === 'active');
+    }, [teamData, localTeamData]);
+
+    // Helper to safely get first name
+    const getFirstName = (t: unknown): string => {
+        const rec = t as any;
+        const first = rec?.First || rec?.first;
+        if (first) return String(first).trim();
+        const full = rec?.['Full Name'] || rec?.FullName || '';
+        if (full) return String(full).trim().split(/\s+/)[0] || '';
+        return '';
+    };
+
+    // Active Partners (first names) for supervising partner select
     const partnerOptionsList = useMemo(() => {
-        const activeTeam = teamData || localTeamData;
-        if (activeTeam) {
-            const names = activeTeam
-                .filter((t) => (t.Role || '').toLowerCase().includes('partner'))
-                .map((t) => t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim())
-                .filter(Boolean);
-            return names.length ? names : defaultPartnerOptions;
-        }
-        return defaultPartnerOptions;
-    }, [teamData, localTeamData]);
-    
+        const partnersFirst = activeTeam
+            .filter((t: any) => String(t?.Role || '').toLowerCase() === 'partner')
+            .map(getFirstName)
+            .filter(Boolean);
+        if (partnersFirst.length) return partnersFirst;
+        // Fallback: convert default partner options (likely full names) to first names
+        const defaultFirst = (defaultPartnerOptions || [])
+            .map((n: string) => String(n || '').trim().split(/\s+/)[0])
+            .filter(Boolean);
+        return defaultFirst;
+    }, [activeTeam, defaultPartnerOptions]);
+
+    // Active team member options (names)
     const teamMemberOptions = useMemo(() => {
-        const activeTeam = teamData || localTeamData;
-        if (activeTeam) {
-            return activeTeam
-                .map((t) => t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim())
-                .filter(Boolean);
-        }
-        return [] as string[];
-    }, [teamData, localTeamData]);
+        return activeTeam.map(getFullName).filter(Boolean);
+    }, [activeTeam]);
+
+    // Active members for Responsible/Originating selects (show everyone active)
+    const solicitorOptions = useMemo(() => {
+        return activeTeam.map(getFullName).filter(Boolean);
+    }, [activeTeam]);
     
     const defaultTeamMember = useMemo(() => {
-        const activeTeam = teamData || localTeamData;
+        // Prefer the active-only team list to ensure defaults exist in dropdowns
         if (activeTeam && activeTeam.length > 0) {
             const found = activeTeam.find(
-                (t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase(),
+                (t: any) => String(t?.Initials || '').toLowerCase() === userInitials.toLowerCase(),
             );
             if (found) {
-                return found['Full Name'] || `${found.First || ''} ${found.Last || ''}`.trim();
+                return getFullName(found);
             }
-            const first = activeTeam[0];
-            return first['Full Name'] || `${first.First || ''} ${first.Last || ''}`.trim();
+            return getFullName(activeTeam[0]);
         }
         return '';
-    }, [teamData, localTeamData, userInitials]);
+    }, [activeTeam, userInitials]);
 
     const [teamMember, setTeamMember] = useDraftedState<string>('teamMember', defaultTeamMember);
     useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
@@ -397,6 +440,16 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [supportCategory, setSupportCategory] = useState<'technical' | 'process' | 'data'>('technical');
     const [supportSending, setSupportSending] = useState(false);
     
+    // Debug import states (for failed submission debugging)
+    const [debugImportOpen, setDebugImportOpen] = useState(false);
+    const [debugJsonInput, setDebugJsonInput] = useState('');
+    const [debugValidation, setDebugValidation] = useState<{
+        isValid: boolean;
+        suggestions: string[];
+        warnings: string[];
+        predictions: { step: string; willPass: boolean; reason: string }[];
+    } | null>(null);
+    
     // If preselectedPoidIds is provided, set the initial activePoid to the first matching POID
     useEffect(() => {
         if (preselectedPoidIds && preselectedPoidIds.length > 0 && effectivePoidData.length > 0) {
@@ -408,6 +461,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         // Only run on mount or when preselectedPoidIds changes
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [preselectedPoidIds, effectivePoidData]);
+
+    
 
     // Opponent fields
     const [opponentTitle, setOpponentTitle] = useDraftedState<string>('opponentTitle', '');
@@ -455,6 +510,13 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [searchBoxFocused, setSearchBoxFocused] = useState(false);
     const poidGridRef = useRef<HTMLDivElement | null>(null);
     const [activePoid, setActivePoid] = useDraftedState<POID | null>('activePoid', null);
+
+    // When entering via an instruction, try to set an active POID from InstructionRef if none is selected
+    useEffect(() => {
+        if (!instructionRef || activePoid) return;
+        const match = effectivePoidData.find(p => (p as any).InstructionRef === instructionRef || (p as any).instruction_ref === instructionRef);
+        if (match) setActivePoid(match);
+    }, [instructionRef, effectivePoidData, activePoid, setActivePoid]);
 
     const filteredPoidData = effectivePoidData.filter((poid) => {
         const term = poidSearchTerm.toLowerCase();
@@ -793,8 +855,13 @@ const handleClearAll = () => {
 
     // Determine completion status for each step
     const clientsStepComplete = (() => {
-        if (!clientType) return false;
-        if (clientType === 'Multiple Individuals') {
+        // If the selection UI is hidden (instruction-driven/direct entry), allow progression immediately
+        if (instructionRef || hideClientSections) return true;
+
+        // Otherwise use the user's current choice (pendingClientType) or provided initial type
+        const type = (pendingClientType || initialClientType || '').trim();
+        if (!type) return false;
+        if (type === 'Multiple Individuals') {
             const hasDirectEntry = Boolean(clientAsOnFile && clientAsOnFile.trim());
             return selectedPoidIds.length > 0 || hasDirectEntry;
         }
@@ -806,7 +873,8 @@ const handleClearAll = () => {
 
     const handleContinueToForm = () => {
         if (clientsStepComplete) {
-            setClientType(clientType);
+            // Persist the actively chosen client type if available
+            setClientType(pendingClientType || clientType);
             setCurrentStep(1);
             // Scroll to top when changing steps
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1014,6 +1082,168 @@ const handleClearAll = () => {
         };
     };
 
+    // JSON Debug Validation Function for failed submission diagnostics
+    const validateDebugJson = (jsonString: string) => {
+        const suggestions: string[] = [];
+        const warnings: string[] = [];
+        const predictions: { step: string; willPass: boolean; reason: string }[] = [];
+
+        try {
+            const data = JSON.parse(jsonString);
+            
+            // Check top-level structure
+            const expectedSections = ['matter_details', 'team_assignments', 'client_information', 'source_details'];
+            const missingSections = expectedSections.filter(section => !data[section]);
+            if (missingSections.length > 0) {
+                suggestions.push(`Missing required sections: ${missingSections.join(', ')}`);
+            }
+
+            // Validate matter_details
+            if (data.matter_details) {
+                const md = data.matter_details;
+                if (!md.client_type) suggestions.push('client_type is required in matter_details');
+                if (!md.area_of_work) suggestions.push('area_of_work is required in matter_details');
+                if (!md.practice_area) suggestions.push('practice_area is required in matter_details');
+                if (!md.description || md.description.trim().length < 10) {
+                    suggestions.push('description should be at least 10 characters long');
+                }
+                
+                // Predict client type selection step
+                predictions.push({
+                    step: 'Client Type Selection',
+                    willPass: !!md.client_type && ['Individual', 'Company', 'Multiple Individuals', 'Existing Client'].includes(md.client_type),
+                    reason: md.client_type ? 'Valid client type provided' : 'Client type missing or invalid'
+                });
+
+                // Predict area of work step
+                predictions.push({
+                    step: 'Area of Work',
+                    willPass: !!md.area_of_work && md.area_of_work.trim().length > 0,
+                    reason: md.area_of_work ? 'Area of work specified' : 'Area of work missing'
+                });
+
+                // Predict practice area step
+                predictions.push({
+                    step: 'Practice Area',
+                    willPass: !!md.practice_area && md.practice_area.trim().length > 0,
+                    reason: md.practice_area ? 'Practice area specified' : 'Practice area missing'
+                });
+            }
+
+            // Validate team_assignments
+            if (data.team_assignments) {
+                const ta = data.team_assignments;
+                if (!ta.fee_earner) suggestions.push('fee_earner is required in team_assignments');
+                if (!ta.supervising_partner) warnings.push('supervising_partner recommended but not required');
+                
+                predictions.push({
+                    step: 'Team Assignment',
+                    willPass: !!ta.fee_earner,
+                    reason: ta.fee_earner ? 'Fee earner assigned' : 'Fee earner required but missing'
+                });
+            }
+
+            // Validate client_information
+            if (data.client_information) {
+                const clients = Array.isArray(data.client_information) ? data.client_information : [];
+                if (clients.length === 0) {
+                    suggestions.push('At least one client must be selected');
+                } else {
+                    clients.forEach((client: any, index: number) => {
+                        if (!client.poid_id) suggestions.push(`Client ${index + 1}: poid_id is required`);
+                        if (!client.first_name) suggestions.push(`Client ${index + 1}: first_name is required`);
+                        if (!client.last_name) suggestions.push(`Client ${index + 1}: last_name is required`);
+                        if (!client.email) warnings.push(`Client ${index + 1}: email is recommended`);
+                        
+                        // Check verification status
+                        if (client.verification) {
+                            const verif = client.verification;
+                            if (verif.check_result !== 'passed') {
+                                warnings.push(`Client ${index + 1}: ID verification not passed (${verif.check_result || 'unknown'})`);
+                            }
+                            if (verif.pep_sanctions_result !== 'passed') {
+                                warnings.push(`Client ${index + 1}: PEP/Sanctions check not passed (${verif.pep_sanctions_result || 'unknown'})`);
+                            }
+                        } else {
+                            warnings.push(`Client ${index + 1}: No verification data found`);
+                        }
+                    });
+                }
+
+                predictions.push({
+                    step: 'Client Selection',
+                    willPass: clients.length > 0 && clients.every((c: any) => c.poid_id && c.first_name && c.last_name),
+                    reason: clients.length === 0 ? 'No clients selected' : 
+                           clients.some((c: any) => !c.poid_id || !c.first_name || !c.last_name) ? 'Some clients missing required fields' :
+                           'All clients have required information'
+                });
+            }
+
+            // Validate source_details
+            if (data.source_details) {
+                const sd = data.source_details;
+                if (!sd.source) suggestions.push('source is required in source_details');
+                if (sd.source === 'referral' && !sd.referrer_name) {
+                    suggestions.push('referrer_name is required when source is "referral"');
+                }
+
+                predictions.push({
+                    step: 'Source Information',
+                    willPass: !!sd.source && (sd.source !== 'referral' || !!sd.referrer_name),
+                    reason: !sd.source ? 'Source missing' : 
+                           sd.source === 'referral' && !sd.referrer_name ? 'Referrer name required for referral source' :
+                           'Source information valid'
+                });
+            }
+
+            // Check opponent_details if present
+            if (data.opponent_details) {
+                const od = data.opponent_details;
+                let hasOpponentInfo = false;
+                let hasSolicitorInfo = false;
+                
+                if (od.individual && (od.individual.first_name || od.individual.last_name || od.individual.email)) {
+                    hasOpponentInfo = true;
+                    if (!od.individual.first_name || !od.individual.last_name) {
+                        warnings.push('Opponent individual missing name information');
+                    }
+                }
+                
+                if (od.solicitor && (od.solicitor.first_name || od.solicitor.last_name || od.solicitor.company_name)) {
+                    hasSolicitorInfo = true;
+                    if (!od.solicitor.company_name) {
+                        warnings.push('Opponent solicitor missing company name');
+                    }
+                }
+
+                predictions.push({
+                    step: 'Opponent Details',
+                    willPass: true, // Optional step
+                    reason: hasOpponentInfo || hasSolicitorInfo ? 'Opponent information provided' : 'No opponent information (optional)'
+                });
+            }
+
+            // Overall validation
+            const hasRequiredSections = ['matter_details', 'team_assignments', 'client_information', 'source_details'].every(section => data[section]);
+            const criticalIssues = suggestions.length > 0;
+
+            return {
+                isValid: hasRequiredSections && !criticalIssues,
+                suggestions,
+                warnings,
+                predictions
+            };
+
+        } catch (error) {
+            return {
+                isValid: false,
+                suggestions: ['Invalid JSON format - please check syntax'],
+                warnings: [`Parse error: ${error instanceof Error ? error.message : 'Unknown error'}`],
+                predictions: []
+            };
+        }
+    };
+
     // Helper function to check if there's any data to clear
     const hasDataToClear = () => {
         return selectedPoidIds.length > 0 || pendingClientType || poidSearchTerm ||
@@ -1092,7 +1322,11 @@ const handleClearAll = () => {
             console.error('Error during processing:', error);
             const msg = error instanceof Error ? error.message : 'Unknown error';
             setProcessingLogs(prev => [...prev, `❌ Error: ${msg}`]);
-            setProcessingSteps(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: 'error' } : s));
+            // Mark the currently executing action as error if available; fallback to first
+            setProcessingSteps(prev => prev.map((s, idx) => idx === (processingActions ? Math.min(prev.findIndex(ps => ps.status === 'pending'), processingActions.length - 1) : 0)
+                ? { ...s, status: 'error', message: msg }
+                : s
+            ));
         } finally {
             registerOperationObserver(null);
             setTimeout(() => setIsProcessing(false), 2000);
@@ -1277,7 +1511,7 @@ ${JSON.stringify(debugInfo, null, 2)}
                 <div className="workflow-main matter-opening-card">
                     {/* Persistent Header */}
                     <div className="persistent-header" style={{
-                        padding: '16px 24px',
+                        padding: '12px 24px',
                         borderBottom: '1px solid #e1e5e9',
                         background: '#fff',
                         position: 'sticky',
@@ -1286,15 +1520,16 @@ ${JSON.stringify(debugInfo, null, 2)}
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: 12,
+                        gap: 8,
                         margin: '-20px -20px 0 -20px',
                         flexWrap: 'wrap',
-                        minHeight: '60px'
+                        minHeight: 'auto',
+                        alignContent: 'center'
                     }}>
                         <div style={{ 
                             display: 'flex', 
                             alignItems: 'center', 
-                            gap: 8, 
+                            gap: 6, 
                             flex: '1 1 auto',
                             minWidth: 0, // Allow shrinking
                             overflow: 'hidden' 
@@ -1526,8 +1761,10 @@ ${JSON.stringify(debugInfo, null, 2)}
                         <div style={{ 
                             display: 'flex', 
                             alignItems: 'center', 
-                            gap: 8,
-                            flexShrink: 0
+                            gap: 6,
+                            rowGap: 4,
+                            flexShrink: 0,
+                            flexWrap: 'wrap'
                         }}>
                             {/* POID search - available in step 0 when selection UI is shown */}
                             {currentStep === 0 && showPoidSelection && (
@@ -1565,9 +1802,9 @@ ${JSON.stringify(debugInfo, null, 2)}
                                     style={{
                                         background: '#fff',
                                         border: '1px solid #e1e5e9',
-                                        borderRadius: 0,
-                                        padding: '8px 16px',
-                                        fontSize: 14,
+                                        borderRadius: 6,
+                                        padding: '6px 10px',
+                                        fontSize: '13px',
                                         fontWeight: 500,
                                         color: '#D65541',
                                         cursor: 'pointer',
@@ -1576,7 +1813,9 @@ ${JSON.stringify(debugInfo, null, 2)}
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: 6,
-                                        fontFamily: 'Raleway, sans-serif'
+                                        fontFamily: 'Raleway, sans-serif',
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0
                                     }}
                                     onMouseEnter={(e) => {
                                         e.currentTarget.style.background = '#ffefed';
@@ -1741,7 +1980,8 @@ ${JSON.stringify(debugInfo, null, 2)}
                         overflow: 'hidden',
                         position: 'relative',
                         width: '100%',
-                        minHeight: '500px'
+                        // Reduced from 500px to shrink excessive white space after moving processing section
+                        minHeight: '320px'
                     }}>
                         <div style={{ 
                             display: 'flex',
@@ -1965,7 +2205,8 @@ ${JSON.stringify(debugInfo, null, 2)}
                                     isDateCalloutOpen={isDateCalloutOpen}
                                     setIsDateCalloutOpen={setIsDateCalloutOpen}
                                     dateButtonRef={dateButtonRef}
-                                    partnerOptions={getPartnerInitials(teamData || localTeamDataJson)}
+                                    partnerOptions={partnerOptionsList}
+                                    solicitorOptions={solicitorOptions}
                                     requestingUser={requestingUserNickname}
                                     requestingUserClioId={requestingUserClioId}
                                 />
@@ -1975,24 +2216,69 @@ ${JSON.stringify(debugInfo, null, 2)}
                                         description={description}
                                         setDescription={setDescription}
                                         matterRefPreview={(() => {
-                                            // Only show if a single POID is selected and client type is set
-                                            if (!pendingClientType || selectedPoidIds.length === 0) return '';
-                                            const poid = effectivePoidData.find(p => p.poid_id === selectedPoidIds[0]);
-                                            if (!poid) return '';
-                                            let base = '';
-                                            if (pendingClientType === 'Individual') {
-                                                base = (poid.last || '').toUpperCase();
-                                            } else if (pendingClientType === 'Company') {
-                                                base = (poid.company_name || '').toUpperCase();
-                                            } else if (pendingClientType === 'Multiple Individuals' && clientAsOnFile) {
-                                                base = clientAsOnFile.toUpperCase();
-                                                const digits = Math.floor(10000 + Math.random() * 90000);
-                                                return base.slice(0, 5) + digits + '-0001';
-                                            } else {
-                                                base = (poid.last || poid.company_name || '').toUpperCase();
+                                            // Prefer selected POID; then activePoid; then POID matched by InstructionRef; then first available
+                                            const selected = selectedPoidIds[0];
+                                            let poid = (selected ? effectivePoidData.find(p => p.poid_id === selected) : undefined) as POID | undefined;
+                                            if (!poid) poid = activePoid as POID | undefined;
+                                            if (!poid && instructionRef) {
+                                                poid = effectivePoidData.find(p => (p as any).InstructionRef === instructionRef || (p as any).instruction_ref === instructionRef) as POID | undefined;
                                             }
-                                            let ref = base.slice(0, 5).padEnd(5, 'X');
-                                            return ref + '-0001';
+
+        							// If we still don't have a POID, try to derive from the instruction record itself
+                                            const instFromRecords = (() => {
+                                                if (!instructionRef || !Array.isArray(instructionRecords)) return undefined as any;
+                                                return (instructionRecords as any[]).find(r => r && (r.InstructionRef === instructionRef));
+                                            })();
+
+                                            if (!poid && !instFromRecords) {
+                                                const typeGuess = pendingClientType || 'Individual';
+                                                let base = (clientAsOnFile || '').toUpperCase();
+                                                if (typeGuess === 'Multiple Individuals') {
+                                                    const digits = Math.floor(10000 + Math.random() * 90000);
+                                                    return (base.slice(0, 5).padEnd(5, 'X') || 'HLXXX') + digits + '-0001';
+                                                }
+                                                if (!base) base = 'HLX';
+                                                return base.slice(0, 5).padEnd(5, 'X') + '-0001';
+                                            }
+
+                                            // Build from either POID or instruction record details
+                                            const type = (() => {
+                                                if (pendingClientType) return pendingClientType;
+                                                if (poid) return poid.company_name ? 'Company' : 'Individual';
+                                                const t = (instFromRecords as any)?.ClientType as string | undefined;
+                                                return t || 'Individual';
+                                            })();
+
+                                            const buildFromBase = (raw: string): string => {
+                                                const base = (raw || '').toUpperCase() || 'HLX';
+                                                return base.slice(0, 5).padEnd(5, 'X') + '-0001';
+                                            };
+
+                                            if (type === 'Multiple Individuals') {
+                                                const raw = (clientAsOnFile || (poid?.last || poid?.first) || (instFromRecords?.LastName || instFromRecords?.FirstName) || '').toUpperCase();
+                                                const digits = Math.floor(10000 + Math.random() * 90000);
+                                                return (raw.slice(0, 5).padEnd(5, 'X') || 'HLXXX') + digits + '-0001';
+                                            }
+
+                                            if (poid) {
+                                                if (type === 'Company') {
+                                                    return buildFromBase(poid.company_name || clientAsOnFile || poid.last || '');
+                                                }
+                                                // Individual
+                                                return buildFromBase(poid.last || poid.first || clientAsOnFile || '');
+                                            }
+
+                                            // No POID, derive from instruction record
+                                            if (instFromRecords) {
+                                                const rec: any = instFromRecords;
+                                                if (type === 'Company') {
+                                                    return buildFromBase(rec.CompanyName || clientAsOnFile || rec.LastName || rec.FirstName || '');
+                                                }
+                                                return buildFromBase(rec.LastName || rec.FirstName || clientAsOnFile || '');
+                                            }
+
+                                            // Final fallback
+                                            return buildFromBase(clientAsOnFile || 'HLX');
                                         })()}
                                     />
                                     <FolderStructureStep
@@ -2211,22 +2497,22 @@ ${JSON.stringify(debugInfo, null, 2)}
                                 </div>
                             </div>
 
-                            {/* Step 3: Review Summary / Matter Opening Workbench */}
+                            {/* Step 3: Review Summary */}
                             <div style={{ width: '33.333%', padding: '16px', boxSizing: 'border-box' }}>
                                 <div
                                     className="review-summary-box"
                                     style={{
-                                        border: workbenchMode ? '2px solid #3690CE' : summaryConfirmed ? '2px solid #49B670' : '1px solid #e1e5ea',
+                                        border: summaryConfirmed ? '2px solid #49B670' : '1px solid #e1e5ea',
                                         borderRadius: 10,
-                                        background: workbenchMode ? 'linear-gradient(135deg, #F0F7FF 0%, #E6F3FF 100%)' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                                         padding: 24,
                                         margin: '0 0 16px 0',
                                         width: '100%',
                                         boxSizing: 'border-box',
                                         transition: 'all 0.4s ease',
                                         cursor: 'default',
-                                        boxShadow: workbenchMode ? '0 8px 16px rgba(54, 144, 206, 0.15)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
-                                        minHeight: workbenchMode ? '600px' : 'auto'
+                                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+                                        minHeight: 'auto'
                                     }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -2234,7 +2520,7 @@ ${JSON.stringify(debugInfo, null, 2)}
                                             margin: 0, 
                                             fontWeight: 600, 
                                             fontSize: 18, 
-                                            color: workbenchMode ? '#3690CE' : summaryConfirmed ? '#15803d' : '#061733',
+                                            color: summaryConfirmed ? '#15803d' : '#061733',
                                             animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                                             animationDelay: '0ms',
                                             opacity: 0,
@@ -2243,412 +2529,296 @@ ${JSON.stringify(debugInfo, null, 2)}
                                             alignItems: 'center',
                                             gap: 8
                                         }}>
-                                            {workbenchMode ? (
-                                                <i className="ms-Icon ms-Icon--WorkItem" style={{ fontSize: 16, color: '#3690CE' }} />
-                                            ) : summaryConfirmed ? (
+                                            {summaryConfirmed ? (
                                                 <i className="ms-Icon ms-Icon--CheckMark" style={{ fontSize: 16, color: '#22c55e' }} />
                                             ) : null}
-                                            {workbenchMode ? 'Matter Opening Workbench' : `Review Summary ${summaryConfirmed ? '- Confirmed' : ''}`}
+                                            {`Review Summary ${summaryConfirmed ? '- Confirmed' : ''}`}
                                         </h4>
                                         
-                                        {/* Workbench Tools removed from header; support integrated into processing summary */}
-                                        
-                                        {/* Original JSON Toggle for review mode */}
-                                        {!workbenchMode && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setJsonPreviewOpen(!jsonPreviewOpen);
-                                                }}
-                                                style={{
-                                                    background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                    border: '1px solid #e1e5ea',
-                                                    borderRadius: 8,
-                                                    padding: '8px 12px',
-                                                    fontSize: 12,
-                                                    fontWeight: 600,
-                                                    color: '#3690CE',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 6,
-                                                    transition: 'transform 0.15s ease, background 0.2s ease, border-color 0.2s ease',
-                                                    animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                                    animationDelay: '150ms',
-                                                    opacity: 0,
-                                                    transform: 'translateX(20px)'
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.transform = 'translateY(-1px)';
-                                                    e.currentTarget.style.borderColor = '#3690CE';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.transform = 'translateY(0)';
-                                                    e.currentTarget.style.borderColor = '#e1e5ea';
-                                                }}
-                                            >
-                                                <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 12 }} />
-                                                {jsonPreviewOpen ? 'Hide JSON' : 'View JSON'}
-                                            </button>
-                                        )}
+                                        {/* JSON Tools for review mode */}
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                {/* Debug Import Button (subtle, for failed submission debugging) */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDebugImportOpen(!debugImportOpen);
+                                                        if (!debugImportOpen) {
+                                                            setDebugJsonInput('');
+                                                            setDebugValidation(null);
+                                                        }
+                                                    }}
+                                                    title="Debug failed submissions by importing JSON"
+                                                    style={{
+                                                        background: 'linear-gradient(135deg, #FFF8DC 0%, #FFFACD 100%)',
+                                                        border: '1px solid #DDD4AA',
+                                                        borderRadius: 8,
+                                                        padding: '6px 8px',
+                                                        fontSize: 11,
+                                                        fontWeight: 500,
+                                                        color: '#8B7500',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                        transition: 'transform 0.15s ease, background 0.2s ease, border-color 0.2s ease',
+                                                        animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                                        animationDelay: '120ms',
+                                                        opacity: 0,
+                                                        transform: 'translateX(20px)'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                                        e.currentTarget.style.borderColor = '#8B7500';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                        e.currentTarget.style.borderColor = '#DDD4AA';
+                                                    }}
+                                                >
+                                                    <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 10 }} />
+                                                    Debug
+                                                </button>
+                                                
+                                                {/* Original JSON Toggle */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setJsonPreviewOpen(!jsonPreviewOpen);
+                                                    }}
+                                                    style={{
+                                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                        border: '1px solid #e1e5ea',
+                                                        borderRadius: 8,
+                                                        padding: '8px 12px',
+                                                        fontSize: 12,
+                                                        fontWeight: 600,
+                                                        color: '#3690CE',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                        transition: 'transform 0.15s ease, background 0.2s ease, border-color 0.2s ease',
+                                                        animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                                        animationDelay: '150ms',
+                                                        opacity: 0,
+                                                        transform: 'translateX(20px)'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                                        e.currentTarget.style.borderColor = '#3690CE';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                        e.currentTarget.style.borderColor = '#e1e5ea';
+                                                    }}
+                                                >
+                                                    <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 12 }} />
+                                                    {jsonPreviewOpen ? 'Hide JSON' : 'View JSON'}
+                                                </button>
+                                            </div>
                                     </div>
                                     
-                                    {/* Workbench Content */}
-                                    {workbenchMode ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100% - 80px)' }}>
-                                            {/* Processing Summary (professional, on-brand) */}
-                                            {(() => {
-                                                const total = processingSteps.length || 0;
-                                                const done = processingSteps.filter(s => s.status === 'success').length;
-                                                const failed = processingSteps.filter(s => s.status === 'error').length;
-                                                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                                                const statusText = failed > 0 ? 'Attention required' : (done === total && total > 0 ? 'Completed' : 'In progress');
-                                                return (
-                                                    <div style={{
-                                                        border: '1px solid #e1e5ea',
-                                                        borderRadius: 10,
-                                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                        overflow: 'hidden',
-                                                        padding: 16,
-                                                        boxShadow: '0 4px 6px rgba(0,0,0,0.07)'
-                                                    }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                                <i className="ms-Icon ms-Icon--ProgressLoopOuter" style={{ fontSize: 14, color: '#D65541' }} />
-                                                                <span style={{ fontSize: 13, fontWeight: 700, color: '#061733' }}>Processing</span>
-                                                            </div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                                <span style={{ fontSize: 12, fontWeight: 700, color: failed ? '#D65541' : '#374151' }}>{statusText}</span>
-                                                                <button
-                                                                    onClick={() => setSupportPanelOpen(!supportPanelOpen)}
-                                                                    style={{
-                                                                        background: supportPanelOpen ? '#D65541' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                                        color: supportPanelOpen ? '#fff' : '#D65541',
-                                                                        border: '1px solid #D65541',
-                                                                        borderRadius: 6,
-                                                                        padding: '6px 10px',
-                                                                        fontSize: 11,
-                                                                        fontWeight: 600,
-                                                                        cursor: 'pointer',
-                                                                        transition: 'all 0.2s ease'
-                                                                    }}
-                                                                    title="Support Request"
-                                                                >
-                                                                    <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 12 }} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
-                                                            <div style={{ fontSize: 28, fontWeight: 800, color: '#061733', minWidth: 64, textAlign: 'right' }}>{pct}%</div>
-                                                            <div style={{ flex: 1 }}>
-                                                                <div style={{ height: 10, background: '#eef2f7', borderRadius: 999, overflow: 'hidden' }}>
-                                                                    <div style={{
-                                                                        width: `${pct}%`,
-                                                                        height: '100%',
-                                                                        background: 'linear-gradient(135deg, #49B670 0%, #15803d 100%)',
-                                                                        transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-                                                                    }} />
-                                                                </div>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                                                                    <span style={{ fontSize: 12, color: '#6b7280' }}>Completed</span>
-                                                                    <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>{done} of {total}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        {/* Compact icon grid representing operations */}
-                                                        {total > 0 && (
-                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))', gap: 8, marginBottom: 8 }}>
-                                                                {processingSteps.map((s, idx) => (
-                                                                    <div key={`mini-${idx}`} title={s.label} style={{
-                                                                        height: 36,
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        borderRadius: 6,
-                                                                        border: '1px solid #e5e7eb',
-                                                                        background: s.status === 'success' ? '#f0fdf4' : s.status === 'error' ? '#fef2f2' : '#fff'
-                                                                    }}>
-                                                                        {s.icon ? (
-                                                                            <img src={s.icon} alt="" style={{ width: 18, height: 18, opacity: s.status === 'pending' ? 0.6 : 1 }} />
-                                                                        ) : (
-                                                                            <i className={`ms-Icon ${s.status === 'success' ? 'ms-Icon--CheckMark' : s.status === 'error' ? 'ms-Icon--ErrorBadge' : 'ms-Icon--Clock'}`} style={{ fontSize: 16, color: s.status === 'success' ? '#16a34a' : s.status === 'error' ? '#dc2626' : '#6b7280' }} />
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                        {adminEligible ? (
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                <span style={{ fontSize: 11, color: '#64748b' }}>Admins & local dev can view backend operation details</span>
-                                                                <button
-                                                                    onClick={() => setDebugPanelOpen(!debugPanelOpen)}
-                                                                    style={{
-                                                                        background: debugPanelOpen ? '#D65541' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                                        color: debugPanelOpen ? '#fff' : '#D65541',
-                                                                        border: '1px solid #D65541',
-                                                                        borderRadius: 6,
-                                                                        padding: '6px 10px',
-                                                                        fontSize: 11,
-                                                                        fontWeight: 700,
-                                                                        cursor: 'pointer',
-                                                                        transition: 'all 0.2s ease'
-                                                                    }}
-                                                                >
-                                                                    {debugPanelOpen ? 'Hide admin details' : 'Show admin details'}
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <div style={{ fontSize: 11, color: '#94a3b8' }}>Backend details are restricted to admins</div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })()}
+                                    {/* Always show review content */}
+                                            {/* Processing / Debug / Support panels moved to bottom */}
+                                        </div>
 
-                                            {/* Debug Panel */}
-                                            {adminEligible && debugPanelOpen && (
-                                                <div style={{
-                                                    border: '1px solid #e1e5ea',
-                                                    borderRadius: 8,
-                                                    background: '#fff',
-                                                    overflow: 'hidden',
-                                                    flex: '1 1 auto'
-                                                }}>
-                                                    <div style={{
-                                                        padding: '12px 16px',
-                                                        background: 'linear-gradient(135deg, #111827 0%, #1f2937 100%)',
+                                    {/* Debug JSON Import Panel */}
+                                    {debugImportOpen && (
+                                        <div style={{
+                                            marginBottom: 24,
+                                            border: '2px solid #DDD4AA',
+                                            borderRadius: 8,
+                                            background: 'linear-gradient(135deg, #FFFEF7 0%, #FFF9E6 100%)',
+                                            overflow: 'hidden'
+                                        }}>
+                                            <div style={{
+                                                padding: '12px 16px',
+                                                background: 'linear-gradient(135deg, #8B7500 0%, #A68600 100%)',
+                                                color: '#fff',
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 12 }} />
+                                                    Debug: Import Failed Submission JSON
+                                                </span>
+                                                <button
+                                                    onClick={() => setDebugImportOpen(false)}
+                                                    style={{
+                                                        background: 'rgba(255,255,255,0.1)',
+                                                        border: '1px solid rgba(255,255,255,0.2)',
+                                                        borderRadius: 4,
+                                                        padding: '4px 8px',
+                                                        fontSize: 10,
                                                         color: '#fff',
-                                                        fontSize: 13,
-                                                        fontWeight: 700,
+                                                        cursor: 'pointer',
                                                         display: 'flex',
-                                                        justifyContent: 'space-between',
-                                                        alignItems: 'center'
+                                                        alignItems: 'center',
+                                                        gap: 4
+                                                    }}
+                                                >
+                                                    <i className="ms-Icon ms-Icon--Cancel" style={{ fontSize: 10 }} />
+                                                    Close
+                                                </button>
+                                            </div>
+                                            
+                                            <div style={{ padding: 16 }}>
+                                                {/* Instructions */}
+                                                <div style={{
+                                                    marginBottom: 12,
+                                                    padding: 8,
+                                                    background: 'rgba(139, 117, 0, 0.1)',
+                                                    border: '1px solid rgba(139, 117, 0, 0.2)',
+                                                    borderRadius: 4,
+                                                    fontSize: 11,
+                                                    color: '#8B7500'
+                                                }}>
+                                                    <strong>⚠️ Development Tool:</strong> Paste JSON from a failed submission to diagnose issues and get suggestions.
+                                                </div>
+                                                
+                                                {/* JSON Input */}
+                                                <textarea
+                                                    value={debugJsonInput}
+                                                    onChange={(e) => setDebugJsonInput(e.target.value)}
+                                                    placeholder="Paste your JSON data here..."
+                                                    style={{
+                                                        width: '100%',
+                                                        height: 200,
+                                                        fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                        fontSize: 11,
+                                                        padding: 12,
+                                                        border: '1px solid #DDD4AA',
+                                                        borderRadius: 4,
+                                                        background: '#fff',
+                                                        resize: 'vertical',
+                                                        marginBottom: 12,
+                                                        boxSizing: 'border-box'
+                                                    }}
+                                                />
+                                                
+                                                {/* Validate Button */}
+                                                <button
+                                                    onClick={() => {
+                                                        if (debugJsonInput.trim()) {
+                                                            setDebugValidation(validateDebugJson(debugJsonInput));
+                                                        }
+                                                    }}
+                                                    disabled={!debugJsonInput.trim()}
+                                                    style={{
+                                                        background: debugJsonInput.trim() ? 'linear-gradient(135deg, #8B7500 0%, #A68600 100%)' : '#ccc',
+                                                        border: 'none',
+                                                        borderRadius: 6,
+                                                        padding: '8px 16px',
+                                                        fontSize: 12,
+                                                        fontWeight: 600,
+                                                        color: '#fff',
+                                                        cursor: debugJsonInput.trim() ? 'pointer' : 'not-allowed',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                        marginBottom: debugValidation ? 16 : 0
+                                                    }}
+                                                >
+                                                    <i className="ms-Icon ms-Icon--TestBeaker" style={{ fontSize: 12 }} />
+                                                    Analyze JSON
+                                                </button>
+                                                
+                                                {/* Validation Results */}
+                                                {debugValidation && (
+                                                    <div style={{ 
+                                                        border: `2px solid ${debugValidation.isValid ? '#22c55e' : '#dc2626'}`,
+                                                        borderRadius: 6,
+                                                        background: debugValidation.isValid ? '#f0fdf4' : '#fef2f2',
+                                                        overflow: 'hidden'
                                                     }}>
-                                                        <span>Backend Operations (Admin)</span>
-                                                        <button
-                                                            onClick={() => {
-                                                                navigator.clipboard.writeText(JSON.stringify(generateSampleJson(), null, 2));
-                                                            }}
-                                                            style={{
-                                                                background: 'rgba(255,255,255,0.1)',
-                                                                border: '1px solid rgba(255,255,255,0.2)',
-                                                                borderRadius: 4,
-                                                                padding: '4px 8px',
-                                                                fontSize: 10,
-                                                                color: '#fff',
-                                                                cursor: 'pointer',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: 4
-                                                            }}
-                                                        >
-                                                            <i className="ms-Icon ms-Icon--Copy" style={{ fontSize: 10 }} />
-                                                            Copy JSON
-                                                        </button>
-                                                    </div>
-                                                    <div style={{ padding: 12, display: 'grid', gap: 12 }}>
-                                                        {/* Operations list with statuses */}
+                                                        {/* Header */}
                                                         <div style={{
-                                                            border: '1px solid #e5e7eb',
-                                                            borderRadius: 6,
-                                                            overflow: 'hidden'
+                                                            padding: '8px 12px',
+                                                            background: debugValidation.isValid ? '#22c55e' : '#dc2626',
+                                                            color: '#fff',
+                                                            fontSize: 12,
+                                                            fontWeight: 600,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 6
                                                         }}>
-                                                            <div style={{
-                                                                padding: '8px 12px',
-                                                                background: '#f8fafc',
-                                                                fontSize: 12,
-                                                                fontWeight: 700,
-                                                                color: '#374151'
-                                                            }}>
-                                                                Operations
-                                                            </div>
-                                                            <div style={{ maxHeight: 240, overflow: 'auto', padding: 8 }}>
-                                                                {processingSteps.map((step, idx) => {
-                                                                    const events = operationEvents.filter(e => e.index === idx);
-                                                                    const sent = events.find(e => e.phase === 'sent');
-                                                                    const responded = events.find(e => e.phase === 'response');
-                                                                    const succeeded = events.find(e => e.phase === 'success');
-                                                                    const errored = events.find(e => e.phase === 'error');
-                                                                    return (
-                                                                        <div key={`op-${idx}`} style={{ display: 'grid', gap: 6, padding: '8px 4px', borderBottom: '1px solid #f1f5f9' }}>
-                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                                <span style={{ fontSize: 12, color: '#111827', fontWeight: 700 }}>{step.label}</span>
-                                                                                <span style={{ fontSize: 11, fontWeight: 800, color: step.status === 'success' ? '#16a34a' : step.status === 'error' ? '#dc2626' : '#64748b' }}>
-                                                                                    {step.status.toUpperCase()}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                                                                <span style={{ fontSize: 11, color: sent ? '#334155' : '#94a3b8' }}>Sent{sent?.method ? ` (${sent.method})` : ''}</span>
-                                                                                <span style={{ fontSize: 11, color: responded ? '#334155' : '#94a3b8' }}>Responded{responded?.status ? ` (${responded.status})` : ''}</span>
-                                                                                <span style={{ fontSize: 11, color: succeeded ? '#16a34a' : '#94a3b8' }}>Succeeded</span>
-                                                                            </div>
-                                                                            {errored && (
-                                                                                <div style={{ display: 'grid', gap: 6 }}>
-                                                                                    <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 700 }}>Failure details</div>
-                                                                                    {errored.payloadSummary && (
-                                                                                        <div style={{
-                                                                                            padding: 8,
-                                                                                            background: '#fef2f2',
-                                                                                            border: '1px solid #fecaca',
-                                                                                            borderRadius: 6,
-                                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                                            fontSize: 11,
-                                                                                            whiteSpace: 'pre-wrap'
-                                                                                        }}>
-                                                                                            {errored.payloadSummary}
-                                                                                        </div>
-                                                                                    )}
-                                                                                    {errored.responseSummary && (
-                                                                                        <div style={{
-                                                                                            padding: 8,
-                                                                                            background: '#fef2f2',
-                                                                                            border: '1px solid #fecaca',
-                                                                                            borderRadius: 6,
-                                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                                            fontSize: 11,
-                                                                                            whiteSpace: 'pre-wrap'
-                                                                                        }}>
-                                                                                            {errored.responseSummary}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
+                                                            <i className={`ms-Icon ms-Icon--${debugValidation.isValid ? 'CheckMark' : 'ErrorBadge'}`} style={{ fontSize: 12 }} />
+                                                            {debugValidation.isValid ? 'Validation Passed' : 'Issues Found'}
                                                         </div>
-
-                                                        {/* Request payload & logs */}
-                                                        <div style={{ display: 'grid', gap: 8 }}>
-                                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Request payload</div>
-                                                            <div style={{
-                                                                padding: 10,
-                                                                background: '#f8fafc',
-                                                                border: '1px solid #e5e7eb',
-                                                                borderRadius: 6,
-                                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                fontSize: 11,
-                                                                maxHeight: 220,
-                                                                overflow: 'auto'
-                                                            }}>
-                                                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                                                    {JSON.stringify(generateSampleJson(), null, 2)}
-                                                                </pre>
-                                                            </div>
-                                                            {processingLogs.length > 0 && (
-                                                                <>
-                                                                    <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Responses & logs</div>
-                                                                    <div style={{
-                                                                        padding: 10,
-                                                                        background: '#f8fafc',
-                                                                        border: '1px solid #e5e7eb',
-                                                                        borderRadius: 6,
-                                                                        fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                        fontSize: 11,
-                                                                        maxHeight: 220,
-                                                                        overflow: 'auto'
-                                                                    }}>
-                                                                        {processingLogs.map((log, idx) => (
-                                                                            <div key={`log-${idx}`}>{log}</div>
+                                                        
+                                                        {/* Content */}
+                                                        <div style={{ padding: 12, fontSize: 11 }}>
+                                                            {/* Suggestions */}
+                                                            {debugValidation.suggestions.length > 0 && (
+                                                                <div style={{ marginBottom: 12 }}>
+                                                                    <strong style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                                                                        <i className="ms-Icon ms-Icon--Error" style={{ fontSize: 11 }} />
+                                                                        Critical Issues:
+                                                                    </strong>
+                                                                    <ul style={{ margin: 0, paddingLeft: 16, color: '#dc2626' }}>
+                                                                        {debugValidation.suggestions.map((suggestion, index) => (
+                                                                            <li key={index} style={{ marginBottom: 4 }}>{suggestion}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {/* Warnings */}
+                                                            {debugValidation.warnings.length > 0 && (
+                                                                <div style={{ marginBottom: 12 }}>
+                                                                    <strong style={{ color: '#ea580c', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                                                                        <i className="ms-Icon ms-Icon--Warning" style={{ fontSize: 11 }} />
+                                                                        Warnings:
+                                                                    </strong>
+                                                                    <ul style={{ margin: 0, paddingLeft: 16, color: '#ea580c' }}>
+                                                                        {debugValidation.warnings.map((warning, index) => (
+                                                                            <li key={index} style={{ marginBottom: 4 }}>{warning}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {/* Step Predictions */}
+                                                            {debugValidation.predictions.length > 0 && (
+                                                                <div>
+                                                                    <strong style={{ color: '#3690CE', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                                                                        <i className="ms-Icon ms-Icon--TestStep" style={{ fontSize: 11 }} />
+                                                                        Validation Step Predictions:
+                                                                    </strong>
+                                                                    <div style={{ display: 'grid', gap: 8 }}>
+                                                                        {debugValidation.predictions.map((prediction, index) => (
+                                                                            <div key={index} style={{
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: 8,
+                                                                                padding: 8,
+                                                                                background: prediction.willPass ? 'rgba(34, 197, 94, 0.1)' : 'rgba(220, 38, 38, 0.1)',
+                                                                                border: `1px solid ${prediction.willPass ? 'rgba(34, 197, 94, 0.3)' : 'rgba(220, 38, 38, 0.3)'}`,
+                                                                                borderRadius: 4
+                                                                            }}>
+                                                                                <i className={`ms-Icon ms-Icon--${prediction.willPass ? 'CheckMark' : 'Cancel'}`} 
+                                                                                   style={{ fontSize: 10, color: prediction.willPass ? '#22c55e' : '#dc2626' }} />
+                                                                                <div style={{ flex: 1 }}>
+                                                                                    <strong style={{ color: '#061733' }}>{prediction.step}</strong>
+                                                                                    <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
+                                                                                        {prediction.reason}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
                                                                         ))}
                                                                     </div>
-                                                                </>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )}
-
-                                            {/* Support Panel */}
-                                            {supportPanelOpen && (
-                                                <div style={{
-                                                    border: '1px solid #e1e5ea',
-                                                    borderRadius: 8,
-                                                    background: '#fff',
-                                                    overflow: 'hidden',
-                                                    flex: '0 0 auto'
-                                                }}>
-                                                    <div style={{
-                                                        padding: '12px 16px',
-                                                        background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
-                                                        color: '#fff',
-                                                        fontSize: 13,
-                                                        fontWeight: 600,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 8
-                                                    }}>
-                                                        <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 14 }} />
-                                                        Support Request
-                                                    </div>
-                                                    <div style={{ padding: 16 }}>
-                                                        <div style={{ marginBottom: 12 }}>
-                                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
-                                                                Category
-                                                            </label>
-                                                            <select
-                                                                value={supportCategory}
-                                                                onChange={(e) => setSupportCategory(e.target.value as any)}
-                                                                style={{
-                                                                    width: '100%',
-                                                                    padding: '8px 12px',
-                                                                    border: '1px solid #d1d5db',
-                                                                    borderRadius: 6,
-                                                                    fontSize: 12,
-                                                                    background: '#fff'
-                                                                }}
-                                                            >
-                                                                <option value="technical">Technical Issue</option>
-                                                                <option value="process">Process Question</option>
-                                                                <option value="data">Data Problem</option>
-                                                            </select>
-                                                        </div>
-                                                        <div style={{ marginBottom: 12 }}>
-                                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
-                                                                Describe the issue
-                                                            </label>
-                                                            <textarea
-                                                                value={supportMessage}
-                                                                onChange={(e) => setSupportMessage(e.target.value)}
-                                                                placeholder="Please describe what's happening and any steps to reproduce the issue..."
-                                                                style={{
-                                                                    width: '100%',
-                                                                    height: 80,
-                                                                    padding: '8px 12px',
-                                                                    border: '1px solid #d1d5db',
-                                                                    borderRadius: 6,
-                                                                    fontSize: 12,
-                                                                    resize: 'vertical',
-                                                                    fontFamily: 'inherit'
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <button
-                                                            onClick={sendSupportRequest}
-                                                            disabled={!supportMessage.trim() || supportSending}
-                                                            style={{
-                                                                width: '100%',
-                                                                padding: '8px 16px',
-                                                                background: supportSending ? '#9ca3af' : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
-                                                                color: '#fff',
-                                                                border: 'none',
-                                                                borderRadius: 6,
-                                                                fontSize: 12,
-                                                                fontWeight: 600,
-                                                                cursor: supportSending || !supportMessage.trim() ? 'not-allowed' : 'pointer',
-                                                                opacity: supportSending || !supportMessage.trim() ? 0.6 : 1,
-                                                                transition: 'all 0.2s ease'
-                                                            }}
-                                                        >
-                                                            {supportSending ? 'Sending...' : 'Send Support Request'}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
-                                    ) : (
-                                        /* Original Review Content */
-                                        <>
+                                    )}
+
                                     {/* JSON Preview Panel */}
                                     {jsonPreviewOpen && (
                                         <div style={{
@@ -3325,41 +3495,279 @@ ${JSON.stringify(debugInfo, null, 2)}
                                             </span>
                                         </div>
                                     )}
-                                        </>
-                                    )}
                                 </div>
+                            </div>
+                            
+                            {/* Workbench Section - appears below review when active */}
+                            {workbenchMode && (
+                                <div style={{ width: '100%', padding: '16px 0', boxSizing: 'border-box' }}>
+                                    <div
+                                        style={{
+                                            border: '2px solid #3690CE',
+                                            borderRadius: 10,
+                                            background: 'linear-gradient(135deg, #F0F7FF 0%, #E6F3FF 100%)',
+                                            padding: 24,
+                                            margin: '16px 0',
+                                            width: '100%',
+                                            boxSizing: 'border-box',
+                                            boxShadow: '0 8px 16px rgba(54, 144, 206, 0.15)',
+                                            minHeight: '600px'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                                            <h4 style={{ 
+                                                margin: 0, 
+                                                fontWeight: 600, 
+                                                fontSize: 18, 
+                                                color: '#3690CE',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 8
+                                            }}>
+                                                <i className="ms-Icon ms-Icon--WorkItem" style={{ fontSize: 16, color: '#3690CE' }} />
+                                                Matter Opening Workbench
+                                            </h4>
+                                        </div>
+                                        
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                            {/* Processing Summary (professional, on-brand) */}
+                                            {(() => {
+                                                const total = processingSteps.length || 0;
+                                                const done = processingSteps.filter(s => s.status === 'success').length;
+                                                const failed = processingSteps.filter(s => s.status === 'error').length;
+                                                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                                                const statusText = failed > 0 ? 'Attention required' : (done === total && total > 0 ? 'Completed' : 'In progress');
+                                                return (
+                                                    <div style={{
+                                                        border: '1px solid #e1e5ea',
+                                                        borderRadius: 10,
+                                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                        overflow: 'hidden',
+                                                        padding: 16,
+                                                        boxShadow: '0 4px 6px rgba(0,0,0,0.07)'
+                                                    }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                <i className="ms-Icon ms-Icon--ProgressLoopOuter" style={{ fontSize: 14, color: '#D65541' }} />
+                                                                <span style={{ fontSize: 13, fontWeight: 700, color: '#061733' }}>Processing</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                <span style={{ fontSize: 12, fontWeight: 700, color: failed ? '#D65541' : '#374151' }}>{statusText}</span>
+                                                                <button
+                                                                    onClick={() => setSupportPanelOpen(!supportPanelOpen)}
+                                                                    style={{
+                                                                        background: supportPanelOpen ? '#D65541' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                                        color: supportPanelOpen ? '#fff' : '#D65541',
+                                                                        border: '1px solid #D65541',
+                                                                        borderRadius: 6,
+                                                                        padding: '6px 10px',
+                                                                        fontSize: 11,
+                                                                        fontWeight: 600,
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.2s ease'
+                                                                    }}
+                                                                    title="Support Request"
+                                                                >
+                                                                    <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 12 }} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
 
-                                {showProcessingSection && (
-                                    <ProcessingSection open={true} steps={processingSteps} logs={processingLogs} />
-                                )}
+                                                        {/* Processing stats in cleaner design */}
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <div style={{
+                                                                    width: 8,
+                                                                    height: 8,
+                                                                    borderRadius: '50%',
+                                                                    background: '#e5e7eb'
+                                                                }}></div>
+                                                                <span style={{ fontSize: 11, color: '#6b7280' }}>Total: {total}</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <div style={{
+                                                                    width: 8,
+                                                                    height: 8,
+                                                                    borderRadius: '50%',
+                                                                    background: '#22c55e'
+                                                                }}></div>
+                                                                <span style={{ fontSize: 11, color: '#6b7280' }}>Done: {done}</span>
+                                                            </div>
+                                                            {failed > 0 && (
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                    <div style={{
+                                                                        width: 8,
+                                                                        height: 8,
+                                                                        borderRadius: '50%',
+                                                                        background: '#ef4444'
+                                                                    }}></div>
+                                                                    <span style={{ fontSize: 11, color: '#ef4444' }}>Failed: {failed}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
 
-                                {!processingOpen && showCclPrompt && (
-                                    <div style={{ marginTop: 24 }}>
-                                        <ModernMultiSelect
-                                            label="Draft the CCL now?"
-                                            options={[
-                                                { key: 'yes', text: 'Yes, draft now' },
-                                                { key: 'no', text: 'Not now' }
-                                            ]}
-                                            selectedValue={draftChoice ?? null}
-                                            onSelectionChange={(val) => handleDraftChoice(val as 'yes' | 'no')}
-                                            variant="binary"
-                                        />
-                                        {cclGenerating && (
-                                            <div style={{ marginTop: 8 }}>
-                                                Generating CCL...
-                                            </div>
-                                        )}
-                                        {generatedCclUrl && (
-                                            <div style={{ marginTop: 8 }}>
-                                                <a href={generatedCclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
-                                            </div>
-                                        )}
+                                                        {/* Progress bar */}
+                                                        <div style={{ 
+                                                            height: 6, 
+                                                            background: '#f3f4f6', 
+                                                            borderRadius: 6, 
+                                                            overflow: 'hidden',
+                                                            marginBottom: 14
+                                                        }}>
+                                                            <div 
+                                                                style={{ 
+                                                                    height: '100%', 
+                                                                    background: failed > 0 ? '#ef4444' : 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)', 
+                                                                    width: `${pct}%`,
+                                                                    transition: 'width 0.3s ease'
+                                                                }}
+                                                            />
+                                                        </div>
+
+                                                        {/* Processing Steps - professional grid */}
+                                                        <div style={{ 
+                                                            display: 'grid', 
+                                                            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                                                            gap: 8,
+                                                            marginBottom: supportPanelOpen ? 12 : 0
+                                                        }}>
+                                                            {processingSteps.map((step, index) => (
+                                                                <div 
+                                                                    key={index} 
+                                                                    style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 8,
+                                                                        padding: '6px 8px',
+                                                                        background: step.status === 'success' ? '#f0fdf4' : 
+                                                                                   step.status === 'error' ? '#fef2f2' : 
+                                                                                   step.status === 'pending' ? '#eff6ff' : '#f9fafb',
+                                                                        border: step.status === 'success' ? '1px solid #bbf7d0' : 
+                                                                               step.status === 'error' ? '1px solid #fecaca' : 
+                                                                               step.status === 'pending' ? '1px solid #bfdbfe' : '1px solid #e5e7eb',
+                                                                        borderRadius: 6,
+                                                                        fontSize: 10,
+                                                                        transition: 'all 0.2s ease'
+                                                                    }}
+                                                                >
+                                                                    {step.status === 'pending' ? (
+                                                                        <div style={{
+                                                                            width: 10,
+                                                                            height: 10,
+                                                                            border: '1.5px solid #3b82f6',
+                                                                            borderTop: '1.5px solid transparent',
+                                                                            borderRadius: '50%',
+                                                                            animation: 'spin 1s linear infinite'
+                                                                        }} />
+                                                                    ) : (
+                                                                        <i 
+                                                                            className={`ms-Icon ms-Icon--${
+                                                                                step.status === 'success' ? 'CheckMark' : 
+                                                                                step.status === 'error' ? 'Error' : 'Clock'
+                                                                            }`} 
+                                                                            style={{ 
+                                                                                fontSize: 10,
+                                                                                color: step.status === 'success' ? '#16a34a' : 
+                                                                                       step.status === 'error' ? '#dc2626' : '#9ca3af'
+                                                                            }} 
+                                                                        />
+                                                                    )}
+                                                                    <span style={{
+                                                                        color: step.status === 'success' ? '#15803d' : 
+                                                                               step.status === 'error' ? '#dc2626' : 
+                                                                               step.status === 'pending' ? '#1d4ed8' : '#6b7280',
+                                                                        fontWeight: step.status === 'pending' ? 600 : 500,
+                                                                        fontSize: 10
+                                                                    }}>
+                                                                        {step.label}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        {/* Support Panel (integrated, collapsible) */}
+                                                        {supportPanelOpen && (
+                                                            <div style={{
+                                                                marginTop: 12,
+                                                                padding: 12,
+                                                                background: 'linear-gradient(135deg, #FEF7F0 0%, #FDF2E9 100%)',
+                                                                border: '1px solid #F97316',
+                                                                borderRadius: 8
+                                                            }}>
+                                                                <div style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 8,
+                                                                    marginBottom: 8
+                                                                }}>
+                                                                    <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 12, color: '#ea580c' }} />
+                                                                    <span style={{ fontSize: 12, fontWeight: 600, color: '#ea580c' }}>Request Support</span>
+                                                                </div>
+                                                                <div style={{ marginBottom: 8 }}>
+                                                                    <select
+                                                                        value={supportCategory}
+                                                                        onChange={(e) => setSupportCategory(e.target.value as 'technical' | 'process' | 'data')}
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            padding: '6px 8px',
+                                                                            border: '1px solid #d1d5db',
+                                                                            borderRadius: 4,
+                                                                            fontSize: 11,
+                                                                            marginBottom: 8
+                                                                        }}
+                                                                    >
+                                                                        <option value="technical">Technical Issue</option>
+                                                                        <option value="process">Process Question</option>
+                                                                        <option value="data">Data Problem</option>
+                                                                    </select>
+                                                                    <textarea
+                                                                        value={supportMessage}
+                                                                        onChange={(e) => setSupportMessage(e.target.value)}
+                                                                        placeholder="Describe the issue you're experiencing..."
+                                                                        rows={3}
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            padding: '6px 8px',
+                                                                            border: '1px solid #d1d5db',
+                                                                            borderRadius: 4,
+                                                                            fontSize: 12,
+                                                                            resize: 'vertical',
+                                                                            fontFamily: 'inherit'
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    onClick={sendSupportRequest}
+                                                                    disabled={!supportMessage.trim() || supportSending}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        padding: '8px 16px',
+                                                                        background: supportSending ? '#9ca3af' : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                                        color: '#fff',
+                                                                        border: 'none',
+                                                                        borderRadius: 6,
+                                                                        fontSize: 12,
+                                                                        fontWeight: 600,
+                                                                        cursor: supportSending || !supportMessage.trim() ? 'not-allowed' : 'pointer',
+                                                                        opacity: supportSending || !supportMessage.trim() ? 0.6 : 1,
+                                                                        transition: 'all 0.2s ease'
+                                                                    }}
+                                                                >
+                                                                    {supportSending ? 'Sending...' : 'Send Support Request'}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
                                     </div>
-                                )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                                {/* Formal confirmation control (bottom, before submission) */}
-                                {!summaryConfirmed && (
+                    {/* CSS for smooth hover effects and navigation animations */}
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
@@ -3446,23 +3854,16 @@ ${JSON.stringify(debugInfo, null, 2)}
                                             Confirm
                                         </button>
                                     </div>
-                                )}
 
-                                {/* Navigation buttons for review step */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-                                    {/* Back button with smooth expansion */}
-                                    <div 
-                                        className="nav-button back-button"
-                                        onClick={handleBackToForm}
-                                        style={{
-                                            background: '#f4f4f6',
-                                            border: '2px solid #e1dfdd',
-                                            borderRadius: '0px',
-                                            width: '48px',
-                                            height: '48px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
+                    {/* CSS for smooth hover effects and navigation animations */}
+                    <style>{`
+                        .review-summary-hoverable {
+                            box-shadow: none;
+                        }
+                        .review-summary-hoverable:hover {
+                            border-color: #D65541 !important;
+                            box-shadow: 0 0 0 1px #D65541;
+                        }
                                             cursor: 'pointer',
                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                             boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
@@ -3630,36 +4031,12 @@ ${JSON.stringify(debugInfo, null, 2)}
                                             {isProcessing ? 'Processing...' : summaryConfirmed ? 'Submit Matter' : 'Confirm Summary First'}
                                         </span>
                                     </div>
-                                    
-                                    <style>{`
-                                        .nav-button:hover .nav-text {
-                                            opacity: 1 !important;
-                                        }
-                                        .nav-button:hover svg {
-                                            opacity: 0 !important;
-                                        }
-                                        .submit-button[style*="cursor: not-allowed"]:hover .nav-text {
-                                            opacity: 0 !important;
-                                        }
-                                        .submit-button[style*="cursor: not-allowed"]:hover svg {
-                                            opacity: 1 !important;
-                                        }
-                                    `}</style>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* CSS for smooth hover effects and navigation animations */}
-                    <style>{`
-                        .review-summary-hoverable {
-                            box-shadow: none;
-                        }
-                        .review-summary-hoverable:hover {
-                            border-color: ${summaryConfirmed ? '#49B670' : '#D65541'} !important;
-                            box-shadow: ${summaryConfirmed ? '0 0 0 1px #49B670' : '0 0 0 1px #D65541'};
-                        }
-                        
+                        {/* Bottom Processing Section moved below style */}
+
                         /* Spinner animation */
                         @keyframes spin {
                             0% { transform: translate(-50%, -50%) rotate(0deg); }
@@ -3711,7 +4088,424 @@ ${JSON.stringify(debugInfo, null, 2)}
                             }
                         }
                     `}</style>
-                </div>
+
+                    {/* Explicit Open Matter action (restored for clarity) */}
+                    {currentStep === 2 && (
+                        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => {
+                                    if (summaryConfirmed && !isProcessing) {
+                                        simulateProcessing().then(r => r && setGeneratedCclUrl(r.url));
+                                    }
+                                }}
+                                disabled={!summaryConfirmed || isProcessing}
+                                style={{
+                                    background: isProcessing
+                                        ? 'linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 100%)'
+                                        : summaryConfirmed
+                                            ? 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)'
+                                            : 'linear-gradient(135deg, #FAFAFA 0%, #F1F5F9 100%)',
+                                    border: summaryConfirmed ? '1px solid #D65541' : '1px solid #e1e5ea',
+                                    color: summaryConfirmed ? '#D65541' : '#9ca3af',
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    padding: '10px 20px',
+                                    borderRadius: 8,
+                                    cursor: (!summaryConfirmed || isProcessing) ? 'not-allowed' : 'pointer',
+                                    boxShadow: summaryConfirmed ? '0 4px 6px rgba(0,0,0,0.07)' : 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    transition: 'all 0.25s ease',
+                                    position: 'relative'
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (summaryConfirmed && !isProcessing) {
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                        e.currentTarget.style.boxShadow = '0 6px 10px rgba(0,0,0,0.08)';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (summaryConfirmed && !isProcessing) {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.07)';
+                                    }
+                                }}
+                            >
+                                {isProcessing ? (
+                                    <>
+                                        <span
+                                            style={{
+                                                width: 14,
+                                                height: 14,
+                                                border: '2px solid #D65541',
+                                                borderTop: '2px solid transparent',
+                                                borderRadius: '50%',
+                                                animation: 'spin 1s linear infinite'
+                                            }}
+                                        />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="ms-Icon ms-Icon--Play" style={{ fontSize: 14 }} />
+                                        {summaryConfirmed ? 'Open Matter' : 'Confirm Summary First'}
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Bottom Processing Section (relocated) */}
+                    {currentStep === 2 && (
+                        <div style={{ marginTop: 32 }}>
+                            {(() => {
+                                const total = processingSteps.length || 0;
+                                const done = processingSteps.filter(s => s.status === 'success').length;
+                                const failed = processingSteps.filter(s => s.status === 'error').length;
+                                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                                const statusText = failed > 0 ? 'Attention required' : (done === total && total > 0 ? 'Completed' : 'In progress');
+                                return (
+                                    <div style={{
+                                        border: '1px solid #e1e5ea',
+                                        borderRadius: 10,
+                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                        overflow: 'hidden',
+                                        padding: 16,
+                                        boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
+                                        marginBottom: 16
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <i className="ms-Icon ms-Icon--ProgressLoopOuter" style={{ fontSize: 14, color: '#D65541' }} />
+                                                <span style={{ fontSize: 13, fontWeight: 700, color: '#061733' }}>Processing</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span style={{ fontSize: 12, fontWeight: 700, color: failed ? '#D65541' : '#374151' }}>{statusText}</span>
+                                                <button
+                                                    onClick={() => setSupportPanelOpen(!supportPanelOpen)}
+                                                    style={{
+                                                        background: supportPanelOpen ? '#D65541' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                        color: supportPanelOpen ? '#fff' : '#D65541',
+                                                        border: '1px solid #D65541',
+                                                        borderRadius: 6,
+                                                        padding: '6px 10px',
+                                                        fontSize: 11,
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    title="Support Request"
+                                                >
+                                                    <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 12 }} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
+                                            <div style={{ fontSize: 28, fontWeight: 800, color: '#061733', minWidth: 64, textAlign: 'right' }}>{pct}%</div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ height: 10, background: '#eef2f7', borderRadius: 999, overflow: 'hidden' }}>
+                                                    <div style={{
+                                                        width: `${pct}%`,
+                                                        height: '100%',
+                                                        background: 'linear-gradient(135deg, #49B670 0%, #15803d 100%)',
+                                                        transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                    }} />
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                                                    <span style={{ fontSize: 12, color: '#6b7280' }}>Completed</span>
+                                                    <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>{done} of {total}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {total > 0 && (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))', gap: 8, marginBottom: 8 }}>
+                                                {processingSteps.map((s, idx) => (
+                                                    <div key={`mini-bottom-${idx}`} title={s.label} style={{
+                                                        height: 36,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        borderRadius: 6,
+                                                        border: '1px solid #e5e7eb',
+                                                        background: s.status === 'success' ? '#f0fdf4' : s.status === 'error' ? '#fef2f2' : '#fff'
+                                                    }}>
+                                                        {s.icon ? (
+                                                            <img src={s.icon} alt="" style={{ width: 18, height: 18, opacity: s.status === 'pending' ? 0.6 : 1 }} />
+                                                        ) : (
+                                                            <i className={`ms-Icon ${s.status === 'success' ? 'ms-Icon--CheckMark' : s.status === 'error' ? 'ms-Icon--ErrorBadge' : 'ms-Icon--Clock'}`} style={{ fontSize: 16, color: s.status === 'success' ? '#16a34a' : s.status === 'error' ? '#dc2626' : '#6b7280' }} />
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {adminEligible ? (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: 11, color: '#64748b' }}>Admins & local dev can view backend operation details</span>
+                                                <button
+                                                    onClick={() => setDebugPanelOpen(!debugPanelOpen)}
+                                                    style={{
+                                                        background: debugPanelOpen ? '#D65541' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                        color: debugPanelOpen ? '#fff' : '#D65541',
+                                                        border: '1px solid #D65541',
+                                                        borderRadius: 6,
+                                                        padding: '6px 10px',
+                                                        fontSize: 11,
+                                                        fontWeight: 700,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    {debugPanelOpen ? 'Hide admin details' : 'Show admin details'}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div style={{ fontSize: 11, color: '#94a3b8' }}>Backend details are restricted to admins</div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Debug Panel */}
+                            {adminEligible && debugPanelOpen && (
+                                <div style={{
+                                    border: '1px solid #e1e5ea',
+                                    borderRadius: 8,
+                                    background: '#fff',
+                                    overflow: 'hidden',
+                                    marginBottom: 16
+                                }}>
+                                    <div style={{
+                                        padding: '12px 16px',
+                                        background: 'linear-gradient(135deg, #111827 0%, #1f2937 100%)',
+                                        color: '#fff',
+                                        fontSize: 13,
+                                        fontWeight: 700,
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <span>Backend Operations (Admin)</span>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(JSON.stringify(generateSampleJson(), null, 2));
+                                            }}
+                                            style={{
+                                                background: 'rgba(255,255,255,0.1)',
+                                                border: '1px solid rgba(255,255,255,0.2)',
+                                                borderRadius: 4,
+                                                padding: '4px 8px',
+                                                fontSize: 10,
+                                                color: '#fff',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 4
+                                            }}
+                                        >
+                                            <i className="ms-Icon ms-Icon--Copy" style={{ fontSize: 10 }} />
+                                            Copy JSON
+                                        </button>
+                                    </div>
+                                    <div style={{ padding: 12, display: 'grid', gap: 12 }}>
+                                        <div style={{
+                                            border: '1px solid #e5e7eb',
+                                            borderRadius: 6,
+                                            overflow: 'hidden'
+                                        }}>
+                                            <div style={{
+                                                padding: '8px 12px',
+                                                background: '#f8fafc',
+                                                fontSize: 12,
+                                                fontWeight: 700,
+                                                color: '#374151'
+                                            }}>
+                                                Operations
+                                            </div>
+                                            <div style={{ maxHeight: 240, overflow: 'auto', padding: 8 }}>
+                                                {processingSteps.map((step, idx) => {
+                                                    const events = operationEvents.filter(e => e.index === idx);
+                                                    const sent = events.find(e => e.phase === 'sent');
+                                                    const responded = events.find(e => e.phase === 'response');
+                                                    const succeeded = events.find(e => e.phase === 'success');
+                                                    const errored = events.find(e => e.phase === 'error');
+                                                    return (
+                                                        <div key={`op-bottom-${idx}`} style={{ display: 'grid', gap: 6, padding: '8px 4px', borderBottom: '1px solid #f1f5f9' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <span style={{ fontSize: 12, color: '#111827', fontWeight: 700 }}>{step.label}</span>
+                                                                <span style={{ fontSize: 11, fontWeight: 800, color: step.status === 'success' ? '#16a34a' : step.status === 'error' ? '#dc2626' : '#64748b' }}>
+                                                                    {step.status.toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                                                <span style={{ fontSize: 11, color: sent ? '#334155' : '#94a3b8' }}>Sent{sent?.method ? ` (${sent.method})` : ''}</span>
+                                                                <span style={{ fontSize: 11, color: responded ? '#334155' : '#94a3b8' }}>Responded{responded?.status ? ` (${responded.status})` : ''}</span>
+                                                                <span style={{ fontSize: 11, color: succeeded ? '#16a34a' : '#94a3b8' }}>Succeeded</span>
+                                                            </div>
+                                                            {errored && (
+                                                                <div style={{ display: 'grid', gap: 6 }}>
+                                                                    <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 700 }}>Failure details</div>
+                                                                    {errored.payloadSummary && (
+                                                                        <div style={{
+                                                                            padding: 8,
+                                                                            background: '#fef2f2',
+                                                                            border: '1px solid #fecaca',
+                                                                            borderRadius: 6,
+                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                            fontSize: 11,
+                                                                            whiteSpace: 'pre-wrap'
+                                                                        }}>
+                                                                            {errored.payloadSummary}
+                                                                        </div>
+                                                                    )}
+                                                                    {errored.responseSummary && (
+                                                                        <div style={{
+                                                                            padding: 8,
+                                                                            background: '#fef2f2',
+                                                                            border: '1px solid #fecaca',
+                                                                            borderRadius: 6,
+                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                            fontSize: 11,
+                                                                            whiteSpace: 'pre-wrap'
+                                                                        }}>
+                                                                            {errored.responseSummary}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'grid', gap: 8 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Request payload</div>
+                                            <div style={{
+                                                padding: 10,
+                                                background: '#f8fafc',
+                                                border: '1px solid #e5e7eb',
+                                                borderRadius: 6,
+                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                fontSize: 11,
+                                                maxHeight: 220,
+                                                overflow: 'auto'
+                                            }}>
+                                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                    {JSON.stringify(generateSampleJson(), null, 2)}
+                                                </pre>
+                                            </div>
+                                            {processingLogs.length > 0 && (
+                                                <>
+                                                    <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Responses & logs</div>
+                                                    <div style={{
+                                                        padding: 10,
+                                                        background: '#f8fafc',
+                                                        border: '1px solid #e5e7eb',
+                                                        borderRadius: 6,
+                                                        fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                        fontSize: 11,
+                                                        maxHeight: 220,
+                                                        overflow: 'auto'
+                                                    }}>
+                                                        {processingLogs.map((log, idx) => (
+                                                            <div key={`log-bottom-${idx}`}>{log}</div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Support Panel */}
+                            {supportPanelOpen && (
+                                <div style={{
+                                    border: '1px solid #e1e5ea',
+                                    borderRadius: 8,
+                                    background: '#fff',
+                                    overflow: 'hidden',
+                                    marginBottom: 32
+                                }}>
+                                    <div style={{
+                                        padding: '12px 16px',
+                                        background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                        color: '#fff',
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8
+                                    }}>
+                                        <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 14 }} />
+                                        Support Request
+                                    </div>
+                                    <div style={{ padding: 16 }}>
+                                        <div style={{ marginBottom: 12 }}>
+                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
+                                                Category
+                                            </label>
+                                            <select
+                                                value={supportCategory}
+                                                onChange={(e) => setSupportCategory(e.target.value as any)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    border: '1px solid #d1d5db',
+                                                    borderRadius: 6,
+                                                    fontSize: 12,
+                                                    background: '#fff'
+                                                }}
+                                            >
+                                                <option value="technical">Technical Issue</option>
+                                                <option value="process">Process Question</option>
+                                                <option value="data">Data Problem</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ marginBottom: 12 }}>
+                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
+                                                Describe the issue
+                                            </label>
+                                            <textarea
+                                                value={supportMessage}
+                                                onChange={(e) => setSupportMessage(e.target.value)}
+                                                placeholder="Please describe what's happening and any steps to reproduce the issue..."
+                                                style={{
+                                                    width: '100%',
+                                                    height: 80,
+                                                    padding: '8px 12px',
+                                                    border: '1px solid #d1d5db',
+                                                    borderRadius: 6,
+                                                    fontSize: 12,
+                                                    resize: 'vertical',
+                                                    fontFamily: 'inherit'
+                                                }}
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={sendSupportRequest}
+                                            disabled={!supportMessage.trim() || supportSending}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 16px',
+                                                background: supportSending ? '#9ca3af' : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: 6,
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                cursor: supportSending || !supportMessage.trim() ? 'not-allowed' : 'pointer',
+                                                opacity: supportSending || !supportMessage.trim() ? 0.6 : 1,
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            {supportSending ? 'Sending...' : 'Send Support Request'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
             </Stack>
         </CompletionProvider>
     );

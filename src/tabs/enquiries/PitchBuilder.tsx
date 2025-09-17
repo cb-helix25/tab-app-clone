@@ -2956,7 +2956,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     return true;
   }
 
-  async function insertDealIfNeeded(options?: { background?: boolean }): Promise<string | null> {
+  async function insertDealIfNeeded(options?: { background?: boolean; bccAdditional?: string }): Promise<string | null> {
     try {
       // Check if deal creation is already in progress or if we already have a passcode
       if (dealCreationInProgress) {
@@ -2989,21 +2989,22 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       }
       
       // Ensure we always send a non-empty description. If the user hasn't set one,
-      // derive a short, plain-text fallback from the editor body so upstream validation passes.
+      // do NOT fall back to the email body. Require an explicit short description instead.
       const fallbackDescription = (() => {
         if (options?.background) return 'Placeholder deal capture (phased out)';
-        if (initialScopeDescription && initialScopeDescription.trim()) return initialScopeDescription;
-        // Strip HTML from current editor body and take a short excerpt
-        try {
-          const tmp = document.createElement('div');
-          tmp.innerHTML = body || '';
-          const text = (tmp.textContent || tmp.innerText || '').trim().replace(/\s+/g, ' ');
-          if (text && text.length > 0) return text.length > 200 ? `${text.slice(0, 197)}...` : text;
-        } catch (e) {
-          // fall through
-        }
-        return 'Draft created via Pitch Builder';
+        if (initialScopeDescription && initialScopeDescription.trim()) return initialScopeDescription.trim();
+        // Foreground path with no description: block and prompt the user.
+        setDealStatus('error');
+        showToast('Service description required', 'error', {
+          details: 'Add a short scope & quote description before capturing the deal.',
+          duration: 5000
+        });
+        return '';
       })();
+
+      if (!fallbackDescription) {
+        return null;
+      }
 
       // Resolve a usable numeric prospect id. Accept (in priority order): acid, ID, id.
       // Reject non-digit values and placeholder/zero ids.
@@ -3067,9 +3068,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         emailRecipients: {
           to: to || enquiry.Point_of_Contact || enquiry.Email,
           cc: cc || '',
-          bcc: buildBccList(),
+          bcc: buildBccList(options?.bccAdditional),
           feeEarnerEmail: userEmailAddress
         },
+        // Pitch content fields
+        emailSubject: subject || '',
+        emailBody: body || '',
+        emailBodyHtml: body || '', // Use same content for now, could be enhanced later
+        reminders: [], // Could be populated from UI in future
+        notes: enquiry.Initial_first_call_notes || '',
         ...(isMultiClientFlag && {
           clients: dealClients.map((c) => ({
             clientEmail: c.email,
@@ -3295,7 +3302,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       duration: 0
     });
 
-    const dealPasscode = await insertDealIfNeeded();
+  const senderEmail = userEmailAddress || 'automations@helix-law.com';
+  const dealPasscode = await insertDealIfNeeded({ bccAdditional: senderEmail });
     if (!dealPasscode) {
       setEmailStatus('error');
       setEmailMessage('Deal save failed');
@@ -3359,7 +3367,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     );
 
     // Use fee earner's email as sender, fallback to automations
-    const senderEmail = userEmailAddress || 'automations@helix-law.com';
+  // senderEmail defined above for consistency with insertDeal payload
     
   // No CC on send. BCC the sender (self) and safety addresses (LZ/CB).
   const bccList = buildBccList(senderEmail);
@@ -3494,7 +3502,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       duration: 0
     });
 
-    const currentPasscode = await insertDealIfNeeded();
+    // Ensure description exists prior to drafting
+    if (!initialScopeDescription || !initialScopeDescription.trim()) {
+      setErrorMessage('Service description is required before drafting.');
+      setIsErrorVisible(true);
+      showToast('Missing service description', 'error', {
+        details: 'Please add a short scope & quote description.',
+        duration: 4000
+      });
+      return;
+    }
+    const currentPasscode = await insertDealIfNeeded({ bccAdditional: undefined });
     if (!currentPasscode) {
       setEmailStatus('error');
       setEmailMessage('Deal save failed');

@@ -12,12 +12,19 @@ A comprehensive, high-performance email composition tool built with React and Ty
 - **Auto-save**: Automatic content saving every 15 seconds
 - **Undo/Redo**: Full history management with 100-state memory
 
+### Email Delivery System V2 ⭐ NEW
+- **Centralized Email Routing**: Unified `/api/sendEmail` Express route with Microsoft Graph
+- **Animated Processing Feedback**: Professional icon morphing from process to success states
+- **Real-time Status Updates**: Live delivery tracking with recipient breakdown
+- **Operations Logging**: Comprehensive tracking with correlation IDs for monitoring
+- **Security Integration**: Azure Key Vault credential management
+
 ### Advanced Functionality
 - **Smart Suggestions**: AI-powered content improvement recommendations
 - **Content Validation**: Real-time grammar and style checking
 - **Statistics Dashboard**: Live word count, character count, and readability metrics
 - **Keyboard Shortcuts**: Professional-grade keyboard navigation
-- **Dark Mode**: Full dark theme support
+- **Dark Mode**: Full dark theme support with animated theming
 
 ### Performance Optimizations
 - **90% Fewer Re-renders**: React.memo and useCallback optimization
@@ -30,12 +37,20 @@ A comprehensive, high-performance email composition tool built with React and Ty
 ### Component Structure
 ```
 src/tabs/enquiries/pitch-builder/
-├── EditorAndTemplateBlocks.tsx     # Main editor component
+├── EditorAndTemplateBlocks.tsx     # Main editor with animated email status
 ├── EnhancedPitchBuilderFeatures.tsx # Advanced features toolbar
 ├── SmartTemplateSuggestions.tsx    # AI-powered suggestions
 ├── editorEnhancements.ts           # Core utility classes
 ├── editorHooks.ts                  # Custom React hooks
 └── emailUtils.ts                   # Email-specific utilities
+
+server/routes/
+└── sendEmail.js                    # Centralized email delivery with Graph API
+
+Email Delivery Architecture:
+Frontend → Express Proxy → Graph API → Recipients
+    ↓
+Ops Logging (JSONL) + Animated Status Updates
 ```
 
 ### Key Classes and Hooks
@@ -100,6 +115,7 @@ import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
 
 function MyComponent() {
   const [body, setBody] = useState('');
+  const [emailStatus, setEmailStatus] = useState('idle');
   
   return (
     <EditorAndTemplateBlocks
@@ -107,10 +123,51 @@ function MyComponent() {
       body={body}
       setBody={setBody}
       templateBlocks={templateBlocks}
+      // Email delivery status props
+      emailStatus={emailStatus}
+      dealStatus="ready"
+      to="client@example.com"
+      cc="advisor@example.com"
+      bcc="monitoring@helix-law.com"
       // ... other props
     />
   );
 }
+```
+
+### Email Delivery Integration
+```tsx
+// Send email through centralized route
+const sendEmail = async () => {
+  setEmailStatus('processing');
+  
+  try {
+    const response = await fetch('/api/sendEmail', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email_contents: emailHtml,
+        user_email: to,
+        subject: subject,
+        from_email: senderEmail,
+        cc_emails: cc,
+        bcc_emails: bcc,
+        recipient_details: {
+          to, cc, bcc,
+          fee_earner: senderEmail
+        }
+      })
+    });
+    
+    if (response.ok) {
+      setEmailStatus('sent');
+    } else {
+      setEmailStatus('error');
+    }
+  } catch (error) {
+    setEmailStatus('error');
+  }
+};
 ```
 
 ### With Enhanced Features

@@ -34,7 +34,7 @@ const ModernMultiSelect: React.FC<ModernMultiSelectProps> = ({
             return 'repeat(2, 1fr)';
         }
         if (variant === 'grid') {
-            return 'repeat(auto-fit, minmax(140px, 1fr))';
+            return 'repeat(auto-fit, minmax(120px, 1fr))';
         }
         // Default horizontal layout
         return `repeat(${options.length}, 1fr)`;
@@ -43,13 +43,13 @@ const ModernMultiSelect: React.FC<ModernMultiSelectProps> = ({
     const containerStyle: React.CSSProperties = {
         display: 'grid',
         gridTemplateColumns: getGridColumns(),
-        gap: variant === 'binary' ? '0' : '8px',
+        gap: variant === 'binary' ? '0' : '6px',
         width: '100%',
-        border: variant === 'binary' ? `1px solid ${selectedValue ? colours.highlight : '#e0e0e0'}` : 'none',
-        borderRadius: '0px', // Remove rounded corners
+        border: variant === 'binary' ? `1px solid ${selectedValue ? colours.highlight : '#E2E8F0'}` : 'none',
+        borderRadius: '6px', // Slightly rounded for modern look
         overflow: 'hidden',
-        background: variant === 'binary' ? '#fff' : 'transparent',
-        boxShadow: variant === 'binary' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+        background: variant === 'binary' ? 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)' : 'transparent',
+        boxShadow: variant === 'binary' ? '0 1px 2px rgba(0,0,0,0.03)' : 'none',
     };
 
     const getOptionStyle = (option: ModernMultiSelectOption, index: number): React.CSSProperties => {
@@ -57,11 +57,11 @@ const ModernMultiSelect: React.FC<ModernMultiSelectProps> = ({
         const isDisabled = disabled || option.disabled;
         
         const baseStyle: React.CSSProperties = {
-            padding: variant === 'binary' ? '14px 16px' : '12px 16px',
+            padding: variant === 'binary' ? '10px 12px' : '8px 12px',
             textAlign: 'center',
             cursor: isDisabled ? 'not-allowed' : 'pointer',
             userSelect: 'none',
-            fontSize: '14px',
+            fontSize: '12px',
             fontWeight: '500',
             transition: 'all 0.2s ease',
             border: variant === 'binary' ? 'none' : `1px solid #e0e0e0`,
@@ -69,27 +69,30 @@ const ModernMultiSelect: React.FC<ModernMultiSelectProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '48px',
+            minHeight: '36px',
             position: 'relative',
         };
 
         if (variant === 'binary') {
             return {
                 ...baseStyle,
-                color: isSelected ? colours.highlight : '#4a5568',
-                background: isSelected ? `${colours.highlight}22` : 'transparent',
-                borderRight: index === 0 && options.length > 1 ? `1px solid #e0e0e0` : 'none',
+                color: isSelected ? colours.highlight : '#64748B',
+                background: isSelected ? `${colours.highlight}15` : 'transparent',
+                borderRight: index === 0 && options.length > 1 ? `1px solid #E2E8F0` : 'none',
                 opacity: isDisabled ? 0.5 : 1,
+                fontWeight: isSelected ? '600' : '500',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             };
         }
 
         return {
             ...baseStyle,
-            color: isSelected ? colours.highlight : '#4a5568',
-            background: isSelected ? `${colours.highlight}22` : '#fff',
-            borderColor: isSelected ? colours.highlight : '#e0e0e0',
+            color: isSelected ? colours.highlight : '#64748B',
+            background: isSelected ? `${colours.highlight}15` : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+            borderColor: isSelected ? colours.highlight : '#E2E8F0',
             opacity: isDisabled ? 0.5 : 1,
-            boxShadow: isSelected ? `0 2px 8px ${colours.highlight}20` : 'none',
+            boxShadow: isSelected ? `0 1px 3px ${colours.highlight}20` : '0 1px 2px rgba(0,0,0,0.03)',
+            borderRadius: '6px',
         };
     };
 
@@ -99,16 +102,18 @@ const ModernMultiSelect: React.FC<ModernMultiSelectProps> = ({
         padding: '4px 8px',
         fontWeight: '600',
         color: '#061733',
-        marginBottom: '8px',
-        fontSize: '14px',
+        marginBottom: '6px',
+        fontSize: '11px',
         borderRadius: '0 4px 4px 0',
     };
 
     return (
         <Stack tokens={{ childrenGap: 0 }} className={className}>
-            <div style={questionBannerStyle}>
-                {label}
-            </div>
+            {label && (
+                <div style={questionBannerStyle}>
+                    {label}
+                </div>
+            )}
             <div style={containerStyle}>
                 {options.map((option, index) => (
                     <div
@@ -122,10 +127,12 @@ const ModernMultiSelect: React.FC<ModernMultiSelectProps> = ({
                         onMouseEnter={(e) => {
                             if (!disabled && !option.disabled && selectedValue !== option.key) {
                                 if (variant === 'binary') {
-                                    e.currentTarget.style.background = '#f7fafc';
+                                    e.currentTarget.style.background = 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)';
+                                    e.currentTarget.style.color = '#3690CE';
                                 } else {
-                                    e.currentTarget.style.background = '#f7fafc';
+                                    e.currentTarget.style.background = 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)';
                                     e.currentTarget.style.borderColor = colours.highlight;
+                                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.06)';
                                 }
                             }
                         }}
@@ -133,9 +140,11 @@ const ModernMultiSelect: React.FC<ModernMultiSelectProps> = ({
                             if (!disabled && !option.disabled && selectedValue !== option.key) {
                                 if (variant === 'binary') {
                                     e.currentTarget.style.background = 'transparent';
+                                    e.currentTarget.style.color = '#64748B';
                                 } else {
-                                    e.currentTarget.style.background = '#fff';
-                                    e.currentTarget.style.borderColor = '#e0e0e0';
+                                    e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                                    e.currentTarget.style.borderColor = '#E2E8F0';
+                                    e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.03)';
                                 }
                             }
                         }}

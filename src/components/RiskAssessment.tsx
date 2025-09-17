@@ -39,16 +39,40 @@ const QuestionGroup: React.FC<QuestionGroupProps> = ({ label, options, selectedK
     // Check if "No" is selected and we should show the prompt
     const shouldShowPrompt = showPrompt && isYesNoQuestion && selectedKey === 'no';
     
+    // Determine which document URL to show based on the question label
+    const getDocumentUrl = () => {
+        const labelLower = label.toLowerCase();
+        if (labelLower.includes('client risk')) {
+            return 'https://drive.google.com/file/d/1_7dX2qSlvuNmOiirQCxQb8NDs6iUSAhT/view?usp=sharing';
+        } else if (labelLower.includes('transaction risk')) {
+            return 'https://drive.google.com/file/d/1sTRII8MFU3JLpMiUcz-Y6KBQ1pP1nKgT/view?usp=sharing';
+        } else if (labelLower.includes('sanctions')) {
+            return 'https://drive.google.com/file/d/1Wx-dHdfXuN0-A2YmBYb-OO-Bz2wXevl9/view?usp=sharing';
+        } else if (labelLower.includes('aml policy')) {
+            return 'https://drive.google.com/file/d/1TcBlV0Pf0lYlNkmdOGRfpx--DcTEC7na/view?usp=sharing';
+        }
+        return '#';
+    };
+    
     return (
-        <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 16 } }}>
-            <div className="question-banner" style={{ width: '100%', boxSizing: 'border-box' }}>
+        <Stack tokens={{ childrenGap: 4 }} styles={{ root: { marginBottom: 8 } }}>
+            <div className="question-banner" style={{ 
+                width: '100%', 
+                boxSizing: 'border-box', 
+                fontSize: 11, 
+                padding: '4px 8px', 
+                fontWeight: 700, 
+                color: '#374151',
+                textTransform: 'uppercase',
+                letterSpacing: '0.25px'
+            }}>
                 {label}
             </div>
             <div 
                 style={{
                     display: 'grid',
                     gridTemplateColumns: `repeat(${gridColumns}, 1fr)`,
-                    gap: '8px',
+                    gap: '4px',
                     width: '100%'
                 }}
             >
@@ -61,31 +85,31 @@ const QuestionGroup: React.FC<QuestionGroupProps> = ({ label, options, selectedK
                             onClick={() => onChange(option.key, option.text)}
                             className="client-details-contact-bigbtn"
                             style={{
-                                background: isSelected ? '#e7f1ff' : '#fff',
+                                background: isSelected ? 'linear-gradient(135deg, #E7F1FF 0%, #F0F7FF 100%)' : '#fff',
                                 border: isSelected ? '1px solid #3690CE' : '1px solid #e1dfdd',
-                                color: isSelected ? '#3690CE' : '#061733',
-                                padding: '12px 18px',
-                                fontSize: '16px',
-                                fontWeight: '500',
-                                borderRadius: '0',
+                                color: isSelected ? '#1B5C85' : '#061733',
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                borderRadius: 6,
                                 cursor: 'pointer',
                                 transition: 'background 0.18s, border 0.18s, color 0.18s',
                                 textAlign: 'left',
                                 justifyContent: 'flex-start',
                                 display: 'flex',
                                 alignItems: 'center',
-                                minHeight: '60px',
-                                boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                minHeight: 36,
+                                boxShadow: '0 1px 2px rgba(6,23,51,0.06)',
                                 whiteSpace: 'normal',
                                 wordWrap: 'break-word',
                                 hyphens: 'auto',
-                                lineHeight: '1.4'
+                                lineHeight: 1.3
                             }}
                             onMouseEnter={(e) => {
                                 if (!isSelected) {
-                                    e.currentTarget.style.background = '#e7f1ff';
+                                    e.currentTarget.style.background = '#f4f9ff';
                                     e.currentTarget.style.borderColor = '#3690CE';
-                                    e.currentTarget.style.color = '#3690CE';
+                                    e.currentTarget.style.color = '#1B5C85';
                                 }
                             }}
                             onMouseLeave={(e) => {
@@ -103,46 +127,25 @@ const QuestionGroup: React.FC<QuestionGroupProps> = ({ label, options, selectedK
             </div>
             {shouldShowPrompt && (
                 <div style={{
-                    background: '#fffbe6',
-                    border: '2px solid #FFB900',
-                    borderRadius: 0,
-                    padding: '12px 16px',
-                    color: '#b88600',
-                    fontSize: 14,
+                    background: '#FFFDF5',
+                    borderLeft: '2px solid #FFB900',
+                    padding: '4px 8px',
+                    color: '#8A6D00',
+                    fontSize: 11,
                     fontWeight: 500,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10,
-                    marginTop: 12
+                    gap: 6,
+                    marginTop: 4,
+                    borderRadius: 4
                 }}>
-                    <span style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        width: 20, 
-                        height: 20, 
-                        background: '#FFB900', 
-                        borderRadius: '50%',
-                        color: 'white',
-                        fontSize: 12,
-                        fontWeight: 'bold'
-                    }}>
-                        i
-                    </span>
-                    The document can be found{' '}
+                    <span style={{ fontSize: 10 }}>Note:</span>
+                    The document can be found
                     <a 
-                        href="#" 
-                        style={{ 
-                            color: '#3690CE', 
-                            textDecoration: 'underline',
-                            cursor: 'pointer',
-                            fontWeight: 500
-                        }}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            // Placeholder action - could open a modal, navigate to document, etc.
-                            alert('Document access would be implemented here');
-                        }}
+                        href={getDocumentUrl()} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#1B5C85', textDecoration: 'underline', cursor: 'pointer' }}
                     >
                         here
                     </a>.
@@ -234,7 +237,7 @@ const valueOfInstructionOptions = [
 ];
 
 const datePickerStyles: Partial<IDatePickerStyles> = {
-    root: { width: 300 },
+    root: { width: 200 },
     textField: {
         width: '100%',
         borderRadius: '0',
@@ -452,10 +455,12 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
 
 
     return (
-        <Stack tokens={{ childrenGap: 24 }} horizontalAlign="center">
+        <Stack tokens={{ childrenGap: 12 }} horizontalAlign="center">
 
-            <Stack horizontal tokens={{ childrenGap: 32 }} styles={{ root: { width: '100%' } }}>
-                <Stack tokens={{ childrenGap: 20 }} styles={{ root: { flex: 3 } }}>
+            <Stack horizontal tokens={{ childrenGap: 16 }} styles={{ root: { width: '100%' } }}>
+                <Stack tokens={{ childrenGap: 8 }} styles={{ root: { flex: 3 } }}>
+                    {/* Section: Client & Instruction */}
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', margin: '0 0 2px' }}>Client & Instruction</div>
                     <QuestionGroup
                         label="Client Type"
                         options={clientTypeOptions}
@@ -504,6 +509,8 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                             })
                         }
                     />
+                    {/* Section: Funds */}
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', margin: '4px 0 2px' }}>Funds</div>
                     <QuestionGroup
                         label="Limitation"
                         options={limitationOptions}
@@ -517,7 +524,7 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                         }
                     />
                     {[2, 3].includes(riskCore.limitationValue) && (
-                        <Stack tokens={{ childrenGap: 8 }}>
+                        <Stack tokens={{ childrenGap: 6 }}>
                             <DatePicker
                                 value={limitationDate}
                                 onSelectDate={(d) => setLimitationDate(d || undefined)}
@@ -533,6 +540,7 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                                     setLimitationDateTbc(!!c);
                                     if (c) setLimitationDate(undefined);
                                 }}
+                                styles={{ text: { fontSize: 12 } }}
                             />
                         </Stack>
                     )}
@@ -562,7 +570,31 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                     />
                 </Stack>
 
-                <Stack tokens={{ childrenGap: 20 }} styles={{ root: { flex: 2 } }}>
+                <Stack tokens={{ childrenGap: 8 }} styles={{ root: { flex: 2 } }}>
+                    {/* Summary */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 6,
+                        padding: '6px 8px',
+                        border: '1px solid #e1e5e9',
+                        borderRadius: 6,
+                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: '#061733' }}>Score: {riskScore}</div>
+                        <div style={{
+                            padding: '2px 6px',
+                            borderRadius: 999,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: '#fff',
+                            background: riskResult === 'High Risk' ? '#D65541' : riskResult === 'Medium Risk' ? '#FFB900' : '#22A06B'
+                        }}>
+                            {riskResult}
+                        </div>
+                    </div>
                     <QuestionGroup
                         label="I have considered client risk factors"
                         options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
@@ -627,11 +659,6 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                         onChange={(k) => setConsideredFirmWideAML(k === 'yes')}
                         showPrompt={true}
                     />
-
-                    <Stack tokens={{ childrenGap: 4 }} horizontalAlign="center">
-                        <span style={{ fontWeight: 600 }}>Score: {riskScore}</span>
-                        <span style={{ fontWeight: 600 }}>Risk Result: {riskResult}</span>
-                    </Stack>
                 </Stack>
             </Stack>
 

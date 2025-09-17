@@ -225,8 +225,9 @@ async function fetchEnquiries(
     }
   }
 
-  // Always attempt to fetch LEGACY enquiries so existing data continues to load
+  // Fetch LEGACY enquiries as a fallback ONLY if we don't already have results
   try {
+    if (enquiries.length === 0) {
 
     // Use local Express server proxy when developing, otherwise call production proxy
     const legacyBaseUrl = isLocalDev
@@ -248,7 +249,7 @@ async function fetchEnquiries(
       }),
     });
 
-    if (legacyResponse.ok) {
+  if (legacyResponse.ok) {
       const legacyData = await legacyResponse.json();
 
       let rawLegacyEnquiries: any[] = [];
@@ -290,14 +291,29 @@ async function fetchEnquiries(
         ...enq
       })) as Enquiry[];
 
-      // Append LEGACY enquiries to the end (after NEW enquiries)
-      enquiries = [...enquiries, ...legacyEnquiries];
+      // Use LEGACY enquiries as fallback (no NEW data loaded yet)
+      enquiries = [...legacyEnquiries];
 
     } else {
       const errorText = await legacyResponse.text().catch(() => 'Could not read error response');
     }
+    }
   } catch (error) {
     // Legacy enquiries error is non-blocking
+  }
+
+  // De-duplicate by ID to avoid duplicates when sources overlap
+  if (Array.isArray(enquiries) && enquiries.length > 1) {
+    const seen = new Set<string>();
+    const deduped: Enquiry[] = [] as unknown as Enquiry[];
+    for (const e of enquiries as unknown as any[]) {
+      const id = (e && (e.ID || e.id)) ? String(e.ID || e.id) : '';
+      if (!id || !seen.has(id)) {
+        if (id) seen.add(id);
+        deduped.push(e as Enquiry);
+      }
+    }
+    enquiries = deduped;
   }
 
   // Apply area-of-work filtering based on user's AOW (only for unclaimed enquiries)
@@ -546,25 +562,37 @@ async function fetchAllMatterSources(fullName: string): Promise<NormalizedMatter
 }
 
 async function fetchTeamData(): Promise<TeamData[] | null> {
+  console.log('🚀 fetchTeamData called...');
   const cacheKey = "teamData";
+  // Clear cache for testing
+  localStorage.removeItem(cacheKey);
   const cached = getCachedData<TeamData[]>(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    console.log('📦 Using cached team data:', cached.length, 'members');
+    return cached;
+  }
   try {
+    console.log('🌐 Making API call to /api/team-data...');
+    // Use server route instead of decoupled function
     const response = await fetch(
-      `${proxyBaseUrl}/getTeamData?code=${process.env.REACT_APP_GET_TEAM_DATA_CODE}`,
+      `/api/team-data`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       },
     );
+    console.log('📡 Response received:', response.status, response.statusText);
     if (!response.ok) {
       throw new Error(`Failed to fetch team data: ${response.statusText}`);
     }
     const data: TeamData[] = await response.json();
+    console.log('✅ Team data fetched from server route:', data?.length, 'members');
+    console.log('👥 Active members:', data?.filter(m => m.status?.toLowerCase() === 'active').length);
+    console.log('🚫 Inactive members:', data?.filter(m => m.status?.toLowerCase() === 'inactive').length);
     setCachedData(cacheKey, data);
     return data;
   } catch (error) {
-    console.error("Error fetching team data:", error);
+    console.error("❌ Error fetching team data:", error);
     return null;
   }
 }
@@ -787,7 +815,17 @@ const AppWithContext: React.FC = () => {
           setMatters(fallbackMatters);
         }
         
-        setTeamData(localTeamData as TeamData[]);
+        // Prefer live team data via server route even in local dev; fallback to local JSON
+        try {
+          const liveTeam = await fetchTeamData();
+          if (liveTeam && Array.isArray(liveTeam) && liveTeam.length > 0) {
+            setTeamData(liveTeam);
+          } else {
+            setTeamData(localTeamData as TeamData[]);
+          }
+        } catch {
+          setTeamData(localTeamData as TeamData[]);
+        }
         setLoading(false);
       }
     };

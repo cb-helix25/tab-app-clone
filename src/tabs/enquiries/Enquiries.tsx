@@ -1,4 +1,5 @@
 
+// Clean admin tools - removed beaker and legacy toggle
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import {
@@ -35,7 +36,6 @@ import { Enquiry, POID, UserData } from '../../app/functionality/types';
 import EnquiryLineItem from './EnquiryLineItem';
 import NewUnclaimedEnquiryCard from './NewUnclaimedEnquiryCard';
 import ClaimedEnquiryCard from './ClaimedEnquiryCard';
-import EnquiryApiDebugger from '../../components/EnquiryApiDebugger';
 import GroupedEnquiryCard from './GroupedEnquiryCard';
 import { GroupedEnquiry, getMixedEnquiryDisplay, isGroupedEnquiry } from './enquiryGrouping';
 import PitchBuilder from './PitchBuilder';
@@ -319,9 +319,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [dateRange, setDateRange] = useState<{ oldest: string; newest: string } | null>(null);
   const [isSearchActive, setSearchActive] = useState<boolean>(false);
   const [showGroupedView, setShowGroupedView] = useState<boolean>(true);
-  const [showDataInspector, setShowDataInspector] = useState<boolean>(false);
   // Local dataset toggle (legacy vs new direct) analogous to Matters (only in localhost UI for now)
-  const [useNewData, setUseNewData] = useState<boolean>(false);
   // Admin-only: control visibility of Deal Capture (Scope & Quote Description + Amount)
   const [showDealCapture, setShowDealCapture] = useState<boolean>(false);
   
@@ -451,18 +449,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     }
     
     if (isLocalhost) {
-      let filtered = allEnquiries.filter(e => useNewData ? e.__sourceType === 'new' : e.__sourceType === 'legacy');
-      // Fallback: if toggle selected new but zero new detected, show legacy + emit warning for debug panel
-      if (useNewData && filtered.length === 0) {
-        filtered = allEnquiries;
-      }
+      // Show all enquiries (both legacy and new) - no dataset filtering
+      let filtered = allEnquiries;
       
       // Debug logging for BR
       if (userEmail.includes('br@') || userEmail.includes('brendan')) {
         console.log('🗄️ BR DEBUG - Data loading:', {
           totalAllEnquiries: allEnquiries.length,
           filteredCount: filtered.length,
-          useNewData,
           isLocalhost,
           userEmail,
           samplePOCs: allEnquiries.slice(0, 10).map(e => e.Point_of_Contact || (e as any).poc)
@@ -473,7 +467,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     } else {
       setDisplayEnquiries(allEnquiries);
     }
-  }, [allEnquiries, useNewData, isLocalhost, userData, showMineOnly]);
+  }, [allEnquiries, isLocalhost, userData, showMineOnly]);
 
   // Reset area filter if current filter is no longer available
   useEffect(() => {
@@ -1626,24 +1620,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           {(isAdmin || isLocalhost) && (
             <div
               style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '2px 10px 2px 6px', height: 40, borderRadius: 12,
+                display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', height: 28, borderRadius: 8,
                 background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
                 border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 10, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
               }}
-              title="Admin Debugger (alex, luke, cass only)"
+              title="Admin Controls"
             >
-              <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700', marginRight: 4 }}>Admin Only</span>
-              <IconButton
-                iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                title="Admin Debugger (alex, luke, cass only)"
-                ariaLabel="Admin Debugger (alex, luke, cass only)"
-                onClick={() => setShowDataInspector(v => !v)}
-                styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
-                data-tooltip="alex, luke, cass"
-              />
-              <ToggleSwitch id="enquiries-new-data-toggle" checked={useNewData} onChange={setUseNewData} size="sm" onText="New" offText="Legacy" ariaLabel="Toggle dataset between legacy and new" />
-              <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 8, marginRight: 6, color: isDarkMode ? '#ffe9a3' : '#5d4700' }}>Scope:</span>
+              <span style={{ fontSize: 9, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700' }}>Scope:</span>
               <ToggleSwitch id="enquiries-scope-toggle" checked={showMineOnly} onChange={setShowMineOnly} size="sm" onText="Mine" offText="All" ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries" />
             </div>
           )}
@@ -1677,21 +1661,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           {(isAdmin || isLocalhost) && (
             <div
               style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '2px 10px 2px 6px', height: 40, borderRadius: 12,
+                display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', height: 28, borderRadius: 8,
                 background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
                 border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 10, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
               }}
-              title="Admin / debug controls"
+              title="Admin controls"
             >
-              <IconButton
-                iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                title="Debug"
-                ariaLabel="Open data inspector"
-                onClick={() => setShowDataInspector(v => !v)}
-                styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
-              />
-              <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700' }}>Deal Capture</span>
+              <span style={{ fontSize: 9, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700' }}>Deal Capture</span>
               <ToggleSwitch
                 id="deal-capture-toggle"
                 checked={showDealCapture}
@@ -1717,7 +1694,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     userData,
     isAdmin,
     isLocalhost,
-    useNewData,
     showMineOnly,
     twoColumn,
     activeSubTab,
@@ -2016,21 +1992,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       </Modal>
         </Stack>
       </section>
-
-      {/* Enquiry API Debugger - Only in development */}
-      {showDataInspector && (
-        <EnquiryApiDebugger
-          currentEnquiries={displayEnquiries}
-          onClose={() => setShowDataInspector(false)}
-        />
-      )}
-      {showDataInspector && isLocalhost && (
-        <div style={{ margin:'16px 0', padding:16, background: isDarkMode ? '#1e2430' : '#f5f8fc', border:`1px solid ${isDarkMode? 'rgba(255,255,255,0.1)': '#d4e1f1'}`, borderRadius:8 }}>
-          <Text variant="mediumPlus" styles={{ root:{ fontWeight:600, marginBottom:8, color: isDarkMode? colours.dark.text: colours.light.text }}}>Local Dataset Toggle Debug</Text>
-          <Text variant="small" styles={{ root:{ display:'block', marginBottom:8 }}}>Showing <strong>{useNewData ? 'NEW (direct)' : 'LEGACY'}</strong> dataset. Total after normalization: {displayEnquiries.length}</Text>
-          {debugError && <MessageBar messageBarType={MessageBarType.error}>{debugError}</MessageBar>}
-        </div>
-      )}
 
     </div>
   );

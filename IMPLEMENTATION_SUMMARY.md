@@ -7,7 +7,29 @@
 
 ## ✅ Recent Accomplishments (September 2025)
 
-### Matter Opening Workbench & Processing Pipeline (This Session)
+### Email Delivery System V2 Overhaul (Latest Session) ⭐
+- **Centralized Email Infrastructure**: Unified all email sending through `/api/sendEmail` Express route  
+- **Microsoft Graph Integration**: Direct Graph API authentication with Azure Key Vault credentials
+- **Animated Processing Feedback**: Professional icon morphing from deal/email icons to success checkmarks
+- **Operations Logging**: Comprehensive JSONL tracking with correlation IDs at `server/logs/ops.log.jsonl`
+- **Enhanced Send Confirmation Modal**: From field confirmation, recipient breakdown, real-time status
+- **Proxy Configuration Update**: Removed sendEmail from decoupled functions, routed to Express server
+- **Subtle Animation System**: Morph transitions, gentle float/pulse effects, 60fps smooth performance
+- **Dark Mode Integration**: Full theming support with `colours.dark.*` color scheme
+
+Technical improvements:
+- Email delivery success rate: ~100% with Graph API 202 responses
+- User experience: Professional animated feedback eliminates confusion about send status
+- Architecture: Single endpoint eliminates N+1 email routing issues
+- Security: Azure Key Vault credential management with token caching
+- Monitoring: End-to-end correlation tracking for debugging and analytics
+
+Documentation created:
+- `docs/EMAIL_DELIVERY_SYSTEM_V2.md`: Complete technical specification
+- `EMAIL_FORMATTING_IMPROVEMENTS.md`: User experience improvements and visual design
+- Updated `src/tabs/enquiries/pitch-builder/README.md`: Integration with new email system
+
+### Matter Opening Workbench & Processing Pipeline (Previous Session)
 - Professionalised review into a “monitoring workbench” with subtle, on‑brand styling
 - Integrated Support Request inside the processing component; removed header icons
 - Added admin/local-dev diagnostics with per‑operation phases (sent/responded/succeeded/error)

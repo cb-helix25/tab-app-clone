@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, useLayoutEffect, useCallback } from "react";
 import { flushSync } from "react-dom";
+// Clean admin tools - legacy toggles removed - cache cleared
 import {
   Stack,
   mergeStyles,
@@ -29,7 +30,6 @@ import { useTheme } from "../../app/functionality/ThemeContext";
 import { useNavigatorActions } from "../../app/functionality/NavigatorContext";
 import { colours } from "../../app/styles/colours";
 import { dashboardTokens } from "./componentTokens";
-import DataFlowWorkbench from "../../components/DataFlowWorkbench";
 import InstructionCard from "./InstructionCard";
 
 import RiskComplianceCard from "./RiskComplianceCard";
@@ -51,7 +51,6 @@ import localUserData from "../../localData/localUserData.json";
 import SegmentedControl from '../../components/filter/SegmentedControl';
 import TwoLayerFilter, { TwoLayerFilterOption } from '../../components/filter/TwoLayerFilter';
 import ToggleSwitch from '../../components/ToggleSwitch';
-import InstructionApiDebugger from '../../components/InstructionApiDebugger';
 import IDVerificationReviewModal from '../../components/modals/IDVerificationReviewModal';
 import { fetchVerificationDetails, approveVerification } from '../../services/verificationAPI';
 
@@ -104,7 +103,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showCclDraftPage, setShowCclDraftPage] = useState(false);
 
   // Flat tab navigation: default to Clients
-  const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('pitches');
+  const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('clients');
   
   // Unified enquiries data for name mapping (separate from main enquiries)
   const [unifiedEnquiries, setUnifiedEnquiries] = useState<any[]>([]);
@@ -471,14 +470,8 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
   });
   
-  const [showApiDebugger, setShowApiDebugger] = useState(false);
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
-  const [showAllInstructions, setShowAllInstructions] = useState<boolean>(false); // Admin toggle - defaults to false (show user's own data first)
-  
-  // Debug toggles for admin/localhost
-  const [useNewData, setUseNewData] = useState<boolean>(false);
-  const [twoColumn, setTwoColumn] = useState<boolean>(false);
-  const [showWorkbench, setShowWorkbench] = useState<boolean>(false);
+  const [showAllInstructions, setShowAllInstructions] = useState<boolean>(false); // User toggle for mine vs all instructions - defaults to false (show user's own data first)
   
   const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
   // Admin detection using proper utility
@@ -514,6 +507,13 @@ const Instructions: React.FC<InstructionsProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Redirect from risk tab in production
+  useEffect(() => {
+    if (!isLocalhost && activeTab === 'risk') {
+      setActiveTab('pitches');
+    }
+  }, [isLocalhost, activeTab]);
   
   // Get effective instruction data based on admin mode and user filtering
   const effectiveInstructionData = useMemo(() => {
@@ -528,10 +528,10 @@ const Instructions: React.FC<InstructionsProps> = ({
     
     let result = instructionData;
     
-    // If admin and wants to see all data, use allInstructionData (unfiltered)
-    if (isAdmin && showAllInstructions && allInstructionData.length > 0) {
+    // If user wants to see all data and allInstructionData is available, use it
+    if (showAllInstructions && allInstructionData.length > 0) {
       result = allInstructionData;
-      console.log('🔄 Admin viewing ALL instructions');
+      console.log('🔄 User viewing ALL instructions (including Other/Unsure)');
     } else {
       // Default: Filter to show only current user's instructions (for both admin and non-admin)
       // If instructionData is empty but allInstructionData has data, filter from allInstructionData
@@ -597,12 +597,37 @@ const Instructions: React.FC<InstructionsProps> = ({
               deal.poc?.toLowerCase() === userEmail
             )
           );
+
+          // Check if this is an "Other/Unsure" instruction that should be visible to everyone
+          const isOtherUnsure = (
+            // Check instruction area of work - handle multiple format variations
+            instruction.instructions?.some((inst: any) => {
+              const area = inst.AreaOfWork || inst.Area_of_Work || inst.areaOfWork || '';
+              return area.toLowerCase().includes('other') && area.toLowerCase().includes('unsure');
+            }) ||
+            // Check deal area of work - handle multiple format variations
+            instruction.deals?.some((deal: any) => {
+              const area = deal.AreaOfWork || deal.Area_of_Work || deal.areaOfWork || '';
+              return area.toLowerCase().includes('other') && area.toLowerCase().includes('unsure');
+            }) ||
+            // Check root level area of work - handle multiple format variations
+            (() => {
+              const area = instruction.AreaOfWork || instruction.Area_of_Work || instruction.areaOfWork || '';
+              return area.toLowerCase().includes('other') && area.toLowerCase().includes('unsure');
+            })()
+          );
           
-          if (belongsToUser) {
-            console.log('✅ Instruction belongs to user:', {
+          // Include if user owns it OR if it's Other/Unsure (visible to everyone)
+          const shouldInclude = belongsToUser || isOtherUnsure;
+          
+          if (shouldInclude) {
+            console.log('✅ Instruction included:', {
               prospectId: instruction.prospectId,
               userEmail,
               userInitials,
+              belongsToUser,
+              isOtherUnsure,
+              areaOfWork: instruction.instructions?.[0]?.AreaOfWork || instruction.deals?.[0]?.AreaOfWork || instruction.AreaOfWork,
               matchedFields: {
                 instruction_Email: instruction.Email?.toLowerCase() === userEmail,
                 instruction_poc: instruction.poc?.toLowerCase() === userEmail,
@@ -613,7 +638,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             });
           }
           
-          return belongsToUser;
+          return shouldInclude;
         });
         console.log('🔄 Filtered to user instructions:', {
           sourceData: sourceData.length > 0 ? 'instructionData' : 'allInstructionData',
@@ -623,7 +648,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       } else {
         result = sourceData;
       }
-      console.log(`🔄 ${isAdmin ? 'Admin' : 'User'} viewing OWN instructions (filtered)`);
+      console.log(`🔄 User viewing OWN instructions (filtered)`);
     }
     
     console.log('🔄 effectiveInstructionData updated:', {
@@ -634,8 +659,8 @@ const Instructions: React.FC<InstructionsProps> = ({
       allInstructionDataLength: allInstructionData.length,
       instructionDataLength: instructionData.length,
       resultLength: result.length,
-      usingAllData: isAdmin && showAllInstructions && allInstructionData.length > 0,
-      filteringByUser: !isAdmin || !showAllInstructions,
+      usingAllData: showAllInstructions && allInstructionData.length > 0,
+      filteringByUser: !showAllInstructions,
       sampleFilteredItems: result.slice(0, 2).map(r => ({
         prospectId: r.prospectId,
         hasInstructions: r.instructions?.length || 0,
@@ -701,7 +726,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const showDraftPivot = true; // Allow all users to see Document editor
 
   // Unified filter configuration
-  const filterOptions: TwoLayerFilterOption[] = [
+  const allFilterOptions: TwoLayerFilterOption[] = [
     {
       key: 'pitches',
       label: 'Pitches',
@@ -735,6 +760,11 @@ const Instructions: React.FC<InstructionsProps> = ({
       ]
     }
   ];
+
+  // Filter options based on environment - hide risk from production
+  const filterOptions: TwoLayerFilterOption[] = isLocalhost 
+    ? allFilterOptions 
+    : allFilterOptions.filter(option => option.key !== 'risk');
 
   // Unified filter handlers
   const handlePrimaryFilterChange = (key: string) => {
@@ -1127,6 +1157,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                     onPrimaryChange={handlePrimaryFilterChange}
                     onSecondaryChange={handleSecondaryFilterChange}
                     options={filterOptions}
+                    hideSecondaryInProduction={true}
                     style={{
                       fontSize: windowWidth < 768 ? '10px' : '11px',
                       transform: windowWidth < 768 ? 'scale(0.9)' : 'none',
@@ -1134,13 +1165,32 @@ const Instructions: React.FC<InstructionsProps> = ({
                     }}
                   />
                 </div>
+                
+                {/* Mine/All Toggle - Available to all users */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginLeft: windowWidth < 768 ? '0' : '12px',
+                  marginTop: windowWidth < 768 ? '8px' : '0'
+                }}>
+                  <ToggleSwitch
+                    id="instructions-all-users-toggle"
+                    checked={showAllInstructions}
+                    onChange={setShowAllInstructions}
+                    size="sm"
+                    onText={`All (${toggleCounts.all})`}
+                    offText={`Mine (${toggleCounts.mine})`}
+                    ariaLabel={`Toggle between my ${toggleCounts.label} and all ${toggleCounts.label}`}
+                  />
+                </div>
+
                 {/* Spacer - only on larger screens */}
                 <div style={{ 
                   flex: 1,
                   minWidth: '20px' // Ensure minimum spacing
                 }} />
-                {/* Admin controls (debug) for admin or localhost */}
-                {(isAdmin || isLocalhost) && (
+                {/* Admin controls (debug) for admin or localhost - Mine/All toggle moved to main filter bar */}
+                {isAdmin && isLocalhost && (
                   <div
                     style={{
                       display: 'flex',
@@ -1156,53 +1206,12 @@ const Instructions: React.FC<InstructionsProps> = ({
                       fontWeight: 600,
                       color: isDarkMode ? '#ffe9a3' : '#5d4700',
                       flexShrink: 0,
-                      minWidth: 'max-content' // Prevent admin controls from shrinking too much
+                      minWidth: 'max-content', // Prevent admin controls from shrinking too much
+                      visibility: 'hidden' // Hide empty admin controls but maintain layout
                     }}
-                    title="Admin / debug controls"
+                    title="Admin controls"
                   >
-                    <IconButton
-                      iconProps={{ iconName: 'Flow', style: { fontSize: 16 } }}
-                      title="Data flow workbench"
-                      ariaLabel="Open data flow workbench"
-                      onClick={() => setShowWorkbench(true)}
-                      styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
-                    />
-                    <IconButton
-                      iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                      title="Debug API calls"
-                      ariaLabel="Open data inspector"
-                      onClick={() => setShowApiDebugger(v => !v)}
-                      styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
-                    />
-                    <ToggleSwitch
-                      id="instructions-new-data-toggle"
-                      checked={useNewData}
-                      onChange={setUseNewData}
-                      size="sm"
-                      onText="New"
-                      offText="Legacy"
-                      ariaLabel="Toggle dataset between legacy and new"
-                    />
-                    <ToggleSwitch
-                      id="instructions-two-column-toggle"
-                      checked={twoColumn}
-                      onChange={setTwoColumn}
-                      size="sm"
-                      onText="2-col"
-                      offText="1-col"
-                      ariaLabel="Toggle two column layout"
-                    />
-                    {isAdmin && (
-                      <ToggleSwitch
-                        id="instructions-all-users-toggle"
-                        checked={showAllInstructions}
-                        onChange={setShowAllInstructions}
-                        size="sm"
-                        onText={`All (${toggleCounts.all})`}
-                        offText={`Mine (${toggleCounts.mine})`}
-                        ariaLabel={`Toggle between my ${toggleCounts.label} and all ${toggleCounts.label}`}
-                      />
-                    )}
+                    {/* Admin debug controls - toggle removed and moved to main filter bar */}
                   </div>
                 )}
               </div>
@@ -1226,7 +1235,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     clientsActionFilter,
     riskStatusFilter,
     secondaryFilter,
-    showApiDebugger,
   ]);
 
   const containerStyle = mergeStyles({
@@ -2305,6 +2313,9 @@ const Instructions: React.FC<InstructionsProps> = ({
       } else if (dbResult === 'passed' || dbResult === 'complete' || dbResult === 'verified') {
         verifyIdStatus = 'complete';
         console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: complete (${dbResult})`);
+      } else if (dbResult === 'failed' || dbResult === 'rejected' || dbResult === 'fail') {
+        verifyIdStatus = 'review'; // Failed results should open review modal
+        console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: review (failed status: ${dbResult})`);
       } else {
         verifyIdStatus = 'review'; // Default for unknown results
         console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: review (fallback for ${dbResult})`);
@@ -2317,11 +2328,17 @@ const Instructions: React.FC<InstructionsProps> = ({
     } else if (tillerOverallResult === 'passed') {
       verifyIdStatus = 'complete';
       console.log(`✅ Status determined from Tiller API: complete`);
+    } else if (tillerOverallResult === 'failed' || tillerOverallResult === 'rejected' || tillerOverallResult === 'fail') {
+      verifyIdStatus = 'review'; // Failed results should open review modal
+      console.log(`✅ Status determined from Tiller API: review (failed status: ${tillerOverallResult})`);
     } 
     // Priority 3: Check legacy database EID result fields
     else if (eidResult === 'review' || altEidResult === 'review') {
       verifyIdStatus = 'review';
       console.log(`✅ Status determined from legacy DB EIDResult: review (${eidResult || altEidResult})`);
+    } else if (eidResult === 'failed' || eidResult === 'rejected' || eidResult === 'fail' || altEidResult === 'failed' || altEidResult === 'rejected' || altEidResult === 'fail') {
+      verifyIdStatus = 'review'; // Failed results should open review modal  
+      console.log(`✅ Status determined from legacy DB EIDResult: review (failed status: ${eidResult || altEidResult})`);
     } else if (poidPassed || eidResult === 'passed' || altEidResult === 'passed') {
       verifyIdStatus = 'complete';
       console.log(`✅ Status determined from legacy DB EIDResult: complete (${eidResult || altEidResult})`);
@@ -2533,8 +2550,8 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const overviewGridStyle = mergeStyles({
     display: 'grid',
-    gridTemplateColumns: twoColumn ? 'repeat(auto-fit, minmax(350px, 1fr))' : '1fr',
-    gap: twoColumn ? '16px' : '8px',
+    gridTemplateColumns: '1fr',
+    gap: '8px',
     width: '100%',
     margin: '0 auto',
     boxSizing: 'border-box',
@@ -2547,7 +2564,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     '@media (max-width: 480px)': {
       gap: '8px',
     },
-  }, twoColumn && 'two-col-grid');
+  });
 
   const overviewItemStyle = mergeStyles({
     minWidth: '280px',
@@ -2791,19 +2808,6 @@ const Instructions: React.FC<InstructionsProps> = ({
         )}
       {activeTab === "pitches" && (
               <div className={overviewGridStyle} ref={overviewGridRef}>
-                {twoColumn && typeof document !== 'undefined' && !document.getElementById('instructionsTwoColStyles') && (
-                  (() => {
-                    const styleEl = document.createElement('style');
-                    styleEl.id = 'instructionsTwoColStyles';
-                    styleEl.textContent = `
-                      @media (max-width: 860px) { .two-col-grid { grid-template-columns: 1fr !important; } }
-                      @media (max-width: 768px) { .two-col-grid { gap: 12px !important; } }
-                      @media (max-width: 480px) { .two-col-grid { gap: 8px !important; } }
-                    `;
-                    document.head.appendChild(styleEl);
-                    return null;
-                  })()
-                )}
         {(() => {
           // Get deals that haven't been converted to instructions yet (pure pitches)
           const pitchedItems = overviewItems.filter(item => 
@@ -2862,6 +2866,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                           selected={false} // Simple selection for pitches
                           getClientNameByProspectId={getClientNameByProspectId}
                           onDealEdit={handleDealEdit}
+                          onRiskClick={() => handleRiskAssessment(item)}
                           onSelect={() => {
                             // TODO: Implement pitch selection logic
                             console.log('Pitch selected:', item.deal?.DealId);
@@ -2882,15 +2887,6 @@ const Instructions: React.FC<InstructionsProps> = ({
           )}
       {activeTab === "clients" && (
               <div className={overviewGridStyle} ref={overviewGridRef}>
-                {twoColumn && typeof document !== 'undefined' && !document.getElementById('instructionsTwoColStyles') && (
-                  (() => {
-                    const styleEl = document.createElement('style');
-                    styleEl.id = 'instructionsTwoColStyles';
-                    styleEl.textContent = '@media (max-width: 860px){.two-col-grid{grid-template-columns:1fr!important;}}';
-                    document.head.appendChild(styleEl);
-                    return null;
-                  })()
-                )}
         {filteredOverviewItems.filter(item => 
           // Show only items with instructions (exclude pitched deals)
           item.instruction
@@ -2921,6 +2917,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                         selected={selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
                         getClientNameByProspectId={getClientNameByProspectId}
                         onDealEdit={handleDealEdit}
+                        onRiskClick={() => handleRiskAssessment(item)}
                         onOpenMatter={handleOpenMatter}
                         onSelect={() => {
                           // Toggle selection: if already selected, unselect; otherwise select
@@ -2979,9 +2976,6 @@ const Instructions: React.FC<InstructionsProps> = ({
             />
           )}
         </div>
-        {showApiDebugger && (
-          <InstructionApiDebugger currentInstructions={instructionData} onClose={()=> setShowApiDebugger(false)} />
-        )}
         {/* Global Action Area - always visible, enhanced when instruction selected */}
         {activeTab === "clients" && !showNewMatterPage && !showRiskPage && !showEIDPage && (
           <div 
@@ -3304,12 +3298,6 @@ const Instructions: React.FC<InstructionsProps> = ({
           </button>
   </div>
       </Dialog>
-
-      {/* Data Flow Workbench Modal */}
-      <DataFlowWorkbench 
-        isOpen={showWorkbench}
-        onClose={() => setShowWorkbench(false)}
-      />
 
       {/* ID Verification Review Modal */}
       <IDVerificationReviewModal

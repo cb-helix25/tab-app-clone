@@ -35,6 +35,7 @@ const enquiriesUnifiedRouter = require('./routes/enquiries-unified');
 const verifyIdRouter = require('./routes/verify-id');
 const testDbRouter = require('./routes/test-db');
 const teamLookupRouter = require('./routes/team-lookup');
+const teamDataRouter = require('./routes/teamData');
 const pitchTeamRouter = require('./routes/pitchTeam');
 const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 const fileMapRouter = require('./routes/fileMap');
@@ -46,10 +47,6 @@ const PORT = process.env.PORT || 8080;
 
 // Initialize persistent operations log and add request logging middleware
 initOpLog();
-// Simple liveness check
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
-});
 app.use((req, res, next) => {
     const start = Date.now();
     const ctx = { type: 'http', action: `${req.method} ${req.path}`, status: 'started' };
@@ -100,6 +97,7 @@ app.use('/api/instructions', instructionsRouter);
 app.use('/api/verify-id', verifyIdRouter);
 app.use('/api/test-db', testDbRouter);
 app.use('/api/team-lookup', teamLookupRouter);
+app.use('/api/team-data', teamDataRouter);
 app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api/file-map', fileMapRouter);
 app.use('/ccls', express.static(CCL_DIR));
@@ -143,6 +141,7 @@ console.log('  ✅ /api/pitches');
 console.log('  🆕 /api/instructions (UNIFIED ENDPOINT)');
 console.log('  🆕 /api/verify-id (ID VERIFICATION)');
 console.log('  🆕 /api/team-lookup (TEAM EMAIL LOOKUP)');
+console.log('  🆕 /api/team-data (TEAM DATA)');
 console.log('  🆕 /api/pitch-team (PITCH TEAM DATA)');
 console.log('  🆕 /api/file-map (REPO FILE MAP)');
 

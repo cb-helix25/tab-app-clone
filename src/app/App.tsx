@@ -285,24 +285,19 @@ const App: React.FC<AppProps> = ({
         }));
         
         setInstructionData(instructionsWithIdVerifications);
-        if (isAdmin) {
-          setAllInstructionData(instructionsWithIdVerifications); // Admin gets all local data
-        }
+        // Populate allInstructionData for all users to support Mine/All toggle
+        setAllInstructionData(instructionsWithIdVerifications);
         return;
       }
 
       try {
 
         
-        // Call our new unified server endpoint
-        const params = new URLSearchParams();
-        if (!isAdmin) {
-          params.append('initials', targetInitials);
-        } else {
-          params.append('includeAll', 'true');
-        }
-        
-        const url = `/api/instructions?${params.toString()}`;
+  // Call unified server endpoint - always request all data for Mine/All toggle.
+  // Do NOT send initials here to avoid server-side filtering which breaks the All toggle.
+  const params = new URLSearchParams();
+  params.append('includeAll', 'true');
+  const url = `/api/instructions?${params.toString()}`;
 
         
         const res = await fetch(url);
@@ -373,8 +368,24 @@ const App: React.FC<AppProps> = ({
           }
         });
 
-        // Set the data - now properly structured!
-        setInstructionData(transformedData);
+        // Filter user-specific instructions for the main instructionData
+        const userFilteredData = transformedData.filter(item => {
+          // For real instructions, check if user is assigned
+          if (item.instructions.length > 0) {
+            return item.instructions.some((inst: any) => 
+              inst.HelixContact === targetInitials || 
+              inst.assignedTo === targetInitials
+            );
+          }
+          // For pitched deals, check the assignee or POC
+          return item.deals.some((deal: any) => 
+            deal.assignedTo === targetInitials || 
+            deal.poc === targetInitials
+          );
+        });
+
+        // Set filtered data for the user's personal view
+        setInstructionData(userFilteredData);
         
         // Debug: Check what was actually set
 
@@ -388,9 +399,8 @@ const App: React.FC<AppProps> = ({
         );
 
         
-        if (isAdmin) {
-          setAllInstructionData(transformedData);
-        }
+        // Populate allInstructionData for all users to support Mine/All toggle
+        setAllInstructionData(transformedData);
         
 
 
@@ -409,9 +419,8 @@ const App: React.FC<AppProps> = ({
               const data = await res.json();
               const all = Array.isArray(data) ? data : [data];
               
-              if (isAdmin) {
-                setAllInstructionData(all);
-              }
+              // Populate allInstructionData for all users to support Mine/All toggle
+              setAllInstructionData(all);
               
               const filtered = all.reduce<InstructionData[]>((acc, prospect) => {
                 const instructions = (prospect.instructions ?? []).filter(
@@ -461,6 +470,12 @@ const App: React.FC<AppProps> = ({
     const showInstructionsTab = hasInstructionsAccess(currentUser);
     const showReportsTab = isAdmin;
 
+    // Call Hub visibility logic - show in localhost OR for specific users in production
+    const CALL_HUB_USERS = ['CB', 'LZ'] as const;  // replace with actual initials
+    const showCallHub =
+      isLocalhost ||
+      CALL_HUB_USERS.includes(currentUser?.Initials?.toUpperCase() as any);
+
     // Debug logging for tab permissions
 
 
@@ -471,7 +486,7 @@ const App: React.FC<AppProps> = ({
       { key: 'forms', text: 'Forms', disabled: true }, // Disabled tab that triggers modal
       { key: 'resources', text: 'Resources', disabled: true }, // Disabled tab that triggers modal
       ...(showReportsTab ? [{ key: 'reporting', text: 'Reports' }] : []),
-      ...(isLocalhost ? [{ key: 'callhub', text: 'Call Hub' }] : []), // Call Hub available to all users on localhost
+      ...(showCallHub ? [{ key: 'callhub', text: 'Call Hub' }] : []),
     ];
   }, [userData]);
 

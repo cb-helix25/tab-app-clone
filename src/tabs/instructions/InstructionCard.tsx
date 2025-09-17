@@ -4,7 +4,7 @@ import { mergeStyles } from '@fluentui/react';
 import { TextField, DefaultButton, PrimaryButton } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
-import { 
+import {
   FaUser, 
   FaUsers, 
   FaFileAlt, 
@@ -36,6 +36,10 @@ import {
 } from 'react-icons/fa';
 
 // Move interface to separate file
+/**
+ * Compact instruction card with clear information hierarchy for legibility.
+ * TODO(ac): Narrow any-based shapes to precise interfaces where feasible.
+ */
 export interface InstructionCardProps {
   instruction: any | null;
   index: number;
@@ -71,6 +75,8 @@ export interface InstructionCardProps {
   onClick?: () => void;
   onProofOfIdClick?: () => void;
   onEIDClick?: () => void;
+  /** Invoked to start the Risk Assessment flow when none exists yet */
+  onRiskClick?: () => void;
   onOpenMatter?: (instruction: any) => void;
   idVerificationLoading?: boolean;
   animationDelay?: number;
@@ -170,6 +176,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   style,
   onClick,
   onEIDClick,
+  onRiskClick,
   onOpenMatter,
   idVerificationLoading = false,
   animationDelay = 0,
@@ -237,7 +244,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       setIsSavingDeal(false);
     }
   };
-  // Inject keyframes once for pulse effect
+  // Inject keyframes once for micro animations
   React.useEffect(() => {
     if (typeof document !== 'undefined' && !document.getElementById('instructioncard-pulse')) {
       const styleTag = document.createElement('style');
@@ -261,10 +268,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             opacity: 1;
             transform: translateX(-50%) scale(1);
           }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
         }
         @keyframes fadeIn {
           0% {
@@ -296,6 +299,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     // If stage shows proof-of-id-complete, check the actual EID result
     if (eidResult === 'review') {
       verifyIdStatus = 'review';
+    } else if (eidResult === 'failed' || eidResult === 'rejected' || eidResult === 'fail') {
+      verifyIdStatus = 'review'; // Failed results should be treated as review needed
     } else if (poidPassed || eidResult === 'passed') {
       verifyIdStatus = 'complete';  
     } else {
@@ -350,6 +355,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   const riskStatus = riskResultRaw
     ? ['low', 'low risk', 'pass', 'approved'].includes(riskResultRaw) ? 'complete' : 'review'
     : 'pending';
+  // A pill is considered to have an assessment only if key fields exist
+  const hasRiskAssessment = Boolean(
+    risk && (risk.RiskAssessmentResult || risk.RiskScore || risk.ComplianceDate || risk.RiskAssessor)
+  );
 
   // Matter status - check if matter exists
   const matterStatus = (instruction?.MatterId || (instruction as any)?.matters?.length > 0) ? 'complete' : 'pending';
@@ -358,7 +367,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   const cclStatus = instruction?.CCLSubmitted ? 'complete' : 'pending';
 
   // New pre-ID step: Instruction/Pitch capture (integrated from pitches). Complete if a deal/service exists.
-  const hasDeal = !!(deal && (deal.ServiceDescription || typeof deal.Amount === 'number'));
+  const hasDeal = !!(deal);
   const instructionCaptureStatus = hasDeal ? 'complete' : 'pending';
 
   // Pitch date formatting (used for timeline status & detail)
@@ -454,7 +463,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     }
     // Pitched = deal exists (pitch sent)
     else if (hasDeal) {
-      return { key: 'pitched', label: 'Pitched', icon: <FaEnvelope />, colour: colours.greyText };
+      const label = pitchWhen ? `Pitched ${pitchWhen}` : 'Pitched';
+      return { key: 'pitched', label, icon: <FaEnvelope />, colour: colours.greyText };
     }
     // Default state
     else {
@@ -497,77 +507,32 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
   // Do not auto-open details; only highlight nextActionStep via pulse.
 
-  // Adopt enquiry card design language
-  const svgMark = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" preserveAspectRatio="xMidYMid meet"><g fill="currentColor" opacity="0.22"><path d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/></g></svg>');
-  // Visual styling - slightly different for pitched deals
-  const bgColorToken = isPitchedDeal 
-    ? (isDarkMode ? '#1a1f29' : '#fafbfc') // Slightly more muted background for pitched deals
-    : (isDarkMode ? '#1f2732' : '#ffffff');
-    
-  const markColor = isPitchedDeal
-    ? (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(6,23,51,0.06)') // More subtle mark for pitched deals
-    : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(6,23,51,0.11)');
-  
+  // Visual styling – simplified, gradient background for legibility
+  const bgGradientLight = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+  const bgGradientDark = 'linear-gradient(135deg, #151a22 0%, #11161d 100%)';
   const cardClass = mergeStyles({
     position: 'relative',
     borderRadius: 5,
-    padding: (nextActionDetails || isPitchedDeal) ? '10px 18px' : '10px 18px',
-    background: `${bgColorToken}`,
-    // Subtle visual differences for pitched deals
-    opacity: isPitchedDeal ? 0.92 : 1,
+    padding: '10px 16px',
+    background: isDarkMode ? bgGradientDark : bgGradientLight,
+    opacity: 1,
     // Responsive padding
     '@media (max-width: 768px)': {
-      padding: (nextActionDetails || isPitchedDeal) ? '8px 14px' : '8px 14px',
+      padding: '8px 12px',
     },
     '@media (max-width: 480px)': {
-      padding: (nextActionDetails || isPitchedDeal) ? '6px 12px' : '6px 12px',
+      padding: '6px 10px',
       borderRadius: 4,
     },
-    '::after': {
-      content: '""',
-      position: 'absolute',
-      top: 10,
-      bottom: 10,
-      right: 12,
-      width: 160,
-      background: markColor,
-      maskImage: `url("data:image/svg+xml,${svgMark}")`,
-      WebkitMaskImage: `url("data:image/svg+xml,${svgMark}")`,
-      maskRepeat: 'no-repeat',
-      WebkitMaskRepeat: 'no-repeat',
-      maskPosition: 'center',
-      WebkitMaskPosition: 'center',
-      maskSize: 'contain',
-      WebkitMaskSize: 'contain',
-      opacity: 1,
-      mixBlendMode: isDarkMode ? 'screen' : 'multiply',
-      pointerEvents: 'none',
-      transition: 'opacity .3s',
-      filter: 'blur(.15px)',
-      // Responsive watermark
-      '@media (max-width: 768px)': {
-        width: 120,
-        right: 8,
-      },
-      '@media (max-width: 480px)': {
-        width: 100,
-        right: 6,
-        top: 6,
-        bottom: 6,
-      },
-      zIndex: 0,
-    },
-    border: `1px solid ${selected || clickedForActions ? colours.blue : 
-      isPitchedDeal ? (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)') :
-      (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
+    border: `1px solid ${selected || clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
     boxShadow: isDarkMode
-      ? '0 4px 16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04)'
-      : '0 4px 14px rgba(33,56,82,0.10)',
+      ? '0 4px 6px rgba(0, 0, 0, 0.3)'
+      : '0 4px 6px rgba(0, 0, 0, 0.07)',
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
     fontFamily: 'Raleway, sans-serif',
-    cursor: (nextActionDetails || isPitchedDeal) ? 'pointer' : 'pointer',
+    cursor: 'pointer',
     transition: 'border-color .2s, transform .15s, box-shadow .3s',
     marginBottom: 4,
     overflow: 'hidden',
@@ -576,19 +541,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     borderLeftColor: areaColor,
     selectors: {
       ':hover': {
-        transform: nextActionDetails ? 'translateY(-3px)' : 'translateY(-2px)', 
+        transform: 'translateY(-1px)', 
         borderColor: selected ? colours.blue : colours.highlight,
-        boxShadow: nextActionDetails 
-          ? (isDarkMode
-              ? '0 8px 25px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(54, 144, 206, 0.2)'
-              : '0 8px 25px rgba(54, 144, 206, 0.15)')
-          : (isDarkMode
-              ? '0 4px 16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04)'
-              : '0 4px 14px rgba(33,56,82,0.10)')
+        boxShadow: isDarkMode ? '0 6px 10px rgba(0,0,0,0.45)' : '0 8px 16px rgba(33,56,82,0.12)'
       },
-      ':active': {
-        transform: nextActionDetails ? 'translateY(-1px)' : 'translateY(-1px)'
-      },
+      ':active': { transform: 'translateY(0)' },
+      ':focus-within': { outline: '2px solid ' + colours.blue, outlineOffset: '2px' },
     },
   });
 
@@ -624,16 +582,31 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     }
   };
 
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardClick((e as unknown) as React.MouseEvent);
+    }
+  };
+
   return (
-    <div className={cardClass} style={style_} onClick={handleCardClick} ref={innerRef}
-      onMouseEnter={() => { setIsHovered(true); setShowDetails(true); }} 
-      onMouseLeave={() => { setIsHovered(false); if (!selected && !clickedForActions) setShowDetails(false); }}>
+    <div
+      className={cardClass}
+      style={style_}
+      onClick={handleCardClick}
+      onKeyDown={handleKey}
+      role="button"
+      tabIndex={0}
+      ref={innerRef}
+      onMouseEnter={() => { setIsHovered(true); setShowDetails(true); }}
+      onMouseLeave={() => { setIsHovered(false); if (!selected && !clickedForActions) setShowDetails(false); }}
+    >
       {/* Left accent bar */}
       <span style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, background: areaColor, opacity: .95, pointerEvents: 'none' }} />
       
-      {/* Name + ID inline */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, paddingLeft: 0 }}>
-        <span style={{ fontWeight: 600, color: isDarkMode ? '#fff' : '#0d2538', lineHeight: 1.2, fontSize: '15px' }}>
+      {/* Header: Primary identifier + area chip */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, paddingLeft: 0, justifyContent: 'space-between' }}>
+        <span style={{ fontWeight: 700, color: isDarkMode ? '#fff' : '#0d2538', lineHeight: 1.2, fontSize: '15px' }}>
           {(() => {
             // First try to get client name from enquiries data lookup
             if (getClientNameByProspectId && prospectId) {
@@ -676,15 +649,36 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             return `Client ${prospectId}`;
           })()}
         </span>
+        {areaOfWork && (
+          <span
+            style={{
+              marginLeft: 'auto',
+              padding: '4px 8px',
+              borderRadius: 12,
+              fontSize: 10,
+              fontWeight: 700,
+              color: areaColor,
+              border: `1px solid ${areaColor}`,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {areaOfWork}
+          </span>
+        )}
         
-        {/* Subtle contact info with values */}
-        <div style={{ 
+      </div>
+
+      {/* Meta: contact (chips) */}
+      <div style={{ 
           display: 'flex', 
-          gap: '12px', 
+          gap: '8px', 
           alignItems: 'center',
-          opacity: isHovered ? 1 : 0.7,
-          transition: 'opacity 0.3s ease',
-          marginTop: '4px'
+          opacity: 0.85,
+          transition: 'opacity 0.2s ease',
+          marginTop: 4,
+          flexWrap: 'wrap'
         }}>
           {(() => {
             const email = instruction?.Email || instruction?.email || (deal as any)?.LeadClientEmail || (instruction as any)?.LeadClientEmail;
@@ -695,42 +689,33 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 {email && (
                   <div
                     style={{
-                      color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+                      color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
                       fontSize: '11px',
                       cursor: 'pointer',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
+                      padding: '3px 8px',
+                      borderRadius: '12px',
                       transition: 'all 0.2s ease',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
+                      gap: '6px',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
                       navigator.clipboard.writeText(email);
-                      // Brief visual feedback
-                      e.currentTarget.style.backgroundColor = colours.blue;
-                      e.currentTarget.style.color = '#fff';
-                      setTimeout(() => {
-                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-                        e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
-                      }, 200);
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = colours.blue;
-                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
                       e.currentTarget.style.borderColor = colours.blue;
+                      e.currentTarget.style.color = colours.blue;
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
-                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-                      e.currentTarget.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+                      e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+                      e.currentTarget.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
                     }}
                     title={`Click to copy: ${email}`}
                   >
-                    <FaEnvelope style={{ fontSize: '9px' }} />
+                    <FaEnvelope style={{ fontSize: '10px' }} />
                     <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>
                       {email.length > 20 ? `${email.substring(0, 17)}...` : email}
                     </span>
@@ -739,42 +724,33 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 {phone && (
                   <div
                     style={{
-                      color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+                      color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
                       fontSize: '11px',
                       cursor: 'pointer',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
+                      padding: '3px 8px',
+                      borderRadius: '12px',
                       transition: 'all 0.2s ease',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
+                      gap: '6px',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
                       navigator.clipboard.writeText(phone);
-                      // Brief visual feedback
-                      e.currentTarget.style.backgroundColor = colours.blue;
-                      e.currentTarget.style.color = '#fff';
-                      setTimeout(() => {
-                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-                        e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
-                      }, 200);
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = colours.blue;
-                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
                       e.currentTarget.style.borderColor = colours.blue;
+                      e.currentTarget.style.color = colours.blue;
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
-                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-                      e.currentTarget.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+                      e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+                      e.currentTarget.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
                     }}
                     title={`Click to copy: ${phone}`}
                   >
-                    <FaPhone style={{ fontSize: '9px' }} />
+                    <FaPhone style={{ fontSize: '10px' }} />
                     <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>
                       {phone}
                     </span>
@@ -783,80 +759,29 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               </>
             );
           })()}
-        </div>
-        
-        <div style={{ fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9', fontWeight: 500, letterSpacing: 0.5, fontFamily: 'Consolas, Monaco, monospace', padding: '1px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
-          {deal ? (
-            <>
-              {/* For instruction cards - no labels, just values with copy */}
-              {!isPitchedDeal && (
-                <>
-                  {prospectId && (
-                    <span 
-                      style={{ 
-                        cursor: 'pointer',
-                        padding: '2px 4px',
-                        borderRadius: '3px',
-                        transition: 'all 0.2s ease',
-                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(prospectId.toString());
-                        // Brief visual feedback
-                        e.currentTarget.style.backgroundColor = colours.blue;
-                        e.currentTarget.style.color = '#fff';
-                        setTimeout(() => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-                          e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9';
-                        }, 200);
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = colours.blue;
-                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-                        e.currentTarget.style.borderColor = colours.blue;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = isDarkMode ? 'rgba(255,255,255,0.45)' : '#b0b8c9';
-                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-                        e.currentTarget.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-                      }}
-                      title={`Click to copy prospect ID: ${prospectId}`}
-                    >
-                      {prospectId}
-                    </span>
-                  )}
-                </>
-              )}
-              {/* For pitched cards - keep deal label */}
-              {isPitchedDeal && (
-                prospectId ? `Deal: ${deal.DealId} | ${prospectId}` : `Deal: ${deal.DealId}`
-              )}
-            </>
-          ) : (
-            `ID ${instruction?.InstructionRef || instruction?.instructionRef || instruction?.ref || instruction?.Ref || 'No Reference'}`
-          )}
-          {areaOfWork && (
-            <>
-              <span style={{ 
-                width: 2, 
-                height: 2, 
-                borderRadius: '50%', 
-                background: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'
-              }} />
-              <span style={{ 
-                color: areaColor, 
-                fontWeight: 600, 
-                fontSize: 10,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                {areaOfWork}
-              </span>
-            </>
-          )}
-        </div>
+      </div>
+
+      {/* Secondary meta: reference and prospect id */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.55)' : '#6b7a90', fontFamily: 'Consolas, Monaco, monospace' }}>
+          ID {instruction?.InstructionRef || instruction?.instructionRef || instruction?.ref || instruction?.Ref || '—'}
+        </span>
+        {prospectId && (
+          <span
+            title={`Click to copy prospect ID: ${prospectId}`}
+            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(String(prospectId)); }}
+            style={{
+              cursor: 'pointer',
+              fontSize: 11,
+              color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+              padding: '2px 6px',
+              borderRadius: 10,
+              border: `1px dashed ${isDarkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)'}`
+            }}
+          >
+            Prospect {prospectId}
+          </span>
+        )}
       </div>
 
       {/* Company & Contact details */}
@@ -884,15 +809,15 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         })()}
       </div>
 
-      {/* Deal Information Box - Service Description and Amount */}
+      {/* Deal summary: service + amount (clamped) */}
       {hasDeal && (
         <div style={{
-          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
-          borderRadius: '3px',
-          padding: window.innerWidth <= 480 ? '6px 10px' : '8px 14px',
-          marginTop: window.innerWidth <= 480 ? '4px' : '6px',
-          marginBottom: window.innerWidth <= 480 ? '1px' : '2px'
+          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+          borderRadius: 6,
+          padding: '8px 12px',
+          marginTop: 6,
+          marginBottom: 2
         }}>
           {isEditingDeal ? (
             /* Edit mode */
@@ -977,46 +902,47 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: '12px',
-              flexWrap: window.innerWidth <= 480 ? 'wrap' : 'nowrap'
+              flexWrap: 'wrap'
             }}>
               <div style={{
-                fontSize: '11px',
+                fontSize: 12,
                 fontWeight: 500,
                 color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)',
                 lineHeight: 1.2,
                 flex: 1,
-                minWidth: window.innerWidth <= 480 ? '100%' : 'auto',
-                marginBottom: window.innerWidth <= 480 ? '4px' : '0'
+                minWidth: '200px',
+                marginBottom: 0,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical' as any,
+                overflow: 'hidden',
+                fontStyle: !deal?.ServiceDescription ? 'italic' : 'normal',
+                opacity: !deal?.ServiceDescription ? 0.7 : 1
               }}>
-                {deal?.ServiceDescription || 'Legal Service'}
+                {deal?.ServiceDescription || 'No service description'}
               </div>
-              {typeof deal?.Amount === 'number' && (
-                <div style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                  fontFamily: 'Raleway, sans-serif',
-                  textAlign: 'right',
-                  whiteSpace: 'nowrap'
-                }}>
-                  £{deal.Amount.toLocaleString()}
-                </div>
-              )}
+              <div style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                fontFamily: 'Raleway, sans-serif',
+                textAlign: 'right',
+                whiteSpace: 'nowrap',
+                fontStyle: typeof deal?.Amount !== 'number' ? 'italic' : 'normal',
+                opacity: typeof deal?.Amount !== 'number' ? 0.7 : 1
+              }}>
+                {typeof deal?.Amount === 'number' ? `£${deal.Amount.toLocaleString()}` : 'No amount set'}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Timeline bubbles (cascade) */}
+      {/* Progress rail: compact, minimal labels */}
       <div style={{ 
         display: 'flex', 
         flexDirection: 'column', 
-        marginTop: 6, 
-        transition: 'max-height 0.25s ease-out, padding 0.25s ease-out', 
-        maxHeight: (showDetails || selected || !isPitchedDeal) ? 120 : 0, 
-        paddingTop: (showDetails || selected || !isPitchedDeal) ? 4 : 0, 
-        paddingBottom: (showDetails || selected || !isPitchedDeal) ? 8 : 0, 
-        overflow: 'hidden' 
+        marginTop: 6
       }}>
         <div style={{ 
           display: 'flex', 
@@ -1024,7 +950,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           justifyContent: 'space-between',
           gap: 8 
         }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
             {(isPitchedDeal ? 
               // Pitch-specific workflow
               [
@@ -1034,11 +960,49 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               // Standard instruction workflow
               [
                 pitchStage,
-                { key:'payment', label: paymentStatus === 'complete' ? 'Paid' : (paymentStatus === 'processing' ? 'Processing' : 'Pay'), icon:<FaPoundSign />, colour: paymentStatus === 'complete' ? colours.green : (paymentStatus === 'processing' ? colours.yellow : (nextActionStep === 'payment' ? colours.blue : colours.greyText)) },
-                { key:'documents', label:'Docs', icon:<FaFileAlt />, colour: documentStatus === 'complete' ? colours.green : documentStatus === 'neutral' ? colours.greyText : (nextActionStep === 'documents' ? colours.blue : colours.greyText) },
-                { key:'id', label: idVerificationLoading ? 'Verifying...' : 'ID', icon: idVerificationLoading ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> : <FaIdCard />, colour: idVerificationLoading ? colours.orange : (verifyIdStatus === 'complete' ? colours.green : verifyIdStatus === 'review' ? colours.red : (nextActionStep === 'id' ? colours.blue : colours.greyText)) },
-                { key:'risk', label:'Risk', icon:<FaShieldAlt />, colour: riskStatus === 'complete' ? colours.green : (nextActionStep === 'risk' ? colours.blue : (riskStatus === 'review' ? colours.red : colours.greyText)) },
-                { key:'matter', label:'Matter', icon:<FaFolder />, colour: matterStatus === 'complete' ? colours.green : (nextActionStep === 'matter' ? colours.blue : colours.greyText) },
+                { 
+                  key:'payment', 
+                  label: paymentStatus === 'complete' ? 
+                    (payments && payments.length > 0 ? 
+                      `Paid £${payments.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(0)}` : 'Paid'
+                    ) : 
+                    (paymentStatus === 'processing' ? 'Processing' : 'Pay'), 
+                  icon:<FaPoundSign />, 
+                  colour: paymentStatus === 'complete' ? colours.green : (paymentStatus === 'processing' ? colours.yellow : (nextActionStep === 'payment' ? colours.blue : colours.greyText)) 
+                },
+                { 
+                  key:'documents', 
+                  label: documents && documents.length > 0 ? 
+                    `Docs (${documents.length})` : 'Docs', 
+                  icon:<FaFileAlt />, 
+                  colour: documentStatus === 'complete' ? colours.green : documentStatus === 'neutral' ? colours.greyText : (nextActionStep === 'documents' ? colours.blue : colours.greyText) 
+                },
+                { 
+                  key:'id', 
+                  label: idVerificationLoading ? 'Verifying...' : 
+                    (verifyIdStatus === 'complete' ? 
+                      (eidResult ? `ID: ${eidResult}` : 'ID ✓') : 
+                     verifyIdStatus === 'review' ? 'ID Review' : 'ID'), 
+                  icon: idVerificationLoading ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> : <FaIdCard />, 
+                  colour: idVerificationLoading ? colours.orange : (verifyIdStatus === 'complete' ? colours.green : verifyIdStatus === 'review' ? colours.red : (nextActionStep === 'id' ? colours.blue : colours.greyText)) 
+                },
+                { 
+                  key:'risk', 
+                  label: riskStatus === 'complete' ? 
+                    (risk?.RiskAssessmentResult ? 
+                      `Risk: ${risk.RiskAssessmentResult}` : 'Risk ✓'
+                    ) : 
+                    (riskStatus === 'review' ? 'Risk Review' : 'Risk'), 
+                  icon:<FaShieldAlt />, 
+                  colour: riskStatus === 'complete' ? colours.green : (nextActionStep === 'risk' ? colours.blue : (riskStatus === 'review' ? colours.red : colours.greyText)) 
+                },
+                { 
+                  key:'matter', 
+                  label: matterStatus === 'complete' ? 'Matter ✓' : 
+                    (instruction?.MatterId ? `Matter ${instruction.MatterId}` : 'Matter'), 
+                  icon:<FaFolder />, 
+                  colour: matterStatus === 'complete' ? colours.green : (nextActionStep === 'matter' ? colours.blue : colours.greyText) 
+                },
                 // CCL - only show in development environment
                 ...(process.env.NODE_ENV === 'development' ? [
                   { 
@@ -1067,7 +1031,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             ).map((step, idx) => {
               const isComplete = step.colour === colours.green;
               const isDisabled = (step as any).disabled; // Check if step is disabled
-              const delay = (showDetails || selected || !isPitchedDeal) ? idx * 40 : (7 - 1 - idx) * 35;
+              const delay = idx * 30;
               return (
                 <button
                   key={step.key}
@@ -1079,11 +1043,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     if(!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) {
                       if (step.key === 'id' && onEIDClick) {
                         onEIDClick();
-                      } else if (step.key === nextActionStep) {
-                        // For active/next action step, trigger the action (not details)
-                        setActiveStep(prev => prev === step.key ? '' : step.key);
                       } else if (step.key === 'risk') {
-                        setShowRiskDetails(prev => !prev);
+                        if (hasRiskAssessment) {
+                          setShowRiskDetails(prev => !prev);
+                        } else if (onRiskClick) {
+                          onRiskClick();
+                        } else {
+                          setShowRiskDetails(true);
+                        }
                       } else if (step.key === 'payment') {
                         setShowPaymentDetails(prev => !prev);
                       } else if (step.key === 'documents') {
@@ -1096,6 +1063,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                           // Fallback to showing matter details
                           setShowMatterDetails(prev => !prev);
                         }
+                      } else if (step.key === nextActionStep) {
+                        // Generic next action (non-specific)
+                        setActiveStep(prev => prev === step.key ? '' : step.key);
                       } else {
                         // Other pills - if it's for a pitched deal, make it clickable
                         if (isPitchedDeal) {
@@ -1105,32 +1075,32 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     }
                   }}
                   className={mergeStyles({
-                    background: step.key === nextActionStep ? step.colour : 'transparent',
+                    background: step.key === nextActionStep ? step.colour : (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
                     color: step.key === nextActionStep ? '#fff' : step.colour,
-                    border: `1.5px solid ${step.colour}`,
-                    padding: '6px 14px',
-                    borderRadius: 20,
-                    fontSize: 11,
-                    fontWeight: 600,
+                    border: `1px solid ${step.colour}`,
+                    padding: '5px 10px',
+                    borderRadius: 16,
+                    fontSize: 10,
+                    fontWeight: 700,
                     cursor: (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? 'pointer' : 'default',
-                    opacity: isDisabled ? 0.3 : ((showDetails || selected || clickedForActions || !isPitchedDeal) ? 1 : 0), // Grey out disabled steps
-                    transform: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 'translateY(0) scale(1)' : 'translateY(2px) scale(.98)',
-                    transition: 'opacity .3s ease-out, transform .3s ease-out, background .2s, color .2s, border .2s',
+                    opacity: isDisabled ? 0.35 : 1,
+                    transform: 'translateY(0) scale(1)',
+                    transition: 'opacity .2s ease-out, transform .2s ease-out, background .2s, color .2s, border .2s',
                     transitionDelay: `${delay}ms`,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 6,
                     selectors: {
-                      ':hover': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? { 
-                      background: colours.blue, 
-                      borderColor: colours.blue,
-                      color: '#fff'
-                    } : {},
-                    ':active': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? { 
-                      background: colours.blue, 
-                      color: '#fff',
-                      transform: 'scale(0.95)' 
-                    } : {},
+                      ':hover': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? {
+                        background: colours.blue,
+                        borderColor: colours.blue,
+                        color: '#fff'
+                      } : {},
+                      ':active': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter')) ? {
+                        background: colours.blue,
+                        color: '#fff',
+                        transform: 'scale(0.96)'
+                      } : {},
                   },
                 })}
               >
@@ -1147,20 +1117,19 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               onClick={(e) => { e.stopPropagation(); handleEditDealClick(); }}
               className={mergeStyles({
                 background: 'transparent',
-                border: `1.5px solid ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}`,
-                color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
-                padding: '6px 14px',
-                borderRadius: 20,
-                fontSize: 11,
-                fontWeight: 600,
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)'}`,
+                color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                padding: '5px 10px',
+                borderRadius: 16,
+                fontSize: 10,
+                fontWeight: 700,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
-                opacity: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 1 : 0,
-                transform: (showDetails || selected || clickedForActions || !isPitchedDeal) ? 'translateY(0) scale(1)' : 'translateY(2px) scale(.98)',
-                transition: 'opacity .3s ease-out, transform .3s ease-out, background .2s, color .2s, border .2s',
-                transitionDelay: '320ms', // Appear after pills
+                gap: 6,
+                opacity: 1,
+                transform: 'translateY(0) scale(1)',
+                transition: 'background .2s, color .2s, border .2s',
                 selectors: {
                   ':hover': {
                     background: colours.blue,
@@ -1168,7 +1137,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     color: '#fff'
                   },
                   ':active': {
-                    transform: 'scale(0.95)'
+                    transform: 'scale(0.96)'
                   }
                 }
               })}
@@ -1180,14 +1149,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           
           </div>
           
-          {/* Next Action Arrow - aligned on same row as timeline bubbles */}
+          {/* Next Action CTA */}
           {(nextActionDetails || isPitchedDeal) && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              opacity: isPitchedDeal ? 0.4 : (isHovered ? 1 : 0.6), // Grey out pitched deals
+              opacity: isPitchedDeal ? 0.4 : 1,
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              cursor: isPitchedDeal ? 'not-allowed' : ((nextActionDetails || isPitchedDeal) ? 'pointer' : 'default'), // Disable cursor for pitched deals
+              cursor: isPitchedDeal ? 'not-allowed' : 'pointer',
               flexShrink: 0,
               pointerEvents: isPitchedDeal ? 'none' : 'auto' // Disable click for pitched deals
             }}
@@ -1213,7 +1182,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   gap: 2
                 }}>
                   <span style={{
-                    fontSize: '11px',
+                    fontSize: 10,
                     fontWeight: 600,
                     color: colours.blue,
                     textTransform: 'uppercase',
@@ -1223,8 +1192,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     Next Action
                   </span>
                   <span style={{
-                    fontSize: '12px',
-                    fontWeight: 500,
+                    fontSize: 12,
+                    fontWeight: 600,
                     color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
                     lineHeight: 1,
                     textAlign: 'right'
@@ -1258,7 +1227,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       {/* Contact banner removed per request; details now inline in header */}
       
       {/* Risk Details Section - shown when risk pill is clicked */}
-      {showRiskDetails && risk && (
+      {showRiskDetails && hasRiskAssessment && (
         <div style={{
           marginTop: '12px',
           padding: '16px',
@@ -1580,6 +1549,27 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         </div>
       )}
 
+      {showRiskDetails && !hasRiskAssessment && (
+        <div style={{
+          marginTop: '12px',
+          padding: '16px',
+          background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(54,144,206,0.05)',
+          borderRadius: '8px',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(54,144,206,0.15)'}`,
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <FaShieldAlt style={{ color: colours.blue, fontSize: 16 }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: isDarkMode ? '#fff' : colours.darkBlue }}>
+              Risk Assessment
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }}>
+            No assessment found. {`Click the Risk pill to ${onRiskClick ? 'start the assessment' : 'add an assessment'}.`}
+          </div>
+        </div>
+      )}
+
       {/* Matter Details Section - shown when matter pill is clicked */}
       {showMatterDetails && (instruction?.MatterId || (instruction as any)?.matters?.length > 0) && (
         <div style={{
@@ -1649,4 +1639,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   );
 };
 
+/**
+ * InstructionCard
+ * Presents instruction summary with compact, legible hierarchy and a progress rail.
+ */
 export default InstructionCard;

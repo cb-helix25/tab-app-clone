@@ -151,6 +151,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const teamMemberOptions = useMemo(() => {
         const activeTeam = teamData || localTeamData;
         const options = activeTeam
+            .filter((member: any) => 
+                member.status && member.status.toLowerCase() === 'active'
+            )
             .map((member: any) =>
                 member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
             )
@@ -162,7 +165,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const partnerAndSolicitorOptions = useMemo(() => {
         const activeTeam = teamData || localTeamData;
         return activeTeam
-            .filter((member: any) =>
+            .filter((member: any) => 
+                member.status && member.status.toLowerCase() === 'active' &&
                 ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
             )
             .map((member: any) =>
@@ -191,7 +195,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const supervisingPartnerOptions = useMemo(() => {
         const activeTeam = teamData || localTeamData;
         return activeTeam
-            .filter((member: any) => member.Role === 'Partner')
+            .filter((member: any) => 
+                member.status && member.status.toLowerCase() === 'active' &&
+                member.Role === 'Partner')
             .map((member: any) =>
                 member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
             )
@@ -202,6 +208,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
         const activeTeam = teamData || localTeamData;
         return activeTeam
             .filter((member: any) =>
+                member.status && member.status.toLowerCase() === 'active' &&
                 ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
             )
             .map((member: any) =>
@@ -464,7 +471,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         isDateCalloutOpen={isDateCalloutOpen}
                         setIsDateCalloutOpen={setIsDateCalloutOpen}
                         dateButtonRef={dateButtonRef}
-                        partnerOptions={partnerAndSolicitorOptions}
+                        partnerOptions={supervisingPartnerOptions}
+                        solicitorOptions={partnerAndSolicitorOptions}
                         requestingUser={requestingUserNickname}
                         requestingUserClioId={requestingUserClioId}
                         onContinue={() =>
@@ -524,6 +532,38 @@ const NewMatters: React.FC<NewMattersProps> = ({
                     <DescriptionStep
                         description={description}
                         setDescription={setDescription}
+                        matterRefPreview={(() => {
+                            // Prefer a selected POID; fallback to an active one; lastly any available POID
+                            const selected = selectedPoidIds[0];
+                            const poid = (selected
+                                ? effectivePoidData.find(p => p.poid_id === selected)
+                                : (activePoid || effectivePoidData[0])) as POID | undefined;
+                            if (!poid) {
+                                const type = pendingClientType || 'Individual';
+                                let base = '';
+                                if (type === 'Multiple Individuals') {
+                                    base = (clientAsOnFile || '').toUpperCase();
+                                    const digits = Math.floor(10000 + Math.random() * 90000);
+                                    return (base.slice(0, 5).padEnd(5, 'X') || 'HLXXX') + digits + '-0001';
+                                }
+                                base = (clientAsOnFile || '').toUpperCase();
+                                if (!base) base = 'HLX';
+                                return base.slice(0, 5).padEnd(5, 'X') + '-0001';
+                            }
+                            const type = pendingClientType || (poid.company_name ? 'Company' : 'Individual');
+                            let base = '';
+                            if (type === 'Individual') {
+                                base = (poid.last || poid.first || clientAsOnFile || '').toUpperCase();
+                            } else if (type === 'Company') {
+                                base = (poid.company_name || clientAsOnFile || poid.last || '').toUpperCase();
+                            } else if (type === 'Multiple Individuals') {
+                                base = (clientAsOnFile || poid.last || poid.first || '').toUpperCase();
+                                const digits = Math.floor(10000 + Math.random() * 90000);
+                                return base.slice(0, 5).padEnd(5, 'X') + digits + '-0001';
+                            }
+                            if (!base) base = 'HLX';
+                            return base.slice(0, 5).padEnd(5, 'X') + '-0001';
+                        })()}
                         onContinue={() =>
                             setOpenStep(stepsOrder.indexOf('description') + 1)
                         }

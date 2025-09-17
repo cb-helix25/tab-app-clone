@@ -258,8 +258,8 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                     background: 'linear-gradient(135deg, rgb(248, 250, 251) 0%, rgb(241, 244, 246) 100%)',
                     border: '1px solid rgb(225, 229, 233)',
                     borderRadius: '0px',
-                    padding: '12px 16px',
-                    marginBottom: '8px',
+                    padding: '8px 12px',
+                    marginBottom: '6px',
                     position: 'relative',
                     overflow: 'hidden'
                 }}>
@@ -279,40 +279,40 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                         position: 'relative',
                         zIndex: 1
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div>
                                 <div style={{
-                                    fontSize: '11px',
+                                    fontSize: '10px',
                                     fontWeight: 600,
                                     color: 'rgb(107, 114, 128)',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.5px',
-                                    marginBottom: '2px'
+                                    marginBottom: '1px'
                                 }}>Assessment Date &amp; Time</div>
                                 <div style={{
-                                    fontSize: '15px',
+                                    fontSize: '13px',
                                     fontWeight: 400,
                                     color: 'rgb(31, 41, 55)',
                                     fontFamily: 'Raleway, sans-serif'
-                                }}>{new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB')}</div>
+                                }}>{new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
                             </div>
                             <div style={{
                                 width: '1px',
-                                height: '40px',
+                                height: '32px',
                                 background: 'rgb(225, 229, 233)',
-                                margin: '0 8px'
+                                margin: '0 6px'
                             }}></div>
                             <div>
                                 <div style={{
-                                    fontSize: '11px',
+                                    fontSize: '10px',
                                     fontWeight: 600,
                                     color: 'rgb(107, 114, 128)',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.5px',
-                                    marginBottom: '2px'
+                                    marginBottom: '1px'
                                 }}>Assessment Expiry</div>
                                 <div style={{
-                                    fontSize: '15px',
+                                    fontSize: '13px',
                                     fontWeight: 400,
                                     color: 'rgb(31, 41, 55)',
                                     fontFamily: 'Raleway, sans-serif'
@@ -327,33 +327,33 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                         </div>
                         <div style={{ textAlign: 'right' }}>
                             <div style={{
-                                fontSize: '11px',
+                                fontSize: '10px',
                                 fontWeight: 600,
                                 color: 'rgb(107, 114, 128)',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px',
-                                marginBottom: '2px'
+                                marginBottom: '1px'
                             }}>User Assessing Risk</div>
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'flex-end',
-                                gap: '8px'
+                                gap: '6px'
                             }}>
                                 <div style={{
-                                    fontSize: '15px',
+                                    fontSize: '13px',
                                     fontWeight: 400,
                                     color: 'rgb(54, 144, 206)',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px'
+                                    gap: '4px'
                                 }}>
-                                    <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: '14px' }}></i>
+                                    <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: '12px' }}></i>
                                     {riskAssessor ? `${riskAssessor} | 141740` : 'Current User | 141740'}
                                 </div>
                                 <div style={{
-                                    width: '8px',
-                                    height: '8px',
+                                    width: '6px',
+                                    height: '6px',
                                     borderRadius: '50%',
                                     background: 'rgb(16, 185, 129)',
                                     animation: '2s ease 0s infinite normal none running pulse',
@@ -364,7 +364,7 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                     </div>
                 </div>
                 
-                <div className="step-content active" style={{ maxHeight: 'none', opacity: 1, visibility: 'visible', padding: '0.75rem' }}>
+                <div className="step-content active" style={{ maxHeight: 'none', opacity: 1, visibility: 'visible', padding: '0.5rem' }}>
                     <RiskAssessment
                         riskCore={riskCore}
                         setRiskCore={setRiskCore}

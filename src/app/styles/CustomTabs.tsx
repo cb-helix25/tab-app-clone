@@ -1,13 +1,17 @@
-// invisible change 3
 // src/app/styles/CustomTabs.tsx
 
 import React from 'react';
-import {
-  Pivot,
-  PivotItem,
-  IPivotStyles,
-} from '@fluentui/react';
+import { Pivot, PivotItem, IPivotStyles } from '@fluentui/react';
 import { AiOutlineHome, AiFillHome } from 'react-icons/ai';
+import {
+  FaInbox,
+  FaClipboardList,
+  FaFolderOpen,
+  FaWpforms,
+  FaBookOpen,
+  FaChartLine,
+  FaHeadset,
+} from 'react-icons/fa';
 import { colours } from './colours';
 import './CustomTabs.css';
 import { useTheme } from '../../app/functionality/ThemeContext';
@@ -15,9 +19,6 @@ import { Tab } from '../functionality/types';
 import { UserData } from '../../app/functionality/types';
 import UserBubble from '../../components/UserBubble';
 import AnimatedPulsingDot from '../../components/AnimatedPulsingDot';
-import PulsingDot from '../../components/PulsingDot';
-
-// Icons initialized in index.tsx
 
 interface CustomTabsProps {
   selectedKey: string;
@@ -31,8 +32,8 @@ interface CustomTabsProps {
   user?: UserData;
   onFormsClick?: () => void;
   onResourcesClick?: () => void;
-  hasActiveMatter?: boolean; // Whether there's an active matter opening
-  isInMatterOpeningWorkflow?: boolean; // Whether user is currently in the matter opening workflow
+  hasActiveMatter?: boolean;
+  isInMatterOpeningWorkflow?: boolean;
   isLocalDev?: boolean;
   onAreaChange?: (areas: string[]) => void;
   teamData?: UserData[] | null;
@@ -45,14 +46,14 @@ const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
   root: {
     display: 'flex',
     alignItems: 'center',
-    height: '48px',
+    height: 48,
   },
   link: {
-    fontSize: '16px',
+    fontSize: 16,
     fontWeight: 600,
     color: '#ffffff',
     padding: '0 12px',
-    lineHeight: '48px',
+    lineHeight: 48,
     position: 'relative',
     transition: 'color 0.2s',
     selectors: {
@@ -85,40 +86,95 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   originalAdminUser,
 }) => {
   const { isDarkMode } = useTheme();
+  const pivotWrapRef = React.useRef<HTMLDivElement | null>(null);
+  const [iconOnly, setIconOnly] = React.useState<boolean>(false);
+  const lastFullWidthRef = React.useRef<number>(0);
+  const BUFFER = 24; // px hysteresis to avoid flicker
 
-  // Include a hidden pivot item for the Home icon so that when the Home tab is
-  // active, no other tab appears selected. The Pivot component defaults to
-  // selecting the first item when the provided key is not found. By always
-  // supplying a matching key, we prevent the first visible tab ("Forms") from
-  // being highlighted when "Home" is selected.
+  React.useEffect(() => {
+    const measure = () => {
+      const el = pivotWrapRef.current;
+      if (!el) return;
+      const scrollW = el.scrollWidth;
+      const clientW = el.clientWidth;
+
+      if (!iconOnly) {
+        // Record the last known full content width (labels visible)
+        lastFullWidthRef.current = Math.max(lastFullWidthRef.current, scrollW);
+        if (scrollW > clientW + 1) {
+          setIconOnly(true);
+        }
+      } else {
+        // Only exit icon-only when container is comfortably wider than last needed full width
+        const target = Math.max(lastFullWidthRef.current - BUFFER, 0);
+        if (clientW >= target) {
+          setIconOnly(false);
+        }
+      }
+    };
+
+    measure();
+    const onResize = () => measure();
+    window.addEventListener('resize', onResize);
+
+    let ro: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined' && pivotWrapRef.current) {
+      ro = new ResizeObserver(() => measure());
+      ro.observe(pivotWrapRef.current);
+    }
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (ro) ro.disconnect();
+    };
+  }, [tabs.length, selectedKey, iconOnly]);
+
+  // Keep selection consistent when Home is active
   const pivotSelectedKey = selectedKey;
 
-  const handleLinkClick = (
+  const handleClick = (
     item?: PivotItem,
     ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
   ) => {
-    const clickedTab = tabs.find((tab) => tab.key === item?.props.itemKey);
+    const clickedTab = tabs.find((t) => t.key === item?.props.itemKey);
     if (clickedTab?.disabled) {
-      if (clickedTab.key === 'forms' && onFormsClick) {
-        onFormsClick();
-      } else if (clickedTab.key === 'resources' && onResourcesClick) {
-        onResourcesClick();
-      }
+      if (clickedTab.key === 'forms' && onFormsClick) onFormsClick();
+      else if (clickedTab.key === 'resources' && onResourcesClick) onResourcesClick();
       ev?.preventDefault();
       return;
     }
-    onLinkClick(item, ev as any);
+    onLinkClick(item, ev);
+  };
+
+  const getTabIcon = (key: string) => {
+    switch (key) {
+      case 'enquiries':
+        return <FaInbox size={18} />; // intake
+      case 'instructions':
+        return <FaClipboardList size={18} />; // triage/detail
+      case 'matters':
+        return <FaFolderOpen size={18} />; // execution
+      case 'forms':
+        return <FaWpforms size={18} />; // similar to resources but distinct
+      case 'resources':
+        return <FaBookOpen size={18} />; // knowledge base
+      case 'reporting':
+        return <FaChartLine size={18} />; // admin/analytics
+      case 'callhub':
+        return <FaHeadset size={18} />; // admin/local dev
+      default:
+        return <FaClipboardList size={18} />;
+    }
   };
 
   return (
     <div
-      className="customTabsContainer"
+      className={`customTabsContainer ${iconOnly ? 'iconOnlyTabs' : ''}`}
       style={{
         backgroundColor: colours.darkBlue,
         display: 'flex',
         alignItems: 'center',
         padding: '0 24px',
-        height: '48px',
+        height: 48,
         borderBottom: `1px solid ${colours.darkBlue}`,
         position: 'sticky',
         top: 0,
@@ -137,63 +193,53 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         <AiOutlineHome className="icon-outline" size={20} />
         <AiFillHome className="icon-filled" size={20} />
       </div>
-      <Pivot
-        style={{ flexGrow: 1 }}
-        // Keep the Pivot mounted so the tab drop-in animation only plays on
-        // first render. The selectedKey still controls which tab is active.
+      <div ref={pivotWrapRef} style={{ flexGrow: 1, minWidth: 0 }}>
+        <Pivot
+          style={{ width: '100%' }}
         selectedKey={pivotSelectedKey}
-        onLinkClick={handleLinkClick}
+        onLinkClick={handleClick}
         aria-label={ariaLabel || 'Custom Tabs'}
         styles={customPivotStyles(isDarkMode)}
         className="customPivot"
-      >
+        >
         {/* Hidden item to occupy selection when Home is active */}
-        <PivotItem
-          itemKey="home"
-          headerText="Home"
-          headerButtonProps={{ style: { display: 'none' } }}
-        />
+        <PivotItem itemKey="home" headerText="Home" headerButtonProps={{ style: { display: 'none' } }} />
         {tabs.map((tab, index) => (
           <PivotItem
             itemKey={tab.key}
             key={tab.key}
             headerText={tab.text}
-            onRenderItemLink={
-              tab.key === 'instructions' && hasActiveMatter && selectedKey !== 'instructions'
-                ? (link, defaultRenderer) => (
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '8px',
-                      minHeight: '20px' // Ensure enough vertical space
-                    }}>
-                      {defaultRenderer?.(link)}
-                      <div style={{
-                        flexShrink: 0, // Prevent squishing
-                        width: '8px',
-                        height: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <AnimatedPulsingDot 
-                          show={hasActiveMatter && selectedKey !== 'instructions'} 
-                          size={6}
-                          animationDuration={400}
-                        />
-                      </div>
+            onRenderItemLink={() => {
+              const icon = (
+                <span className="tab-icon" aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {getTabIcon(tab.key)}
+                </span>
+              );
+              const label = (
+                <span className="tab-label" style={{ marginLeft: 8 }}>{tab.text}</span>
+              );
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 20 }}>
+                  {icon}
+                  {!iconOnly && label}
+                  {tab.key === 'instructions' && hasActiveMatter && selectedKey !== 'instructions' && (
+                    <div style={{ flexShrink: 0, width: 8, height: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <AnimatedPulsingDot show size={6} animationDuration={400} />
                     </div>
-                  )
-                : undefined
-            }
+                  )}
+                </div>
+              );
+            }}
             headerButtonProps={{
               className: tab.disabled ? 'disabledTab' : '',
               style: { '--animation-delay': `${index * 0.1}s` } as React.CSSProperties,
               'aria-disabled': tab.disabled ? 'true' : undefined,
+              title: tab.text,
             }}
           />
         ))}
-      </Pivot>
+        </Pivot>
+      </div>
       {(isLocalDev || user) && (
         <UserBubble
           user={

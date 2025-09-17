@@ -7,7 +7,7 @@
  * any local state derived from these scenarios without requiring a manual remount.
  * Only increment this manually when you change the scenarios content.
  */
-export const SCENARIOS_VERSION: number = 2;
+export const SCENARIOS_VERSION: number = 3;
 
 export type Scenario = {
   /** Stable id for persistence */
@@ -115,7 +115,7 @@ In terms of most appropriate next steps clearly there is some complexity here an
 
 Ideally it would be helpful if you can please provide core documents including [INSERT the contracts, notices, demands, accounts, relevant correspondence set out below] so that I can understand what has happened to date as quickly as possible.
 
-In terms of costs I am a [ROLE] and my hourly rate is [RATE]. We charge on a time recorded basis in 6minute units for all steps and work including emails in and out and telephone attendances. Here I have advised that you will need to budget [INSERT] for an initial review and advice. This is an estimate and not a fixed fee, but my hope and expectation is that at this stage you will be clear on where you stand. We can then discuss next steps at that stage. Further work will incur additional cost.
+In terms of costs, we record and bill for our time in 6-minute units, so one hour is 10 units. We charge for all steps and work, including emails in and out, and telephone calls. Partners record and bill at £395+VAT per hour, Associate Solicitors at £325 per hour, Solicitors at £285+VAT per hour, and Trainee Solicitors and Paralegals at £195+VAT per hour. Here, for the initial review and advice, you will need to budget in the region of approximately [INSERT]+VAT. This is an estimate and not a fixed fee, but my hope and expectation is that at this stage, you will be clear on where you stand. We can then discuss the next steps at that stage. Further work will incur additional cost.
 
 Please confirm your instructions by clicking [InstructLink]. This single link will allow you to verify your identity, provide the key documents needed and provide funds on account of costs in a quick and transparent checkout process.
 

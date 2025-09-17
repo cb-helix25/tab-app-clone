@@ -36,6 +36,7 @@ const mattersRouter = require('./routes/matters');
 const instructionsRouter = require('./routes/instructions');
 const verifyIdRouter = require('./routes/verify-id');
 const teamLookupRouter = require('./routes/team-lookup');
+const teamDataRouter = require('./routes/teamData');
 const pitchTeamRouter = require('./routes/pitchTeam');
 const sendEmailRouter = require('./routes/sendEmail');
 // const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
@@ -99,6 +100,8 @@ app.use('/api/instructions', instructionsRouter);
 app.use('/api/deals', require('./routes/dealUpdate'));
 app.use('/api/verify-id', verifyIdRouter);
 app.use('/api/team-lookup', teamLookupRouter);
+app.use('/api/team-data', teamDataRouter);
+app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api', sendEmailRouter);
 

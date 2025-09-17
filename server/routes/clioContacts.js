@@ -335,69 +335,7 @@ router.post('/', async (req, res) => {
             results.push(await createOrUpdate(personPayload));
         }
 
-        const personContact = results.find(r => r?.data?.type === 'Person');
-        const matterClientId = personContact?.data?.id;
-        const {
-            description,
-            stage,
-            date_created,
-            client_type,
-            area_of_work,
-            practice_area,
-            dispute_value,
-            folder_structure
-        } = formData.matter_details || {};
-
-        // Provide a default description if none provided
-        const matterDescription = description || `${practice_area || 'Legal'} matter for ${formData.client_information?.[0]?.first_name} ${formData.client_information?.[0]?.last_name}`.trim();
-
-        if (!matterClientId || !matterDescription) {
-            throw new Error('Missing client_id or description for matter creation');
-        }
-
-        const normalizedPracticeArea = (practice_area || '').replace(/[–—]/g, '-').trim();
-        const paId = PRACTICE_AREAS[normalizedPracticeArea];
-        if (!paId) throw new Error(`Unknown practice_area “${practice_area}”`);
-
-        const matterPayload = {
-            data: {
-                billable: true,
-                client: { id: matterClientId },
-                description: matterDescription,
-                stage,
-                opened_at: date_created || new Date().toISOString(),
-                matter_type: client_type,
-                status: 'open',
-
-                // standard practice_area enum → NOT custom field
-                practice_area: { id: paId },
-
-                custom_field_values: [
-                    area_of_work && { value: area_of_work, custom_field: { id: 299746 } },
-                    dispute_value && { value: dispute_value, custom_field: { id: 378566 } },
-                    folder_structure && { value: folder_structure, custom_field: { id: 246757 } }
-                ].filter(Boolean)
-            }
-        };
-
-        console.log('Matter payload →', JSON.stringify(matterPayload, null, 2));
-
-        const matterResp = await fetch('https://eu.app.clio.com/api/v4/matters', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(matterPayload)
-        });
-
-        if (!matterResp.ok) {
-            const text = await matterResp.text();
-            console.error('Clio matter create failed', text);
-            throw new Error('Matter creation failed');
-        }
-
-        const matterResult = await matterResp.json();
-        results.push(matterResult);
-
-
+        // Only return contact upsert results. Matter creation happens in /api/clio-matters step.
         res.json({ ok: true, results });
     } catch (err) {
         console.error('Clio contact error', err);

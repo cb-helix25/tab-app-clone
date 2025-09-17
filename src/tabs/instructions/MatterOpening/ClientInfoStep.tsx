@@ -26,6 +26,8 @@ interface ClientInfoStepProps {
     setIsDateCalloutOpen: (v: boolean) => void;
     dateButtonRef: React.RefObject<HTMLDivElement>;
     partnerOptions: string[];
+    /** Options for Responsible/Originating Solicitor (active solicitors/partners) */
+    solicitorOptions: string[];
     requestingUser: string;
     requestingUserClioId: string;
     onContinue?: () => void;
@@ -45,6 +47,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
     setIsDateCalloutOpen,
     dateButtonRef,
     partnerOptions,
+    solicitorOptions,
     requestingUser,
     requestingUserClioId,
     onContinue,
@@ -69,15 +72,15 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
 
     return (
         <>
-            <Stack tokens={{ childrenGap: 12 }}>
+            <Stack tokens={{ childrenGap: 8 }}>
                 {/* Live System Data Panel */}
                 <div
                     style={{
                         background: 'transparent',
                         border: 'none',
                         borderRadius: 0,
-                        padding: '8px 12px',
-                        marginBottom: '4px',
+                        padding: '6px 10px',
+                        marginBottom: '2px',
                         position: 'relative',
                     }}
                 >
@@ -91,11 +94,11 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                         }}
                     >
                         {/* Date & Time */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div>
                                 <div
                                     style={{
-                                        fontSize: '10px',
+                                        fontSize: '9px',
                                         fontWeight: 500,
                                         color: '#9CA3AF',
                                         textTransform: 'uppercase',
@@ -107,7 +110,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                                 </div>
                                 <div
                                     style={{
-                                        fontSize: '13px',
+                                        fontSize: '12px',
                                         fontWeight: '400',
                                         color: '#4B5563',
                                         fontFamily: 'Raleway, sans-serif',
@@ -125,7 +128,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                         <div style={{ textAlign: 'right' }}>
                             <div
                                 style={{
-                                    fontSize: '10px',
+                                    fontSize: '9px',
                                     fontWeight: 500,
                                     color: '#9CA3AF',
                                     textTransform: 'uppercase',
@@ -140,34 +143,34 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'flex-end',
-                                    gap: '8px',
+                                    gap: '6px',
                                 }}
                             >
                                 <div
                                     style={{
-                                        fontSize: '13px',
+                                        fontSize: '12px',
                                         fontWeight: '400',
                                         color: '#4B5563',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '6px',
+                                        gap: '4px',
                                     }}
                                 >
                                     <i
                                         className="ms-Icon ms-Icon--Contact"
-                                        style={{ fontSize: '14px', color: '#9CA3AF' }}
+                                        style={{ fontSize: '12px', color: '#9CA3AF' }}
                                     />
                                     {requestingUser}
                                     {requestingUserClioId ? (
                                         <span
                                             style={{
-                                                marginLeft: 6,
-                                                padding: '2px 6px',
+                                                marginLeft: 4,
+                                                padding: '1px 4px',
                                                 background: '#F4F6F9',
                                                 border: '1px solid #e1e5ea',
-                                                borderRadius: 6,
+                                                borderRadius: 4,
                                                 color: '#6B7280',
-                                                fontSize: '12px',
+                                                fontSize: '10px',
                                                 lineHeight: 1.2,
                                             }}
                                         >
@@ -181,16 +184,16 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                 </div>
 
                 {/* Responsible Solicitor / Originating Solicitor */}
-                <div style={{ display: 'flex', gap: 16 }}>
+                <div style={{ display: 'flex', gap: 12 }}>
                     <div style={{ flex: 1 }}>
-                        <div className="question-banner">Responsible Solicitor</div>
+                        <div className="question-banner" style={{ fontSize: 11, padding: '4px 8px' }}>Responsible Solicitor</div>
                         <div
                             style={{
                                 position: 'relative',
                                 width: '100%',
-                                height: '50px',
+                                height: '40px',
                                 border: `1px solid ${colours.highlight}`,
-                                borderRadius: 0,
+                                borderRadius: 6,
                                 background: teamMember
                                     ? `${colours.highlight}15`
                                     : '#fff',
@@ -205,8 +208,8 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                                     height: '100%',
                                     border: 'none',
                                     background: 'transparent',
-                                    padding: '0 40px 0 16px',
-                                    fontSize: '16px',
+                                    padding: '0 32px 0 12px',
+                                    fontSize: '13px',
                                     color: teamMember ? colours.highlight : '#4a5568',
                                     fontWeight: '400',
                                     appearance: 'none',
@@ -217,7 +220,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                                 <option value="" disabled>
                                     Select Responsible Solicitor
                                 </option>
-                                {teamMemberOptions.map((name) => (
+                                {solicitorOptions.map((name) => (
                                     <option key={name} value={name}>
                                         {name}
                                     </option>
@@ -226,7 +229,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                             <div
                                 style={{
                                     position: 'absolute',
-                                    right: '12px',
+                                    right: '8px',
                                     top: '50%',
                                     transform: 'translateY(-50%)',
                                     pointerEvents: 'none',
@@ -234,8 +237,8 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                                 }}
                             >
                                 <svg
-                                    width="16"
-                                    height="16"
+                                    width="12"
+                                    height="12"
                                     viewBox="0 0 24 24"
                                     fill="none"
                                 >
@@ -252,16 +255,16 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                     </div>
 
                     <div style={{ flex: 1 }}>
-                        <div className="question-banner">
+                        <div className="question-banner" style={{ fontSize: 11, padding: '4px 8px' }}>
                             Originating Solicitor
                         </div>
                         <div
                             style={{
                                 position: 'relative',
                                 width: '100%',
-                                height: '50px',
+                                height: '40px',
                                 border: `1px solid ${colours.highlight}`,
-                                borderRadius: 0,
+                                borderRadius: 6,
                                 background: originatingSolicitor
                                     ? `${colours.highlight}15`
                                     : '#fff',
@@ -279,7 +282,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                                     border: 'none',
                                     background: 'transparent',
                                     padding: '0 40px 0 16px',
-                                    fontSize: '16px',
+                                    fontSize: '13px',
                                     color: originatingSolicitor
                                         ? colours.highlight
                                         : '#4a5568',
@@ -292,7 +295,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                                 <option value="" disabled>
                                     Select Originating Solicitor
                                 </option>
-                                {teamMemberOptions.map((name) => (
+                                {solicitorOptions.map((name) => (
                                     <option key={name} value={name}>
                                         {name}
                                     </option>
@@ -330,16 +333,18 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                 </div>
 
                 {/* Supervising Partner */}
-                <ModernMultiSelect
-                    label="Select Supervising Partner"
-                    options={partnerOptions.map((name) => ({
-                        key: name,
-                        text: name,
-                    }))}
-                    selectedValue={supervisingPartner}
-                    onSelectionChange={setSupervisingPartner}
-                    variant="grid"
-                />
+                <div style={{ marginTop: 12 }}>
+                    <ModernMultiSelect
+                        label="Select Supervising Partner"
+                        options={partnerOptions.map((name) => ({
+                            key: name,
+                            text: name,
+                        }))}
+                        selectedValue={supervisingPartner}
+                        onSelectionChange={setSupervisingPartner}
+                        variant="grid"
+                    />
+                </div>
 
                 {onContinue && (
                     <PrimaryButton

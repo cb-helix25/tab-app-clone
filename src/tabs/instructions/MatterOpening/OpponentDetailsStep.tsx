@@ -124,7 +124,7 @@ const containerStyle: React.CSSProperties = { /* compact, consistent card */
   background: "#F8FAFC",
   border: "1px solid #e3e8ef",
   borderRadius: 8,
-  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)",
+  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.04)",
   padding: "14px 14px 10px 14px",
   marginBottom: 12,
   marginTop: 4,
@@ -898,52 +898,76 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   }, []);
 
   return (
-    <Stack tokens={{ childrenGap: 8 }}>
-      {/* Conflict of Interest Question */}
-      <Stack tokens={{ childrenGap: 10 }} style={{ marginBottom: 0 }}>
-        <ModernMultiSelect
-          label="Confirm No Conflict of Interest"
-          options={[
-            { key: 'true', text: 'Confirmed - No Conflict' },
-            { key: 'false', text: 'Not Confirmed' }
-          ]}
-          selectedValue={noConflict ? 'true' : 'false'}
-          onSelectionChange={(value) => setNoConflict(value === 'true')}
-          variant="binary"
-        />
-      </Stack>
-      {/* Only show opponent/solicitor details if noConflict is confirmed */}
-      {noConflict && (
-        <>
-          {/* Add spacing between conflict confirmation and opponent type selection for visual clarity */}
-          <div style={{ height: 18 }} />
-          <div className="opponent-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
-            <div style={{ padding: 0, background: 'transparent' }}>
-              <div
-                className="question-banner"
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  animation: 'questionSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                  animationDelay: '200ms',
-                  opacity: 0,
-                  transform: 'translateY(15px)'
-                }}
-              >
-                What type of opponent is this matter against?
+    <div style={{
+      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+      border: '1px solid #E2E8F0',
+      borderRadius: 12,
+      padding: 20,
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.04)',
+      boxSizing: 'border-box'
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Conflict of Interest Section */}
+        <div>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 8, 
+            marginBottom: 12 
+          }}>
+            <i className="ms-Icon ms-Icon--ShieldAlert" style={{ 
+              fontSize: 16, 
+              color: '#3690CE' 
+            }} />
+            <span style={{ 
+              fontSize: 16, 
+              fontWeight: 600, 
+              color: '#0F172A' 
+            }}>
+              Confirm No Conflict of Interest
+            </span>
+          </div>
+          <ModernMultiSelect
+            label=""
+            options={[
+              { key: 'true', text: 'Confirmed - No Conflict' },
+              { key: 'false', text: 'Not Confirmed' }
+            ]}
+            selectedValue={noConflict ? 'true' : 'false'}
+            onSelectionChange={(value) => setNoConflict(value === 'true')}
+            variant="binary"
+          />
+        </div>
+
+        {/* Only show opponent/solicitor details if noConflict is confirmed */}
+        {noConflict && (
+          <>
+            {/* Opponent Type Selection */}
+            <div>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8, 
+                marginBottom: 12 
+              }}>
+                <i className="ms-Icon ms-Icon--People" style={{ 
+                  fontSize: 16, 
+                  color: '#3690CE' 
+                }} />
+                <span style={{ 
+                  fontSize: 16, 
+                  fontWeight: 600, 
+                  color: '#0F172A' 
+                }}>
+                  What type of opponent is this matter against?
+                </span>
               </div>
-              <div 
-                className="client-details-contact-bigrow" 
-                style={{ 
-                  marginBottom: 24, 
-                  display: 'flex', 
-                  gap: 8,
-                  animation: 'buttonRowSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                  animationDelay: '400ms',
-                  opacity: 0,
-                  transform: 'translateY(20px)'
-                }}
-              >
+              
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                gap: '12px'
+              }}>
                 {[ 
                   { type: 'Individual', icon: 'Contact' },
                   { type: 'Company', icon: 'CityNext' }
@@ -952,75 +976,66 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                   return (
                     <button
                       key={type}
-                      className={`client-details-contact-bigbtn client-type-icon-btn${isActive ? ' active' : ''}`}
+                      className={`client-type-icon-btn${isActive ? ' active' : ''}`}
                       type="button"
                       onClick={() => {
                         setOpponentType(type);
                         setShowSummary(false);
                       }}
-                      aria-pressed={isActive}
                       style={{
                         position: 'relative',
-                        overflow: 'hidden',
-                        minWidth: 76.8, // 20% increase from 64
-                        minHeight: 76.8, // 20% increase from 64
-                        padding: 0,
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: isActive ? '#3690CE22' : '#F4F4F6', // 22 transparency or helix grey
-                        border: isActive ? '1px solid #3690CE' : '1px solid #e0e0e0', // 1px blue or light border
-                        borderRadius: 0, // no rounded corners
-                        boxShadow: undefined,
-                        transition: 'background 0.2s, border 0.2s',
+                        padding: '12px 14px',
+                        border: `1px solid ${isActive ? '#3690CE' : '#E2E8F0'}`,
+                        borderRadius: '8px',
+                        background: isActive 
+                          ? 'linear-gradient(135deg, #3690CE15 0%, #3690CE08 100%)' 
+                          : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        minHeight: '70px',
+                        boxShadow: isActive 
+                          ? '0 3px 10px rgba(54, 144, 206, 0.15), 0 1px 2px rgba(0,0,0,0.03)' 
+                          : '0 1px 3px rgba(0,0,0,0.03)',
                         outline: 'none',
+                        transform: isActive ? 'translateY(-2px)' : 'translateY(0)',
                       }}
-                      onMouseDown={e => e.currentTarget.classList.add('pressed')}
-                      onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-                      onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)';
+                          e.currentTarget.style.borderColor = '#3690CE';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 3px 8px rgba(0,0,0,0.06)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                          e.currentTarget.style.borderColor = '#E2E8F0';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)';
+                        }
+                      }}
                     >
-                      <span
-                        className="client-type-icon"
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 32,
-                          opacity: isActive ? 0 : 1,
-                          transition: 'opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1), color 0.2s',
-                          zIndex: 1,
-                          color: isActive ? '#3690CE' : '#6B6B6B', // blue if active, grey if not
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        <i className={`ms-Icon ms-Icon--${icon}`} aria-hidden="true" style={{ pointerEvents: 'none', color: isActive ? '#3690CE' : '#6B6B6B', transition: 'color 0.2s' }} />
-                      </span>
-                      <span
-                        className="client-type-label"
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 600,
-                          fontSize: 16,
-                          color: isActive ? '#3690CE' : '#6B6B6B',
-                          opacity: isActive ? 1 : 0,
-                          transform: isActive ? 'translateY(0)' : 'translateY(8px)',
-                          transition: 'opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1), color 0.2s',
-                          zIndex: 2,
-                          pointerEvents: 'none',
-                        }}
-                      >
+                      <div style={{
+                        fontSize: '26px',
+                        color: isActive ? '#3690CE' : '#64748B',
+                        marginBottom: '8px',
+                        transition: 'all 0.2s ease',
+                      }}>
+                        <i className={`ms-Icon ms-Icon--${icon}`} />
+                      </div>
+                      <span style={{
+                        fontSize: '13px',
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive ? '#3690CE' : '#0F172A',
+                        textAlign: 'center',
+                        lineHeight: 1.3,
+                        transition: 'all 0.2s ease'
+                      }}>
                         {type}
                       </span>
                     </button>
@@ -1150,7 +1165,6 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     }
                 }
             `}</style>
-          </div>
           
           {/* Only show option to delay details entry if opponent type is selected */}
           {opponentType && (
@@ -2324,16 +2338,16 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       }}
                     />
                   </Stack>
-                  )}
-                  </div>
-                  {/* Separator removed for cleaner layout */}
-                </Stack>
-              </div>
+                )}
+                </div>
+                {/* Separator removed for cleaner layout */}
+              </Stack>
             </div>
-          ) : enterOpponentNow === false ? (
-            <>
-              {/* Animated placeholder banner */}
-              <div style={{
+          </div>
+        ) : enterOpponentNow === false ? (
+          <>
+            {/* Animated placeholder banner */}
+            <div style={{
                 animation: 'slideInFromTop 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                 opacity: 0,
                 transform: 'translateY(20px)',
@@ -2381,20 +2395,40 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                   }} />
                 </div>
               </div>
-              {/* Old info bar removed - using new animated banner instead */}
-            </>
-          ) : null}
+          </>
+        ) : null}
         </>
       )}
-      {onContinue && (
-        <PrimaryButton
-          text="Continue"
-          onClick={onContinue}
-          disabled={!noConflict}
-          styles={sharedPrimaryButtonStyles}
-        />
-      )}
-    </Stack>
+
+        {onContinue && (
+          <PrimaryButton
+            text="Continue"
+            onClick={onContinue}
+            disabled={!noConflict}
+            styles={{
+              root: {
+                background: 'linear-gradient(135deg, #3690CE 0%, #2563EB 100%)',
+                border: 'none',
+                borderRadius: 10,
+                height: 44,
+                fontWeight: 600,
+                fontSize: 14,
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.04)',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                ':hover': {
+                  background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 3px 6px rgba(0, 0, 0, 0.08)'
+                },
+                ':active': {
+                  transform: 'translateY(0)'
+                }
+              }
+            }}
+          />
+        )}
+      </div>
+    </div>
   );
 };
 

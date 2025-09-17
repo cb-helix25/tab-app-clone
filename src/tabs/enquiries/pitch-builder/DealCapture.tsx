@@ -89,15 +89,23 @@ export const DealCapture: React.FC<DealCaptureProps> = ({
               background:isDarkMode?colours.dark.inputBackground:'#FFFFFF',
               color:text,
               fontFamily:'inherit',
-              padding:'12px 14px'
+              padding:'12px 14px',
+              selectors:{
+                '::placeholder':{ color: subtle }
+              }
             },
             fieldGroup:{
               border:`1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
               borderRadius:8,
+              background: isDarkMode ? colours.dark.inputBackground : '#FFFFFF',
               selectors:{
                 ':hover':{ borderColor: accent },
                 '.is-focused':{ borderColor:accent, boxShadow:`0 0 0 3px ${isDarkMode?'rgba(54,144,206,0.35)':'rgba(54,144,206,0.25)'}` }
               }
+            },
+            wrapper:{
+              background: isDarkMode ? colours.dark.inputBackground : '#FFFFFF',
+              borderRadius:8
             }
           }}
         />

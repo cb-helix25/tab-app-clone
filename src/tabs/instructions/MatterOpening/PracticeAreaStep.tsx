@@ -24,79 +24,129 @@ const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceAr
     const color = areaColors[areaOfWork] || '#3690CE';
     // Filter out 'Commercial' from the options before rendering
     const filteredOptions = options.filter((pa) => pa !== 'Commercial');
+    
+    // Professional theme colors
+    const colours = {
+        bg: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+        border: '#E2E8F0',
+        text: '#0F172A',
+        shadow: '0 2px 4px rgba(0, 0, 0, 0.04)'
+    };
+    
     return (
-        <Stack tokens={{ childrenGap: 12 }}>
-            <div className="practice-area-selection">
-                <div className="question-banner">Select Practice Area</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginBottom: 8 }}>
-                    {filteredOptions.map((pa) => {
-                        const isActive = practiceArea === pa;
-                        return (
-                            <div
-                                key={pa}
-                                className={`client-type-icon-btn${isActive ? ' active' : ''}`}
-                                onClick={() => {
-                                    setPracticeArea(pa);
-                                    onContinue();
-                                }}
-                                style={{
-                                    flex: 1,
-                                    position: 'relative',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '14.4px 8px',
-                                    border: `1px solid ${isActive ? color : '#e0e0e0'}`,
-                                    borderRadius: '0px',
-                                    background: isActive ? `${color}22` : '#f8f8f8',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    minHeight: '76.8px',
-                                    boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
-                                    fontSize: '16px',
-                                    fontWeight: isActive ? 600 : 400,
-                                    color: isActive ? color : '#333',
-                                    // CSS vars for hover/press
-                                    ['--area-hover-bg' as any]: `${color}22`,
-                                    ['--area-hover-color' as any]: color,
-                                    ['--area-press-bg' as any]: `${color}44`,
-                                    ['--area-press-color' as any]: color,
-                                }}
-                            >
-                                <span className="client-type-label" style={{
-                                    opacity: 1,
-                                    transform: 'translateY(0)',
-                                    transition: 'opacity 0.3s ease, transform 0.3s ease',
-                                    pointerEvents: 'none',
-                                }}>{pa}</span>
-                            </div>
-                        );
-                    })}
+        <div style={{
+            background: colours.bg,
+            border: `1px solid ${colours.border}`,
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: colours.shadow,
+            boxSizing: 'border-box'
+        }}>
+            <Stack tokens={{ childrenGap: 16 }}>
+                {/* Professional header with icon */}
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 8, 
+                    marginBottom: 4 
+                }}>
+                    <i className="ms-Icon ms-Icon--WorkItem" style={{ 
+                        fontSize: 16, 
+                        color: color
+                    }} />
+                    <span style={{ 
+                        fontSize: 16, 
+                        fontWeight: 600, 
+                        color: colours.text 
+                    }}>
+                        Select Practice Area
+                    </span>
                 </div>
-            </div>
+                
+                <div className="practice-area-selection">
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+                        gap: '10px'
+                    }}>
+                        {filteredOptions.map((pa) => {
+                            const isActive = practiceArea === pa;
+                            return (
+                                <div
+                                    key={pa}
+                                    className={`client-type-icon-btn${isActive ? ' active' : ''}`}
+                                    onClick={() => {
+                                        setPracticeArea(pa);
+                                        onContinue();
+                                    }}
+                                    style={{
+                                        position: 'relative',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '16px 12px',
+                                        border: `2px solid ${isActive ? color : colours.border}`,
+                                        borderRadius: '10px',
+                                        background: isActive 
+                                            ? `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)` 
+                                            : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        minHeight: '60px',
+                                        boxShadow: isActive 
+                                            ? `0 4px 12px ${color}20, 0 2px 4px rgba(0,0,0,0.05)` 
+                                            : '0 2px 4px rgba(0,0,0,0.05)',
+                                        fontSize: '14px',
+                                        fontWeight: isActive ? 600 : 500,
+                                        color: isActive ? color : colours.text,
+                                        // CSS vars for hover/press
+                                        ['--area-hover-bg' as any]: `linear-gradient(135deg, ${color}10 0%, ${color}05 100%)`,
+                                        ['--area-hover-color' as any]: color,
+                                        ['--area-press-bg' as any]: `linear-gradient(135deg, ${color}25 0%, ${color}15 100%)`,
+                                        ['--area-press-color' as any]: color,
+                                        transform: isActive ? 'translateY(-2px)' : 'translateY(0)',
+                                    }}
+                                >
+                                    <span className="client-type-label" style={{
+                                        opacity: 1,
+                                        transform: 'translateY(0)',
+                                        transition: 'all 0.2s ease',
+                                        pointerEvents: 'none',
+                                        textAlign: 'center',
+                                        lineHeight: 1.3
+                                    }}>{pa}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </Stack>
             <style>{`
                 .practice-area-selection .client-type-icon-btn .client-type-label {
                     pointer-events: none;
                 }
-                .practice-area-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover {
-                    background: var(--area-hover-bg, #e3f0fc) !important;
+                .practice-area-selection .client-type-icon-btn:not(.active):hover {
+                    background: var(--area-hover-bg, linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)) !important;
                     border-color: var(--area-hover-color, #3690CE) !important;
+                    transform: translateY(-1px) !important;
+                    box-shadow: 0 3px 6px rgba(0,0,0,0.06) !important;
                 }
-                .practice-area-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-label {
+                .practice-area-selection .client-type-icon-btn:not(.active):hover .client-type-label {
                     color: var(--area-hover-color, #3690CE) !important;
+                    font-weight: 600 !important;
                 }
-                .practice-area-selection .client-type-icon-btn.pressed,
                 .practice-area-selection .client-type-icon-btn:active {
-                    background: var(--area-press-bg, #b3d3f7) !important;
+                    background: var(--area-press-bg, linear-gradient(135deg, #E2E8F0 0%, #CBD5E1 100%)) !important;
                     border-color: var(--area-press-color, #1565c0) !important;
+                    transform: translateY(0px) !important;
                 }
                 .practice-area-selection .client-type-icon-btn.active .client-type-label {
                     color: ${color} !important;
+                    font-weight: 600 !important;
                 }
             `}</style>
-            {/* Removed separator for unified workflow appearance */}
-        </Stack>
+        </div>
     );
 };
 
