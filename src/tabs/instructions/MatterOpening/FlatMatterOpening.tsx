@@ -430,18 +430,21 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useDraftedState<string>('opponentSolicitorEmail', '');
     const [noConflict, setNoConflict] = useDraftedState<boolean>('noConflict', false);
     const [opponentChoiceMade, setOpponentChoiceMade] = useDraftedState<boolean>('opponentChoiceMade', false);
-    const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false); // UI only, not persisted
+    
+    // Unified debug inspector state
+    const [debugInspectorOpen, setDebugInspectorOpen] = useState(false); 
+    const [debugActiveTab, setDebugActiveTab] = useState<'json' | 'details'>('json');
+    const [debugManualPasteOpen, setDebugManualPasteOpen] = useState(false);
+    const [debugManualOverride, setDebugManualOverride] = useState(false);
     
     // Workbench states
     const [workbenchMode, setWorkbenchMode] = useState(false);
-    const [debugPanelOpen, setDebugPanelOpen] = useState(false);
     const [supportPanelOpen, setSupportPanelOpen] = useState(false);
     const [supportMessage, setSupportMessage] = useState('');
     const [supportCategory, setSupportCategory] = useState<'technical' | 'process' | 'data'>('technical');
     const [supportSending, setSupportSending] = useState(false);
     
-    // Debug import states (for failed submission debugging)
-    const [debugImportOpen, setDebugImportOpen] = useState(false);
+    // Debug states shared by unified inspector
     const [debugJsonInput, setDebugJsonInput] = useState('');
     const [debugValidation, setDebugValidation] = useState<{
         isValid: boolean;
@@ -478,6 +481,14 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [opponentHasCompany, setOpponentHasCompany] = useDraftedState<boolean>('opponentHasCompany', false);
     const [opponentCompanyName, setOpponentCompanyName] = useDraftedState<string>('opponentCompanyName', '');
     const [opponentCompanyNumber, setOpponentCompanyNumber] = useDraftedState<string>('opponentCompanyNumber', '');
+    const [opponentType, setOpponentType] = useDraftedState<string>('opponentType', '');
+    
+    // Track which opponent sections are enabled by the user
+    const [visibleSections] = useDraftedState<{
+        opponent: { company: boolean; name: boolean; contact: boolean; address: boolean; }
+    }>('visibleSections', {
+        opponent: { company: false, name: false, contact: false, address: false }
+    });
     // Solicitor fields
     const [solicitorTitle, setSolicitorTitle] = useDraftedState<string>('solicitorTitle', '');
     const [solicitorFirst, setSolicitorFirst] = useDraftedState<string>('solicitorFirst', '');
@@ -495,6 +506,266 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [summaryConfirmed, setSummaryConfirmed] = useDraftedState<boolean>('summaryConfirmed', false);
     // Acknowledgement checkbox for formal confirmation (not persisted)
     const [confirmAcknowledge, setConfirmAcknowledge] = useState<boolean>(false);
+    // Track if edits were made after confirmation
+    const [editsAfterConfirmation, setEditsAfterConfirmation] = useState<boolean>(false);
+
+    // Track original values to detect user changes vs placeholders
+    const [originalValues] = useState(() => ({
+        opponentCompanyName,
+        opponentTitle,
+        opponentFirst,
+        opponentLast,
+        opponentEmail,
+        opponentPhone,
+        opponentHouseNumber,
+        opponentStreet,
+        opponentCity,
+        opponentCounty,
+        opponentPostcode,
+        opponentCountry,
+        opponentSolicitorCompany,
+        solicitorFirst,
+        solicitorLast,
+        opponentSolicitorEmail,
+        solicitorPhone,
+        solicitorHouseNumber,
+        solicitorStreet,
+        solicitorCity,
+        solicitorCounty,
+        solicitorPostcode,
+        solicitorCountry
+    }));
+
+    // Helper function to check if a field has been changed from its original value
+    const hasUserModified = (currentValue: string, originalValue: string) => {
+        // If field was originally empty and now contains placeholder data, it's not a user modification
+        if (!originalValue && currentValue && isPlaceholderData(currentValue)) {
+            return false;
+        }
+        return currentValue !== originalValue;
+    };
+
+    // Helper function to identify placeholder data patterns
+    const isPlaceholderData = (value: string) => {
+        if (!value) return false;
+        const trimmed = value.trim();
+        
+        // Exact matches from dummyData template
+        const exactPlaceholders = [
+            "Mr", "Mrs", "Ms", "Dr",
+            "Invent", "Name", "Solicitor Name", "Invent Solicitor Name",
+            "opponent@helix-law.com", "opponentsolicitor@helix-law.com",
+            "0345 314 2044",
+            "Second Floor", "Britannia House, 21 Station Street",
+            "Brighton", "East Sussex", "BN1 4DE", "United Kingdom",
+            "Helix Law Ltd", "07845461"
+        ];
+        
+        // Check for exact matches
+        if (exactPlaceholders.includes(trimmed)) {
+            return true;
+        }
+        
+        // Additional pattern-based checks for flexibility
+        const lower = trimmed.toLowerCase();
+        return (
+            lower.includes('placeholder') || 
+            lower.includes('example') ||
+            lower.includes('test') ||
+            lower.includes('sample') ||
+            lower.includes('helix law') ||
+            lower.includes('helix-law.com') ||
+            lower.includes('invent') ||
+            // Combined name patterns
+            trimmed === 'Invent Name' ||
+            trimmed === 'Invent Solicitor Name' ||
+            // Address pattern combinations
+            lower.includes('station street') || 
+            lower.includes('britannia house')
+        );
+    };
+
+    // Helper function to get field style based on whether user modified it
+    const getFieldStyle = (currentValue: string, originalValue: string | keyof typeof originalValues) => {
+        const original = typeof originalValue === 'string' ? originalValue : (originalValues[originalValue] || '');
+        const isModified = hasUserModified(currentValue, original);
+        return {
+            fontWeight: isModified ? 600 : 400,
+            fontSize: 12,
+            color: isModified ? '#111827' : '#9ca3af',
+            fontStyle: isModified ? 'normal' : 'italic'
+        };
+    };
+
+    // Canonical opponent placeholder template (must mirror OpponentDetailsStep dummyData for opponent-only fields)
+    const opponentPlaceholderTemplate = {
+        opponentCompanyName: 'Helix Law Ltd',
+        opponentTitle: 'Mr',
+        opponentFirst: 'Invent',
+        opponentLast: 'Name',
+        opponentEmail: 'opponent@helix-law.com',
+        opponentPhone: '0345 314 2044',
+        opponentHouseNumber: 'Second Floor',
+        opponentStreet: 'Britannia House, 21 Station Street',
+        opponentCity: 'Brighton',
+        opponentCounty: 'East Sussex',
+        opponentPostcode: 'BN1 4DE',
+        opponentCountry: 'United Kingdom'
+    } as const;
+
+    type OppFieldKey = keyof typeof opponentPlaceholderTemplate;
+
+    /**
+     * Returns list of opponent field keys whose current values constitute REAL user input (non-empty & not placeholder)
+     */
+    const getRealOpponentFieldKeys = (): OppFieldKey[] => {
+        const currentValues: Record<OppFieldKey, string> = {
+            opponentCompanyName,
+            opponentTitle,
+            opponentFirst,
+            opponentLast,
+            opponentEmail,
+            opponentPhone,
+            opponentHouseNumber,
+            opponentStreet,
+            opponentCity,
+            opponentCounty,
+            opponentPostcode,
+            opponentCountry
+        } as const;
+        const result: OppFieldKey[] = [];
+        (Object.keys(opponentPlaceholderTemplate) as OppFieldKey[]).forEach(k => {
+            const currentVal = (currentValues[k] || '').trim();
+            const placeholderVal = opponentPlaceholderTemplate[k];
+            if (!currentVal) return; // empty -> ignore
+            if (currentVal === placeholderVal) return; // unchanged placeholder
+            if (isPlaceholderData(currentVal)) return; // still generic placeholder pattern
+            result.push(k);
+        });
+        return result;
+    };
+
+    // Locked card styling helper
+    const lockCardStyle = (base: React.CSSProperties): React.CSSProperties => {
+        if (!summaryConfirmed) return base;
+        return {
+            ...base,
+            position: 'relative',
+            background: 'linear-gradient(135deg, #F2F5F8 0%, #E9EEF2 100%)',
+            border: '1px solid #cfd6de',
+            boxShadow: 'inset 0 0 0 999px rgba(255,255,255,0.25), 0 0 0 1px rgba(255,255,255,0.4)',
+            opacity: 0.9,
+            filter: 'saturate(0.85)',
+            // Subtle top accent bar
+            backgroundImage: 'linear-gradient(to bottom, rgba(55,65,81,0.08), rgba(55,65,81,0) 28%)'
+        };
+    };
+
+    const renderLockOverlay = () => {
+        if (!summaryConfirmed) return null;
+        return (
+            <div style={{
+                position: 'absolute',
+                top: 6,
+                right: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '2px 6px',
+                background: 'rgba(55,65,81,0.08)',
+                border: '1px solid rgba(55,65,81,0.15)',
+                borderRadius: 6,
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                color: '#374151',
+                backdropFilter: 'blur(2px)'
+            }}>
+                <i className="ms-Icon ms-Icon--LockSolid" style={{ fontSize: 12, color: '#374151' }} />
+                LOCKED
+            </div>
+        );
+    };
+
+    // Helper to reset confirmation when form fields are edited
+    const resetConfirmationOnEdit = () => {
+        if (summaryConfirmed) {
+            setSummaryConfirmed(false);
+            setConfirmAcknowledge(false);
+            setEditsAfterConfirmation(true);
+        }
+    };
+
+    // Wrapper functions that reset confirmation when called
+    const setDescriptionWithReset = (value: React.SetStateAction<string>) => {
+        setDescription(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setAreaOfWorkWithReset = (value: React.SetStateAction<string>) => {
+        setAreaOfWork(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setPracticeAreaWithReset = (value: React.SetStateAction<string>) => {
+        setPracticeArea(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setFolderStructureWithReset = (value: React.SetStateAction<string>) => {
+        setFolderStructure(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setTeamMemberWithReset = (value: React.SetStateAction<string>) => {
+        setTeamMember(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setSupervisingPartnerWithReset = (value: React.SetStateAction<string>) => {
+        setSupervisingPartner(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setOriginatingSolicitorWithReset = (value: React.SetStateAction<string>) => {
+        setOriginatingSolicitor(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setSelectedDateWithReset = (value: React.SetStateAction<Date | null>) => {
+        setSelectedDate(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setDisputeValueWithReset = (value: React.SetStateAction<string>) => {
+        setDisputeValue(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setOpponentNameWithReset = (value: React.SetStateAction<string>) => {
+        setOpponentName(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setOpponentEmailWithReset = (value: React.SetStateAction<string>) => {
+        setOpponentEmail(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setOpponentSolicitorNameWithReset = (value: React.SetStateAction<string>) => {
+        setOpponentSolicitorName(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setOpponentSolicitorCompanyWithReset = (value: React.SetStateAction<string>) => {
+        setOpponentSolicitorCompany(value);
+        resetConfirmationOnEdit();
+    };
+
+    const setOpponentSolicitorEmailWithReset = (value: React.SetStateAction<string>) => {
+        setOpponentSolicitorEmail(value);
+        resetConfirmationOnEdit();
+    };
 
     // Processing state for matter submission
     const [isProcessing, setIsProcessing] = useState(false);
@@ -897,6 +1168,7 @@ const handleClearAll = () => {
         setCurrentStep(1);
         setSummaryConfirmed(false); // Reset confirmation when going back to edit
         setConfirmAcknowledge(false); // Reset acknowledgement checkbox
+        setEditsAfterConfirmation(false); // Reset edits flag when explicitly going back
         // Scroll to top when changing steps
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -1295,7 +1567,7 @@ const handleClearAll = () => {
         setProcessingSteps(initialSteps);
         
         // Activate workbench mode immediately on submission
-        setTimeout(() => setWorkbenchMode(true), 300);
+        // setTimeout(() => setWorkbenchMode(true), 300); // Disabled - keep processing in main section
         
         let url = '';
 
@@ -1435,8 +1707,11 @@ ${JSON.stringify(debugInfo, null, 2)}
         setSupervisingPartner('');
         setOriginatingSolicitor(defaultTeamMember);
         setClientType(initialClientType || '');
-        setPendingClientType(''); // This will reset the client dots
-        setSelectedPoidIds([]); // This will reset the client dots
+        // Only reset pending client type and POID selection if not in instruction mode
+        if (!instructionRef) {
+            setPendingClientType(''); // This will reset the client dots
+            setSelectedPoidIds([]); // This will reset the client dots
+        }
         setAreaOfWork('');
         setPracticeArea('');
         setDescription('');
@@ -1464,6 +1739,7 @@ ${JSON.stringify(debugInfo, null, 2)}
         setOpponentHasCompany(false);
         setOpponentCompanyName('');
         setOpponentCompanyNumber('');
+        setOpponentType('');
         setSolicitorTitle('');
         setSolicitorFirst('');
         setSolicitorLast('');
@@ -1502,6 +1778,9 @@ ${JSON.stringify(debugInfo, null, 2)}
     };
 
     const showProcessingSection = processingSteps.some(s => s.status !== 'pending');
+    
+    // Debug tools should only show when processing is active or manually overridden
+    const showDebugTools = showProcessingSection || debugManualOverride;
 
     // Render the horizontal sliding carousel
     return (
@@ -1512,7 +1791,6 @@ ${JSON.stringify(debugInfo, null, 2)}
                     {/* Persistent Header */}
                     <div className="persistent-header" style={{
                         padding: '12px 24px',
-                        borderBottom: '1px solid #e1e5e9',
                         background: '#fff',
                         position: 'sticky',
                         top: 0,
@@ -1520,28 +1798,28 @@ ${JSON.stringify(debugInfo, null, 2)}
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: 8,
+                        gap: 12,
                         margin: '-20px -20px 0 -20px',
-                        flexWrap: 'wrap',
                         minHeight: 'auto',
                         alignContent: 'center'
                     }}>
                         <div style={{ 
                             display: 'flex', 
                             alignItems: 'center', 
-                            gap: 6, 
+                            gap: 4, 
                             flex: '1 1 auto',
-                            minWidth: 0, // Allow shrinking
-                            overflow: 'hidden' 
+                            minWidth: 0,
+                            overflow: 'hidden'
                         }}>
-                            {/* Navigation breadcrumbs */}
+                            {/* Unified breadcrumbs + actions row */}
                             <div style={{ 
                                 display: 'flex', 
                                 alignItems: 'center', 
-                                gap: 6, 
+                                gap: 4, 
                                 fontSize: 14,
-                                flexWrap: 'wrap',
-                                rowGap: 4
+                                minWidth: 0,
+                                flex: '1 1 auto',
+                                overflow: 'hidden'
                             }}>
                                 <button 
                                     onClick={handleBackToClients}
@@ -1552,13 +1830,13 @@ ${JSON.stringify(debugInfo, null, 2)}
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 6,
-                                        padding: '6px 10px',
+                                        gap: 4,
+                                        padding: '4px 8px',
                                         borderRadius: 6,
                                         transition: 'all 0.2s ease',
                                         fontWeight: currentStep === 0 ? 600 : 400,
                                         backgroundColor: currentStep === 0 ? '#e3f0fc' : 'transparent',
-                                        fontSize: '13px',
+                                        fontSize: '12px',
                                         whiteSpace: 'nowrap',
                                         flexShrink: 0
                                     }}
@@ -1638,13 +1916,13 @@ ${JSON.stringify(debugInfo, null, 2)}
                                         cursor: currentStep === 0 ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 6,
-                                        padding: '6px 10px',
+                                        gap: 4,
+                                        padding: '4px 8px',
                                         borderRadius: 6,
                                         transition: 'all 0.2s ease',
                                         fontWeight: currentStep === 1 ? 600 : 400,
                                         backgroundColor: currentStep === 1 ? '#e3f0fc' : 'transparent',
-                                        fontSize: '13px',
+                                        fontSize: '12px',
                                         whiteSpace: 'nowrap',
                                         flexShrink: 0
                                     }}
@@ -1718,13 +1996,13 @@ ${JSON.stringify(debugInfo, null, 2)}
                                     color: currentStep === 2 ? '#3690CE' : '#666',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 6,
-                                    padding: '6px 10px',
+                                    gap: 4,
+                                    padding: '4px 8px',
                                     borderRadius: 6,
                                     fontWeight: currentStep === 2 ? 600 : 400,
                                     backgroundColor: currentStep === 2 ? '#e3f0fc' : 'transparent',
                                     transition: 'all 0.2s ease',
-                                    fontSize: '13px',
+                                    fontSize: '12px',
                                     whiteSpace: 'nowrap',
                                     flexShrink: 0
                                 }}>
@@ -1747,135 +2025,188 @@ ${JSON.stringify(debugInfo, null, 2)}
                                             </svg>
                                         </div>
                                     ) : (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ display: 'inline', verticalAlign: 'middle' }}>
-                                            <path d="M1 12C2.73 7.61 7.11 4.5 12 4.5c4.89 0 9.27 3.11 11 7.5-1.73 4.39-6.11 7.5-11 7.5-4.89 0-9.27-3.11-11-7.5z" stroke="currentColor" strokeWidth="2" fill="none"/>
-                                            <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" fill="none"/>
-                                        </svg>
+                                        <i className="ms-Icon ms-Icon--CheckList" style={{ fontSize: 16 }} />
                                     )}
                                     Review and Confirm
                                 </div>
+                                {/* Spacer to push actions right */}
+                                <div style={{ flex: 1, minWidth: 12 }} />
+                                {/* Search (only step 0) */}
+                                {currentStep === 0 && showPoidSelection && !((pendingClientType === 'Individual' || pendingClientType === 'Company') && selectedPoidIds.length > 0) && (
+                                    <div style={{ position: 'relative' }}>
+                                        <MinimalSearchBox
+                                            value={poidSearchTerm}
+                                            onChange={setPoidSearchTerm}
+                                            focused={searchBoxFocused}
+                                            onRequestOpen={() => setSearchBoxFocused(true)}
+                                            onRequestClose={() => setSearchBoxFocused(false)}
+                                        />
+                                    </div>
+                                )}
+                                {/* Clear All inline */}
+                                {hasDataToClear() && (
+                                    <>
+                                        <button 
+                                            type="button" 
+                                            onClick={handleClearAll} 
+                                            style={{
+                                                background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                border: '1px solid #e5e7eb',
+                                                borderRadius: 8,
+                                                padding: '8px 12px',
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                color: '#D65541',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)';
+                                                e.currentTarget.style.borderColor = '#D65541';
+                                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(214, 85, 65, 0.15)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                                                e.currentTarget.style.borderColor = '#e5e7eb';
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
+                                            }}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                                <path 
+                                                    d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c0-1 1-2 2-2v2m-6 5v6m4-6v6" 
+                                                    stroke="currentColor" 
+                                                    strokeWidth="2" 
+                                                    strokeLinecap="round" 
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                            Clear All
+                                            {getFieldCount() > 0 && (
+                                                <span style={{
+                                                    background: '#D65541',
+                                                    color: '#fff',
+                                                    borderRadius: '50%',
+                                                    width: '18px',
+                                                    height: '18px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: '10px',
+                                                    fontWeight: 600,
+                                                    marginLeft: '2px'
+                                                }}>
+                                                    {getFieldCount()}
+                                                </span>
+                                            )}
+                                        </button>
+                                        <Dialog
+                                          hidden={!isClearDialogOpen}
+                                          onDismiss={() => setIsClearDialogOpen(false)}
+                                          dialogContentProps={{
+                                            type: DialogType.normal,
+                                            title: 'Clear All Data',
+                                            subText: 'Are you sure you want to clear all form data? This action cannot be undone.'
+                                          }}
+                                          modalProps={{
+                                            isBlocking: true
+                                          }}
+                                        >
+                                          <DialogFooter>
+                                            <PrimaryButton onClick={doClearAll} text="Yes, clear all" />
+                                            <DefaultButton onClick={() => setIsClearDialogOpen(false)} text="Cancel" />
+                                          </DialogFooter>
+                                        </Dialog>
+                                    </>
+                                )}
                             </div>
                         </div>
+                    </div>
 
-                        {/* Right side controls */}
-                        <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 6,
-                            rowGap: 4,
-                            flexShrink: 0,
-                            flexWrap: 'wrap'
+                    {/* Neat Separator */}
+                    <div style={{
+                        height: '1px',
+                        background: 'linear-gradient(90deg, transparent 0%, rgba(225, 229, 233, 0.4) 20%, rgba(225, 229, 233, 0.7) 50%, rgba(225, 229, 233, 0.4) 80%, transparent 100%)',
+                        margin: '12px -20px 8px -20px',
+                        position: 'relative',
+                        zIndex: 1,
+                        clear: 'both'
+                    }} />
+
+                    {/* System Info Pills - positioned close to separator */}
+                    <div style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        gap: 6, 
+                        marginBottom: 20,
+                        marginTop: 8,
+                        paddingLeft: 4,
+                        paddingRight: 4
+                    }}>
+                        {instructionRef && (
+                            <span style={{
+                                padding: '3px 8px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: 4,
+                                background: '#f9fafb',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: '#6b7280',
+                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                letterSpacing: '0.5px'
+                            }}>
+                                Instruction: {instructionRef}
+                            </span>
+                        )}
+                        {(matterIdState || matterRef) && (
+                            <span style={{
+                                padding: '3px 8px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: 4,
+                                background: '#f9fafb',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: '#6b7280',
+                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                letterSpacing: '0.5px'
+                            }}>
+                                Matter: {matterIdState || matterRef}
+                            </span>
+                        )}
+                        {stage && (
+                            <span style={{
+                                padding: '3px 8px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: 4,
+                                background: '#f9fafb',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: '#6b7280',
+                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                letterSpacing: '0.5px'
+                            }}>
+                                Stage: {stage}
+                            </span>
+                        )}
+                        <span style={{
+                            padding: '3px 8px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 4,
+                            background: '#f9fafb',
+                            fontSize: 11,
+                            fontWeight: 500,
+                            color: '#6b7280',
+                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                            letterSpacing: '0.5px'
                         }}>
-                            {/* POID search - available in step 0 when selection UI is shown */}
-                            {currentStep === 0 && showPoidSelection && (
-                                <>
-                                    {/* MinimalSearchBox - hide when Individual/Company has selection */}
-                                    {!(
-                                        (pendingClientType === 'Individual' || pendingClientType === 'Company') && 
-                                        selectedPoidIds.length > 0
-                                    ) && (
-                                        <div style={{ 
-                                            position: 'relative',
-                                            animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                            animationDelay: '0ms',
-                                            opacity: 0,
-                                            transform: 'translateX(20px)'
-                                        }}>
-                                            <MinimalSearchBox
-                                                value={poidSearchTerm}
-                                                onChange={setPoidSearchTerm}
-                                                focused={searchBoxFocused}
-                                                onRequestOpen={() => setSearchBoxFocused(true)}
-                                                onRequestClose={() => setSearchBoxFocused(false)}
-                                            />
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                            
-                            {/* Global Clear button - always available when there's something to clear */}
-                            {hasDataToClear() && (
-                              <>
-                                <button 
-                                    type="button" 
-                                    onClick={handleClearAll} 
-                                    style={{
-                                        background: '#fff',
-                                        border: '1px solid #e1e5e9',
-                                        borderRadius: 6,
-                                        padding: '6px 10px',
-                                        fontSize: '13px',
-                                        fontWeight: 500,
-                                        color: '#D65541',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                        fontFamily: 'Raleway, sans-serif',
-                                        whiteSpace: 'nowrap',
-                                        flexShrink: 0
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = '#ffefed';
-                                        e.currentTarget.style.borderColor = '#D65541';
-                                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = '#fff';
-                                        e.currentTarget.style.borderColor = '#e1e5e9';
-                                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
-                                    }}
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                                        <path 
-                                            d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c0-1 1-2 2-2v2m-6 5v6m4-6v6" 
-                                            stroke="currentColor" 
-                                            strokeWidth="2" 
-                                            strokeLinecap="round" 
-                                            strokeLinejoin="round"
-                                        />
-                                    </svg>
-                                    Clear All
-                                    {getFieldCount() > 0 && (
-                                        <span style={{
-                                            background: '#D65541',
-                                            color: '#fff',
-                                            borderRadius: '50%',
-                                            width: '18px',
-                                            height: '18px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '10px',
-                                            fontWeight: 600,
-                                            marginLeft: '2px'
-                                        }}>
-                                            {getFieldCount()}
-                                        </span>
-                                    )}
-                                </button>
-                                <Dialog
-                                  hidden={!isClearDialogOpen}
-                                  onDismiss={() => setIsClearDialogOpen(false)}
-                                  dialogContentProps={{
-                                    type: DialogType.normal,
-                                    title: 'Clear All Data',
-                                    subText: 'Are you sure you want to clear all form data? This action cannot be undone.'
-                                  }}
-                                  modalProps={{
-                                    isBlocking: true
-                                  }}
-                                >
-                                  <DialogFooter>
-                                    <PrimaryButton onClick={doClearAll} text="Yes, clear all" />
-                                    <DefaultButton onClick={() => setIsClearDialogOpen(false)} text="Cancel" />
-                                  </DialogFooter>
-                                </Dialog>
-                              </>
-                            )}
-                        </div>
+                            Opening Date: {selectedDate ? selectedDate.toLocaleDateString('en-GB') : '-'}
+                        </span>
                     </div>
 
                     {/* CSS animations for search controls */}
@@ -2030,15 +2361,15 @@ ${JSON.stringify(debugInfo, null, 2)}
                                     }}>
                                         <OpponentDetailsStep
                                             opponentName={opponentName}
-                                            setOpponentName={setOpponentName}
+                                            setOpponentName={setOpponentNameWithReset}
                                             opponentEmail={opponentEmail}
-                                            setOpponentEmail={setOpponentEmail}
+                                            setOpponentEmail={setOpponentEmailWithReset}
                                             opponentSolicitorName={opponentSolicitorName}
-                                            setOpponentSolicitorName={setOpponentSolicitorName}
+                                            setOpponentSolicitorName={setOpponentSolicitorNameWithReset}
                                             opponentSolicitorCompany={opponentSolicitorCompany}
-                                            setOpponentSolicitorCompany={setOpponentSolicitorCompany}
+                                            setOpponentSolicitorCompany={setOpponentSolicitorCompanyWithReset}
                                             opponentSolicitorEmail={opponentSolicitorEmail}
-                                            setOpponentSolicitorEmail={setOpponentSolicitorEmail}
+                                            setOpponentSolicitorEmail={setOpponentSolicitorEmailWithReset}
                                             noConflict={noConflict}
                                             setNoConflict={setNoConflict}
                                             disputeValue={disputeValue}
@@ -2099,94 +2430,43 @@ ${JSON.stringify(debugInfo, null, 2)}
                                 
                                 {/* Continue Button */}
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
-                                    <div
-                                        className="nav-button forward-button"
+                                    <button
                                         onClick={clientsStepComplete ? handleContinueToForm : undefined}
-                                        aria-disabled={!clientsStepComplete}
-                                        tabIndex={clientsStepComplete ? 0 : -1}
+                                        disabled={!clientsStepComplete}
                                         style={{
-                                            background: '#f4f4f6',
-                                            border: '2px solid #e1dfdd',
-                                            borderRadius: '0px',
-                                            width: '48px',
-                                            height: '48px',
+                                            background: clientsStepComplete ? 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)' : '#f8f9fa',
+                                            border: '1px solid #e5e7eb',
+                                            borderRadius: 8,
+                                            padding: '12px 20px',
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            color: clientsStepComplete ? '#374151' : '#9ca3af',
+                                            cursor: clientsStepComplete ? 'pointer' : 'not-allowed',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: clientsStepComplete ? 'pointer' : 'not-allowed',
-                                            opacity: clientsStepComplete ? 1 : 0.5,
-                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                            position: 'relative',
-                                            overflow: 'hidden',
-                                            pointerEvents: clientsStepComplete ? 'auto' : 'none',
+                                            gap: 8,
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: clientsStepComplete ? '0 2px 4px rgba(0, 0, 0, 0.05)' : 'none',
+                                            opacity: clientsStepComplete ? 1 : 0.6
                                         }}
                                         onMouseEnter={clientsStepComplete ? (e) => {
-                                            e.currentTarget.style.background = '#ffefed';
-                                            e.currentTarget.style.border = '2px solid #D65541';
-                                            e.currentTarget.style.borderRadius = '0px';
-                                            e.currentTarget.style.width = '220px';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)';
+                                            e.currentTarget.style.borderColor = '#3690CE';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
                                         } : undefined}
                                         onMouseLeave={clientsStepComplete ? (e) => {
-                                            e.currentTarget.style.background = '#f4f4f6';
-                                            e.currentTarget.style.border = '2px solid #e1dfdd';
-                                            e.currentTarget.style.borderRadius = '0px';
-                                            e.currentTarget.style.width = '48px';
-                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                                            e.currentTarget.style.borderColor = '#e5e7eb';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
                                         } : undefined}
                                     >
-                                        {/* Arrow Icon */}
-                                        <svg
-                                            width="18"
-                                            height="18"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            style={{
-                                                transition: 'color 0.3s, opacity 0.3s',
-                                                color: '#D65541',
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                            }}
-                                        >
-                                            <path
-                                                d="M5 12h14m-7-7l7 7-7 7"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            />
+                                        Continue to Matter Details
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <path d="M5 12h14m-7-7l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                         </svg>
-
-                                        {/* Expandable Text */}
-                                        <span
-                                            style={{
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                fontSize: '14px',
-                                                fontWeight: 600,
-                                                color: '#D65541',
-                                                opacity: 0,
-                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                            className="nav-text"
-                                        >
-                                            Continue to Matter Details
-                                        </span>
-                                    </div>
-                                    <style>{`
-                                        .nav-button:hover .nav-text {
-                                            opacity: 1 !important;
-                                        }
-                                        .nav-button:hover svg {
-                                            opacity: 0 !important;
-                                        }
-                                    `}</style>
+                                    </button>
                                 </div>
                             </div>
 
@@ -2214,7 +2494,7 @@ ${JSON.stringify(debugInfo, null, 2)}
                                     {/* Move NetDocuments Folder Structure above Area of Work */}
                                     <DescriptionStep
                                         description={description}
-                                        setDescription={setDescription}
+                                        setDescription={setDescriptionWithReset}
                                         matterRefPreview={(() => {
                                             // Prefer selected POID; then activePoid; then POID matched by InstructionRef; then first available
                                             const selected = selectedPoidIds[0];
@@ -2284,32 +2564,32 @@ ${JSON.stringify(debugInfo, null, 2)}
                                     <FolderStructureStep
                                         folderStructure={folderStructure}
                                         setFolderStructure={(value) => {
-                                            setFolderStructure(value);
+                                            setFolderStructureWithReset(value);
                                             // Auto-select Area of Work based on folder structure
-                                            if (value === 'Default / Commercial') setAreaOfWork('Commercial');
-                                            else if (value === 'Residential Possession') setAreaOfWork('Property');
-                                            else if (value === 'Adjudication') setAreaOfWork('Construction');
-                                            else if (value === 'Employment') setAreaOfWork('Employment');
+                                            if (value === 'Default / Commercial') setAreaOfWorkWithReset('Commercial');
+                                            else if (value === 'Residential Possession') setAreaOfWorkWithReset('Property');
+                                            else if (value === 'Adjudication') setAreaOfWorkWithReset('Construction');
+                                            else if (value === 'Employment') setAreaOfWorkWithReset('Employment');
                                         }}
                                         folderOptions={['Default / Commercial', 'Residential Possession', 'Adjudication', 'Employment']}
                                         onContinue={function (): void {} }
                                     />
                                     <AreaOfWorkStep
                                         areaOfWork={areaOfWork}
-                                        setAreaOfWork={setAreaOfWork}
+                                        setAreaOfWork={setAreaOfWorkWithReset}
                                         getGroupColor={getGroupColor}
                                         onContinue={function (): void {} }
                                     />
                                     <PracticeAreaStep
                                         options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
                                         practiceArea={practiceArea}
-                                        setPracticeArea={setPracticeArea}
+                                        setPracticeArea={setPracticeAreaWithReset}
                                         areaOfWork={areaOfWork}
                                         onContinue={function (): void {} }
                                     />
                                     <ValueAndSourceStep
                                         disputeValue={disputeValue}
-                                        setDisputeValue={setDisputeValue}
+                                        setDisputeValue={setDisputeValueWithReset}
                                         source={source}
                                         setSource={setSource}
                                         referrerName={referrerName}
@@ -2330,310 +2610,96 @@ ${JSON.stringify(debugInfo, null, 2)}
                                 </Stack>
                                 {/* Navigation buttons for form step */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-                                    {/* Back button with smooth expansion */}
-                                    <div 
-                                        className="nav-button back-button"
+                                    {/* Back button */}
+                                    <button
                                         onClick={handleBackToClients}
                                         style={{
-                                            background: '#f4f4f6',
-                                            border: '2px solid #e1dfdd',
-                                            borderRadius: '0px',
-                                            width: '48px',
-                                            height: '48px',
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            border: '1px solid #e5e7eb',
+                                            borderRadius: 8,
+                                            padding: '12px 20px',
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            color: '#374151',
+                                            cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                            position: 'relative',
-                                            overflow: 'hidden',
+                                            gap: 8,
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#ffefed';
-                                            e.currentTarget.style.border = '2px solid #D65541';
-                                            e.currentTarget.style.borderRadius = '0px';
-                                            e.currentTarget.style.width = '160px';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)';
+                                            e.currentTarget.style.borderColor = '#3690CE';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = '#f4f4f6';
-                                            e.currentTarget.style.border = '2px solid #e1dfdd';
-                                            e.currentTarget.style.borderRadius = '0px';
-                                            e.currentTarget.style.width = '48px';
-                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                                            e.currentTarget.style.borderColor = '#e5e7eb';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
                                         }}
                                     >
-                                        {/* Arrow Icon */}
-                                        <svg 
-                                            width="18" 
-                                            height="18" 
-                                            viewBox="0 0 24 24" 
-                                            fill="none"
-                                            style={{
-                                                transition: 'color 0.3s, opacity 0.3s',
-                                                color: '#D65541',
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                            }}
-                                        >
-                                            <path 
-                                                d="M19 12h-14m7 7l-7-7 7-7" 
-                                                stroke="currentColor" 
-                                                strokeWidth="2" 
-                                                strokeLinecap="round" 
-                                                strokeLinejoin="round"
-                                            />
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                         </svg>
-                                        
-                                        {/* Expandable Text */}
-                                        <span 
-                                            style={{
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                fontSize: '14px',
-                                                fontWeight: 600,
-                                                color: '#D65541',
-                                                opacity: 0,
-                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                            className="nav-text"
-                                        >
-                                            Back to Clients
-                                        </span>
-                                    </div>
+                                        Back to Party Details
+                                    </button>
 
-                                    {/* Forward button with smooth expansion */}
-                                    <div 
-                                        className="nav-button forward-button"
+                                    {/* Forward button */}
+                                    <button
                                         onClick={handleGoToReview}
                                         style={{
-                                            background: '#f4f4f6',
-                                            border: '2px solid #e1dfdd',
-                                            borderRadius: '0px',
-                                            width: '48px',
-                                            height: '48px',
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                            border: '1px solid #e5e7eb',
+                                            borderRadius: 8,
+                                            padding: '12px 20px',
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            color: '#374151',
+                                            cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                            position: 'relative',
-                                            overflow: 'hidden',
+                                            gap: 8,
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#ffefed';
-                                            e.currentTarget.style.border = '2px solid #D65541';
-                                            e.currentTarget.style.borderRadius = '0px';
-                                            e.currentTarget.style.width = '160px';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)';
+                                            e.currentTarget.style.borderColor = '#3690CE';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = '#f4f4f6';
-                                            e.currentTarget.style.border = '2px solid #e1dfdd';
-                                            e.currentTarget.style.borderRadius = '0px';
-                                            e.currentTarget.style.width = '48px';
-                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                                            e.currentTarget.style.borderColor = '#e5e7eb';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
                                         }}
                                     >
-                                        {/* Arrow Icon */}
-                                        <svg 
-                                            width="18" 
-                                            height="18" 
-                                            viewBox="0 0 24 24" 
-                                            fill="none"
-                                            style={{
-                                                transition: 'color 0.3s, opacity 0.3s',
-                                                color: '#D65541',
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                            }}
-                                        >
-                                            <path 
-                                                d="M5 12h14m-7-7l7 7-7 7" 
-                                                stroke="currentColor" 
-                                                strokeWidth="2" 
-                                                strokeLinecap="round" 
-                                                strokeLinejoin="round"
-                                            />
+                                        Review Summary
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <path d="M5 12h14m-7-7l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                         </svg>
-                                        
-                                        {/* Expandable Text */}
-                                        <span 
-                                            style={{
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                fontSize: '14px',
-                                                fontWeight: 600,
-                                                color: '#D65541',
-                                                opacity: 0,
-                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                            className="nav-text"
-                                        >
-                                            Review Summary
-                                        </span>
-                                    </div>
-                                    
-                                    <style>{`
-                                        .nav-button:hover .nav-text {
-                                            opacity: 1 !important;
-                                        }
-                                        .nav-button:hover svg {
-                                            opacity: 0 !important;
-                                        }
-                                    `}</style>
+                                    </button>
                                 </div>
                             </div>
 
                             {/* Step 3: Review Summary */}
                             <div style={{ width: '33.333%', padding: '16px', boxSizing: 'border-box' }}>
-                                <div
-                                    className="review-summary-box"
-                                    style={{
-                                        border: summaryConfirmed ? '2px solid #49B670' : '1px solid #e1e5ea',
-                                        borderRadius: 10,
-                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                        padding: 24,
-                                        margin: '0 0 16px 0',
-                                        width: '100%',
-                                        boxSizing: 'border-box',
-                                        transition: 'all 0.4s ease',
-                                        cursor: 'default',
-                                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
-                                        minHeight: 'auto'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                                        <h4 style={{ 
-                                            margin: 0, 
-                                            fontWeight: 600, 
-                                            fontSize: 18, 
-                                            color: summaryConfirmed ? '#15803d' : '#061733',
-                                            animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                            animationDelay: '0ms',
-                                            opacity: 0,
-                                            transform: 'translateX(20px)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 8
-                                        }}>
-                                            {summaryConfirmed ? (
-                                                <i className="ms-Icon ms-Icon--CheckMark" style={{ fontSize: 16, color: '#22c55e' }} />
-                                            ) : null}
-                                            {`Review Summary ${summaryConfirmed ? '- Confirmed' : ''}`}
-                                        </h4>
-                                        
-                                        {/* JSON Tools for review mode */}
-                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                                {/* Debug Import Button (subtle, for failed submission debugging) */}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setDebugImportOpen(!debugImportOpen);
-                                                        if (!debugImportOpen) {
-                                                            setDebugJsonInput('');
-                                                            setDebugValidation(null);
-                                                        }
-                                                    }}
-                                                    title="Debug failed submissions by importing JSON"
-                                                    style={{
-                                                        background: 'linear-gradient(135deg, #FFF8DC 0%, #FFFACD 100%)',
-                                                        border: '1px solid #DDD4AA',
-                                                        borderRadius: 8,
-                                                        padding: '6px 8px',
-                                                        fontSize: 11,
-                                                        fontWeight: 500,
-                                                        color: '#8B7500',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 4,
-                                                        transition: 'transform 0.15s ease, background 0.2s ease, border-color 0.2s ease',
-                                                        animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                                        animationDelay: '120ms',
-                                                        opacity: 0,
-                                                        transform: 'translateX(20px)'
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.transform = 'translateY(-1px)';
-                                                        e.currentTarget.style.borderColor = '#8B7500';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.transform = 'translateY(0)';
-                                                        e.currentTarget.style.borderColor = '#DDD4AA';
-                                                    }}
-                                                >
-                                                    <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 10 }} />
-                                                    Debug
-                                                </button>
-                                                
-                                                {/* Original JSON Toggle */}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setJsonPreviewOpen(!jsonPreviewOpen);
-                                                    }}
-                                                    style={{
-                                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                        border: '1px solid #e1e5ea',
-                                                        borderRadius: 8,
-                                                        padding: '8px 12px',
-                                                        fontSize: 12,
-                                                        fontWeight: 600,
-                                                        color: '#3690CE',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 6,
-                                                        transition: 'transform 0.15s ease, background 0.2s ease, border-color 0.2s ease',
-                                                        animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                                        animationDelay: '150ms',
-                                                        opacity: 0,
-                                                        transform: 'translateX(20px)'
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.transform = 'translateY(-1px)';
-                                                        e.currentTarget.style.borderColor = '#3690CE';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.transform = 'translateY(0)';
-                                                        e.currentTarget.style.borderColor = '#e1e5ea';
-                                                    }}
-                                                >
-                                                    <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 12 }} />
-                                                    {jsonPreviewOpen ? 'Hide JSON' : 'View JSON'}
-                                                </button>
-                                            </div>
-                                    </div>
-                                    
-                                    {/* Always show review content */}
-                                            {/* Processing / Debug / Support panels moved to bottom */}
-                                        </div>
-
-                                    {/* Debug JSON Import Panel */}
-                                    {debugImportOpen && (
+                                    {/* Unified Debug Inspector Panel */}
+                                    {debugInspectorOpen && (
                                         <div style={{
                                             marginBottom: 24,
-                                            border: '2px solid #DDD4AA',
+                                            border: '2px solid #D65541',
                                             borderRadius: 8,
-                                            background: 'linear-gradient(135deg, #FFFEF7 0%, #FFF9E6 100%)',
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #FEF2F2 100%)',
                                             overflow: 'hidden'
                                         }}>
                                             <div style={{
                                                 padding: '12px 16px',
-                                                background: 'linear-gradient(135deg, #8B7500 0%, #A68600 100%)',
+                                                background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
                                                 color: '#fff',
                                                 fontSize: 12,
                                                 fontWeight: 600,
@@ -2643,10 +2709,10 @@ ${JSON.stringify(debugInfo, null, 2)}
                                             }}>
                                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                     <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 12 }} />
-                                                    Debug: Import Failed Submission JSON
+                                                    Debug
                                                 </span>
                                                 <button
-                                                    onClick={() => setDebugImportOpen(false)}
+                                                    onClick={() => setDebugInspectorOpen(false)}
                                                     style={{
                                                         background: 'rgba(255,255,255,0.1)',
                                                         border: '1px solid rgba(255,255,255,0.2)',
@@ -2665,277 +2731,403 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                 </button>
                                             </div>
                                             
-                                            <div style={{ padding: 16 }}>
-                                                {/* Instructions */}
-                                                <div style={{
-                                                    marginBottom: 12,
-                                                    padding: 8,
-                                                    background: 'rgba(139, 117, 0, 0.1)',
-                                                    border: '1px solid rgba(139, 117, 0, 0.2)',
-                                                    borderRadius: 4,
-                                                    fontSize: 11,
-                                                    color: '#8B7500'
-                                                }}>
-                                                    <strong>⚠️ Development Tool:</strong> Paste JSON from a failed submission to diagnose issues and get suggestions.
-                                                </div>
-                                                
-                                                {/* JSON Input */}
-                                                <textarea
-                                                    value={debugJsonInput}
-                                                    onChange={(e) => setDebugJsonInput(e.target.value)}
-                                                    placeholder="Paste your JSON data here..."
-                                                    style={{
-                                                        width: '100%',
-                                                        height: 200,
-                                                        fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                        fontSize: 11,
-                                                        padding: 12,
-                                                        border: '1px solid #DDD4AA',
-                                                        borderRadius: 4,
-                                                        background: '#fff',
-                                                        resize: 'vertical',
-                                                        marginBottom: 12,
-                                                        boxSizing: 'border-box'
-                                                    }}
-                                                />
-                                                
-                                                {/* Validate Button */}
+                                            {/* Tab Navigation */}
+                                            <div style={{ 
+                                                display: 'flex', 
+                                                background: 'rgba(214, 85, 65, 0.1)',
+                                                borderBottom: '1px solid rgba(214, 85, 65, 0.2)'
+                                            }}>
                                                 <button
-                                                    onClick={() => {
-                                                        if (debugJsonInput.trim()) {
-                                                            setDebugValidation(validateDebugJson(debugJsonInput));
-                                                        }
-                                                    }}
-                                                    disabled={!debugJsonInput.trim()}
+                                                    onClick={() => setDebugActiveTab('json')}
                                                     style={{
-                                                        background: debugJsonInput.trim() ? 'linear-gradient(135deg, #8B7500 0%, #A68600 100%)' : '#ccc',
+                                                        flex: 1,
+                                                        padding: '8px 12px',
+                                                        background: debugActiveTab === 'json' ? 'rgba(214, 85, 65, 0.2)' : 'transparent',
                                                         border: 'none',
-                                                        borderRadius: 6,
-                                                        padding: '8px 16px',
-                                                        fontSize: 12,
-                                                        fontWeight: 600,
-                                                        color: '#fff',
-                                                        cursor: debugJsonInput.trim() ? 'pointer' : 'not-allowed',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 6,
-                                                        marginBottom: debugValidation ? 16 : 0
+                                                        fontSize: 11,
+                                                        fontWeight: debugActiveTab === 'json' ? 600 : 400,
+                                                        color: '#D65541',
+                                                        cursor: 'pointer',
+                                                        borderRight: '1px solid rgba(214, 85, 65, 0.2)'
                                                     }}
                                                 >
-                                                    <i className="ms-Icon ms-Icon--TestBeaker" style={{ fontSize: 12 }} />
-                                                    Analyze JSON
+                                                    JSON Data
                                                 </button>
-                                                
-                                                {/* Validation Results */}
-                                                {debugValidation && (
-                                                    <div style={{ 
-                                                        border: `2px solid ${debugValidation.isValid ? '#22c55e' : '#dc2626'}`,
-                                                        borderRadius: 6,
-                                                        background: debugValidation.isValid ? '#f0fdf4' : '#fef2f2',
-                                                        overflow: 'hidden'
-                                                    }}>
-                                                        {/* Header */}
+                                                <button
+                                                    onClick={() => setDebugActiveTab('details')}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '8px 12px',
+                                                        background: debugActiveTab === 'details' ? 'rgba(214, 85, 65, 0.2)' : 'transparent',
+                                                        border: 'none',
+                                                        fontSize: 11,
+                                                        fontWeight: debugActiveTab === 'details' ? 600 : 400,
+                                                        color: '#D65541',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    Backend Details
+                                                </button>
+                                            </div>
+
+                                            <div style={{ padding: 16 }}>
+                                                {debugActiveTab === 'json' && (
+                                                    <>
+                                                        {/* Instructions */}
                                                         <div style={{
-                                                            padding: '8px 12px',
-                                                            background: debugValidation.isValid ? '#22c55e' : '#dc2626',
-                                                            color: '#fff',
-                                                            fontSize: 12,
-                                                            fontWeight: 600,
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 6
+                                                            marginBottom: 12,
+                                                            padding: 8,
+                                                            background: 'rgba(214, 85, 65, 0.1)',
+                                                            border: '1px solid rgba(214, 85, 65, 0.2)',
+                                                            borderRadius: 4,
+                                                            fontSize: 11,
+                                                            color: '#D65541'
                                                         }}>
-                                                            <i className={`ms-Icon ms-Icon--${debugValidation.isValid ? 'CheckMark' : 'ErrorBadge'}`} style={{ fontSize: 12 }} />
-                                                            {debugValidation.isValid ? 'Validation Passed' : 'Issues Found'}
+                                                            <strong>JSON Inspector:</strong> View current data or paste failed submission JSON for debugging.
                                                         </div>
-                                                        
-                                                        {/* Content */}
-                                                        <div style={{ padding: 12, fontSize: 11 }}>
-                                                            {/* Suggestions */}
-                                                            {debugValidation.suggestions.length > 0 && (
-                                                                <div style={{ marginBottom: 12 }}>
-                                                                    <strong style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                                                                        <i className="ms-Icon ms-Icon--Error" style={{ fontSize: 11 }} />
-                                                                        Critical Issues:
-                                                                    </strong>
-                                                                    <ul style={{ margin: 0, paddingLeft: 16, color: '#dc2626' }}>
-                                                                        {debugValidation.suggestions.map((suggestion, index) => (
-                                                                            <li key={index} style={{ marginBottom: 4 }}>{suggestion}</li>
-                                                                        ))}
-                                                                    </ul>
+
+                                                        {/* Current JSON View */}
+                                                        <div style={{ marginBottom: 16 }}>
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                justifyContent: 'space-between', 
+                                                                alignItems: 'center',
+                                                                marginBottom: 8
+                                                            }}>
+                                                                <span style={{ fontSize: 12, fontWeight: 600, color: '#D65541' }}>
+                                                                    Current Form Data:
+                                                                </span>
+                                                                <div style={{ display: 'flex', gap: 8 }}>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const currentJson = generateSampleJson();
+                                                                            setDebugValidation({ 
+                                                                                isValid: true, 
+                                                                                suggestions: [], 
+                                                                                warnings: [],
+                                                                                predictions: []
+                                                                            });
+                                                                        }}
+                                                                        style={{
+                                                                            background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                                            border: 'none',
+                                                                            borderRadius: 4,
+                                                                            padding: '4px 8px',
+                                                                            fontSize: 10,
+                                                                            color: '#fff',
+                                                                            cursor: 'pointer',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: 4,
+                                                                            fontWeight: 600
+                                                                        }}
+                                                                    >
+                                                                        <i className="ms-Icon ms-Icon--CheckMark" style={{ fontSize: 10 }} />
+                                                                        Validate Current
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            navigator.clipboard.writeText(JSON.stringify(generateSampleJson(), null, 2));
+                                                                        }}
+                                                                        style={{
+                                                                            background: 'rgba(214, 85, 65, 0.1)',
+                                                                            border: '1px solid rgba(214, 85, 65, 0.3)',
+                                                                            borderRadius: 4,
+                                                                            padding: '4px 8px',
+                                                                            fontSize: 10,
+                                                                            color: '#D65541',
+                                                                            cursor: 'pointer',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: 4
+                                                                        }}
+                                                                    >
+                                                                        <i className="ms-Icon ms-Icon--Copy" style={{ fontSize: 10 }} />
+                                                                        Copy JSON
+                                                                    </button>
                                                                 </div>
-                                                            )}
+                                                            </div>
+                                                            <div style={{
+                                                                padding: 12,
+                                                                background: '#fff',
+                                                                border: '1px solid rgba(214, 85, 65, 0.2)',
+                                                                borderRadius: 4,
+                                                                maxHeight: 200,
+                                                                overflow: 'auto',
+                                                                fontSize: 11,
+                                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                lineHeight: 1.4
+                                                            }}>
+                                                                <pre style={{ 
+                                                                    margin: 0, 
+                                                                    whiteSpace: 'pre-wrap',
+                                                                    wordBreak: 'break-word'
+                                                                }}>
+                                                                    {JSON.stringify(generateSampleJson(), null, 2)}
+                                                                </pre>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Manual Paste Section */}
+                                                        <div>
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                justifyContent: 'space-between', 
+                                                                alignItems: 'center',
+                                                                marginBottom: 8
+                                                            }}>
+                                                                <span style={{ fontSize: 12, fontWeight: 600, color: '#D65541' }}>
+                                                                    Manual JSON Testing:
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => setDebugManualPasteOpen(!debugManualPasteOpen)}
+                                                                    style={{
+                                                                        background: debugManualPasteOpen ? 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)' : 'rgba(214, 85, 65, 0.1)',
+                                                                        border: '1px solid rgba(214, 85, 65, 0.3)',
+                                                                        borderRadius: 4,
+                                                                        padding: '4px 8px',
+                                                                        fontSize: 10,
+                                                                        color: debugManualPasteOpen ? '#fff' : '#D65541',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 4,
+                                                                        fontWeight: 600
+                                                                    }}
+                                                                >
+                                                                    <i className={`ms-Icon ms-Icon--${debugManualPasteOpen ? 'ChevronUp' : 'ChevronDown'}`} style={{ fontSize: 10 }} />
+                                                                    {debugManualPasteOpen ? 'Close Manual' : 'Open Manual'}
+                                                                </button>
+                                                            </div>
                                                             
-                                                            {/* Warnings */}
-                                                            {debugValidation.warnings.length > 0 && (
-                                                                <div style={{ marginBottom: 12 }}>
-                                                                    <strong style={{ color: '#ea580c', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                                                                        <i className="ms-Icon ms-Icon--Warning" style={{ fontSize: 11 }} />
-                                                                        Warnings:
-                                                                    </strong>
-                                                                    <ul style={{ margin: 0, paddingLeft: 16, color: '#ea580c' }}>
-                                                                        {debugValidation.warnings.map((warning, index) => (
-                                                                            <li key={index} style={{ marginBottom: 4 }}>{warning}</li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
-                                                            )}
-                                                            
-                                                            {/* Step Predictions */}
-                                                            {debugValidation.predictions.length > 0 && (
-                                                                <div>
-                                                                    <strong style={{ color: '#3690CE', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-                                                                        <i className="ms-Icon ms-Icon--TestStep" style={{ fontSize: 11 }} />
-                                                                        Validation Step Predictions:
-                                                                    </strong>
-                                                                    <div style={{ display: 'grid', gap: 8 }}>
-                                                                        {debugValidation.predictions.map((prediction, index) => (
-                                                                            <div key={index} style={{
-                                                                                display: 'flex',
-                                                                                alignItems: 'center',
-                                                                                gap: 8,
-                                                                                padding: 8,
-                                                                                background: prediction.willPass ? 'rgba(34, 197, 94, 0.1)' : 'rgba(220, 38, 38, 0.1)',
-                                                                                border: `1px solid ${prediction.willPass ? 'rgba(34, 197, 94, 0.3)' : 'rgba(220, 38, 38, 0.3)'}`,
-                                                                                borderRadius: 4
-                                                                            }}>
-                                                                                <i className={`ms-Icon ms-Icon--${prediction.willPass ? 'CheckMark' : 'Cancel'}`} 
-                                                                                   style={{ fontSize: 10, color: prediction.willPass ? '#22c55e' : '#dc2626' }} />
-                                                                                <div style={{ flex: 1 }}>
-                                                                                    <strong style={{ color: '#061733' }}>{prediction.step}</strong>
-                                                                                    <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
-                                                                                        {prediction.reason}
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        ))}
+                                                            {debugManualPasteOpen && (
+                                                                <>
+                                                                    <textarea
+                                                                        value={debugJsonInput}
+                                                                        onChange={(e) => setDebugJsonInput(e.target.value)}
+                                                                        placeholder="Paste failed submission JSON here for debugging..."
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            height: 120,
+                                                                            padding: 12,
+                                                                            border: '1px solid rgba(214, 85, 65, 0.3)',
+                                                                            borderRadius: 4,
+                                                                            fontSize: 11,
+                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                            resize: 'vertical',
+                                                                            background: '#fff',
+                                                                            marginBottom: 8
+                                                                        }}
+                                                                    />
+                                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                if (!debugJsonInput.trim()) {
+                                                                                    setDebugValidation({ 
+                                                                                        isValid: false, 
+                                                                                        suggestions: ['Please paste JSON content first'],
+                                                                                        warnings: [],
+                                                                                        predictions: []
+                                                                                    });
+                                                                                    return;
+                                                                                }
+                                                                                try {
+                                                                                    const parsed = JSON.parse(debugJsonInput);
+                                                                                    setDebugValidation({ 
+                                                                                        isValid: true, 
+                                                                                        suggestions: [], 
+                                                                                        warnings: [],
+                                                                                        predictions: []
+                                                                                    });
+                                                                                } catch (error) {
+                                                                                    setDebugValidation({ 
+                                                                                        isValid: false, 
+                                                                                        suggestions: [`Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}`],
+                                                                                        warnings: [],
+                                                                                        predictions: []
+                                                                                    });
+                                                                                }
+                                                                            }}
+                                                                            style={{
+                                                                                background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                                                border: 'none',
+                                                                                borderRadius: 4,
+                                                                                padding: '8px 12px',
+                                                                                fontSize: 11,
+                                                                                fontWeight: 600,
+                                                                                color: '#fff',
+                                                                                cursor: 'pointer'
+                                                                            }}
+                                                                        >
+                                                                            Validate Pasted JSON
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setDebugJsonInput('');
+                                                                                setDebugValidation(null);
+                                                                            }}
+                                                                            style={{
+                                                                                background: 'rgba(214, 85, 65, 0.1)',
+                                                                                border: '1px solid rgba(214, 85, 65, 0.3)',
+                                                                                borderRadius: 4,
+                                                                                padding: '8px 12px',
+                                                                                fontSize: 11,
+                                                                                color: '#D65541',
+                                                                                cursor: 'pointer'
+                                                                            }}
+                                                                        >
+                                                                            Clear
+                                                                        </button>
                                                                     </div>
+                                                                </>
+                                                            )}
+                                                            
+                                                            {/* Validation Results */}
+                                                            {debugValidation && (
+                                                                <div style={{
+                                                                    marginTop: 12,
+                                                                    padding: 12,
+                                                                    border: `1px solid ${debugValidation.isValid ? '#10b981' : '#ef4444'}`,
+                                                                    borderRadius: 4,
+                                                                    background: debugValidation.isValid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                                    fontSize: 11
+                                                                }}>
+                                                                    <div style={{ 
+                                                                        fontWeight: 600, 
+                                                                        color: debugValidation.isValid ? '#10b981' : '#ef4444',
+                                                                        marginBottom: debugValidation.suggestions.length > 0 ? 8 : 0
+                                                                    }}>
+                                                                        {debugValidation.isValid ? '✓ Valid JSON' : '✗ Invalid JSON'}
+                                                                    </div>
+                                                                    {debugValidation.suggestions.map((suggestion, idx) => (
+                                                                        <div key={idx} style={{ color: '#ef4444', fontSize: 10 }}>
+                                                                            {suggestion}
+                                                                        </div>
+                                                                    ))}
                                                                 </div>
                                                             )}
                                                         </div>
+                                                    </>
+                                                )}
+
+                                                {debugActiveTab === 'details' && (
+                                                    <div style={{ display: 'grid', gap: 12 }}>
+                                                        <div style={{
+                                                            border: '1px solid #e5e7eb',
+                                                            borderRadius: 6,
+                                                            overflow: 'hidden'
+                                                        }}>
+                                                            <div style={{
+                                                                padding: '8px 12px',
+                                                                background: '#f8fafc',
+                                                                fontSize: 12,
+                                                                fontWeight: 700,
+                                                                color: '#374151'
+                                                            }}>
+                                                                Backend Operations
+                                                            </div>
+                                                            <div style={{ maxHeight: 240, overflow: 'auto', padding: 8 }}>
+                                                                {processingSteps.map((step, idx) => {
+                                                                    const events = operationEvents.filter(e => e.index === idx);
+                                                                    const sent = events.find(e => e.phase === 'sent');
+                                                                    const responded = events.find(e => e.phase === 'response');
+                                                                    const succeeded = events.find(e => e.phase === 'success');
+                                                                    const errored = events.find(e => e.phase === 'error');
+                                                                    return (
+                                                                        <div key={`op-debug-${idx}`} style={{ display: 'grid', gap: 6, padding: '8px 4px', borderBottom: '1px solid #f1f5f9' }}>
+                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                                <span style={{ fontSize: 12, color: '#111827', fontWeight: 700 }}>{step.label}</span>
+                                                                                <span style={{ fontSize: 11, fontWeight: 800, color: step.status === 'success' ? '#16a34a' : step.status === 'error' ? '#dc2626' : '#64748b' }}>
+                                                                                    {step.status.toUpperCase()}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                                                                <span style={{ fontSize: 11, color: sent ? '#334155' : '#94a3b8' }}>Sent{sent?.method ? ` (${sent.method})` : ''}</span>
+                                                                                <span style={{ fontSize: 11, color: responded ? '#334155' : '#94a3b8' }}>Responded{responded?.status ? ` (${responded.status})` : ''}</span>
+                                                                                <span style={{ fontSize: 11, color: succeeded ? '#16a34a' : '#94a3b8' }}>Succeeded</span>
+                                                                            </div>
+                                                                            {errored && (
+                                                                                <div style={{ display: 'grid', gap: 6 }}>
+                                                                                    <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 700 }}>Failure details</div>
+                                                                                    {errored.payloadSummary && (
+                                                                                        <div style={{
+                                                                                            padding: 8,
+                                                                                            background: '#fef2f2',
+                                                                                            border: '1px solid #fecaca',
+                                                                                            borderRadius: 6,
+                                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                                            fontSize: 11,
+                                                                                            whiteSpace: 'pre-wrap'
+                                                                                        }}>
+                                                                                            {errored.payloadSummary}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {errored.responseSummary && (
+                                                                                        <div style={{
+                                                                                            padding: 8,
+                                                                                            background: '#fef2f2',
+                                                                                            border: '1px solid #fecaca',
+                                                                                            borderRadius: 6,
+                                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                                            fontSize: 11,
+                                                                                            whiteSpace: 'pre-wrap'
+                                                                                        }}>
+                                                                                            {errored.responseSummary}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Request payload</div>
+                                                            <div style={{
+                                                                padding: 10,
+                                                                background: '#f8fafc',
+                                                                border: '1px solid #e5e7eb',
+                                                                borderRadius: 6,
+                                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                fontSize: 11,
+                                                                maxHeight: 220,
+                                                                overflow: 'auto'
+                                                            }}>
+                                                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                                    {JSON.stringify(generateSampleJson(), null, 2)}
+                                                                </pre>
+                                                            </div>
+                                                        </div>
+                                                        {processingLogs.length > 0 && (
+                                                            <div>
+                                                                <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Responses & logs</div>
+                                                                <div style={{
+                                                                    padding: 10,
+                                                                    background: '#f8fafc',
+                                                                    border: '1px solid #e5e7eb',
+                                                                    borderRadius: 6,
+                                                                    fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                    fontSize: 11,
+                                                                    maxHeight: 220,
+                                                                    overflow: 'auto'
+                                                                }}>
+                                                                    {processingLogs.map((log, idx) => (
+                                                                        <div key={`log-debug-${idx}`}>{log}</div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* JSON Preview Panel */}
-                                    {jsonPreviewOpen && (
-                                        <div style={{
-                                            marginBottom: 24,
-                                            border: '1px solid #e1dfdd',
-                                            borderRadius: 6,
-                                            background: '#f8f9fa',
-                                            overflow: 'hidden'
-                                        }}>
-                                            <div style={{
-                                                padding: '12px 16px',
-                                                background: '#2d3748',
-                                                color: '#fff',
-                                                fontSize: 12,
-                                                fontWeight: 600,
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center'
-                                            }}>
-                                                <span>Sample JSON Output</span>
-                                                <button
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(JSON.stringify(generateSampleJson(), null, 2));
-                                                    }}
-                                                    style={{
-                                                        background: 'rgba(255,255,255,0.1)',
-                                                        border: '1px solid rgba(255,255,255,0.2)',
-                                                        borderRadius: 4,
-                                                        padding: '4px 8px',
-                                                        fontSize: 10,
-                                                        color: '#fff',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 4
-                                                    }}
-                                                >
-                                                    <i className="ms-Icon ms-Icon--Copy" style={{ fontSize: 10 }} />
-                                                    Copy
-                                                </button>
-                                            </div>
-                                            <div style={{
-                                                padding: 16,
-                                                maxHeight: 400,
-                                                overflow: 'auto',
-                                                fontSize: 11,
-                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                lineHeight: 1.4,
-                                                background: '#fff'
-                                            }}>
-                                                <pre style={{ 
-                                                    margin: 0, 
-                                                    whiteSpace: 'pre-wrap',
-                                                    wordBreak: 'break-word'
-                                                }}>
-                                                    {JSON.stringify(generateSampleJson(), null, 2)}
-                                                </pre>
-                                            </div>
-                                        </div>
-                                    )}
+
 
                                     {/* Formal confirmation control moved near submission buttons */}
                                     
-                                    {/* Meta chips under header */}
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                                        {instructionRef && (
-                                            <span style={{
-                                                padding: '4px 8px',
-                                                border: '1px solid #e1e5ea',
-                                                borderRadius: 999,
-                                                background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                fontSize: 12,
-                                                fontWeight: 600,
-                                                color: '#061733'
-                                            }}>
-                                                Instruction: {instructionRef}
-                                            </span>
-                                        )}
-                                        {(matterIdState || matterRef) && (
-                                            <span style={{
-                                                padding: '4px 8px',
-                                                border: '1px solid #e1e5ea',
-                                                borderRadius: 999,
-                                                background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                fontSize: 12,
-                                                fontWeight: 600,
-                                                color: '#061733'
-                                            }}>
-                                                Matter: {matterIdState || matterRef}
-                                            </span>
-                                        )}
-                                        {stage && (
-                                            <span style={{
-                                                padding: '4px 8px',
-                                                border: '1px solid #e1e5ea',
-                                                borderRadius: 999,
-                                                background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                fontSize: 12,
-                                                fontWeight: 600,
-                                                color: '#061733'
-                                            }}>
-                                                Stage: {stage}
-                                            </span>
-                                        )}
-                                        <span style={{
-                                            padding: '4px 8px',
-                                            border: '1px solid #e1e5ea',
-                                            borderRadius: 999,
-                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                            fontSize: 12,
-                                            fontWeight: 600,
-                                            color: '#061733'
-                                        }}>
-                                            Opening Date: {selectedDate ? selectedDate.toLocaleDateString('en-GB') : '-'}
-                                        </span>
-                                    </div>
-
                                     {/* Two-column layout */}
                                     <div style={{
                                         display: 'grid',
@@ -2943,17 +3135,52 @@ ${JSON.stringify(debugInfo, null, 2)}
                                         gap: 20,
                                         marginBottom: 8
                                     }}>
-                                        {/* Client Information Card */}
-                                        <div style={{
+                                        {/* Client Information Card (locks subtly on confirmation) */}
+                                        <div style={lockCardStyle({
                                             border: '1px solid #e1e5ea',
                                             borderRadius: 8,
                                             background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                                             padding: 14,
                                             position: 'relative'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                                                <i className="ms-Icon ms-Icon--People" style={{ fontSize: 12, color: '#6b7280' }} />
-                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Client Information</span>
+                                        })}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <i className="ms-Icon ms-Icon--People" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                    <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Client Information</span>
+                                                </div>
+                                                {currentStep === 2 && (
+                                                    <button
+                                                        onClick={() => setCurrentStep(0)}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: '1px solid #e5e7eb',
+                                                            borderRadius: 4,
+                                                            padding: '4px 8px',
+                                                            fontSize: 11,
+                                                            fontWeight: 500,
+                                                            color: '#6b7280',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 4,
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.borderColor = '#3690CE';
+                                                            e.currentTarget.style.color = '#3690CE';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.borderColor = '#e5e7eb';
+                                                            e.currentTarget.style.color = '#6b7280';
+                                                        }}
+                                                    >
+                                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                        </svg>
+                                                        Edit
+                                                    </button>
+                                                )}
                                             </div>
                                             {(() => {
                                                 // Unique selection list
@@ -3040,12 +3267,25 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                     return true;
                                                 });
 
+                                                // Compute a simple nationality summary if all selected persons share one
+                                                const allNationalities: string[] = clients
+                                                    .map(p => (p as any).nationality as string | undefined)
+                                                    .filter(Boolean) as string[];
+                                                const uniqueNationalities = Array.from(new Set(allNationalities.map(n => n.trim())));
+                                                const nationalitySummary = uniqueNationalities.length === 1 ? uniqueNationalities[0] : undefined;
+
                                                 return (
                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <span style={{ color: '#6B6B6B', fontSize: 12 }}>Type</span>
                                                             <span style={{ fontWeight: 600, fontSize: 12 }}>{clientType || '-'}</span>
                                                         </div>
+                                                        {nationalitySummary && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Nationality</span>
+                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>{nationalitySummary}</span>
+                                                            </div>
+                                                        )}
 
                                                         {/* Company flow: render company + directors */}
                                                         {isCompanyType && company && (
@@ -3144,6 +3384,22 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                                                                 <span style={{ fontWeight: 600, fontSize: 12 }}>{formatDob(d.date_of_birth)}</span>
                                                                                             </div>
                                                                                         )}
+                                                                                        {(d as any).nationality && (
+                                                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Nationality</span>
+                                                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>{(d as any).nationality}</span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {((d as any).passport_number || (d as any).drivers_license_number) && (
+                                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>ID Docs</span>
+                                                                                                <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
+                                                                                                    {(d as any).passport_number && <span>Passport: {(d as any).passport_number}</span>}
+                                                                                                    {((d as any).passport_number && (d as any).drivers_license_number) && <br />}
+                                                                                                    {(d as any).drivers_license_number && <span>DL: {(d as any).drivers_license_number}</span>}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        )}
                                                                                         {d.address_verification_result && (
                                                                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                                                                 <span style={{ color: '#6B6B6B', fontSize: 12 }}>Check</span>
@@ -3216,6 +3472,22 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                                                     <span style={{ fontWeight: 600, fontSize: 12 }}>{dob}</span>
                                                                                 </div>
                                                                             )}
+                                                                            {backing && (backing as any).nationality && (
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Nationality</span>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{(backing as any).nationality}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {backing && (((backing as any).passport_number) || ((backing as any).drivers_license_number)) && (
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>ID Docs</span>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
+                                                                                        {(backing as any).passport_number && <span>Passport: {(backing as any).passport_number}</span>}
+                                                                                        {((backing as any).passport_number && (backing as any).drivers_license_number) && <br />}
+                                                                                        {(backing as any).drivers_license_number && <span>DL: {(backing as any).drivers_license_number}</span>}
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
                                                                             {check && (
                                                                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                                                     <span style={{ color: '#6B6B6B', fontSize: 12 }}>Check</span>
@@ -3243,259 +3515,1029 @@ ${JSON.stringify(debugInfo, null, 2)}
                                             })()}
                                         </div>
 
-                                        {/* Matter Details Card */}
-                                        <div style={{
+                                        {/* Combined Matter Overview Card (locks subtly, no badge) */}
+                                        <div style={lockCardStyle({
                                             border: '1px solid #e1e5ea',
                                             borderRadius: 8,
                                             background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                                             padding: 14
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                                                <i className="ms-Icon ms-Icon--OpenFolderHorizontal" style={{ fontSize: 12, color: '#6b7280' }} />
-                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Matter Details</span>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Area of Work</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{areaOfWork || '-'}</span>
+                                        })}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <i className="ms-Icon ms-Icon--OpenFolderHorizontal" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                    <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Matter Overview</span>
                                                 </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Practice Area</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{practiceArea || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Description</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12, maxWidth: '55%', textAlign: 'right', lineHeight: '1.3' }}>
-                                                        {description ? (description.length > 50 ? `${description.substring(0, 50)}...` : description) : '-'}
-                                                    </span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Dispute Value</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{disputeValue || '-'}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Team & Management Card */}
-                                        <div style={{
-                                            border: '1px solid #e1e5ea',
-                                            borderRadius: 8,
-                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                            padding: 14
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                                                <i className="ms-Icon ms-Icon--ContactCard" style={{ fontSize: 12, color: '#6b7280' }} />
-                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Team & Management</span>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Opening Date</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{selectedDate ? selectedDate.toLocaleDateString('en-GB') : '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Solicitor</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{teamMember || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Supervising Partner</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{supervisingPartner || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Originating Solicitor</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{originatingSolicitor || '-'}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Additional Details Card */}
-                                        <div style={{
-                                            border: '1px solid #e1e5ea',
-                                            borderRadius: 8,
-                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                            padding: 14
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                                                <i className="ms-Icon ms-Icon--Info" style={{ fontSize: 12, color: '#6b7280' }} />
-                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Additional Details</span>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Source</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>
-                                                        {source}{source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
-                                                    </span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Folder Structure</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{folderStructure || '-'}</span>
-                                                </div>
-                                                {budgetRequired === 'Yes' && (
-                                                    <>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Budget Amount</span>
-                                                            <span style={{ fontWeight: 600, fontSize: 12 }}>{budgetAmount ? `£${budgetAmount}` : '-'}</span>
-                                                        </div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Notify Threshold</span>
-                                                            <span style={{ fontWeight: 600, fontSize: 12 }}>{budgetThreshold ? `${budgetThreshold}%` : '-'}</span>
-                                                        </div>
-                                                    </>
+                                                {currentStep === 2 && (
+                                                    <button
+                                                        onClick={() => setCurrentStep(1)}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: '1px solid #e5e7eb',
+                                                            borderRadius: 4,
+                                                            padding: '4px 8px',
+                                                            fontSize: 11,
+                                                            fontWeight: 500,
+                                                            color: '#6b7280',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 4,
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.borderColor = '#3690CE';
+                                                            e.currentTarget.style.color = '#3690CE';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.borderColor = '#e5e7eb';
+                                                            e.currentTarget.style.color = '#6b7280';
+                                                        }}
+                                                    >
+                                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                        </svg>
+                                                        Edit
+                                                    </button>
                                                 )}
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                                                {/* Left cluster: Core Matter */}
+                                                <div style={{ display: 'grid', gap: 6 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Area of Work</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{areaOfWork || '-'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Practice Area</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{practiceArea || '-'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Dispute Value</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12 }}>{disputeValue || '-'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Description</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12, maxWidth: 160, textAlign: 'right', lineHeight: '1.3' }}>
+                                                            {description ? (description.length > 60 ? `${description.substring(0, 60)}…` : description) : '-'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {/* Middle cluster: Team */}
+                                                <div style={{ display: 'grid', gap: 6 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Opening Date</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12 }}>{selectedDate ? selectedDate.toLocaleDateString('en-GB') : '-'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Solicitor</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{teamMember || '-'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Supervising Partner</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{supervisingPartner || '-'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Originating Solicitor</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{originatingSolicitor || '-'}</span>
+                                                    </div>
+                                                </div>
+                                                {/* Right cluster: Additional */}
+                                                <div style={{ display: 'grid', gap: 6 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Source</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>
+                                                            {source}{source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Folder Structure</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right' }}>{folderStructure || '-'}</span>
+                                                    </div>
+                                                    {budgetRequired === 'Yes' && (
+                                                        <>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Budget Amount</span>
+                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>{budgetAmount ? `£${budgetAmount}` : '-'}</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Notify Threshold</span>
+                                                                <span style={{ fontWeight: 600, fontSize: 12 }}>{budgetThreshold ? `${budgetThreshold}%` : '-'}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
                                         {/* Opponent Details Card */}
-                                        <div style={{
-                                            border: '1px solid #e1e5ea',
-                                            borderRadius: 8,
-                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                            padding: 14
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                                                <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 12, color: '#6b7280' }} />
-                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Opponent Details</span>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Company Name</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentCompanyName || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Title</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentTitle || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Name</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{`${opponentFirst || ''} ${opponentLast || ''}`.trim() || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Email</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentEmail || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Phone</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentPhone || '-'}</span>
-                                                </div>
-                                                {/* Compressed address display */}
-                                                {(opponentHouseNumber || opponentStreet || opponentCity || opponentCounty || opponentPostcode || opponentCountry) && (
-                                                    <>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
-                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
-                                                                {[opponentHouseNumber, opponentStreet].filter(Boolean).join(' ')}
-                                                            </span>
+                                        {(() => {
+                                            const realOpponentKeys = getRealOpponentFieldKeys();
+                                            const hasRealOpponentData = realOpponentKeys.length > 0;
+
+                                            if (!hasRealOpponentData) {
+                                                // Collapsed state - show placeholder confirmation
+                                                return (
+                                                    <div style={{
+                                                        border: '1px solid #e5e7eb',
+                                                        borderRadius: 8,
+                                                        background: '#f9fafb',
+                                                        padding: 12
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                                            <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 12, color: '#9ca3af' }} />
+                                                            <span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>Opponent Details</span>
                                                         </div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
-                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
-                                                                {[opponentCity, opponentCounty].filter(Boolean).join(', ')}
-                                                            </span>
+                                                        <div style={{ 
+                                                            fontSize: 11, 
+                                                            color: '#9ca3af',
+                                                            fontStyle: 'italic',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 4
+                                                        }}>
+                                                            <i className="ms-Icon ms-Icon--InfoSolid" style={{ fontSize: 10 }} />
+                                                            No opponent details provided
                                                         </div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
-                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
-                                                                {[opponentPostcode, opponentCountry].filter(Boolean).join(' ')}
-                                                            </span>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Expanded state - show actual data
+                                            return (
+                                                <div style={lockCardStyle({
+                                                    border: '1px solid #e1e5ea',
+                                                    borderRadius: 8,
+                                                    background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                    padding: 14
+                                                })}>
+                                                    {renderLockOverlay()}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                                        <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                        <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Opponent Details</span>
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                                                        {realOpponentKeys.includes('opponentCompanyName') && opponentType === 'Company' && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Company Name</span>
+                                                                <span style={getFieldStyle(opponentCompanyName, 'opponentCompanyName')}>{opponentCompanyName}</span>
+                                                            </div>
+                                                        )}
+                                                        {(realOpponentKeys.includes('opponentTitle') || realOpponentKeys.includes('opponentFirst') || realOpponentKeys.includes('opponentLast')) && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Name</span>
+                                                                <span style={getFieldStyle(
+                                                                    `${opponentTitle ? opponentTitle + ' ' : ''}${opponentFirst || ''} ${opponentLast || ''}`.trim(),
+                                                                    `${originalValues.opponentTitle ? originalValues.opponentTitle + ' ' : ''}${originalValues.opponentFirst || ''} ${originalValues.opponentLast || ''}`.trim()
+                                                                )}>
+                                                                    {`${opponentTitle ? opponentTitle + ' ' : ''}${opponentFirst || ''} ${opponentLast || ''}`.trim()}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {realOpponentKeys.includes('opponentEmail') && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Email</span>
+                                                                <span style={getFieldStyle(opponentEmail, 'opponentEmail')}>{opponentEmail}</span>
+                                                            </div>
+                                                        )}
+                                                        {realOpponentKeys.includes('opponentPhone') && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Phone</span>
+                                                                <span style={getFieldStyle(opponentPhone, 'opponentPhone')}>{opponentPhone}</span>
+                                                            </div>
+                                                        )}
+                                                        {/* Address display (only if at least one real, non-placeholder part) */}
+                                                        {(() => {
+                                                            const addrKeys: OppFieldKey[] = ['opponentHouseNumber','opponentStreet','opponentCity','opponentCounty','opponentPostcode','opponentCountry'];
+                                                            const currentValues: Record<string,string> = {
+                                                                opponentHouseNumber: opponentHouseNumber || '',
+                                                                opponentStreet: opponentStreet || '',
+                                                                opponentCity: opponentCity || '',
+                                                                opponentCounty: opponentCounty || '',
+                                                                opponentPostcode: opponentPostcode || '',
+                                                                opponentCountry: opponentCountry || ''
+                                                            };
+                                                            const anyReal = addrKeys.some(k => {
+                                                                const v = currentValues[k].trim();
+                                                                if (!v) return false;
+                                                                if (v === (opponentPlaceholderTemplate as any)[k]) return false;
+                                                                if (isPlaceholderData(v)) return false;
+                                                                return true;
+                                                            });
+                                                            if (!anyReal) return null;
+                                                            const addressLine1 = [opponentHouseNumber, opponentStreet].filter(Boolean).join(' ');
+                                                            const addressLine2 = [opponentCity, opponentCounty].filter(Boolean).join(', ');
+                                                            const addressLine3 = [opponentPostcode, opponentCountry].filter(Boolean).join(' ');
+                                                            const originalAddressLine1 = [originalValues.opponentHouseNumber, originalValues.opponentStreet].filter(Boolean).join(' ');
+                                                            const originalAddressLine2 = [originalValues.opponentCity, originalValues.opponentCounty].filter(Boolean).join(', ');
+                                                            const originalAddressLine3 = [originalValues.opponentPostcode, originalValues.opponentCountry].filter(Boolean).join(' ');
+                                                            const addressStyle = (currentLine: string, originalLine: string) => {
+                                                                const isModified = hasUserModified(currentLine, originalLine);
+                                                                return {
+                                                                    fontWeight: isModified ? 600 : 400,
+                                                                    fontSize: 12,
+                                                                    textAlign: 'right' as const,
+                                                                    lineHeight: '1.3',
+                                                                    color: isModified ? '#111827' : '#9ca3af',
+                                                                    fontStyle: isModified ? 'normal' : 'italic'
+                                                                };
+                                                            };
+                                                            return (
+                                                                <>
+                                                                    {addressLine1 && !isPlaceholderData(addressLine1) && addressLine1 !== opponentPlaceholderTemplate.opponentHouseNumber + ' ' + opponentPlaceholderTemplate.opponentStreet && (
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
+                                                                            <span style={addressStyle(addressLine1, originalAddressLine1)}>{addressLine1}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {addressLine2 && !isPlaceholderData(addressLine2) && addressLine2 !== opponentPlaceholderTemplate.opponentCity + ', ' + opponentPlaceholderTemplate.opponentCounty && (
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                            <span style={addressStyle(addressLine2, originalAddressLine2)}>{addressLine2}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {addressLine3 && !isPlaceholderData(addressLine3) && addressLine3 !== opponentPlaceholderTemplate.opponentPostcode + ' ' + opponentPlaceholderTemplate.opponentCountry && (
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                            <span style={addressStyle(addressLine3, originalAddressLine3)}>{addressLine3}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
 
                                         {/* Opponent Solicitor Details Card */}
+                                        {(() => {
+                                            // Collect solicitor field values
+                                            const solicitorFields = {
+                                                opponentSolicitorCompany, solicitorFirst, solicitorLast,
+                                                opponentSolicitorEmail, solicitorPhone, solicitorHouseNumber,
+                                                solicitorStreet, solicitorCity, solicitorCounty,
+                                                solicitorPostcode, solicitorCountry
+                                            } as const;
+
+                                            // Determine which fields are REAL (non-empty & not placeholder-like)
+                                            const realKeys = Object.entries(solicitorFields)
+                                                .filter(([_, val]) => {
+                                                    const v = (val || '').trim();
+                                                    if (!v) return false; // empty
+                                                    if (isPlaceholderData(v)) return false; // generic placeholder pattern
+                                                    const low = v.toLowerCase();
+                                                    // Explicit placeholder terms to ignore
+                                                    if (
+                                                        low === 'helix law ltd' ||
+                                                        low === 'helix law' ||
+                                                        low === 'invent solicitor name' ||
+                                                        low === 'invent name' ||
+                                                        low === 'brighton' ||
+                                                        low === 'bn1 4de' ||
+                                                        low === 'mr' || low === 'mrs' || low === 'ms' || low === 'dr' ||
+                                                        low === 'second floor' ||
+                                                        low.includes('station street') ||
+                                                        low.includes('britannia house') ||
+                                                        low === '0345 314 2044' || low.includes('0345 314 2044')
+                                                    ) return false;
+                                                    if (low.includes('opponentsolicitor@helix-law.com')) return false;
+                                                    return true;
+                                                })
+                                                .map(([k]) => k);
+
+                                            if (realKeys.length === 0) {
+                                                // Show collapsed placeholder card
+                                                return (
+                                                    <div style={{
+                                                        border: '1px solid #e5e7eb',
+                                                        borderRadius: 8,
+                                                        background: '#f9fafb',
+                                                        padding: 12
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                                            <i className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 12, color: '#9ca3af' }} />
+                                                            <span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>Opponent Solicitor</span>
+                                                        </div>
+                                                        <div style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <i className="ms-Icon ms-Icon--InfoSolid" style={{ fontSize: 10 }} />
+                                                            No solicitor details provided
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Build address lines only if any address fields are real
+                                            const addressLine1 = [solicitorHouseNumber, solicitorStreet].filter(Boolean).join(' ');
+                                            const addressLine2 = [solicitorCity, solicitorCounty].filter(Boolean).join(', ');
+                                            const addressLine3 = [solicitorPostcode, solicitorCountry].filter(Boolean).join(' ');
+                                            const realAddressLines = [addressLine1, addressLine2, addressLine3].filter(l => l && !isPlaceholderData(l));
+
+                                            return (
+                                                <div style={{
+                                                    border: '1px solid #e1e5ea',
+                                                    borderRadius: 8,
+                                                    background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                    padding: 14
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                                        <i className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 12, color: '#6b7280' }} />
+                                                        <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Opponent Solicitor</span>
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                                                        {realKeys.includes('opponentSolicitorCompany') && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Company Name</span>
+                                                                <span style={getFieldStyle(opponentSolicitorCompany || '', 'opponentSolicitorCompany')}>{opponentSolicitorCompany}</span>
+                                                            </div>
+                                                        )}
+                                                        {(realKeys.includes('solicitorFirst') || realKeys.includes('solicitorLast')) && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Name</span>
+                                                                <span style={getFieldStyle(`${solicitorFirst || ''} ${solicitorLast || ''}`.trim(), `${originalValues.solicitorFirst || ''} ${originalValues.solicitorLast || ''}`.trim())}>{`${solicitorFirst || ''} ${solicitorLast || ''}`.trim()}</span>
+                                                            </div>
+                                                        )}
+                                                        {realKeys.includes('opponentSolicitorEmail') && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Email</span>
+                                                                <span style={getFieldStyle(opponentSolicitorEmail || '', 'opponentSolicitorEmail')}>{opponentSolicitorEmail}</span>
+                                                            </div>
+                                                        )}
+                                                        {realKeys.includes('solicitorPhone') && (
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span style={{ color: '#6B6B6B', fontSize: 12 }}>Phone</span>
+                                                                <span style={getFieldStyle(solicitorPhone || '', 'solicitorPhone')}>{solicitorPhone}</span>
+                                                            </div>
+                                                        )}
+                                                        {realAddressLines.length > 0 && (
+                                                            <>
+                                                                {addressLine1 && !isPlaceholderData(addressLine1) && (
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
+                                                                        <span style={getFieldStyle(addressLine1, `${originalValues.solicitorHouseNumber || ''} ${originalValues.solicitorStreet || ''}`.trim())}>{addressLine1}</span>
+                                                                    </div>
+                                                                )}
+                                                                {addressLine2 && !isPlaceholderData(addressLine2) && (
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                        <span style={getFieldStyle(addressLine2, `${originalValues.solicitorCity || ''}, ${originalValues.solicitorCounty || ''}`.replace(/^,\s*/, ''))}>{addressLine2}</span>
+                                                                    </div>
+                                                                )}
+                                                                {addressLine3 && !isPlaceholderData(addressLine3) && (
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                        <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
+                                                                        <span style={getFieldStyle(addressLine3, `${originalValues.solicitorPostcode || ''} ${originalValues.solicitorCountry || ''}`.trim())}>{addressLine3}</span>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Integrated confirmation and conflicts check */}
+                                    {!summaryConfirmed && (
                                         <div style={{
-                                            border: '1px solid #e1e5ea',
-                                            borderRadius: 8,
+                                            marginTop: 16,
+                                            padding: '16px 18px',
                                             background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                            padding: 14
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: 8,
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.04)'
                                         }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                                                <i className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 12, color: '#6b7280' }} />
-                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Opponent Solicitor</span>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Company Name</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentSolicitorCompany || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Name</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{`${solicitorFirst || ''} ${solicitorLast || ''}`.trim() || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Email</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{opponentSolicitorEmail || '-'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#6B6B6B', fontSize: 12 }}>Phone</span>
-                                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{solicitorPhone || '-'}</span>
-                                                </div>
-                                                {/* Compressed address display */}
-                                                {(solicitorHouseNumber || solicitorStreet || solicitorCity || solicitorCounty || solicitorPostcode || solicitorCountry) && (
-                                                    <>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}>Address</span>
-                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
-                                                                {[solicitorHouseNumber, solicitorStreet].filter(Boolean).join(' ')}
-                                                            </span>
-                                                        </div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
-                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
-                                                                {[solicitorCity, solicitorCounty].filter(Boolean).join(', ')}
-                                                            </span>
-                                                        </div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <span style={{ color: '#6B6B6B', fontSize: 12 }}></span>
-                                                            <span style={{ fontWeight: 600, fontSize: 12, textAlign: 'right', lineHeight: '1.3' }}>
-                                                                {[solicitorPostcode, solicitorCountry].filter(Boolean).join(' ')}
-                                                            </span>
-                                                        </div>
-                                                    </>
+                                            {/* Conflicts status row */}
+                                            <div style={{ 
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 10,
+                                                marginBottom: 12,
+                                                paddingBottom: 12,
+                                                borderBottom: '1px solid #e2e8f0'
+                                            }}>
+                                                <i className={`ms-Icon ms-Icon--${noConflict ? 'CheckMark' : 'Warning'}`} 
+                                                   style={{ fontSize: 14, color: noConflict ? '#059669' : '#dc2626' }} />
+                                                <span style={{ fontSize: 13, fontWeight: 500, color: noConflict ? '#047857' : '#b91c1c' }}>
+                                                    {noConflict ? 'No conflicts detected' : 'Conflict check required'}
+                                                </span>
+                                                {editsAfterConfirmation && (
+                                                    <span style={{
+                                                        marginLeft: 'auto',
+                                                        padding: '2px 8px',
+                                                        background: '#fef3c7',
+                                                        color: '#92400e',
+                                                        borderRadius: 4,
+                                                        fontSize: 11,
+                                                        fontWeight: 500,
+                                                        border: '1px solid #fde68a'
+                                                    }}>
+                                                        Changes detected
+                                                    </span>
                                                 )}
                                             </div>
+                                            
+                                            {/* Confirmation row */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, margin: 0 }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={confirmAcknowledge}
+                                                        onChange={(e) => setConfirmAcknowledge(e.currentTarget.checked)}
+                                                        style={{
+                                                            width: 16,
+                                                            height: 16,
+                                                            cursor: 'pointer',
+                                                            accentColor: '#D65541'
+                                                        }}
+                                                    />
+                                                    <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.3 }}>
+                                                        {editsAfterConfirmation 
+                                                            ? 'I have reviewed the changes and am ready to proceed' 
+                                                            : 'I have reviewed all details and am ready to proceed'}
+                                                        {instructionRef && (
+                                                            <span style={{
+                                                                marginLeft: 8,
+                                                                padding: '2px 6px',
+                                                                background: '#f1f5f9',
+                                                                color: '#475569',
+                                                                borderRadius: 4,
+                                                                fontSize: 11,
+                                                                fontWeight: 500
+                                                            }}>
+                                                                {instructionRef}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (confirmAcknowledge) {
+                                                            setSummaryConfirmed(true);
+                                                            setEditsAfterConfirmation(false);
+                                                            
+                                                            // Smooth scroll to processing section after a brief delay
+                                                            setTimeout(() => {
+                                                                const processingSection = document.querySelector('[data-processing-section]');
+                                                                if (processingSection) {
+                                                                    processingSection.scrollIntoView({ 
+                                                                        behavior: 'smooth', 
+                                                                        block: 'start' 
+                                                                    });
+                                                                }
+                                                            }, 300);
+                                                        }
+                                                    }}
+                                                    disabled={!confirmAcknowledge}
+                                                    style={{
+                                                        background: confirmAcknowledge 
+                                                            ? 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)' 
+                                                            : '#f3f4f6',
+                                                        color: confirmAcknowledge ? '#fff' : '#9ca3af',
+                                                        border: confirmAcknowledge 
+                                                            ? '1px solid #B83C2B' 
+                                                            : '1px solid #d1d5db',
+                                                        borderRadius: 6,
+                                                        padding: '10px 18px',
+                                                        fontSize: 13,
+                                                        fontWeight: 600,
+                                                        cursor: confirmAcknowledge ? 'pointer' : 'not-allowed',
+                                                        transition: 'all 0.15s ease',
+                                                        minWidth: 110,
+                                                        boxShadow: confirmAcknowledge 
+                                                            ? '0 2px 4px rgba(214,85,65,0.2)' 
+                                                            : 'none'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        if (confirmAcknowledge) {
+                                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                                        }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (confirmAcknowledge) {
+                                                            e.currentTarget.style.transform = 'translateY(0)';
+                                                        }
+                                                    }}
+                                                >
+                                                    Open Matter
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    {/* Conflict Check Status */}
-                                    <div style={{ 
-                                        marginTop: 16,
-                                        padding: 12,
-                                        background: noConflict ? '#f0f9f4' : '#fef2f2',
-                                        border: `1px solid ${noConflict ? '#d1fae5' : '#fecaca'}`,
-                                        borderRadius: 6,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8
-                                    }}>
-                                        <i className={`ms-Icon ms-Icon--${noConflict ? 'CheckMark' : 'Warning'}`} 
-                                           style={{ fontSize: 14, color: noConflict ? '#22c55e' : '#ef4444' }} />
-                                        <span style={{ fontSize: 13, fontWeight: 500, color: noConflict ? '#15803d' : '#dc2626' }}>
-                                            {noConflict ? 'No conflicts confirmed' : 'Conflict check required'}
-                                        </span>
-                                    </div>
+                                    {/* Manual Debug Override Toggle - Show when processing section exists but debug tools hidden */}
+                                    {!showDebugTools && showProcessingSection && (
+                                        <div style={{ marginTop: 16, textAlign: 'center' }}>
+                                            <button
+                                                onClick={() => setDebugManualOverride(true)}
+                                                style={{
+                                                    background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+                                                    border: '1px solid #d1d5db',
+                                                    borderRadius: 6,
+                                                    padding: '6px 10px',
+                                                    fontSize: 10,
+                                                    fontWeight: 500,
+                                                    color: '#6b7280',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)';
+                                                    e.currentTarget.style.borderColor = '#9ca3af';
+                                                    e.currentTarget.style.color = '#374151';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)';
+                                                    e.currentTarget.style.borderColor = '#d1d5db';
+                                                    e.currentTarget.style.color = '#6b7280';
+                                                }}
+                                            >
+                                                Show Debug Tools
+                                            </button>
+                                        </div>
+                                    )}
 
-                                    {/* Confirmation required banner */}
-                                    {!summaryConfirmed && (
+                                    {/* Developer Tools Section - Show only when processing active or manual override */}
+                                    {showDebugTools && (
                                         <div style={{ 
                                             marginTop: 16,
                                             padding: 12,
                                             background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                                             border: '1px solid #e1e5ea',
                                             borderRadius: 8,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 8,
                                             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)'
                                         }}>
-                                            <i className="ms-Icon ms-Icon--Info" 
-                                               style={{ fontSize: 14, color: '#3690CE' }} />
-                                            <span style={{ fontSize: 13, fontWeight: 600, color: '#061733' }}>
-                                                Confirmation required before submission
-                                            </span>
-                                        </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                    {/* Unified Debug Inspector Button */}
+                                                    <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDebugInspectorOpen(!debugInspectorOpen);
+                                                        if (!debugInspectorOpen) {
+                                                            setDebugActiveTab('json');
+                                                            setDebugJsonInput('');
+                                                            setDebugValidation(null);
+                                                            setDebugManualPasteOpen(false);
+                                                        }
+                                                    }}
+                                                    title="Open debug inspector with JSON and backend details"
+                                                    style={{
+                                                        background: debugInspectorOpen ? 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                        border: '1px solid #D65541',
+                                                        borderRadius: 6,
+                                                        padding: '8px 12px',
+                                                        fontSize: 11,
+                                                        fontWeight: 600,
+                                                        color: debugInspectorOpen ? '#fff' : '#D65541',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        if (!debugInspectorOpen) {
+                                                            e.currentTarget.style.background = 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)';
+                                                            e.currentTarget.style.color = '#fff';
+                                                        }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (!debugInspectorOpen) {
+                                                            e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                                                            e.currentTarget.style.color = '#D65541';
+                                                        }
+                                                    }}
+                                                    >
+                                                        <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 11 }} />
+                                                        Debug
+                                                    </button>
+                                                </div>
+                                                {/* Close debug tools if manually overridden */}
+                                                {debugManualOverride && !showProcessingSection && (
+                                                    <button
+                                                        onClick={() => setDebugManualOverride(false)}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: '#9ca3af',
+                                                            cursor: 'pointer',
+                                                            padding: '4px',
+                                                            borderRadius: 4,
+                                                            fontSize: 12,
+                                                            transition: 'color 0.2s ease'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.color = '#374151';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.color = '#9ca3af';
+                                                        }}
+                                                        title="Hide debug tools"
+                                                    >
+                                                        <i className="ms-Icon ms-Icon--Cancel" style={{ fontSize: 12 }} />
+                                                    </button>
+                                                )}
+                                            </div>                                        {/* Support Panel */}
+                                        {supportPanelOpen && (
+                                            <div style={{
+                                                marginTop: 16,
+                                                border: '1px solid #e1e5ea',
+                                                borderRadius: 8,
+                                                background: '#fff',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <div style={{
+                                                    padding: '12px 16px',
+                                                    background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                    color: '#fff',
+                                                    fontSize: 13,
+                                                    fontWeight: 600,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 8
+                                                }}>
+                                                    <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 14 }} />
+                                                    Support Request
+                                                </div>
+                                                <div style={{ padding: 16 }}>
+                                                    <div style={{ marginBottom: 12 }}>
+                                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
+                                                            Category
+                                                        </label>
+                                                        <select
+                                                            value={supportCategory}
+                                                            onChange={(e) => setSupportCategory(e.target.value as any)}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '8px 12px',
+                                                                border: '1px solid #d1d5db',
+                                                                borderRadius: 6,
+                                                                fontSize: 12,
+                                                                background: '#fff'
+                                                            }}
+                                                        >
+                                                            <option value="technical">Technical Issue</option>
+                                                            <option value="process">Process Question</option>
+                                                            <option value="data">Data Problem</option>
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ marginBottom: 12 }}>
+                                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
+                                                            Describe the issue
+                                                        </label>
+                                                        <textarea
+                                                            value={supportMessage}
+                                                            onChange={(e) => setSupportMessage(e.target.value)}
+                                                            placeholder="Please describe what's happening and any steps to reproduce the issue..."
+                                                            style={{
+                                                                width: '100%',
+                                                                height: 80,
+                                                                padding: '8px 12px',
+                                                                border: '1px solid #d1d5db',
+                                                                borderRadius: 6,
+                                                                fontSize: 12,
+                                                                resize: 'vertical',
+                                                                fontFamily: 'inherit'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        onClick={sendSupportRequest}
+                                                        disabled={!supportMessage.trim() || supportSending}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '8px 16px',
+                                                            background: supportSending ? '#9ca3af' : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                            color: '#fff',
+                                                            border: 'none',
+                                                            borderRadius: 6,
+                                                            fontSize: 12,
+                                                            fontWeight: 600,
+                                                            cursor: supportSending || !supportMessage.trim() ? 'not-allowed' : 'pointer',
+                                                            opacity: supportSending || !supportMessage.trim() ? 0.6 : 1,
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                    >
+                                                        {supportSending ? 'Sending...' : 'Send Support Request'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Processing Panel - Added to developer tools */}
+                                        {currentStep === 2 && summaryConfirmed && (
+                                            <div style={{ marginTop: 16 }}>
+                                                {(() => {
+                                                    const total = processingSteps.length || 0;
+                                                    const done = processingSteps.filter(s => s.status === 'success').length;
+                                                    const failed = processingSteps.filter(s => s.status === 'error').length;
+                                                    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                                                    const statusText = failed > 0 ? 'Attention required' : (done === total && total > 0 ? 'Completed' : 'In progress');
+                                                    
+                                                    return (
+                                                        <div style={{
+                                                            border: '1px solid #e5e7eb',
+                                                            borderRadius: 12,
+                                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                            overflow: 'hidden',
+                                                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.1)',
+                                                            position: 'relative'
+                                                        }}>
+                                                            <div style={{
+                                                                padding: '16px 20px',
+                                                                background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+                                                                borderBottom: '1px solid #e5e7eb',
+                                                                display: 'flex',
+                                                                justifyContent: 'space-between',
+                                                                alignItems: 'center'
+                                                            }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                                    <div style={{
+                                                                        width: 20,
+                                                                        height: 20,
+                                                                        borderRadius: '50%',
+                                                                        background: '#20b26c',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center'
+                                                                    }}>
+                                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                                                                            <polyline 
+                                                                                points="20,6 9,17 4,12" 
+                                                                                stroke="#fff" 
+                                                                                strokeWidth="2" 
+                                                                                strokeLinecap="round" 
+                                                                                strokeLinejoin="round"
+                                                                            />
+                                                                        </svg>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div style={{
+                                                                            fontSize: 14,
+                                                                            fontWeight: 600,
+                                                                            color: '#20b26c',
+                                                                            lineHeight: 1.2
+                                                                        }}>
+                                                                            Details Reviewed and Confirmed
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        if (!isProcessing) {
+                                                                            simulateProcessing().then(r => r && setGeneratedCclUrl(r.url));
+                                                                        }
+                                                                    }}
+                                                                    disabled={isProcessing}
+                                                                    style={{
+                                                                        background: isProcessing 
+                                                                            ? '#f3f4f6' 
+                                                                            : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                                        color: isProcessing ? '#9ca3af' : '#fff',
+                                                                        border: isProcessing 
+                                                                            ? '1px solid #d1d5db' 
+                                                                            : '1px solid #B83C2B',
+                                                                        borderRadius: 6,
+                                                                        padding: '6px 14px',
+                                                                        fontSize: 12,
+                                                                        fontWeight: 600,
+                                                                        cursor: isProcessing ? 'not-allowed' : 'pointer',
+                                                                        transition: 'all 0.15s ease',
+                                                                        boxShadow: isProcessing 
+                                                                            ? 'none' 
+                                                                            : '0 2px 4px rgba(214,85,65,0.2)'
+                                                                    }}
+                                                                    onMouseEnter={(e) => {
+                                                                        if (!isProcessing) {
+                                                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                                                        }
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        if (!isProcessing) {
+                                                                            e.currentTarget.style.transform = 'translateY(0)';
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {isProcessing ? 'Processing...' : 'Open Matter'}
+                                                                </button>
+                                                            </div>
+                                                            
+                                                            <div style={{ padding: '20px' }}>
+                                                                {/* Live Status Header */}
+                                                                <div style={{ 
+                                                                    display: 'flex', 
+                                                                    alignItems: 'center', 
+                                                                    justifyContent: 'space-between', 
+                                                                    marginBottom: 20,
+                                                                    padding: '12px 16px',
+                                                                    background: 'linear-gradient(135deg, #F0F7FF 0%, #E6F3FF 100%)',
+                                                                    border: '1px solid #3690CE',
+                                                                    borderRadius: 8
+                                                                }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                                        <div style={{
+                                                                            width: 8,
+                                                                            height: 8,
+                                                                            borderRadius: '50%',
+                                                                            background: failed > 0 ? '#ef4444' : (done === total && total > 0 ? '#20b26c' : '#3690CE'),
+                                                                            boxShadow: `0 0 8px ${failed > 0 ? '#ef4444' : (done === total && total > 0 ? '#20b26c' : '#3690CE')}`,
+                                                                            animation: done !== total && total > 0 ? 'pulse 2s infinite' : 'none'
+                                                                        }} />
+                                                                        <span style={{ 
+                                                                            fontSize: 14, 
+                                                                            fontWeight: 600, 
+                                                                            color: '#374151'
+                                                                        }}>
+                                                                            {failed > 0 ? 'Issue detected - review required' : 
+                                                                             done === total && total > 0 ? 'Matter opened successfully' : 
+                                                                             'Opening matter in progress...'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div style={{ 
+                                                                        fontSize: 12, 
+                                                                        fontWeight: 500, 
+                                                                        color: '#6b7280',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 6
+                                                                    }}>
+                                                                        <i className="ms-Icon ms-Icon--Clock" style={{ fontSize: 10 }} />
+                                                                        Live processing
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Current Action Display */}
+                                                                {total > 0 && done < total && (
+                                                                    <div style={{
+                                                                        marginBottom: 16,
+                                                                        padding: '10px 14px',
+                                                                        background: '#f8fafc',
+                                                                        border: '1px solid #e2e8f0',
+                                                                        borderRadius: 6,
+                                                                        fontSize: 13,
+                                                                        color: '#475569',
+                                                                        fontStyle: 'italic',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 8
+                                                                    }}>
+                                                                        <div style={{
+                                                                            width: 4,
+                                                                            height: 4,
+                                                                            borderRadius: '50%',
+                                                                            background: '#3690CE',
+                                                                            animation: 'pulse 1.5s infinite'
+                                                                        }} />
+                                                                        {(() => {
+                                                                            const currentStep = processingSteps.find(s => s.status === 'pending');
+                                                                            return currentStep ? `Currently: ${currentStep.label}` : 'Preparing next step...';
+                                                                        })()}
+                                                                    </div>
+                                                                )}
+
+                                                                <style>{`
+                                                                    @keyframes pulse {
+                                                                        0%, 100% { opacity: 1; }
+                                                                        50% { opacity: 0.5; }
+                                                                    }
+                                                                `}</style>
+                                                                
+                                                                {total > 0 && (
+                                                                    <div>
+                                                                        <div style={{ 
+                                                                            display: 'grid', 
+                                                                            gridTemplateColumns: 'repeat(auto-fill, minmax(50px, 1fr))', 
+                                                                            gap: 12 
+                                                                        }}>
+                                                                            {(() => {
+                                                                                // Group consecutive steps by app (using icon as app identifier)
+                                                                                const groupedSteps: Array<{
+                                                                                    icon?: string;
+                                                                                    label: string;
+                                                                                    status: 'pending' | 'success' | 'error';
+                                                                                    count: number;
+                                                                                    steps: typeof processingSteps;
+                                                                                }> = [];
+                                                                                
+                                                                                processingSteps.forEach((step, idx) => {
+                                                                                    const lastGroup = groupedSteps[groupedSteps.length - 1];
+                                                                                    
+                                                                                    // Group if same icon/app and consecutive
+                                                                                    if (lastGroup && lastGroup.icon === step.icon && step.icon) {
+                                                                                        lastGroup.count += 1;
+                                                                                        lastGroup.steps.push(step);
+                                                                                        lastGroup.label = step.icon ? 
+                                                                                            `${lastGroup.steps[0].label.split(' ')[0]} (${lastGroup.count} steps)` : 
+                                                                                            step.label;
+                                                                                    } else {
+                                                                                        // New group
+                                                                                        groupedSteps.push({
+                                                                                            icon: step.icon,
+                                                                                            label: step.label,
+                                                                                            status: 'pending',
+                                                                                            count: 1,
+                                                                                            steps: [step]
+                                                                                        });
+                                                                                    }
+                                                                                });
+
+                                                                                // Update group statuses based on all steps in each group
+                                                                                groupedSteps.forEach(group => {
+                                                                                    const hasError = group.steps.some(s => s.status === 'error');
+                                                                                    const hasPending = group.steps.some(s => s.status === 'pending');
+                                                                                    
+                                                                                    if (hasError) {
+                                                                                        group.status = 'error';
+                                                                                    } else if (hasPending) {
+                                                                                        group.status = 'pending';
+                                                                                    } else {
+                                                                                        // All steps are success
+                                                                                        group.status = 'success';
+                                                                                    }
+                                                                                });
+                                                                                
+                                                                                return groupedSteps.map((group, idx) => (
+                                                                                    <div key={`grouped-proc-${idx}`} 
+                                                                                         title={group.count > 1 ? `${group.label} - Click for details` : group.label} 
+                                                                                         style={{
+                                                                                        height: 48,
+                                                                                        display: 'flex',
+                                                                                        flexDirection: 'column',
+                                                                                        alignItems: 'center',
+                                                                                        justifyContent: 'center',
+                                                                                        borderRadius: 8,
+                                                                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
+                                                                                        border: `1px solid ${group.status === 'error' ? '#EF4444' : '#D1D5DB'}`,
+                                                                                        position: 'relative',
+                                                                                        cursor: 'pointer',
+                                                                                        transition: 'all 0.2s ease',
+                                                                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                                                                                    }}>
+                                                                                        <div style={{
+                                                                                            display: 'flex',
+                                                                                            alignItems: 'center',
+                                                                                            justifyContent: 'center',
+                                                                                            width: 24,
+                                                                                            height: 24,
+                                                                                            marginBottom: 2
+                                                                                        }}>
+                                                                                            {group.icon ? (
+                                                                                                <img src={group.icon} alt="" style={{ 
+                                                                                                    width: 20, 
+                                                                                                    height: 20, 
+                                                                                                    opacity: group.status === 'pending' ? 0.7 : 1,
+                                                                                                    filter: group.status === 'success' 
+                                                                                                        ? 'brightness(0) saturate(100%) invert(47%) sepia(58%) saturate(1945%) hue-rotate(119deg) brightness(97%) contrast(91%)' 
+                                                                                                        : 'none'
+                                                                                                }} />
+                                                                                            ) : (
+                                                                                                <i className={`ms-Icon ${group.status === 'success' ? 'ms-Icon--CheckMark' : group.status === 'error' ? 'ms-Icon--ErrorBadge' : 'ms-Icon--Clock'}`} 
+                                                                                                   style={{ 
+                                                                                                    fontSize: 16, 
+                                                                                                    color: group.status === 'success' ? '#20b26c' : group.status === 'error' ? '#DC2626' : '#6B7280'
+                                                                                                }} />
+                                                                                            )}
+                                                                                        </div>
+                                                                                        
+                                                                                        {group.count > 1 && (
+                                                                                            <div style={{
+                                                                                                position: 'absolute',
+                                                                                                top: -6,
+                                                                                                right: -6,
+                                                                                                background: 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)',
+                                                                                                color: '#fff',
+                                                                                                borderRadius: '50%',
+                                                                                                width: 18,
+                                                                                                height: 18,
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center',
+                                                                                                justifyContent: 'center',
+                                                                                                fontSize: 9,
+                                                                                                fontWeight: 700,
+                                                                                                border: '2px solid #fff',
+                                                                                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.15)'
+                                                                                            }}>
+                                                                                                {group.count}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                ));
+                                                                            })()}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
+                                    </div>
                                     )}
-                                </div>
                             </div>
                             
                             {/* Workbench Section - appears below review when active */}
@@ -3589,7 +4631,7 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                                     width: 8,
                                                                     height: 8,
                                                                     borderRadius: '50%',
-                                                                    background: '#22c55e'
+                                                                    background: '#20b26c'
                                                                 }}></div>
                                                                 <span style={{ fontSize: 11, color: '#6b7280' }}>Done: {done}</span>
                                                             </div>
@@ -3617,7 +4659,7 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                             <div 
                                                                 style={{ 
                                                                     height: '100%', 
-                                                                    background: failed > 0 ? '#ef4444' : 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)', 
+                                                                    background: failed > 0 ? '#ef4444' : 'linear-gradient(90deg, #20b26c 0%, #16a34a 100%)', 
                                                                     width: `${pct}%`,
                                                                     transition: 'width 0.3s ease'
                                                                 }}
@@ -3639,10 +4681,9 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                                         alignItems: 'center',
                                                                         gap: 8,
                                                                         padding: '6px 8px',
-                                                                        background: step.status === 'success' ? '#f0fdf4' : 
-                                                                                   step.status === 'error' ? '#fef2f2' : 
+                                                                        background: step.status === 'error' ? '#fef2f2' : 
                                                                                    step.status === 'pending' ? '#eff6ff' : '#f9fafb',
-                                                                        border: step.status === 'success' ? '1px solid #bbf7d0' : 
+                                                                        border: step.status === 'success' ? '1px solid #e5e7eb' : 
                                                                                step.status === 'error' ? '1px solid #fecaca' : 
                                                                                step.status === 'pending' ? '1px solid #bfdbfe' : '1px solid #e5e7eb',
                                                                         borderRadius: 6,
@@ -3768,94 +4809,6 @@ ${JSON.stringify(debugInfo, null, 2)}
                     </div>
 
                     {/* CSS for smooth hover effects and navigation animations */}
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        gap: 16,
-                                        padding: '16px 20px',
-                                        border: '1px solid #e1e5ea',
-                                        borderRadius: 8,
-                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                        marginTop: 20,
-                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.04)'
-                                    }}>
-                                        <label style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 12,
-                                            cursor: 'pointer',
-                                            flex: 1
-                                        }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={confirmAcknowledge}
-                                                onChange={(e) => setConfirmAcknowledge(e.currentTarget.checked)}
-                                                style={{ 
-                                                    width: 18, 
-                                                    height: 18,
-                                                    cursor: 'pointer',
-                                                    accentColor: '#D65541'
-                                                }}
-                                            />
-                                            <span style={{
-                                                fontSize: 14,
-                                                color: '#374151',
-                                                lineHeight: 1.4
-                                            }}>
-                                                I confirm that all client and matter details shown above are accurate and complete
-                                                {instructionRef && (
-                                                    <span style={{ 
-                                                        marginLeft: 6,
-                                                        padding: '1px 6px',
-                                                        background: '#f1f5f9',
-                                                        color: '#475569',
-                                                        borderRadius: 4,
-                                                        fontSize: 12,
-                                                        fontWeight: 500
-                                                    }}>
-                                                        {instructionRef}
-                                                    </span>
-                                                )}.
-                                            </span>
-                                        </label>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => confirmAcknowledge && setSummaryConfirmed(true)}
-                                            disabled={!confirmAcknowledge}
-                                            style={{
-                                                background: confirmAcknowledge 
-                                                    ? 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)' 
-                                                    : '#f3f4f6',
-                                                color: confirmAcknowledge ? '#fff' : '#9ca3af',
-                                                border: confirmAcknowledge ? '1px solid #B83C2B' : '1px solid #d1d5db',
-                                                borderRadius: 6,
-                                                padding: '10px 16px',
-                                                fontSize: 13,
-                                                fontWeight: 600,
-                                                cursor: confirmAcknowledge ? 'pointer' : 'not-allowed',
-                                                transition: 'all 0.15s ease',
-                                                minWidth: 110
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (confirmAcknowledge) {
-                                                    e.currentTarget.style.transform = 'translateY(-1px)';
-                                                    e.currentTarget.style.boxShadow = '0 3px 8px rgba(214, 85, 65, 0.2)';
-                                                }
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (confirmAcknowledge) {
-                                                    e.currentTarget.style.transform = 'translateY(0)';
-                                                    e.currentTarget.style.boxShadow = 'none';
-                                                }
-                                            }}
-                                        >
-                                            Confirm
-                                        </button>
-                                    </div>
-
-                    {/* CSS for smooth hover effects and navigation animations */}
                     <style>{`
                         .review-summary-hoverable {
                             box-shadow: none;
@@ -3864,179 +4817,7 @@ ${JSON.stringify(debugInfo, null, 2)}
                             border-color: #D65541 !important;
                             box-shadow: 0 0 0 1px #D65541;
                         }
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                            position: 'relative',
-                                            overflow: 'hidden',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#ffefed';
-                                            e.currentTarget.style.border = '2px solid #D65541';
-                                            e.currentTarget.style.borderRadius = '0px';
-                                            e.currentTarget.style.width = '140px';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = '#f4f4f6';
-                                            e.currentTarget.style.border = '2px solid #e1dfdd';
-                                            e.currentTarget.style.borderRadius = '0px';
-                                            e.currentTarget.style.width = '48px';
-                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
-                                        }}
-                                    >
-                                        {/* Arrow Icon */}
-                                        <svg 
-                                            width="18" 
-                                            height="18" 
-                                            viewBox="0 0 24 24" 
-                                            fill="none"
-                                            style={{
-                                                transition: 'color 0.3s, opacity 0.3s',
-                                                color: '#D65541',
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                            }}
-                                        >
-                                            <path 
-                                                d="M19 12h-14m7 7l-7-7 7-7" 
-                                                stroke="currentColor" 
-                                                strokeWidth="2" 
-                                                strokeLinecap="round" 
-                                                strokeLinejoin="round"
-                                            />
-                                        </svg>
-                                        
-                                        {/* Expandable Text */}
-                                        <span 
-                                            style={{
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                fontSize: '14px',
-                                                fontWeight: 600,
-                                                color: '#D65541',
-                                                opacity: 0,
-                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                            className="nav-text"
-                                        >
-                                            Back to Form
-                                        </span>
-                                    </div>
-
-                                    {/* Submit button with smooth expansion */}
-                                    <div 
-                                        className="nav-button submit-button"
-                                        onClick={() => {
-                                            if (summaryConfirmed && !isProcessing) {
-                                                // Start the processing simulation
-                                                simulateProcessing().then(r => r && setGeneratedCclUrl(r.url));
-                                            }
-                                        }}
-                                        style={{
-                                            background: isProcessing ? '#e6f7ff' : summaryConfirmed ? '#f4f4f6' : '#f8f8f8',
-                                            border: isProcessing ? '2px solid #1890ff' : summaryConfirmed ? '2px solid #e1dfdd' : '2px solid #ddd',
-                                            borderRadius: '0px',
-                                            width: '48px',
-                                            height: '48px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: (summaryConfirmed && !isProcessing) ? 'pointer' : 'not-allowed',
-                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: summaryConfirmed ? '0 1px 2px rgba(6,23,51,0.04)' : 'none',
-                                            position: 'relative',
-                                            overflow: 'hidden',
-                                            opacity: (summaryConfirmed || isProcessing) ? 1 : 0.5,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (summaryConfirmed) {
-                                                e.currentTarget.style.background = '#ffefed';
-                                                e.currentTarget.style.border = '2px solid #D65541';
-                                                e.currentTarget.style.borderRadius = '0px';
-                                                e.currentTarget.style.width = '160px';
-                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (summaryConfirmed) {
-                                                e.currentTarget.style.background = '#f4f4f6';
-                                                e.currentTarget.style.border = '2px solid #e1dfdd';
-                                                e.currentTarget.style.borderRadius = '0px';
-                                                e.currentTarget.style.width = '48px';
-                                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
-                                            }
-                                        }}
-                                    >
-                                        {/* Check Icon or Spinner */}
-                                        {isProcessing ? (
-                                            <div style={{
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                width: '18px',
-                                                height: '18px',
-                                                border: '2px solid #1890ff',
-                                                borderTop: '2px solid transparent',
-                                                borderRadius: '50%',
-                                                animation: 'spin 1s linear infinite'
-                                            }} />
-                                        ) : (
-                                            <svg 
-                                                width="18" 
-                                                height="18" 
-                                                viewBox="0 0 24 24" 
-                                                fill="none"
-                                                style={{
-                                                    transition: 'color 0.3s, opacity 0.3s',
-                                                    color: summaryConfirmed ? '#D65541' : '#999',
-                                                    position: 'absolute',
-                                                    left: '50%',
-                                                    top: '50%',
-                                                    transform: 'translate(-50%, -50%)',
-                                                }}
-                                            >
-                                                <polyline 
-                                                    points="20,6 9,17 4,12" 
-                                                    stroke="currentColor" 
-                                                    strokeWidth="2" 
-                                                    strokeLinecap="round" 
-                                                    strokeLinejoin="round"
-                                                />
-                                            </svg>
-                                        )}
-                                        
-                                        {/* Expandable Text */}
-                                        <span 
-                                            style={{
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                fontSize: '14px',
-                                                fontWeight: 600,
-                                                color: summaryConfirmed ? '#D65541' : '#999',
-                                                opacity: 0,
-                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                            className="nav-text"
-                                        >
-                                            {isProcessing ? 'Processing...' : summaryConfirmed ? 'Submit Matter' : 'Confirm Summary First'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Bottom Processing Section moved below style */}
-
+                        
                         /* Spinner animation */
                         @keyframes spin {
                             0% { transform: translate(-50%, -50%) rotate(0deg); }
@@ -4089,423 +4870,9 @@ ${JSON.stringify(debugInfo, null, 2)}
                         }
                     `}</style>
 
-                    {/* Explicit Open Matter action (restored for clarity) */}
-                    {currentStep === 2 && (
-                        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
-                            <button
-                                onClick={() => {
-                                    if (summaryConfirmed && !isProcessing) {
-                                        simulateProcessing().then(r => r && setGeneratedCclUrl(r.url));
-                                    }
-                                }}
-                                disabled={!summaryConfirmed || isProcessing}
-                                style={{
-                                    background: isProcessing
-                                        ? 'linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 100%)'
-                                        : summaryConfirmed
-                                            ? 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)'
-                                            : 'linear-gradient(135deg, #FAFAFA 0%, #F1F5F9 100%)',
-                                    border: summaryConfirmed ? '1px solid #D65541' : '1px solid #e1e5ea',
-                                    color: summaryConfirmed ? '#D65541' : '#9ca3af',
-                                    fontSize: 14,
-                                    fontWeight: 600,
-                                    padding: '10px 20px',
-                                    borderRadius: 8,
-                                    cursor: (!summaryConfirmed || isProcessing) ? 'not-allowed' : 'pointer',
-                                    boxShadow: summaryConfirmed ? '0 4px 6px rgba(0,0,0,0.07)' : 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    transition: 'all 0.25s ease',
-                                    position: 'relative'
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (summaryConfirmed && !isProcessing) {
-                                        e.currentTarget.style.transform = 'translateY(-1px)';
-                                        e.currentTarget.style.boxShadow = '0 6px 10px rgba(0,0,0,0.08)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (summaryConfirmed && !isProcessing) {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.07)';
-                                    }
-                                }}
-                            >
-                                {isProcessing ? (
-                                    <>
-                                        <span
-                                            style={{
-                                                width: 14,
-                                                height: 14,
-                                                border: '2px solid #D65541',
-                                                borderTop: '2px solid transparent',
-                                                borderRadius: '50%',
-                                                animation: 'spin 1s linear infinite'
-                                            }}
-                                        />
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="ms-Icon ms-Icon--Play" style={{ fontSize: 14 }} />
-                                        {summaryConfirmed ? 'Open Matter' : 'Confirm Summary First'}
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    )}
 
-                    {/* Bottom Processing Section (relocated) */}
-                    {currentStep === 2 && (
-                        <div style={{ marginTop: 32 }}>
-                            {(() => {
-                                const total = processingSteps.length || 0;
-                                const done = processingSteps.filter(s => s.status === 'success').length;
-                                const failed = processingSteps.filter(s => s.status === 'error').length;
-                                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                                const statusText = failed > 0 ? 'Attention required' : (done === total && total > 0 ? 'Completed' : 'In progress');
-                                return (
-                                    <div style={{
-                                        border: '1px solid #e1e5ea',
-                                        borderRadius: 10,
-                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                        overflow: 'hidden',
-                                        padding: 16,
-                                        boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
-                                        marginBottom: 16
-                                    }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <i className="ms-Icon ms-Icon--ProgressLoopOuter" style={{ fontSize: 14, color: '#D65541' }} />
-                                                <span style={{ fontSize: 13, fontWeight: 700, color: '#061733' }}>Processing</span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <span style={{ fontSize: 12, fontWeight: 700, color: failed ? '#D65541' : '#374151' }}>{statusText}</span>
-                                                <button
-                                                    onClick={() => setSupportPanelOpen(!supportPanelOpen)}
-                                                    style={{
-                                                        background: supportPanelOpen ? '#D65541' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                        color: supportPanelOpen ? '#fff' : '#D65541',
-                                                        border: '1px solid #D65541',
-                                                        borderRadius: 6,
-                                                        padding: '6px 10px',
-                                                        fontSize: 11,
-                                                        fontWeight: 600,
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                    title="Support Request"
-                                                >
-                                                    <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 12 }} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
-                                            <div style={{ fontSize: 28, fontWeight: 800, color: '#061733', minWidth: 64, textAlign: 'right' }}>{pct}%</div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ height: 10, background: '#eef2f7', borderRadius: 999, overflow: 'hidden' }}>
-                                                    <div style={{
-                                                        width: `${pct}%`,
-                                                        height: '100%',
-                                                        background: 'linear-gradient(135deg, #49B670 0%, #15803d 100%)',
-                                                        transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-                                                    }} />
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                                                    <span style={{ fontSize: 12, color: '#6b7280' }}>Completed</span>
-                                                    <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>{done} of {total}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {total > 0 && (
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))', gap: 8, marginBottom: 8 }}>
-                                                {processingSteps.map((s, idx) => (
-                                                    <div key={`mini-bottom-${idx}`} title={s.label} style={{
-                                                        height: 36,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        borderRadius: 6,
-                                                        border: '1px solid #e5e7eb',
-                                                        background: s.status === 'success' ? '#f0fdf4' : s.status === 'error' ? '#fef2f2' : '#fff'
-                                                    }}>
-                                                        {s.icon ? (
-                                                            <img src={s.icon} alt="" style={{ width: 18, height: 18, opacity: s.status === 'pending' ? 0.6 : 1 }} />
-                                                        ) : (
-                                                            <i className={`ms-Icon ${s.status === 'success' ? 'ms-Icon--CheckMark' : s.status === 'error' ? 'ms-Icon--ErrorBadge' : 'ms-Icon--Clock'}`} style={{ fontSize: 16, color: s.status === 'success' ? '#16a34a' : s.status === 'error' ? '#dc2626' : '#6b7280' }} />
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {adminEligible ? (
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontSize: 11, color: '#64748b' }}>Admins & local dev can view backend operation details</span>
-                                                <button
-                                                    onClick={() => setDebugPanelOpen(!debugPanelOpen)}
-                                                    style={{
-                                                        background: debugPanelOpen ? '#D65541' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                        color: debugPanelOpen ? '#fff' : '#D65541',
-                                                        border: '1px solid #D65541',
-                                                        borderRadius: 6,
-                                                        padding: '6px 10px',
-                                                        fontSize: 11,
-                                                        fontWeight: 700,
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                >
-                                                    {debugPanelOpen ? 'Hide admin details' : 'Show admin details'}
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div style={{ fontSize: 11, color: '#94a3b8' }}>Backend details are restricted to admins</div>
-                                        )}
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Debug Panel */}
-                            {adminEligible && debugPanelOpen && (
-                                <div style={{
-                                    border: '1px solid #e1e5ea',
-                                    borderRadius: 8,
-                                    background: '#fff',
-                                    overflow: 'hidden',
-                                    marginBottom: 16
-                                }}>
-                                    <div style={{
-                                        padding: '12px 16px',
-                                        background: 'linear-gradient(135deg, #111827 0%, #1f2937 100%)',
-                                        color: '#fff',
-                                        fontSize: 13,
-                                        fontWeight: 700,
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}>
-                                        <span>Backend Operations (Admin)</span>
-                                        <button
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(JSON.stringify(generateSampleJson(), null, 2));
-                                            }}
-                                            style={{
-                                                background: 'rgba(255,255,255,0.1)',
-                                                border: '1px solid rgba(255,255,255,0.2)',
-                                                borderRadius: 4,
-                                                padding: '4px 8px',
-                                                fontSize: 10,
-                                                color: '#fff',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 4
-                                            }}
-                                        >
-                                            <i className="ms-Icon ms-Icon--Copy" style={{ fontSize: 10 }} />
-                                            Copy JSON
-                                        </button>
-                                    </div>
-                                    <div style={{ padding: 12, display: 'grid', gap: 12 }}>
-                                        <div style={{
-                                            border: '1px solid #e5e7eb',
-                                            borderRadius: 6,
-                                            overflow: 'hidden'
-                                        }}>
-                                            <div style={{
-                                                padding: '8px 12px',
-                                                background: '#f8fafc',
-                                                fontSize: 12,
-                                                fontWeight: 700,
-                                                color: '#374151'
-                                            }}>
-                                                Operations
-                                            </div>
-                                            <div style={{ maxHeight: 240, overflow: 'auto', padding: 8 }}>
-                                                {processingSteps.map((step, idx) => {
-                                                    const events = operationEvents.filter(e => e.index === idx);
-                                                    const sent = events.find(e => e.phase === 'sent');
-                                                    const responded = events.find(e => e.phase === 'response');
-                                                    const succeeded = events.find(e => e.phase === 'success');
-                                                    const errored = events.find(e => e.phase === 'error');
-                                                    return (
-                                                        <div key={`op-bottom-${idx}`} style={{ display: 'grid', gap: 6, padding: '8px 4px', borderBottom: '1px solid #f1f5f9' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                <span style={{ fontSize: 12, color: '#111827', fontWeight: 700 }}>{step.label}</span>
-                                                                <span style={{ fontSize: 11, fontWeight: 800, color: step.status === 'success' ? '#16a34a' : step.status === 'error' ? '#dc2626' : '#64748b' }}>
-                                                                    {step.status.toUpperCase()}
-                                                                </span>
-                                                            </div>
-                                                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                                                <span style={{ fontSize: 11, color: sent ? '#334155' : '#94a3b8' }}>Sent{sent?.method ? ` (${sent.method})` : ''}</span>
-                                                                <span style={{ fontSize: 11, color: responded ? '#334155' : '#94a3b8' }}>Responded{responded?.status ? ` (${responded.status})` : ''}</span>
-                                                                <span style={{ fontSize: 11, color: succeeded ? '#16a34a' : '#94a3b8' }}>Succeeded</span>
-                                                            </div>
-                                                            {errored && (
-                                                                <div style={{ display: 'grid', gap: 6 }}>
-                                                                    <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 700 }}>Failure details</div>
-                                                                    {errored.payloadSummary && (
-                                                                        <div style={{
-                                                                            padding: 8,
-                                                                            background: '#fef2f2',
-                                                                            border: '1px solid #fecaca',
-                                                                            borderRadius: 6,
-                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                            fontSize: 11,
-                                                                            whiteSpace: 'pre-wrap'
-                                                                        }}>
-                                                                            {errored.payloadSummary}
-                                                                        </div>
-                                                                    )}
-                                                                    {errored.responseSummary && (
-                                                                        <div style={{
-                                                                            padding: 8,
-                                                                            background: '#fef2f2',
-                                                                            border: '1px solid #fecaca',
-                                                                            borderRadius: 6,
-                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                            fontSize: 11,
-                                                                            whiteSpace: 'pre-wrap'
-                                                                        }}>
-                                                                            {errored.responseSummary}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'grid', gap: 8 }}>
-                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Request payload</div>
-                                            <div style={{
-                                                padding: 10,
-                                                background: '#f8fafc',
-                                                border: '1px solid #e5e7eb',
-                                                borderRadius: 6,
-                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                fontSize: 11,
-                                                maxHeight: 220,
-                                                overflow: 'auto'
-                                            }}>
-                                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                                    {JSON.stringify(generateSampleJson(), null, 2)}
-                                                </pre>
-                                            </div>
-                                            {processingLogs.length > 0 && (
-                                                <>
-                                                    <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Responses & logs</div>
-                                                    <div style={{
-                                                        padding: 10,
-                                                        background: '#f8fafc',
-                                                        border: '1px solid #e5e7eb',
-                                                        borderRadius: 6,
-                                                        fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                        fontSize: 11,
-                                                        maxHeight: 220,
-                                                        overflow: 'auto'
-                                                    }}>
-                                                        {processingLogs.map((log, idx) => (
-                                                            <div key={`log-bottom-${idx}`}>{log}</div>
-                                                        ))}
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Support Panel */}
-                            {supportPanelOpen && (
-                                <div style={{
-                                    border: '1px solid #e1e5ea',
-                                    borderRadius: 8,
-                                    background: '#fff',
-                                    overflow: 'hidden',
-                                    marginBottom: 32
-                                }}>
-                                    <div style={{
-                                        padding: '12px 16px',
-                                        background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
-                                        color: '#fff',
-                                        fontSize: 13,
-                                        fontWeight: 600,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8
-                                    }}>
-                                        <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 14 }} />
-                                        Support Request
-                                    </div>
-                                    <div style={{ padding: 16 }}>
-                                        <div style={{ marginBottom: 12 }}>
-                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
-                                                Category
-                                            </label>
-                                            <select
-                                                value={supportCategory}
-                                                onChange={(e) => setSupportCategory(e.target.value as any)}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '8px 12px',
-                                                    border: '1px solid #d1d5db',
-                                                    borderRadius: 6,
-                                                    fontSize: 12,
-                                                    background: '#fff'
-                                                }}
-                                            >
-                                                <option value="technical">Technical Issue</option>
-                                                <option value="process">Process Question</option>
-                                                <option value="data">Data Problem</option>
-                                            </select>
-                                        </div>
-                                        <div style={{ marginBottom: 12 }}>
-                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
-                                                Describe the issue
-                                            </label>
-                                            <textarea
-                                                value={supportMessage}
-                                                onChange={(e) => setSupportMessage(e.target.value)}
-                                                placeholder="Please describe what's happening and any steps to reproduce the issue..."
-                                                style={{
-                                                    width: '100%',
-                                                    height: 80,
-                                                    padding: '8px 12px',
-                                                    border: '1px solid #d1d5db',
-                                                    borderRadius: 6,
-                                                    fontSize: 12,
-                                                    resize: 'vertical',
-                                                    fontFamily: 'inherit'
-                                                }}
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={sendSupportRequest}
-                                            disabled={!supportMessage.trim() || supportSending}
-                                            style={{
-                                                width: '100%',
-                                                padding: '8px 16px',
-                                                background: supportSending ? '#9ca3af' : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
-                                                color: '#fff',
-                                                border: 'none',
-                                                borderRadius: 6,
-                                                fontSize: 12,
-                                                fontWeight: 600,
-                                                cursor: supportSending || !supportMessage.trim() ? 'not-allowed' : 'pointer',
-                                                opacity: supportSending || !supportMessage.trim() ? 0.6 : 1,
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            {supportSending ? 'Sending...' : 'Send Support Request'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {/* Navigation Container - Removed as requested */}
+                </div>
             </Stack>
         </CompletionProvider>
     );
