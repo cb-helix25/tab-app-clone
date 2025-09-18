@@ -435,7 +435,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [debugInspectorOpen, setDebugInspectorOpen] = useState(false); 
     const [debugActiveTab, setDebugActiveTab] = useState<'json' | 'details'>('json');
     const [debugManualPasteOpen, setDebugManualPasteOpen] = useState(false);
-    const [debugManualOverride, setDebugManualOverride] = useState(false);
     
     // Workbench states
     const [workbenchMode, setWorkbenchMode] = useState(false);
@@ -1778,9 +1777,6 @@ ${JSON.stringify(debugInfo, null, 2)}
     };
 
     const showProcessingSection = processingSteps.some(s => s.status !== 'pending');
-    
-    // Debug tools should only show when processing is active or manually overridden
-    const showDebugTools = showProcessingSection || debugManualOverride;
 
     // Render the horizontal sliding carousel
     return (
@@ -4026,52 +4022,21 @@ ${JSON.stringify(debugInfo, null, 2)}
                                         </div>
                                     )}
 
-                                    {/* Manual Debug Override Toggle - Show when processing section exists but debug tools hidden */}
-                                    {!showDebugTools && showProcessingSection && (
-                                        <div style={{ marginTop: 16, textAlign: 'center' }}>
-                                            <button
-                                                onClick={() => setDebugManualOverride(true)}
-                                                style={{
-                                                    background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
-                                                    border: '1px solid #d1d5db',
-                                                    borderRadius: 6,
-                                                    padding: '6px 10px',
-                                                    fontSize: 10,
-                                                    fontWeight: 500,
-                                                    color: '#6b7280',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s ease'
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)';
-                                                    e.currentTarget.style.borderColor = '#9ca3af';
-                                                    e.currentTarget.style.color = '#374151';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)';
-                                                    e.currentTarget.style.borderColor = '#d1d5db';
-                                                    e.currentTarget.style.color = '#6b7280';
-                                                }}
-                                            >
-                                                Show Debug Tools
-                                            </button>
-                                        </div>
-                                    )}
 
-                                    {/* Developer Tools Section - Show only when processing active or manual override */}
-                                    {showDebugTools && (
-                                        <div style={{ 
-                                            marginTop: 16,
-                                            padding: 12,
-                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                            border: '1px solid #e1e5ea',
-                                            borderRadius: 8,
-                                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)'
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                                    {/* Unified Debug Inspector Button */}
-                                                    <button
+
+                                    {/* Developer Tools Section - Available to Everyone */}
+                                    <div style={{ 
+                                        marginTop: 16,
+                                        padding: 12,
+                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                        border: '1px solid #e1e5ea',
+                                        borderRadius: 8,
+                                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                {/* Unified Debug Inspector Button */}
+                                                <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setDebugInspectorOpen(!debugInspectorOpen);
@@ -4109,37 +4074,14 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                             e.currentTarget.style.color = '#D65541';
                                                         }
                                                     }}
-                                                    >
-                                                        <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 11 }} />
-                                                        Debug
-                                                    </button>
-                                                </div>
-                                                {/* Close debug tools if manually overridden */}
-                                                {debugManualOverride && !showProcessingSection && (
-                                                    <button
-                                                        onClick={() => setDebugManualOverride(false)}
-                                                        style={{
-                                                            background: 'none',
-                                                            border: 'none',
-                                                            color: '#9ca3af',
-                                                            cursor: 'pointer',
-                                                            padding: '4px',
-                                                            borderRadius: 4,
-                                                            fontSize: 12,
-                                                            transition: 'color 0.2s ease'
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.color = '#374151';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.color = '#9ca3af';
-                                                        }}
-                                                        title="Hide debug tools"
-                                                    >
-                                                        <i className="ms-Icon ms-Icon--Cancel" style={{ fontSize: 12 }} />
-                                                    </button>
-                                                )}
-                                            </div>                                        {/* Support Panel */}
+                                                >
+                                                    <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 11 }} />
+                                                    Debug
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Support Panel */}
                                         {supportPanelOpen && (
                                             <div style={{
                                                 marginTop: 16,
@@ -4537,7 +4479,6 @@ ${JSON.stringify(debugInfo, null, 2)}
                                             </div>
                                         )}
                                     </div>
-                                    )}
                             </div>
                             
                             {/* Workbench Section - appears below review when active */}
