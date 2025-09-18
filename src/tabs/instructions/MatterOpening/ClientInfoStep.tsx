@@ -73,120 +73,15 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
     return (
         <>
             <Stack tokens={{ childrenGap: 8 }}>
-                {/* Live System Data Panel */}
-                <div
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        borderRadius: 0,
-                        padding: '6px 10px',
-                        marginBottom: '2px',
-                        position: 'relative',
-                    }}
-                >
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            position: 'relative',
-                            zIndex: 1,
-                        }}
-                    >
-                        {/* Date & Time */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div>
-                                <div
-                                    style={{
-                                        fontSize: '9px',
-                                        fontWeight: 500,
-                                        color: '#9CA3AF',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.3px',
-                                        marginBottom: '1px',
-                                    }}
-                                >
-                                    Opening Date & Time
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: '12px',
-                                        fontWeight: '400',
-                                        color: '#4B5563',
-                                        fontFamily: 'Raleway, sans-serif',
-                                    }}
-                                >
-                                    {(selectedDate
-                                        ? selectedDate.toLocaleDateString()
-                                        : new Date().toLocaleDateString()
-                                    )}
-                                    , {liveTime}
-                                </div>
-                            </div>
-                        </div>
-                        {/* User info */}
-                        <div style={{ textAlign: 'right' }}>
-                            <div
-                                style={{
-                                    fontSize: '9px',
-                                    fontWeight: 500,
-                                    color: '#9CA3AF',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.3px',
-                                    marginBottom: '1px',
-                                }}
-                            >
-                                User Requesting File
-                            </div>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'flex-end',
-                                    gap: '6px',
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        fontSize: '12px',
-                                        fontWeight: '400',
-                                        color: '#4B5563',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                    }}
-                                >
-                                    <i
-                                        className="ms-Icon ms-Icon--Contact"
-                                        style={{ fontSize: '12px', color: '#9CA3AF' }}
-                                    />
-                                    {requestingUser}
-                                    {requestingUserClioId ? (
-                                        <span
-                                            style={{
-                                                marginLeft: 4,
-                                                padding: '1px 4px',
-                                                background: '#F4F6F9',
-                                                border: '1px solid #e1e5ea',
-                                                borderRadius: 4,
-                                                color: '#6B7280',
-                                                fontSize: '10px',
-                                                lineHeight: 1.2,
-                                            }}
-                                        >
-                                            {requestingUserClioId}
-                                        </span>
-                                    ) : ''}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {/* Date/User chips now shown in global header; removed local chips row */}
 
                 {/* Responsible Solicitor / Originating Solicitor */}
                 <div style={{ display: 'flex', gap: 12 }}>
                     <div style={{ flex: 1 }}>
-                        <div className="question-banner" style={{ fontSize: 11, padding: '4px 8px' }}>Responsible Solicitor</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 16, color: '#3690CE' }} />
+                            <span style={{ fontSize: 16, fontWeight: 600, color: colours.greyText }}>Responsible Solicitor</span>
+                        </div>
                         <div
                             style={{
                                 position: 'relative',
@@ -255,8 +150,9 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                     </div>
 
                     <div style={{ flex: 1 }}>
-                        <div className="question-banner" style={{ fontSize: 11, padding: '4px 8px' }}>
-                            Originating Solicitor
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 16, color: '#3690CE' }} />
+                            <span style={{ fontSize: 16, fontWeight: 600, color: colours.greyText }}>Originating Solicitor</span>
                         </div>
                         <div
                             style={{
@@ -334,8 +230,12 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
 
                 {/* Supervising Partner */}
                 <div style={{ marginTop: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 16, color: '#3690CE' }} />
+                        <span style={{ fontSize: 16, fontWeight: 600, color: colours.greyText }}>Supervising Partner</span>
+                    </div>
                     <ModernMultiSelect
-                        label="Select Supervising Partner"
+                        label=""
                         options={partnerOptions.map((name) => ({
                             key: name,
                             text: name,

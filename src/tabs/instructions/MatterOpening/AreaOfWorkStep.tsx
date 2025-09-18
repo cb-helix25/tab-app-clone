@@ -58,7 +58,7 @@ const AreaOfWorkStep: React.FC<AreaOfWorkStepProps> = ({ areaOfWork, setAreaOfWo
                     }} />
                     <span style={{ 
                         fontSize: 16, 
-                        fontWeight: 600, 
+                        fontWeight: 500, 
                         color: colours.text 
                     }}>
                         Select Area of Work
@@ -69,7 +69,7 @@ const AreaOfWorkStep: React.FC<AreaOfWorkStepProps> = ({ areaOfWork, setAreaOfWo
                     <div style={{ 
                         display: 'grid', 
                         gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-                        gap: '12px'
+                        gap: '6px'
                     }}>
                         {options.map(({ type, icon }) => {
                             const isActive = areaOfWork === type;
@@ -89,30 +89,28 @@ const AreaOfWorkStep: React.FC<AreaOfWorkStepProps> = ({ areaOfWork, setAreaOfWo
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        padding: '18px 16px',
-                                        border: `2px solid ${isActive ? areaColor : colours.border}`,
-                                        borderRadius: '12px',
+                                        padding: '10px 12px',
+                                        border: `1px solid ${isActive ? areaColor : colours.border}`,
+                                        borderRadius: '6px',
                                         background: isActive 
                                             ? `linear-gradient(135deg, ${areaColor}15 0%, ${areaColor}08 100%)` 
                                             : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                        minHeight: '90px',
-                                        boxShadow: isActive 
-                                            ? `0 6px 20px ${areaColor}25, 0 2px 4px rgba(0,0,0,0.05)` 
-                                            : '0 2px 8px rgba(0,0,0,0.05)',
+                                        minHeight: '36px',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                                         // CSS vars for hover/press
                                         ['--area-hover-bg' as any]: `linear-gradient(135deg, ${areaColor}12 0%, ${areaColor}06 100%)`,
                                         ['--area-hover-color' as any]: areaColor,
                                         ['--area-press-bg' as any]: `linear-gradient(135deg, ${areaColor}25 0%, ${areaColor}15 100%)`,
                                         ['--area-press-color' as any]: areaColor,
-                                        transform: isActive ? 'translateY(-3px)' : 'translateY(0)',
+                                        transform: 'translateY(0)',
                                     }}
                                 >
                                     <div
                                         className="client-type-icon"
                                         style={{
-                                            fontSize: '26px',
+                                            fontSize: '16px',
                                             color: isActive ? areaColor : '#64748B',
                                             marginBottom: '8px',
                                             opacity: 1,
@@ -125,9 +123,9 @@ const AreaOfWorkStep: React.FC<AreaOfWorkStepProps> = ({ areaOfWork, setAreaOfWo
                                     <div
                                         className="client-type-label"
                                         style={{
-                                            fontSize: '13px',
-                                            fontWeight: isActive ? 600 : 500,
-                                            color: isActive ? areaColor : colours.text,
+                                            fontSize: '12px',
+                                            fontWeight: 400,
+                                            color: isActive ? areaColor : '#64748B',
                                             textAlign: 'center',
                                             opacity: 1,
                                             transform: 'translateY(0)',
@@ -161,7 +159,6 @@ const AreaOfWorkStep: React.FC<AreaOfWorkStepProps> = ({ areaOfWork, setAreaOfWo
                 }
                 .area-of-work-selection .client-type-icon-btn:not(.active):hover .client-type-label {
                     color: var(--area-hover-color, #3690CE) !important;
-                    font-weight: 600 !important;
                 }
                 .area-of-work-selection .client-type-icon-btn:active {
                     background: var(--area-press-bg, linear-gradient(135deg, #E2E8F0 0%, #CBD5E1 100%)) !important;
@@ -172,7 +169,6 @@ const AreaOfWorkStep: React.FC<AreaOfWorkStepProps> = ({ areaOfWork, setAreaOfWo
                     transform: scale(1.05) !important;
                 }
                 .area-of-work-selection .client-type-icon-btn.active .client-type-label {
-                    font-weight: 700 !important;
                 }
             `}</style>
         </div>

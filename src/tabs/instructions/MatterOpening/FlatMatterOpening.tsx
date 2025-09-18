@@ -317,106 +317,24 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     }, []);
     // Note: additional effect to guarantee date on step change is defined after currentStep declaration
     const localTeamData = useMemo(() => localTeamDataJson, []);
-    const defaultPartnerOptions = defaultPartners;
-
-    // Helper to safely get full name
-    const getFullName = (t: unknown): string => {
-        const rec = t as any; // narrowed locally for index access to bracket keys
-        const full = rec?.['Full Name'] || `${rec?.First || ''} ${rec?.Last || ''}`.trim();
-        return String(full || '').trim();
-    };
-
-    // Active team only
-    const activeTeam = useMemo(() => {
-        const dataset = (teamData ?? localTeamData) as unknown;
-        if (!Array.isArray(dataset)) return [] as any[];
-        return dataset.filter((t: any) => String(t?.status ?? t?.Status ?? '').toLowerCase() === 'active');
-    }, [teamData, localTeamData]);
-
-    // Helper to safely get first name
-    const getFirstName = (t: unknown): string => {
-        const rec = t as any;
-        const first = rec?.First || rec?.first;
-        if (first) return String(first).trim();
-        const full = rec?.['Full Name'] || rec?.FullName || '';
-        if (full) return String(full).trim().split(/\s+/)[0] || '';
-        return '';
-    };
-
-    // Active Partners (first names) for supervising partner select
-    const partnerOptionsList = useMemo(() => {
-        const partnersFirst = activeTeam
-            .filter((t: any) => String(t?.Role || '').toLowerCase() === 'partner')
-            .map(getFirstName)
-            .filter(Boolean);
-        if (partnersFirst.length) return partnersFirst;
-        // Fallback: convert default partner options (likely full names) to first names
-        const defaultFirst = (defaultPartnerOptions || [])
-            .map((n: string) => String(n || '').trim().split(/\s+/)[0])
-            .filter(Boolean);
-        return defaultFirst;
-    }, [activeTeam, defaultPartnerOptions]);
-
-    // Active team member options (names)
-    const teamMemberOptions = useMemo(() => {
-        return activeTeam.map(getFullName).filter(Boolean);
-    }, [activeTeam]);
-
-    // Active members for Responsible/Originating selects (show everyone active)
-    const solicitorOptions = useMemo(() => {
-        return activeTeam.map(getFullName).filter(Boolean);
-    }, [activeTeam]);
-    
-    const defaultTeamMember = useMemo(() => {
-        // Prefer the active-only team list to ensure defaults exist in dropdowns
-        if (activeTeam && activeTeam.length > 0) {
-            const found = activeTeam.find(
-                (t: any) => String(t?.Initials || '').toLowerCase() === userInitials.toLowerCase(),
-            );
-            if (found) {
-                return getFullName(found);
-            }
-            return getFullName(activeTeam[0]);
-        }
-        return '';
-    }, [activeTeam, userInitials]);
-
-    const [teamMember, setTeamMember] = useDraftedState<string>('teamMember', defaultTeamMember);
-    useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
-    const [supervisingPartner, setSupervisingPartner] = useDraftedState<string>('supervisingPartner', '');
-    const [originatingSolicitor, setOriginatingSolicitor] = useDraftedState<string>('originatingSolicitor', defaultTeamMember);
-    useEffect(() => setOriginatingSolicitor(defaultTeamMember), [defaultTeamMember]);
-    // Removed fundsReceived state
-    const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false); // UI only, not persisted
-    const dateButtonRef = useRef<HTMLDivElement | null>(null);
-
-    // Client type selection is now a page-level qualifying question
-    const clientTypes = [
-        'Individual',
-        'Company',
-        'Multiple Individuals',
-        'Existing Client',
-    ];
-    // Use initialClientType if provided (from instruction data)
+    // Developer Tools container removed as requested
+    // Restore debug inspector core state (was previously earlier in file)
+    const [debugInspectorOpen, setDebugInspectorOpen] = useState(false);
+    const [debugActiveTab, setDebugActiveTab] = useState<'json' | 'details' | 'advanced'>('json');
+    const [debugAdvancedOpen, setDebugAdvancedOpen] = useState(false);
+    const [debugManualJson, setDebugManualJson] = useState('');
+    // Ensure client type states exist (some logic references pendingClientType)
+    // Re-initialize only if not already declared above (TypeScript will error if duplicate, but patch inserts once)
+    // Client type selection
     const [clientType, setClientType] = useDraftedState<string>('clientType', initialClientType || '');
     const [pendingClientType, setPendingClientType] = useDraftedState<string>('pendingClientType', initialClientType || '');
-    const [clientAsOnFile, setClientAsOnFile] = useDraftedState<string>('clientAsOnFile', '');
-    // Only set on mount or when initialClientType changes, and only if not already set
-    React.useEffect(() => {
-        if (initialClientType && initialClientType.trim() !== '') {
-            setClientType(initialClientType);
-            setPendingClientType(initialClientType);
-        }
-    }, [initialClientType]);
-
-    // If preselectedPoidIds is provided and not empty, use it as the initial value for selectedPoidIds
+    // Core drafted form field states (restored after container removal patch)
     const [selectedPoidIds, setSelectedPoidIds] = useDraftedState<string[]>('selectedPoidIds', preselectedPoidIds.length > 0 ? preselectedPoidIds : []);
     const [areaOfWork, setAreaOfWork] = useDraftedState<string>('areaOfWork', '');
     const [practiceArea, setPracticeArea] = useDraftedState<string>('practiceArea', '');
     const [description, setDescription] = useDraftedState<string>('description', '');
     const [folderStructure, setFolderStructure] = useDraftedState<string>('folderStructure', '');
     const [disputeValue, setDisputeValue] = useDraftedState<string>('disputeValue', '');
-    // Source field starts empty - user must actively select an option
     const [source, setSource] = useDraftedState<string>('source', '');
     const [referrerName, setReferrerName] = useDraftedState<string>('referrerName', '');
     const [budgetRequired, setBudgetRequired] = useDraftedState<string>('budgetRequired', 'No');
@@ -430,10 +348,71 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useDraftedState<string>('opponentSolicitorEmail', '');
     const [noConflict, setNoConflict] = useDraftedState<boolean>('noConflict', false);
     const [opponentChoiceMade, setOpponentChoiceMade] = useDraftedState<boolean>('opponentChoiceMade', false);
-    
-    // Unified debug inspector state
-    const [debugInspectorOpen, setDebugInspectorOpen] = useState(false); 
-    const [debugActiveTab, setDebugActiveTab] = useState<'json' | 'details'>('json');
+    const [teamMember, setTeamMember] = useDraftedState<string>('teamMember', '');
+    const [supervisingPartner, setSupervisingPartner] = useDraftedState<string>('supervisingPartner', '');
+    const [originatingSolicitor, setOriginatingSolicitor] = useDraftedState<string>('originatingSolicitor', '');
+    // Additional restored states
+    const [clientAsOnFile, setClientAsOnFile] = useDraftedState<string>('clientAsOnFile', '');
+    const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
+    const dateButtonRef = useRef<HTMLDivElement | null>(null);
+    // --- Restored original team option sourcing logic (full active team) ---
+    const defaultPartnerOptions = defaultPartners; // fallback partner list
+
+    // helpers
+    const getFullName = (t: unknown): string => {
+        const rec = t as any;
+        const full = rec?.['Full Name'] || `${rec?.First || ''} ${rec?.Last || ''}`.trim();
+        return String(full || '').trim();
+    };
+    const getFirstName = (t: unknown): string => {
+        const rec = t as any;
+        const first = rec?.First || rec?.first;
+        if (first) return String(first).trim();
+        const full = rec?.['Full Name'] || rec?.FullName || '';
+        if (full) return String(full).trim().split(/\s+/)[0] || '';
+        return '';
+    };
+
+    const activeTeam = useMemo(() => {
+        const dataset = (teamData ?? localTeamData) as unknown;
+        if (!Array.isArray(dataset)) return [] as any[];
+        return dataset.filter((t: any) => String(t?.status ?? t?.Status ?? '').toLowerCase() === 'active');
+    }, [teamData, localTeamData]);
+
+    const partnerOptionsList = useMemo(() => {
+        const partnersFirst = activeTeam
+            .filter((t: any) => String(t?.Role || '').toLowerCase() === 'partner')
+            .map(getFirstName)
+            .filter(Boolean);
+        if (partnersFirst.length) return partnersFirst;
+        const defaultFirst = (defaultPartnerOptions || [])
+            .map((n: string) => String(n || '').trim().split(/\s+/)[0])
+            .filter(Boolean);
+        return defaultFirst;
+    }, [activeTeam, defaultPartnerOptions]);
+
+    const teamMemberOptions = useMemo(() => {
+        return activeTeam.map(getFullName).filter(Boolean);
+    }, [activeTeam]);
+
+    const solicitorOptions = useMemo(() => {
+        return activeTeam.map(getFullName).filter(Boolean);
+    }, [activeTeam]);
+
+    const defaultTeamMember = useMemo(() => {
+        if (activeTeam && activeTeam.length > 0) {
+            const found = activeTeam.find((t: any) => String(t?.Initials || '').toLowerCase() === userInitials.toLowerCase());
+            if (found) return getFullName(found);
+            return getFullName(activeTeam[0]);
+        }
+        return '';
+    }, [activeTeam, userInitials]);
+
+    // Ensure drafted states pick up restored defaults
+    useEffect(() => {
+        setTeamMember(prev => (prev ? prev : defaultTeamMember));
+        setOriginatingSolicitor(prev => (prev ? prev : defaultTeamMember));
+    }, [defaultTeamMember]);
     const [debugManualPasteOpen, setDebugManualPasteOpen] = useState(false);
     
     // Workbench states
@@ -768,6 +747,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     // Processing state for matter submission
     const [isProcessing, setIsProcessing] = useState(false);
+    // Track whether processing has been initiated to avoid duplicate Open Matter buttons / triggers
+    const [processingStarted, setProcessingStarted] = useState(false);
     const [processingOpen, setProcessingOpen] = useState(false);
     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
@@ -1558,12 +1539,16 @@ const handleClearAll = () => {
         return count;
     };
 
+    // Track failing step for summary display
+    const [failureSummary, setFailureSummary] = useState<string>('');
+
     // Process matter opening steps defined in processingActions
     const simulateProcessing = async () => {
         setIsProcessing(true);
         setProcessingOpen(true);
         setProcessingLogs([]);
         setProcessingSteps(initialSteps);
+        setFailureSummary('');
         
         // Activate workbench mode immediately on submission
         // setTimeout(() => setWorkbenchMode(true), 300); // Disabled - keep processing in main section
@@ -1592,12 +1577,18 @@ const handleClearAll = () => {
         } catch (error) {
             console.error('Error during processing:', error);
             const msg = error instanceof Error ? error.message : 'Unknown error';
-            setProcessingLogs(prev => [...prev, `❌ Error: ${msg}`]);
-            // Mark the currently executing action as error if available; fallback to first
-            setProcessingSteps(prev => prev.map((s, idx) => idx === (processingActions ? Math.min(prev.findIndex(ps => ps.status === 'pending'), processingActions.length - 1) : 0)
-                ? { ...s, status: 'error', message: msg }
-                : s
-            ));
+            // Identify failing step (first still pending at error time)
+            let failingIndex = -1;
+            setProcessingSteps(prev => {
+                const idx = prev.findIndex(ps => ps.status === 'pending');
+                failingIndex = idx === -1 ? prev.length - 1 : idx;
+                return prev.map((s, i) => i === failingIndex ? { ...s, status: 'error', message: msg } : s);
+            });
+            const failingLabel = processingActions[failingIndex]?.label || 'Unknown step';
+            setFailureSummary(`Failed at: ${failingLabel} – ${msg}`);
+            setProcessingLogs(prev => [...prev, `❌ ${failingLabel}: ${msg}`]);
+            // Auto-open debug inspector
+            setDebugInspectorOpen(true);
         } finally {
             registerOperationObserver(null);
             setTimeout(() => setIsProcessing(false), 2000);
@@ -1605,6 +1596,47 @@ const handleClearAll = () => {
         }
         setGeneratedCclUrl(url);
         return { url };
+    };
+
+    // Manual JSON validation functions for advanced debugging
+    const validateManualJson = () => {
+        if (!debugManualJson.trim()) {
+            setDebugValidation({ 
+                isValid: false, 
+                suggestions: ['Please paste JSON content first'],
+                warnings: [],
+                predictions: []
+            });
+            return;
+        }
+        try {
+            JSON.parse(debugManualJson);
+            setDebugValidation({ 
+                isValid: true, 
+                suggestions: [], 
+                warnings: [],
+                predictions: []
+            });
+        } catch (error) {
+            setDebugValidation({ 
+                isValid: false, 
+                suggestions: [`Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}`],
+                warnings: [],
+                predictions: []
+            });
+        }
+    };
+
+    const processManualJson = async () => {
+        if (!debugValidation?.isValid) return;
+        try {
+            const parsed = JSON.parse(debugManualJson);
+            // This would trigger the same processing pipeline with manual data
+            console.log('Manual JSON processing would use:', parsed);
+            alert('Manual JSON processing is for development use only.');
+        } catch (error) {
+            console.error('Manual JSON processing failed:', error);
+        }
     };
 
     // Support email functionality (adapted from PitchBuilder)
@@ -1653,7 +1685,8 @@ ${JSON.stringify(debugInfo, null, 2)}
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email_contents: emailBody,
-                    user_email: 'support@helix-law.com',
+                    // Primary recipients now include lz and cb plus support
+                    user_email: 'support@helix-law.com,lz@helix-law.com,cb@helix-law.com',
                     subject: `Matter Opening Support: ${supportCategory} - ${instructionRef || 'Generic'}`,
                     from_email: userEmailAddress,
                     bcc_emails: 'automations@helix-law.com'
@@ -2203,6 +2236,24 @@ ${JSON.stringify(debugInfo, null, 2)}
                         }}>
                             Opening Date: {selectedDate ? selectedDate.toLocaleDateString('en-GB') : '-'}
                         </span>
+                        {requestingUserNickname && (
+                            <span style={{
+                                padding: '3px 8px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: 4,
+                                background: '#f9fafb',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: '#6b7280',
+                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                letterSpacing: '0.5px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6
+                            }}>
+                                User: {requestingUserNickname}{requestingUserClioId ? ` (${requestingUserClioId})` : ''}
+                            </span>
+                        )}
                     </div>
 
                     {/* CSS animations for search controls */}
@@ -2684,7 +2735,7 @@ ${JSON.stringify(debugInfo, null, 2)}
 
                             {/* Step 3: Review Summary */}
                             <div style={{ width: '33.333%', padding: '16px', boxSizing: 'border-box' }}>
-                                    {/* Unified Debug Inspector Panel */}
+                                    {/* Diagnostic Assistant - Bridge between fee earner and dev team */}
                                     {debugInspectorOpen && (
                                         <div style={{
                                             marginBottom: 24,
@@ -2704,8 +2755,8 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                 alignItems: 'center'
                                             }}>
                                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 12 }} />
-                                                    Debug
+                                                    <i className="ms-Icon ms-Icon--Medical" style={{ fontSize: 12 }} />
+                                                    Diagnostic Assistant
                                                 </span>
                                                 <button
                                                     onClick={() => setDebugInspectorOpen(false)}
@@ -2726,396 +2777,251 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                     Close
                                                 </button>
                                             </div>
-                                            
-                                            {/* Tab Navigation */}
-                                            <div style={{ 
-                                                display: 'flex', 
-                                                background: 'rgba(214, 85, 65, 0.1)',
-                                                borderBottom: '1px solid rgba(214, 85, 65, 0.2)'
-                                            }}>
-                                                <button
-                                                    onClick={() => setDebugActiveTab('json')}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '8px 12px',
-                                                        background: debugActiveTab === 'json' ? 'rgba(214, 85, 65, 0.2)' : 'transparent',
-                                                        border: 'none',
-                                                        fontSize: 11,
-                                                        fontWeight: debugActiveTab === 'json' ? 600 : 400,
-                                                        color: '#D65541',
-                                                        cursor: 'pointer',
-                                                        borderRight: '1px solid rgba(214, 85, 65, 0.2)'
-                                                    }}
-                                                >
-                                                    JSON Data
-                                                </button>
-                                                <button
-                                                    onClick={() => setDebugActiveTab('details')}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '8px 12px',
-                                                        background: debugActiveTab === 'details' ? 'rgba(214, 85, 65, 0.2)' : 'transparent',
-                                                        border: 'none',
-                                                        fontSize: 11,
-                                                        fontWeight: debugActiveTab === 'details' ? 600 : 400,
-                                                        color: '#D65541',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    Backend Details
-                                                </button>
-                                            </div>
-
-                                            <div style={{ padding: 16 }}>
-                                                {debugActiveTab === 'json' && (
-                                                    <>
-                                                        {/* Instructions */}
-                                                        <div style={{
-                                                            marginBottom: 12,
-                                                            padding: 8,
-                                                            background: 'rgba(214, 85, 65, 0.1)',
-                                                            border: '1px solid rgba(214, 85, 65, 0.2)',
-                                                            borderRadius: 4,
-                                                            fontSize: 11,
-                                                            color: '#D65541'
-                                                        }}>
-                                                            <strong>JSON Inspector:</strong> View current data or paste failed submission JSON for debugging.
+                                            <div style={{ padding: 16, display: 'grid', gap: 16 }}>
+                                                {/* Issue Summary */}
+                                                {failureSummary ? (
+                                                    <div style={{
+                                                        padding: '12px',
+                                                        background: 'linear-gradient(135deg, #FFF5F5 0%, #FDE8E8 100%)',
+                                                        border: '1px solid #fecaca',
+                                                        borderRadius: 6,
+                                                        fontSize: 12
+                                                    }}>
+                                                        <div style={{ fontWeight: 700, color: '#b91c1c', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                                                            Issue Detected
                                                         </div>
-
-                                                        {/* Current JSON View */}
-                                                        <div style={{ marginBottom: 16 }}>
-                                                            <div style={{ 
-                                                                display: 'flex', 
-                                                                justifyContent: 'space-between', 
-                                                                alignItems: 'center',
-                                                                marginBottom: 8
-                                                            }}>
-                                                                <span style={{ fontSize: 12, fontWeight: 600, color: '#D65541' }}>
-                                                                    Current Form Data:
-                                                                </span>
-                                                                <div style={{ display: 'flex', gap: 8 }}>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            const currentJson = generateSampleJson();
-                                                                            setDebugValidation({ 
-                                                                                isValid: true, 
-                                                                                suggestions: [], 
-                                                                                warnings: [],
-                                                                                predictions: []
-                                                                            });
-                                                                        }}
-                                                                        style={{
-                                                                            background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
-                                                                            border: 'none',
-                                                                            borderRadius: 4,
-                                                                            padding: '4px 8px',
-                                                                            fontSize: 10,
-                                                                            color: '#fff',
-                                                                            cursor: 'pointer',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            gap: 4,
-                                                                            fontWeight: 600
-                                                                        }}
-                                                                    >
-                                                                        <i className="ms-Icon ms-Icon--CheckMark" style={{ fontSize: 10 }} />
-                                                                        Validate Current
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            navigator.clipboard.writeText(JSON.stringify(generateSampleJson(), null, 2));
-                                                                        }}
-                                                                        style={{
-                                                                            background: 'rgba(214, 85, 65, 0.1)',
-                                                                            border: '1px solid rgba(214, 85, 65, 0.3)',
-                                                                            borderRadius: 4,
-                                                                            padding: '4px 8px',
-                                                                            fontSize: 10,
-                                                                            color: '#D65541',
-                                                                            cursor: 'pointer',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            gap: 4
-                                                                        }}
-                                                                    >
-                                                                        <i className="ms-Icon ms-Icon--Copy" style={{ fontSize: 10 }} />
-                                                                        Copy JSON
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            <div style={{
-                                                                padding: 12,
-                                                                background: '#fff',
-                                                                border: '1px solid rgba(214, 85, 65, 0.2)',
+                                                        <div style={{ color: '#7c2d12', lineHeight: 1.4 }}>{failureSummary}</div>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSupportMessage(`Issue with matter opening: ${failureSummary}\n\nAdditional context:\n- User: ${userInitials}\n- Instruction: ${instructionRef || 'N/A'}\n- Time: ${new Date().toLocaleString()}\n\nPlease investigate this failure.`);
+                                                                setSupportCategory('technical');
+                                                                setSupportPanelOpen(true);
+                                                            }}
+                                                            style={{
+                                                                marginTop: 10,
+                                                                background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                                border: 'none',
                                                                 borderRadius: 4,
-                                                                maxHeight: 200,
-                                                                overflow: 'auto',
+                                                                padding: '6px 12px',
                                                                 fontSize: 11,
-                                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                lineHeight: 1.4
-                                                            }}>
-                                                                <pre style={{ 
-                                                                    margin: 0, 
-                                                                    whiteSpace: 'pre-wrap',
-                                                                    wordBreak: 'break-word'
-                                                                }}>
-                                                                    {JSON.stringify(generateSampleJson(), null, 2)}
-                                                                </pre>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Manual Paste Section */}
-                                                        <div>
-                                                            <div style={{ 
-                                                                display: 'flex', 
-                                                                justifyContent: 'space-between', 
+                                                                fontWeight: 600,
+                                                                color: '#fff',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
                                                                 alignItems: 'center',
-                                                                marginBottom: 8
-                                                            }}>
-                                                                <span style={{ fontSize: 12, fontWeight: 600, color: '#D65541' }}>
-                                                                    Manual JSON Testing:
-                                                                </span>
-                                                                <button
-                                                                    onClick={() => setDebugManualPasteOpen(!debugManualPasteOpen)}
-                                                                    style={{
-                                                                        background: debugManualPasteOpen ? 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)' : 'rgba(214, 85, 65, 0.1)',
-                                                                        border: '1px solid rgba(214, 85, 65, 0.3)',
-                                                                        borderRadius: 4,
-                                                                        padding: '4px 8px',
-                                                                        fontSize: 10,
-                                                                        color: debugManualPasteOpen ? '#fff' : '#D65541',
-                                                                        cursor: 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        gap: 4,
-                                                                        fontWeight: 600
-                                                                    }}
-                                                                >
-                                                                    <i className={`ms-Icon ms-Icon--${debugManualPasteOpen ? 'ChevronUp' : 'ChevronDown'}`} style={{ fontSize: 10 }} />
-                                                                    {debugManualPasteOpen ? 'Close Manual' : 'Open Manual'}
-                                                                </button>
-                                                            </div>
-                                                            
-                                                            {debugManualPasteOpen && (
-                                                                <>
-                                                                    <textarea
-                                                                        value={debugJsonInput}
-                                                                        onChange={(e) => setDebugJsonInput(e.target.value)}
-                                                                        placeholder="Paste failed submission JSON here for debugging..."
-                                                                        style={{
-                                                                            width: '100%',
-                                                                            height: 120,
-                                                                            padding: 12,
-                                                                            border: '1px solid rgba(214, 85, 65, 0.3)',
-                                                                            borderRadius: 4,
-                                                                            fontSize: 11,
-                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                            resize: 'vertical',
-                                                                            background: '#fff',
-                                                                            marginBottom: 8
-                                                                        }}
-                                                                    />
-                                                                    <div style={{ display: 'flex', gap: 8 }}>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                if (!debugJsonInput.trim()) {
-                                                                                    setDebugValidation({ 
-                                                                                        isValid: false, 
-                                                                                        suggestions: ['Please paste JSON content first'],
-                                                                                        warnings: [],
-                                                                                        predictions: []
-                                                                                    });
-                                                                                    return;
-                                                                                }
-                                                                                try {
-                                                                                    const parsed = JSON.parse(debugJsonInput);
-                                                                                    setDebugValidation({ 
-                                                                                        isValid: true, 
-                                                                                        suggestions: [], 
-                                                                                        warnings: [],
-                                                                                        predictions: []
-                                                                                    });
-                                                                                } catch (error) {
-                                                                                    setDebugValidation({ 
-                                                                                        isValid: false, 
-                                                                                        suggestions: [`Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}`],
-                                                                                        warnings: [],
-                                                                                        predictions: []
-                                                                                    });
-                                                                                }
-                                                                            }}
-                                                                            style={{
-                                                                                background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
-                                                                                border: 'none',
-                                                                                borderRadius: 4,
-                                                                                padding: '8px 12px',
-                                                                                fontSize: 11,
-                                                                                fontWeight: 600,
-                                                                                color: '#fff',
-                                                                                cursor: 'pointer'
-                                                                            }}
-                                                                        >
-                                                                            Validate Pasted JSON
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                setDebugJsonInput('');
-                                                                                setDebugValidation(null);
-                                                                            }}
-                                                                            style={{
-                                                                                background: 'rgba(214, 85, 65, 0.1)',
-                                                                                border: '1px solid rgba(214, 85, 65, 0.3)',
-                                                                                borderRadius: 4,
-                                                                                padding: '8px 12px',
-                                                                                fontSize: 11,
-                                                                                color: '#D65541',
-                                                                                cursor: 'pointer'
-                                                                            }}
-                                                                        >
-                                                                            Clear
-                                                                        </button>
-                                                                    </div>
-                                                                </>
-                                                            )}
-                                                            
-                                                            {/* Validation Results */}
-                                                            {debugValidation && (
-                                                                <div style={{
-                                                                    marginTop: 12,
-                                                                    padding: 12,
-                                                                    border: `1px solid ${debugValidation.isValid ? '#10b981' : '#ef4444'}`,
-                                                                    borderRadius: 4,
-                                                                    background: debugValidation.isValid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                                    fontSize: 11
-                                                                }}>
-                                                                    <div style={{ 
-                                                                        fontWeight: 600, 
-                                                                        color: debugValidation.isValid ? '#10b981' : '#ef4444',
-                                                                        marginBottom: debugValidation.suggestions.length > 0 ? 8 : 0
-                                                                    }}>
-                                                                        {debugValidation.isValid ? '✓ Valid JSON' : '✗ Invalid JSON'}
-                                                                    </div>
-                                                                    {debugValidation.suggestions.map((suggestion, idx) => (
-                                                                        <div key={idx} style={{ color: '#ef4444', fontSize: 10 }}>
-                                                                            {suggestion}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
+                                                                gap: 4
+                                                            }}
+                                                        >
+                                                            <i className="ms-Icon ms-Icon--Mail" style={{ fontSize: 10 }} />
+                                                            Report to Development Team
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{
+                                                        padding: '12px',
+                                                        background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
+                                                        border: '1px solid #bbf7d0',
+                                                        borderRadius: 6,
+                                                        fontSize: 12,
+                                                        color: '#166534'
+                                                    }}>
+                                                        <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+                                                            No Issues Detected
                                                         </div>
-                                                    </>
+                                                        System is running normally. This panel opened for diagnostic purposes.
+                                                    </div>
                                                 )}
 
-                                                {debugActiveTab === 'details' && (
-                                                    <div style={{ display: 'grid', gap: 12 }}>
+                                                {/* Processing Step Status */}
+                                                {processingSteps.length > 0 && (
+                                                    <div>
+                                                        <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Step Status</div>
                                                         <div style={{
                                                             border: '1px solid #e5e7eb',
                                                             borderRadius: 6,
-                                                            overflow: 'hidden'
+                                                            overflow: 'hidden',
+                                                            background: '#fff'
                                                         }}>
-                                                            <div style={{
-                                                                padding: '8px 12px',
-                                                                background: '#f8fafc',
-                                                                fontSize: 12,
-                                                                fontWeight: 700,
-                                                                color: '#374151'
-                                                            }}>
-                                                                Backend Operations
-                                                            </div>
-                                                            <div style={{ maxHeight: 240, overflow: 'auto', padding: 8 }}>
-                                                                {processingSteps.map((step, idx) => {
-                                                                    const events = operationEvents.filter(e => e.index === idx);
-                                                                    const sent = events.find(e => e.phase === 'sent');
-                                                                    const responded = events.find(e => e.phase === 'response');
-                                                                    const succeeded = events.find(e => e.phase === 'success');
-                                                                    const errored = events.find(e => e.phase === 'error');
-                                                                    return (
-                                                                        <div key={`op-debug-${idx}`} style={{ display: 'grid', gap: 6, padding: '8px 4px', borderBottom: '1px solid #f1f5f9' }}>
-                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                                <span style={{ fontSize: 12, color: '#111827', fontWeight: 700 }}>{step.label}</span>
-                                                                                <span style={{ fontSize: 11, fontWeight: 800, color: step.status === 'success' ? '#16a34a' : step.status === 'error' ? '#dc2626' : '#64748b' }}>
-                                                                                    {step.status.toUpperCase()}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                                                                <span style={{ fontSize: 11, color: sent ? '#334155' : '#94a3b8' }}>Sent{sent?.method ? ` (${sent.method})` : ''}</span>
-                                                                                <span style={{ fontSize: 11, color: responded ? '#334155' : '#94a3b8' }}>Responded{responded?.status ? ` (${responded.status})` : ''}</span>
-                                                                                <span style={{ fontSize: 11, color: succeeded ? '#16a34a' : '#94a3b8' }}>Succeeded</span>
-                                                                            </div>
-                                                                            {errored && (
-                                                                                <div style={{ display: 'grid', gap: 6 }}>
-                                                                                    <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 700 }}>Failure details</div>
-                                                                                    {errored.payloadSummary && (
-                                                                                        <div style={{
-                                                                                            padding: 8,
-                                                                                            background: '#fef2f2',
-                                                                                            border: '1px solid #fecaca',
-                                                                                            borderRadius: 6,
-                                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                                            fontSize: 11,
-                                                                                            whiteSpace: 'pre-wrap'
-                                                                                        }}>
-                                                                                            {errored.payloadSummary}
-                                                                                        </div>
-                                                                                    )}
-                                                                                    {errored.responseSummary && (
-                                                                                        <div style={{
-                                                                                            padding: 8,
-                                                                                            background: '#fef2f2',
-                                                                                            border: '1px solid #fecaca',
-                                                                                            borderRadius: 6,
-                                                                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                                            fontSize: 11,
-                                                                                            whiteSpace: 'pre-wrap'
-                                                                                        }}>
-                                                                                            {errored.responseSummary}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Request payload</div>
-                                                            <div style={{
-                                                                padding: 10,
-                                                                background: '#f8fafc',
-                                                                border: '1px solid #e5e7eb',
-                                                                borderRadius: 6,
-                                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                fontSize: 11,
-                                                                maxHeight: 220,
-                                                                overflow: 'auto'
-                                                            }}>
-                                                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                                                    {JSON.stringify(generateSampleJson(), null, 2)}
-                                                                </pre>
-                                                            </div>
-                                                        </div>
-                                                        {processingLogs.length > 0 && (
-                                                            <div>
-                                                                <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Responses & logs</div>
-                                                                <div style={{
-                                                                    padding: 10,
-                                                                    background: '#f8fafc',
-                                                                    border: '1px solid #e5e7eb',
-                                                                    borderRadius: 6,
-                                                                    fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                                                                    fontSize: 11,
-                                                                    maxHeight: 220,
-                                                                    overflow: 'auto'
+                                                            {processingSteps.slice(0, 6).map((step, idx) => (
+                                                                <div key={`step-${idx}`} style={{
+                                                                    padding: '8px 12px',
+                                                                    borderBottom: idx < 5 ? '1px solid #f1f5f9' : 'none',
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center'
                                                                 }}>
-                                                                    {processingLogs.map((log, idx) => (
-                                                                        <div key={`log-debug-${idx}`}>{log}</div>
-                                                                    ))}
+                                                                    <span style={{ fontSize: 11, color: '#6b7280' }}>{step.label}</span>
+                                                                    <span style={{
+                                                                        fontSize: 10,
+                                                                        fontWeight: 700,
+                                                                        padding: '2px 6px',
+                                                                        borderRadius: 3,
+                                                                        background: step.status === 'success' ? '#dcfce7' : step.status === 'error' ? '#fecaca' : '#f1f5f9',
+                                                                        color: step.status === 'success' ? '#166534' : step.status === 'error' ? '#dc2626' : '#6b7280'
+                                                                    }}>
+                                                                        {step.status === 'success' ? '✓' : step.status === 'error' ? '✗' : '⋯'}
+                                                                    </span>
                                                                 </div>
-                                                            </div>
-                                                        )}
+                                                            ))}
+                                                            {processingSteps.length > 6 && (
+                                                                <div style={{ padding: '6px 12px', fontSize: 10, color: '#9ca3af', textAlign: 'center' }}>
+                                                                    ...and {processingSteps.length - 6} more steps
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 )}
+
+                                                {/* Last Operation Details */}
+                                                {operationEvents.length > 0 && (
+                                                    <div>
+                                                        <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Last Operation</div>
+                                                        <div style={{
+                                                            padding: '10px 12px',
+                                                            background: '#f8fafc',
+                                                            border: '1px solid #e5e7eb',
+                                                            borderRadius: 6,
+                                                            fontSize: 11
+                                                        }}>
+                                                            {(() => {
+                                                                const lastOp = operationEvents[operationEvents.length - 1];
+                                                                const isError = lastOp?.phase === 'error';
+                                                                return (
+                                                                    <div>
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                                            <span style={{ fontWeight: 600, color: '#374151' }}>{lastOp?.label || 'Unknown'}</span>
+                                                                            <span style={{ color: isError ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
+                                                                                {lastOp?.phase?.toUpperCase() || 'N/A'}
+                                                                            </span>
+                                                                        </div>
+                                                                        {lastOp?.method && (
+                                                                            <div style={{ color: '#6b7280' }}>Method: {lastOp.method}</div>
+                                                                        )}
+                                                                        {lastOp?.status && (
+                                                                            <div style={{ color: '#6b7280' }}>Status: {lastOp.status}</div>
+                                                                        )}
+                                                                        {isError && lastOp?.responseSummary && (
+                                                                            <div style={{ marginTop: 8, padding: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4 }}>
+                                                                                <div style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginBottom: 4 }}>Error Response:</div>
+                                                                                <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#7c2d12' }}>{lastOp.responseSummary}</div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Advanced Section Toggle */}
+                                                <div>
+                                                    <button
+                                                        onClick={() => setDebugAdvancedOpen(!debugAdvancedOpen)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '8px 12px',
+                                                            background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+                                                            border: '1px solid #e5e7eb',
+                                                            borderRadius: 6,
+                                                            fontSize: 11,
+                                                            fontWeight: 600,
+                                                            color: '#374151',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center'
+                                                        }}
+                                                    >
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <i className="ms-Icon ms-Icon--DeveloperTools" style={{ fontSize: 12 }} />
+                                                            Advanced Technical Data
+                                                        </span>
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: debugAdvancedOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                                                            <polyline points="6,9 12,15 18,9"/>
+                                                        </svg>
+                                                    </button>
+
+                                                    {debugAdvancedOpen && (
+                                                        <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
+                                                            {/* Manual JSON Testing */}
+                                                            <div>
+                                                                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>Manual JSON Override (Dev Use)</div>
+                                                                <textarea
+                                                                    value={debugManualJson}
+                                                                    onChange={(e) => setDebugManualJson(e.target.value)}
+                                                                    placeholder="Paste JSON for manual testing..."
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        height: 100,
+                                                                        padding: 8,
+                                                                        border: '1px solid #e5e7eb',
+                                                                        borderRadius: 4,
+                                                                        fontSize: 10,
+                                                                        fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                        resize: 'vertical',
+                                                                        background: '#f8fafc'
+                                                                    }}
+                                                                />
+                                                                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                                                                    <button
+                                                                        onClick={validateManualJson}
+                                                                        style={{
+                                                                            background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+                                                                            border: 'none',
+                                                                            borderRadius: 3,
+                                                                            padding: '4px 8px',
+                                                                            fontSize: 10,
+                                                                            fontWeight: 600,
+                                                                            color: '#fff',
+                                                                            cursor: 'pointer'
+                                                                        }}
+                                                                    >
+                                                                        Validate
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={processManualJson}
+                                                                        disabled={!debugValidation?.isValid}
+                                                                        style={{
+                                                                            background: debugValidation?.isValid 
+                                                                                ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
+                                                                                : '#9ca3af',
+                                                                            border: 'none',
+                                                                            borderRadius: 3,
+                                                                            padding: '4px 8px',
+                                                                            fontSize: 10,
+                                                                            fontWeight: 600,
+                                                                            color: '#fff',
+                                                                            cursor: debugValidation?.isValid ? 'pointer' : 'not-allowed'
+                                                                        }}
+                                                                    >
+                                                                        Process
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Current Form Data */}
+                                                            <div>
+                                                                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>Current Form JSON</div>
+                                                                <div style={{
+                                                                    padding: 8,
+                                                                    background: '#f8fafc',
+                                                                    border: '1px solid #e5e7eb',
+                                                                    borderRadius: 4,
+                                                                    fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                                    fontSize: 9,
+                                                                    maxHeight: 150,
+                                                                    overflow: 'auto'
+                                                                }}>
+                                                                    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                                        {JSON.stringify(generateSampleJson(), null, 2)}
+                                                                    </pre>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -3969,21 +3875,24 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        if (confirmAcknowledge) {
-                                                            setSummaryConfirmed(true);
-                                                            setEditsAfterConfirmation(false);
-                                                            
-                                                            // Smooth scroll to processing section after a brief delay
-                                                            setTimeout(() => {
-                                                                const processingSection = document.querySelector('[data-processing-section]');
-                                                                if (processingSection) {
-                                                                    processingSection.scrollIntoView({ 
-                                                                        behavior: 'smooth', 
-                                                                        block: 'start' 
-                                                                    });
-                                                                }
-                                                            }, 300);
+                                                        if (!confirmAcknowledge || processingStarted) return;
+                                                        setSummaryConfirmed(true);
+                                                        setEditsAfterConfirmation(false);
+                                                        // Kick off processing immediately so status header & steps align
+                                                        if (!isProcessing) {
+                                                            setProcessingStarted(true);
+                                                            simulateProcessing().then(r => r && setGeneratedCclUrl(r.url));
                                                         }
+                                                        // Smooth scroll to processing section after a brief delay
+                                                        setTimeout(() => {
+                                                            const processingSection = document.querySelector('[data-processing-section]');
+                                                            if (processingSection) {
+                                                                processingSection.scrollIntoView({ 
+                                                                    behavior: 'smooth', 
+                                                                    block: 'start' 
+                                                                });
+                                                            }
+                                                        }, 200);
                                                     }}
                                                     disabled={!confirmAcknowledge}
                                                     style={{
@@ -4022,154 +3931,8 @@ ${JSON.stringify(debugInfo, null, 2)}
                                         </div>
                                     )}
 
-
-
-                                    {/* Developer Tools Section - Available to Everyone */}
-                                    <div style={{ 
-                                        marginTop: 16,
-                                        padding: 12,
-                                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                        border: '1px solid #e1e5ea',
-                                        borderRadius: 8,
-                                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)'
-                                    }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                                {/* Unified Debug Inspector Button */}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setDebugInspectorOpen(!debugInspectorOpen);
-                                                        if (!debugInspectorOpen) {
-                                                            setDebugActiveTab('json');
-                                                            setDebugJsonInput('');
-                                                            setDebugValidation(null);
-                                                            setDebugManualPasteOpen(false);
-                                                        }
-                                                    }}
-                                                    title="Open debug inspector with JSON and backend details"
-                                                    style={{
-                                                        background: debugInspectorOpen ? 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                                                        border: '1px solid #D65541',
-                                                        borderRadius: 6,
-                                                        padding: '8px 12px',
-                                                        fontSize: 11,
-                                                        fontWeight: 600,
-                                                        color: debugInspectorOpen ? '#fff' : '#D65541',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 6,
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        if (!debugInspectorOpen) {
-                                                            e.currentTarget.style.background = 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)';
-                                                            e.currentTarget.style.color = '#fff';
-                                                        }
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        if (!debugInspectorOpen) {
-                                                            e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                                                            e.currentTarget.style.color = '#D65541';
-                                                        }
-                                                    }}
-                                                >
-                                                    <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 11 }} />
-                                                    Debug
-                                                </button>
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Support Panel */}
-                                        {supportPanelOpen && (
-                                            <div style={{
-                                                marginTop: 16,
-                                                border: '1px solid #e1e5ea',
-                                                borderRadius: 8,
-                                                background: '#fff',
-                                                overflow: 'hidden'
-                                            }}>
-                                                <div style={{
-                                                    padding: '12px 16px',
-                                                    background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
-                                                    color: '#fff',
-                                                    fontSize: 13,
-                                                    fontWeight: 600,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 8
-                                                }}>
-                                                    <i className="ms-Icon ms-Icon--Help" style={{ fontSize: 14 }} />
-                                                    Support Request
-                                                </div>
-                                                <div style={{ padding: 16 }}>
-                                                    <div style={{ marginBottom: 12 }}>
-                                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
-                                                            Category
-                                                        </label>
-                                                        <select
-                                                            value={supportCategory}
-                                                            onChange={(e) => setSupportCategory(e.target.value as any)}
-                                                            style={{
-                                                                width: '100%',
-                                                                padding: '8px 12px',
-                                                                border: '1px solid #d1d5db',
-                                                                borderRadius: 6,
-                                                                fontSize: 12,
-                                                                background: '#fff'
-                                                            }}
-                                                        >
-                                                            <option value="technical">Technical Issue</option>
-                                                            <option value="process">Process Question</option>
-                                                            <option value="data">Data Problem</option>
-                                                        </select>
-                                                    </div>
-                                                    <div style={{ marginBottom: 12 }}>
-                                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
-                                                            Describe the issue
-                                                        </label>
-                                                        <textarea
-                                                            value={supportMessage}
-                                                            onChange={(e) => setSupportMessage(e.target.value)}
-                                                            placeholder="Please describe what's happening and any steps to reproduce the issue..."
-                                                            style={{
-                                                                width: '100%',
-                                                                height: 80,
-                                                                padding: '8px 12px',
-                                                                border: '1px solid #d1d5db',
-                                                                borderRadius: 6,
-                                                                fontSize: 12,
-                                                                resize: 'vertical',
-                                                                fontFamily: 'inherit'
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <button
-                                                        onClick={sendSupportRequest}
-                                                        disabled={!supportMessage.trim() || supportSending}
-                                                        style={{
-                                                            width: '100%',
-                                                            padding: '8px 16px',
-                                                            background: supportSending ? '#9ca3af' : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
-                                                            color: '#fff',
-                                                            border: 'none',
-                                                            borderRadius: 6,
-                                                            fontSize: 12,
-                                                            fontWeight: 600,
-                                                            cursor: supportSending || !supportMessage.trim() ? 'not-allowed' : 'pointer',
-                                                            opacity: supportSending || !supportMessage.trim() ? 0.6 : 1,
-                                                            transition: 'all 0.2s ease'
-                                                        }}
-                                                    >
-                                                        {supportSending ? 'Sending...' : 'Send Support Request'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Processing Panel - Added to developer tools */}
-                                        {currentStep === 2 && summaryConfirmed && (
+                                    {/* Processing Panel - now shown directly without Developer Tools wrapper */}
+                                    {currentStep === 2 && summaryConfirmed && (
                                             <div style={{ marginTop: 16 }}>
                                                 {(() => {
                                                     const total = processingSteps.length || 0;
@@ -4229,42 +3992,46 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                                 
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => {
-                                                                        if (!isProcessing) {
-                                                                            simulateProcessing().then(r => r && setGeneratedCclUrl(r.url));
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setDebugInspectorOpen(!debugInspectorOpen);
+                                                                        if (!debugInspectorOpen) {
+                                                                            setDebugActiveTab('json');
+                                                                            setDebugJsonInput('');
+                                                                            setDebugValidation(null);
+                                                                            setDebugManualPasteOpen(false);
                                                                         }
                                                                     }}
-                                                                    disabled={isProcessing}
+                                                                    title="Open debug inspector with JSON and backend details"
                                                                     style={{
-                                                                        background: isProcessing 
-                                                                            ? '#f3f4f6' 
-                                                                            : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
-                                                                        color: isProcessing ? '#9ca3af' : '#fff',
-                                                                        border: isProcessing 
-                                                                            ? '1px solid #d1d5db' 
-                                                                            : '1px solid #B83C2B',
+                                                                        background: debugInspectorOpen ? 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                                                                        border: '1px solid #D65541',
                                                                         borderRadius: 6,
                                                                         padding: '6px 14px',
                                                                         fontSize: 12,
                                                                         fontWeight: 600,
-                                                                        cursor: isProcessing ? 'not-allowed' : 'pointer',
-                                                                        transition: 'all 0.15s ease',
-                                                                        boxShadow: isProcessing 
-                                                                            ? 'none' 
-                                                                            : '0 2px 4px rgba(214,85,65,0.2)'
+                                                                        color: debugInspectorOpen ? '#fff' : '#D65541',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 6,
+                                                                        transition: 'all 0.2s ease'
                                                                     }}
                                                                     onMouseEnter={(e) => {
-                                                                        if (!isProcessing) {
-                                                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                                                        if (!debugInspectorOpen) {
+                                                                            e.currentTarget.style.background = 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)';
+                                                                            e.currentTarget.style.color = '#fff';
                                                                         }
                                                                     }}
                                                                     onMouseLeave={(e) => {
-                                                                        if (!isProcessing) {
-                                                                            e.currentTarget.style.transform = 'translateY(0)';
+                                                                        if (!debugInspectorOpen) {
+                                                                            e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                                                                            e.currentTarget.style.color = '#D65541';
                                                                         }
                                                                     }}
                                                                 >
-                                                                    {isProcessing ? 'Processing...' : 'Open Matter'}
+                                                                    <i className="ms-Icon ms-Icon--BugSolid" style={{ fontSize: 11 }} />
+                                                                    Debug
                                                                 </button>
                                                             </div>
                                                             
@@ -4478,7 +4245,6 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                 })()}
                                             </div>
                                         )}
-                                    </div>
                             </div>
                             
                             {/* Workbench Section - appears below review when active */}

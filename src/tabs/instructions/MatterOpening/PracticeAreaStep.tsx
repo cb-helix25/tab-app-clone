@@ -66,8 +66,8 @@ const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceAr
                 <div className="practice-area-selection">
                     <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
-                        gap: '10px'
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                        gap: '6px'
                     }}>
                         {filteredOptions.map((pa) => {
                             const isActive = practiceArea === pa;
@@ -85,27 +85,25 @@ const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceAr
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        padding: '16px 12px',
-                                        border: `2px solid ${isActive ? color : colours.border}`,
-                                        borderRadius: '10px',
+                                        padding: '8px 12px',
+                                        border: `1px solid ${isActive ? color : colours.border}`,
+                                        borderRadius: '6px',
                                         background: isActive 
                                             ? `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)` 
                                             : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                        minHeight: '60px',
-                                        boxShadow: isActive 
-                                            ? `0 4px 12px ${color}20, 0 2px 4px rgba(0,0,0,0.05)` 
-                                            : '0 2px 4px rgba(0,0,0,0.05)',
-                                        fontSize: '14px',
-                                        fontWeight: isActive ? 600 : 500,
+                                        minHeight: '36px',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                                        fontSize: '12px',
+                                        fontWeight: 400,
                                         color: isActive ? color : colours.text,
                                         // CSS vars for hover/press
                                         ['--area-hover-bg' as any]: `linear-gradient(135deg, ${color}10 0%, ${color}05 100%)`,
                                         ['--area-hover-color' as any]: color,
                                         ['--area-press-bg' as any]: `linear-gradient(135deg, ${color}25 0%, ${color}15 100%)`,
                                         ['--area-press-color' as any]: color,
-                                        transform: isActive ? 'translateY(-2px)' : 'translateY(0)',
+                                        transform: 'translateY(0)',
                                     }}
                                 >
                                     <span className="client-type-label" style={{
@@ -134,7 +132,6 @@ const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceAr
                 }
                 .practice-area-selection .client-type-icon-btn:not(.active):hover .client-type-label {
                     color: var(--area-hover-color, #3690CE) !important;
-                    font-weight: 600 !important;
                 }
                 .practice-area-selection .client-type-icon-btn:active {
                     background: var(--area-press-bg, linear-gradient(135deg, #E2E8F0 0%, #CBD5E1 100%)) !important;
@@ -143,7 +140,6 @@ const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceAr
                 }
                 .practice-area-selection .client-type-icon-btn.active .client-type-label {
                     color: ${color} !important;
-                    font-weight: 600 !important;
                 }
             `}</style>
         </div>
