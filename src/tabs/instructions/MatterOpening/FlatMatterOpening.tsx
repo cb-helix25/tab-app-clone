@@ -126,6 +126,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     const [clientId, setClientId] = useState<string | null>(initialClientId || null);
     const [matterIdState, setMatterIdState] = useState<string | null>(matterRef || null);
+    // Meta chip expansion state (date/user detail panel)
+    const [openMeta, setOpenMeta] = useState<'date' | 'user' | null>(null);
     useEffect(() => {
         registerClientIdCallback(setClientId);
         registerMatterIdCallback((id) => {
@@ -2157,6 +2159,7 @@ ${JSON.stringify(debugInfo, null, 2)}
                             </div>
                         </div>
                     </div>
+                    {/* Removed obsolete IIFE placeholder for meta chip state (state now at top-level) */}
 
                     {/* Neat Separator */}
                     <div style={{
@@ -2223,37 +2226,113 @@ ${JSON.stringify(debugInfo, null, 2)}
                                 Stage: {stage}
                             </span>
                         )}
-                        <span style={{
-                            padding: '3px 8px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: 4,
-                            background: '#f9fafb',
-                            fontSize: 11,
-                            fontWeight: 500,
-                            color: '#6b7280',
-                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                            letterSpacing: '0.5px'
-                        }}>
-                            Opening Date: {selectedDate ? selectedDate.toLocaleDateString('en-GB') : '-'}
-                        </span>
-                        {requestingUserNickname && (
-                            <span style={{
+                        {(() => {
+                            const chipBase: React.CSSProperties = {
                                 padding: '3px 8px',
                                 border: '1px solid #e5e7eb',
                                 borderRadius: 4,
                                 background: '#f9fafb',
                                 fontSize: 11,
                                 fontWeight: 500,
-                                color: '#6b7280',
+                                color: '#374151',
                                 fontFamily: 'Monaco, Consolas, "Courier New", monospace',
                                 letterSpacing: '0.5px',
+                                cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 6
-                            }}>
-                                User: {requestingUserNickname}{requestingUserClioId ? ` (${requestingUserClioId})` : ''}
-                            </span>
-                        )}
+                                gap: 6,
+                                transition: 'background .15s, border-color .15s, color .15s'
+                            };
+                            const hoverActive = (active: boolean): React.CSSProperties => active ? ({ background: '#eef6ff', borderColor: '#93c5fd', color: '#1d4ed8' }) : ({ background: '#f9fafb' });
+                            const dateLabel = selectedDate ? selectedDate.toLocaleDateString('en-GB') : '-';
+                            return (
+                                <>
+                                    <span
+                                        onClick={() => setOpenMeta(openMeta === 'date' ? null : 'date')}
+                                        style={{ ...chipBase, ...(openMeta === 'date' ? hoverActive(true) : {}) }}
+                                    >
+                                        Opening Date: {dateLabel}
+                                    </span>
+                                    {requestingUserNickname && (
+                                        <span
+                                            onClick={() => setOpenMeta(openMeta === 'user' ? null : 'user')}
+                                            style={{ ...chipBase, ...(openMeta === 'user' ? hoverActive(true) : {}) }}
+                                        >
+                                            User: {requestingUserNickname}{requestingUserClioId ? ` (${requestingUserClioId})` : ''}
+                                        </span>
+                                    )}
+                                    {(openMeta === 'date' || openMeta === 'user') && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            marginTop: 6,
+                                            background: '#FFFFFF',
+                                            border: '1px solid #e5e7eb',
+                                            borderRadius: 8,
+                                            padding: '10px 14px',
+                                            boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+                                            fontFamily: 'system-ui, sans-serif',
+                                            zIndex: 50,
+                                            minWidth: 240
+                                        }}>
+                                            {openMeta === 'date' && (
+                                                <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                                                    <div style={{ fontWeight: 600, marginBottom: 4, color: '#0f172a' }}>Opening Date & Time</div>
+                                                    <div style={{ color: '#334155' }}>{dateLabel}</div>
+                                                    <div style={{ color: '#475569', marginTop: 2 }}>Now: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                                    <div style={{ marginTop: 6 }}>
+                                                        <button onClick={() => setOpenMeta(null)} style={{
+                                                            fontSize: 11,
+                                                            padding: '4px 8px',
+                                                            borderRadius: 4,
+                                                            border: '1px solid #cbd5e1',
+                                                            background: '#f8fafc',
+                                                            cursor: 'pointer'
+                                                        }}>Close</button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {openMeta === 'user' && (
+                                                <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                                                    <div style={{ fontWeight: 600, marginBottom: 4, color: '#0f172a' }}>Requesting User</div>
+                                                    <div style={{ color: '#334155' }}>{requestingUserNickname}</div>
+                                                    {requestingUserClioId && <div style={{ color: '#475569', marginTop: 2 }}>Clio ID: {requestingUserClioId}</div>}
+                                                    <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                                                        <button onClick={() => navigator.clipboard.writeText(requestingUserNickname)} style={{
+                                                            fontSize: 11,
+                                                            padding: '4px 8px',
+                                                            borderRadius: 4,
+                                                            border: '1px solid #cbd5e1',
+                                                            background: '#f8fafc',
+                                                            cursor: 'pointer'
+                                                        }}>Copy Name</button>
+                                                        {requestingUserClioId && (
+                                                            <button onClick={() => navigator.clipboard.writeText(requestingUserClioId)} style={{
+                                                                fontSize: 11,
+                                                                padding: '4px 8px',
+                                                                borderRadius: 4,
+                                                                border: '1px solid #cbd5e1',
+                                                                background: '#f8fafc',
+                                                                cursor: 'pointer'
+                                                            }}>Copy ID</button>
+                                                        )}
+                                                        <button onClick={() => setOpenMeta(null)} style={{
+                                                            fontSize: 11,
+                                                            padding: '4px 8px',
+                                                            borderRadius: 4,
+                                                            border: '1px solid #cbd5e1',
+                                                            background: '#f1f5f9',
+                                                            cursor: 'pointer'
+                                                        }}>Close</button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
 
                     {/* CSS animations for search controls */}

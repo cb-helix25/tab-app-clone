@@ -22,6 +22,7 @@ import {
   FaFolder,
   FaRegFolder,
   FaCheckCircle,
+  FaExclamationTriangle,
 } from 'react-icons/fa';
 import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import { FaShieldAlt } from 'react-icons/fa';
@@ -101,6 +102,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
   const [forceNewMatter, setForceNewMatter] = useState(false);
   const [showCclDraftPage, setShowCclDraftPage] = useState(false);
+  const [workbenchService, setWorkbenchService] = useState<string>("");
+  const [workbenchAmount, setWorkbenchAmount] = useState<string>("");
 
   // Flat tab navigation: default to Clients
   const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('clients');
@@ -454,6 +457,46 @@ const Instructions: React.FC<InstructionsProps> = ({
       }
     }
   }, []); // Only run on mount
+
+  // Resolve the selected deal for the active instruction (used by Workbench)
+  const selectedDeal = useMemo(() => {
+    if (!selectedInstruction) return null;
+    const instRef = String((selectedInstruction as any).InstructionRef ?? "");
+    if (!instRef) return null;
+
+    const dealsFromInst = (selectedInstruction as any).deals as unknown;
+    if (Array.isArray(dealsFromInst)) {
+      const match = dealsFromInst.find((d: unknown) =>
+        d && typeof d === "object" && String((d as any).InstructionRef ?? "") === instRef
+      );
+      if (match) return match as { DealId: number; ServiceDescription?: string; Amount?: number };
+    }
+
+    // Fallback: scan current instructionData then allInstructionData for matching deal
+    const scan = (arr: Array<{ deals?: any[] }> | undefined) => {
+      if (!arr) return null;
+      for (const p of arr) {
+        const d = (p.deals || []).find((x: any) => String(x?.InstructionRef ?? "") === instRef);
+        if (d) return d as { DealId: number; ServiceDescription?: string; Amount?: number };
+      }
+      return null;
+    };
+    return scan(instructionData) || scan(allInstructionData);
+  }, [selectedInstruction, instructionData, allInstructionData]);
+
+  
+
+  // Prefill workbench fields when the target deal changes
+  useEffect(() => {
+    if (selectedDeal) {
+      setWorkbenchService(String(selectedDeal.ServiceDescription ?? ""));
+      const amt = (selectedDeal as any).Amount;
+      setWorkbenchAmount(amt === null || amt === undefined ? "" : String(amt));
+    } else {
+      setWorkbenchService("");
+      setWorkbenchAmount("");
+    }
+  }, [selectedDeal]);
   
   // Filter states
   const [clientsActionFilter, setClientsActionFilter] = useState<'All' | 'Verify ID' | 'Assess Risk' | 'Open Matter' | 'Draft CCL' | 'Complete'>('All');
@@ -2987,239 +3030,523 @@ const Instructions: React.FC<InstructionsProps> = ({
               pointerEvents: 'auto', // Always interactive
             }}
           >
-            <button
-              className={`global-action-btn${verifyButtonDisabled ? ' completed' : verifyButtonReview ? ' review' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'verify' ? ' next-action-pulse' : ''}`}
-              onClick={verifyButtonDisabled ? undefined : handleGlobalEIDCheck}
-              onMouseDown={e => !verifyButtonDisabled && e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => !verifyButtonDisabled && e.currentTarget.classList.remove('pressed')}
-              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-              style={{
-                borderColor: verifyButtonDisabled
-                  ? '#d4ddd4'
-                  : verifyButtonReview
-                  ? '#ffe066'
-                  : selectedInstruction
-                  ? '#3690CE'
-                  : undefined,
-                backgroundColor: verifyButtonDisabled
-                  ? '#f8faf8'
-                  : verifyButtonReview
-                  ? '#fffbe6'
-                  : undefined,
-                opacity: verifyButtonDisabled ? 0.75 : 1,
-                transform: 'translateY(0)',
-                transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, border-color 0.2s ease',
-                pointerEvents: 'auto', // Always allow hover effects
-              }}
-            >
-              <span
-                className="global-action-icon icon-hover"
-                style={{
-                  color: verifyButtonDisabled
-                    ? '#6b8e6b'
-                    : verifyButtonReview
-                    ? '#bfa100'
-                    : selectedInstruction
-                    ? '#3690CE'
-                    : undefined,
-                }}
-              >
-                {verifyButtonDisabled ? <FaCheckCircle /> : (
-                  <>
-                    <FaIdBadge className="icon-outline" />
-                    <FaRegIdBadge className="icon-filled" />
-                  </>
+            {/* Workbench header with status and context */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: selectedInstruction ? 16 : 8,
+              paddingBottom: selectedInstruction ? 12 : 0,
+              borderBottom: selectedInstruction ? '1px solid #e1e5ea' : 'none'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ fontWeight: 700, color: '#061733', fontSize: 16 }}>Workbench</div>
+                {selectedInstruction && (
+                  <div style={{
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                    background: selectedInstruction.Stage === 'instructed' ? '#e8f5e8' : '#fff3cd',
+                    color: selectedInstruction.Stage === 'instructed' ? '#2d5a2d' : '#8b6914',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    {selectedInstruction.Stage || 'Active'}
+                  </div>
                 )}
-              </span>
-              <span
-                className="global-action-label"
-                style={{
-                  color: verifyButtonDisabled
-                    ? '#6b8e6b'
-                    : verifyButtonReview
-                    ? '#bfa100'
-                    : selectedInstruction
-                    ? '#3690CE'
-                    : undefined,
-                  textDecoration: verifyButtonDisabled ? 'line-through' : 'none',
-                  textDecorationColor: verifyButtonDisabled ? '#6b8e6b' : undefined,
-                  textDecorationThickness: verifyButtonDisabled ? '1px' : undefined,
-                }}
-              >
-                {verifyButtonLabel}
-              </span>
-            </button>
-            <button
-              className={`global-action-btn${riskButtonDisabled ? ' completed' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'risk' ? ' next-action-pulse' : ''}`}
-              onClick={riskButtonDisabled ? undefined : handleGlobalRiskAssessment}
-              onMouseDown={e => !riskButtonDisabled && e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => !riskButtonDisabled && e.currentTarget.classList.remove('pressed')}
-              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-              style={{
-                borderColor: riskButtonDisabled
-                  ? '#d4ddd4'
-                  : selectedInstruction
-                  ? '#3690CE'
-                  : undefined,
-                backgroundColor: riskButtonDisabled 
-                  ? '#f8faf8' 
-                  : undefined,
-                opacity: riskButtonDisabled ? 0.75 : 1,
-                transform: 'translateY(0)',
-                transition: 'opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s, border-color 0.2s ease',
-                pointerEvents: 'auto', // Always allow hover effects
-                cursor: riskButtonDisabled ? 'default' : 'pointer',
-              }}
-            >
-              <span className="global-action-icon icon-hover" style={{
-                color: riskButtonDisabled
-                  ? '#6b8e6b'
-                  : selectedInstruction
-                  ? '#3690CE'
-                  : undefined,
-              }}>
-                {riskButtonDisabled ? <FaCheckCircle /> : (
-                  <>
-                    <MdAssessment className="icon-outline" />
-                    <MdOutlineAssessment className="icon-filled" />
-                  </>
-                )}
-              </span>
-              <span className="global-action-label" style={{
-                color: riskButtonDisabled
-                  ? '#6b8e6b'
-                  : selectedInstruction
-                  ? '#3690CE'
-                  : undefined,
-                textDecoration: riskButtonDisabled ? 'line-through' : 'none',
-                textDecorationColor: riskButtonDisabled ? '#6b8e6b' : undefined,
-                textDecorationThickness: riskButtonDisabled ? '1px' : undefined,
-              }}>
-                Assess Risk
-              </span>
-            </button>
-            <button
-              className={`global-action-btn${matterLinked ? ' completed' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
-              onClick={() => {
-                if (selectedInstruction) {
-                  if (canOpenMatter) handleGlobalOpenMatter();
-                } else {
-                  // Generic entry: allow starting a new matter without instruction context
-                  setShowNewMatterPage(true);
-                }
-              }}
-              onMouseDown={e => {
-                const disabled = !!selectedInstruction && !canOpenMatter;
-                if (!disabled) e.currentTarget.classList.add('pressed');
-              }}
-              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-              style={{
-                borderColor: matterLinked
-                  ? '#d4ddd4'
-                  : selectedInstruction 
-                  ? '#3690CE' 
-                  : undefined,
-                backgroundColor: matterLinked
-                  ? '#f8faf8'
-                  : (selectedInstruction && !canOpenMatter)
-                  ? '#f5f5f5' 
-                  : undefined,
-                opacity: matterLinked ? 0.75 : (selectedInstruction && !canOpenMatter) ? 0.5 : 1,
-                transform: 'translateY(0)',
-                transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s, border-color 0.2s ease',
-                position: 'relative',
-                pointerEvents: (selectedInstruction && !canOpenMatter) ? 'none' : 'auto',
-                cursor: (selectedInstruction && !canOpenMatter) ? 'not-allowed' : 'pointer',
-              }}
-              title={
-                selectedInstruction && !canOpenMatter
-                  ? `${!poidPassed ? "ID verification" : ""} ${
-                      !poidPassed && !paymentCompleted ? " and " : ""
-                    } ${!paymentCompleted ? "payment" : ""} required to open matter`
-                  : ''
-              }
-            >
-              <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
-              }}>
-                {matterLinked ? (
-                  <FaCheckCircle />
-                ) : (
-                  <>
-                    <FaFolder className="icon-outline" />
-                    <FaRegFolder className="icon-filled" />
-                  </>
-                )}
-              </span>
-              <span className="global-action-label" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
-                textDecoration: matterLinked ? 'line-through' : 'none',
-              }}>
-                {selectedInstruction ? 'Open Matter' : 'New Matter'}
-              </span>
-              {/* Pulsing dot indicator - only show when no instruction selected and has active matter */}
-              {!selectedInstruction && hasActiveMatter && !showNewMatterPage && (
-                <div style={{
-                  position: 'absolute',
-                  top: '8px',
-                  right: '8px',
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: '#D65541',
-                  animation: 'pulse 2s infinite',
-                  zIndex: 10,
-                }} />
+              </div>
+              {selectedInstruction ? (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {/* InstructionRef chip */}
+                  {selectedInstruction.InstructionRef && (
+                    <span
+                      title="Instruction Reference - Click to copy"
+                      onClick={() => navigator.clipboard?.writeText(selectedInstruction.InstructionRef)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 999,
+                        background: 'linear-gradient(135deg, #3690CE 0%, #2b7bbd 100%)',
+                        border: '1px solid #2b7bbd',
+                        boxShadow: '0 4px 6px rgba(54, 144, 206, 0.15)',
+                        fontSize: 12,
+                        color: '#FFFFFF',
+                        cursor: 'pointer',
+                        transition: 'transform 0.18s, box-shadow 0.18s'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 6px 12px rgba(54, 144, 206, 0.25)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.15)';
+                      }}
+                    >
+                      #{selectedInstruction.InstructionRef}
+                    </span>
+                  )}
+                  {/* Client name chip if available */}
+                  {(selectedInstruction.FirstName || selectedInstruction.LastName) && (
+                    <span
+                      title="Client Name"
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 999,
+                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                        border: '1px solid #e1e5ea',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
+                        fontSize: 12,
+                        color: '#061733'
+                      }}
+                    >
+                      {[selectedInstruction.FirstName, selectedInstruction.LastName].filter(Boolean).join(' ')}
+                    </span>
+                  )}
+                  {/* Service type chip if available */}
+                  {selectedDeal?.ServiceDescription && (
+                    <span
+                      title="Service Type"
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 999,
+                        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                        border: '1px solid #0ea5e9',
+                        boxShadow: '0 4px 6px rgba(14, 165, 233, 0.1)',
+                        fontSize: 12,
+                        color: '#0c4a6e',
+                        maxWidth: 120,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {selectedDeal.ServiceDescription}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div style={{ 
+                  fontSize: 12, 
+                  color: '#6B6B6B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <i className="ms-Icon ms-Icon--Info" style={{ fontSize: 14 }} />
+                  Select an instruction to use the Workbench
+                </div>
               )}
-            </button>
-            <button
-              className={`global-action-btn${selectedInstruction || nextReadyAction === 'ccl' ? ' selected' : ''}${nextReadyAction === 'ccl' ? ' next-action-pulse' : ''}`}
-              onClick={() => setShowCclDraftPage(true)}
-              onMouseDown={e => e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-              style={{
-                borderColor: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
-                opacity: 1,
-                transform: 'translateY(0)',
-                transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
-                pointerEvents: 'auto',
-                cursor: 'pointer',
-                backgroundColor: undefined,
-              }}
-              title={''}
-            >
-              <span className="global-action-icon icon-hover" style={{
-                color: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
-              }}>
-                <FaFileAlt className="icon-outline" />
-                <FaRegFileAlt className="icon-filled" />
-              </span>
-              <span className="global-action-label" style={{
-                color: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
-              }}>
-                Draft CCL
-              </span>
-            </button>
+            </div>
+            {/* Workbench Content */}
+            {selectedInstruction ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Next Steps Section */}
+                <div style={{
+                  padding: '12px 14px',
+                  border: '1px solid #e1e5ea',
+                  borderRadius: 8,
+                  background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}>
+                  <div style={{ 
+                    fontSize: 13, 
+                    fontWeight: 600, 
+                    color: '#374151', 
+                    marginBottom: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <i className="ms-Icon ms-Icon--Flow" style={{ fontSize: 14 }} />
+                    Next Steps
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      className={`global-action-btn${verifyButtonDisabled ? ' completed' : verifyButtonReview ? ' review' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'verify' ? ' next-action-pulse' : ''}`}
+                      onClick={verifyButtonDisabled ? undefined : handleGlobalEIDCheck}
+                      onMouseDown={e => !verifyButtonDisabled && e.currentTarget.classList.add('pressed')}
+                      onMouseUp={e => !verifyButtonDisabled && e.currentTarget.classList.remove('pressed')}
+                      onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+                      style={{
+                        borderColor: verifyButtonDisabled
+                          ? '#d4ddd4'
+                          : verifyButtonReview
+                          ? '#ffe066'
+                          : selectedInstruction
+                          ? '#3690CE'
+                          : undefined,
+                        backgroundColor: verifyButtonDisabled
+                          ? '#f8faf8'
+                          : verifyButtonReview
+                          ? '#fffbe6'
+                          : undefined,
+                        opacity: verifyButtonDisabled ? 0.75 : 1,
+                        transform: 'translateY(0)',
+                        transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, border-color 0.2s ease',
+                        pointerEvents: 'auto',
+                        margin: 0
+                      }}
+                    >
+                      <span
+                        className="global-action-icon icon-hover"
+                        style={{
+                          color: verifyButtonDisabled
+                            ? '#6b8e6b'
+                            : verifyButtonReview
+                            ? '#bfa100'
+                            : selectedInstruction
+                            ? '#3690CE'
+                            : undefined,
+                        }}
+                      >
+                        {verifyButtonDisabled ? <FaCheckCircle /> : (
+                          <>
+                            <FaIdBadge className="icon-outline" />
+                            <FaRegIdBadge className="icon-filled" />
+                          </>
+                        )}
+                      </span>
+                      <span
+                        className="global-action-label"
+                        style={{
+                          color: verifyButtonDisabled
+                            ? '#6b8e6b'
+                            : verifyButtonReview
+                            ? '#bfa100'
+                            : selectedInstruction
+                            ? '#3690CE'
+                            : undefined,
+                          textDecoration: verifyButtonDisabled ? 'line-through' : 'none',
+                          textDecorationColor: verifyButtonDisabled ? '#6b8e6b' : undefined,
+                          textDecorationThickness: verifyButtonDisabled ? '1px' : undefined,
+                        }}
+                      >
+                        {verifyButtonLabel}
+                      </span>
+                    </button>
+
+                    <button
+                      className={`global-action-btn${riskButtonDisabled ? ' completed' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'risk' ? ' next-action-pulse' : ''}`}
+                      onClick={riskButtonDisabled ? undefined : handleGlobalRiskAssessment}
+                      onMouseDown={e => !riskButtonDisabled && e.currentTarget.classList.add('pressed')}
+                      onMouseUp={e => !riskButtonDisabled && e.currentTarget.classList.remove('pressed')}
+                      onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+                      style={{
+                        borderColor: riskButtonDisabled
+                          ? '#d4ddd4'
+                          : selectedInstruction
+                          ? '#3690CE'
+                          : undefined,
+                        backgroundColor: riskButtonDisabled 
+                          ? '#f8faf8' 
+                          : undefined,
+                        opacity: riskButtonDisabled ? 0.75 : 1,
+                        transform: 'translateY(0)',
+                        transition: 'opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s, border-color 0.2s ease',
+                        pointerEvents: 'auto',
+                        cursor: riskButtonDisabled ? 'default' : 'pointer',
+                        margin: 0
+                      }}
+                    >
+                      <span className="global-action-icon icon-hover" style={{
+                        color: riskButtonDisabled
+                          ? '#6b8e6b'
+                          : selectedInstruction
+                          ? '#3690CE'
+                          : undefined
+                      }}>
+                        {riskButtonDisabled ? <FaCheckCircle /> : (
+                          <>
+                            <FaExclamationTriangle className="icon-outline" />
+                            <FaExclamationTriangle className="icon-filled" />
+                          </>
+                        )}
+                      </span>
+                      <span
+                        className="global-action-label"
+                        style={{
+                          color: riskButtonDisabled
+                            ? '#6b8e6b'
+                            : selectedInstruction
+                            ? '#3690CE'
+                            : undefined,
+                          textDecoration: riskButtonDisabled ? 'line-through' : 'none',
+                          textDecorationColor: riskButtonDisabled ? '#6b8e6b' : undefined,
+                          textDecorationThickness: riskButtonDisabled ? '1px' : undefined
+                        }}
+                      >
+                        Assess Risk
+                      </span>
+                    </button>
+
+                    <button
+                      className={`global-action-btn${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
+                      onClick={handleGlobalOpenMatter}
+                      onMouseDown={e => e.currentTarget.classList.add('pressed')}
+                      onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+                      onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+                      style={{
+                        borderColor: selectedInstruction ? '#3690CE' : undefined,
+                        transform: 'translateY(0)',
+                        transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s',
+                        pointerEvents: 'auto',
+                        margin: 0
+                      }}
+                    >
+                      <span className="global-action-icon icon-hover" style={{ color: selectedInstruction ? '#3690CE' : undefined }}>
+                        <FaFolder className="icon-outline" />
+                        <FaRegFolder className="icon-filled" />
+                      </span>
+                      <span className="global-action-label" style={{ color: selectedInstruction ? '#3690CE' : undefined }}>
+                        Open Matter
+                      </span>
+                    </button>
+
+                    <button
+                      className={`global-action-btn${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'ccl' ? ' next-action-pulse' : ''}`}
+                      onClick={() => setShowCclDraftPage(true)}
+                      onMouseDown={e => e.currentTarget.classList.add('pressed')}
+                      onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+                      onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+                      style={{
+                        borderColor: selectedInstruction ? '#3690CE' : undefined,
+                        transform: 'translateY(0)',
+                        transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s',
+                        pointerEvents: 'auto',
+                        margin: 0
+                      }}
+                    >
+                      <span className="global-action-icon icon-hover" style={{ color: selectedInstruction ? '#3690CE' : undefined }}>
+                        <FaFileAlt className="icon-outline" />
+                        <FaRegFileAlt className="icon-filled" />
+                      </span>
+                      <span className="global-action-label" style={{ color: selectedInstruction ? '#3690CE' : undefined }}>
+                        Draft CCL
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Deal Details Section */}
+                {selectedDeal && (
+                  <div
+                    style={{
+                      padding: '14px 16px',
+                      border: '1px solid #e1e5ea',
+                      borderRadius: 8,
+                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <div style={{ 
+                      fontSize: 13, 
+                      fontWeight: 600, 
+                      color: '#374151', 
+                      marginBottom: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}>
+                      <i className="ms-Icon ms-Icon--EditSolid12" style={{ fontSize: 14 }} />
+                      Deal Details
+                      <div style={{
+                        fontSize: 10,
+                        background: '#f0f9ff',
+                        color: '#0369a1',
+                        padding: '2px 6px',
+                        borderRadius: 10,
+                        fontWeight: 500
+                      }}>
+                        QUICK EDIT
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      {/* Service Field */}
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{ 
+                          minWidth: 100,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: '#6B7280',
+                          paddingTop: 8,
+                          textAlign: 'right'
+                        }}>
+                          Service:
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <input
+                            type="text"
+                            value={workbenchService}
+                            onChange={(e) => setWorkbenchService(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleDealEdit(parseFloat(workbenchAmount) || 0, { ServiceDescription: workbenchService, Amount: parseFloat(workbenchAmount) || 0 });
+                              }
+                              if (e.key === 'Escape') {
+                                e.currentTarget.blur();
+                                setWorkbenchService(selectedDeal?.ServiceDescription || '');
+                              }
+                            }}
+                            placeholder="Enter service description..."
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 6,
+                              fontSize: 13,
+                              color: '#111827',
+                              background: '#ffffff',
+                              transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#3690CE';
+                              e.target.style.boxShadow = '0 0 0 3px rgba(54, 144, 206, 0.1)';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = '#d1d5db';
+                              e.target.style.boxShadow = 'none';
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Amount Field */}
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{ 
+                          minWidth: 100,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: '#6B7280',
+                          paddingTop: 8,
+                          textAlign: 'right'
+                        }}>
+                          Amount:
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ position: 'relative' }}>
+                            <span style={{
+                              position: 'absolute',
+                              left: 12,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              fontSize: 13,
+                              color: '#6B7280',
+                              fontWeight: 600,
+                              pointerEvents: 'none'
+                            }}>
+                              £
+                            </span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={workbenchAmount}
+                              onChange={(e) => setWorkbenchAmount(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleDealEdit(parseFloat(workbenchAmount) || 0, { ServiceDescription: workbenchService, Amount: parseFloat(workbenchAmount) || 0 });
+                                }
+                                if (e.key === 'Escape') {
+                                  e.currentTarget.blur();
+                                  setWorkbenchAmount(selectedDeal?.Amount?.toString() || '');
+                                }
+                              }}
+                              placeholder="0.00"
+                              style={{
+                                width: '200px',
+                                paddingLeft: 28,
+                                paddingRight: 12,
+                                paddingTop: 8,
+                                paddingBottom: 8,
+                                border: '1px solid #d1d5db',
+                                borderRadius: 6,
+                                fontSize: 13,
+                                color: '#111827',
+                                background: '#ffffff',
+                                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                              }}
+                              onFocus={(e) => {
+                                e.target.style.borderColor = '#3690CE';
+                                e.target.style.boxShadow = '0 0 0 3px rgba(54, 144, 206, 0.1)';
+                              }}
+                              onBlur={(e) => {
+                                e.target.style.borderColor = '#d1d5db';
+                                e.target.style.boxShadow = 'none';
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Save Button */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'flex-end',
+                        paddingTop: 8,
+                        borderTop: '1px solid #f1f5f9'
+                      }}>
+                        <button
+                          title="Save changes"
+                          onClick={async () => {
+                            try {
+                              await handleDealEdit(parseFloat(workbenchAmount) || 0, { ServiceDescription: workbenchService, Amount: parseFloat(workbenchAmount) || 0 });
+                            } catch (error) {
+                              console.error('Save failed:', error);
+                            }
+                          }}
+                          style={{
+                            padding: '10px 16px',
+                            borderRadius: 6,
+                            border: '1px solid #3690CE',
+                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                            color: '#061733',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
+                            fontSize: 13,
+                            fontWeight: 500,
+                            transition: 'all 0.18s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 8px 16px rgba(54, 144, 206, 0.15)';
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #3690CE 0%, #2b7bbd 100%)';
+                            e.currentTarget.style.color = '#ffffff';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.07)';
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                            e.currentTarget.style.color = '#061733';
+                          }}
+                        >
+                          <i className="ms-Icon ms-Icon--Save" style={{ fontSize: 12 }} />
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         )}
       </Stack>
     </section>
-      <Dialog
+    <Dialog
         hidden={!isResumeDialogOpen}
         onDismiss={() => setIsResumeDialogOpen(false)}
         dialogContentProps={{
-          type: 'normal' as any, // Temporary fix for DialogType.normal issue
+          type: 'normal' as any,
           title: 'Resume Matter Opening?',
-          subText:
-            'An unfinished matter opening was detected. Would you like to resume it or start a new one?'
+          subText: 'An unfinished matter opening was detected. Would you like to resume it or start a new one?'
         }}
         modalProps={{ isBlocking: true }}
       >
-        {/* Modernized content and buttons to match branded entry modal style */}
+        {/* Dialog content for resume matter opening */}
         <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
-          {/* Resume card */}
           <button
             type="button"
             onClick={() => {
@@ -3232,75 +3559,109 @@ const Instructions: React.FC<InstructionsProps> = ({
               }, 100);
             }}
             style={{
-              flex: '1 1 280px',
+              flex: '1 1 260px',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               gap: 12,
-              padding: '16px 18px',
-              border: '1px solid #e1e5ea',
-              borderRadius: 8,
+              padding: '20px 24px',
+              borderRadius: 12,
+              border: '2px solid #3690CE',
               background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
+              color: '#061733',
               cursor: 'pointer',
-              transition: 'transform 0.18s, box-shadow 0.18s, border 0.18s'
+              boxShadow: '0 6px 20px rgba(54, 144, 206, 0.15)',
+              fontSize: 15,
+              fontWeight: 600,
+              textAlign: 'center',
+              transition: 'all 0.2s ease',
+              minHeight: '120px'
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
-              e.currentTarget.style.border = '1px solid #3690CE';
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 12px 32px rgba(54, 144, 206, 0.25)';
             }}
-            onMouseLeave={(e) => {
+            onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.07)';
-              e.currentTarget.style.border = '1px solid #e1e5ea';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(54, 144, 206, 0.15)';
             }}
           >
-            <i className="ms-Icon ms-Icon--Play" style={{ fontSize: 18, color: '#3690CE' }} />
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontWeight: 700, color: '#061733' }}>Resume</div>
-              <div style={{ fontSize: 12, color: '#6B6B6B' }}>Pick up where you left off.</div>
+            <div style={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #3690CE 0%, #2b7bbd 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              fontSize: 20,
+              fontWeight: 'bold'
+            }}>
+              ↻
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Resume</div>
+              <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.4 }}>Continue from where you left off</div>
             </div>
           </button>
 
-          {/* Start New card */}
           <button
             type="button"
             onClick={handleStartNewMatter}
             style={{
               flex: '1 1 280px',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               gap: 12,
-              padding: '16px 18px',
-              border: '1px solid #e1e5ea',
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
+              padding: '20px 24px',
+              borderRadius: 12,
+              border: '2px solid #E5E7EB',
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
+              color: '#374151',
               cursor: 'pointer',
-              transition: 'transform 0.18s, box-shadow 0.18s, border 0.18s'
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+              fontSize: 15,
+              fontWeight: 600,
+              textAlign: 'center',
+              transition: 'all 0.2s ease',
+              minHeight: '120px'
             }}
-            onMouseEnter={(e) => {
+            onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
-              e.currentTarget.style.border = '1px solid #3690CE';
+              e.currentTarget.style.borderColor = '#9CA3AF';
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.12)';
             }}
-            onMouseLeave={(e) => {
+            onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.07)';
-              e.currentTarget.style.border = '1px solid #e1e5ea';
+              e.currentTarget.style.borderColor = '#E5E7EB';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
           >
-            <i className="ms-Icon ms-Icon--Add" style={{ fontSize: 18, color: '#3690CE' }} />
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontWeight: 700, color: '#061733' }}>Start New</div>
-              <div style={{ fontSize: 12, color: '#6B6B6B' }}>Begin a fresh matter opening.</div>
+            <div style={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              fontSize: 20,
+              fontWeight: 'bold'
+            }}>
+              +
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Start New</div>
+              <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.4 }}>Begin a fresh matter opening</div>
             </div>
           </button>
-  </div>
+        </div>
       </Dialog>
 
-      {/* ID Verification Review Modal */}
-      <IDVerificationReviewModal
+    <IDVerificationReviewModal
         isVisible={showReviewModal}
         details={reviewModalDetails}
         onClose={() => {
@@ -3322,244 +3683,6 @@ const Instructions: React.FC<InstructionsProps> = ({
         }}
       />
     </>
-  );
-};
-
-// --- DealsPivot extracted to fix React hooks error ---
-interface DealsPivotProps {
-  deals: any[];
-  handleOpenInstruction: (ref: string) => void;
-  selectedDealRef?: string | null;
-  onClearSelection?: () => void;
-  onSelectDeal?: (ref: string) => void;
-  showOnlyMyDeals?: boolean;
-  onToggleMyDeals?: () => void;
-  currentUser?: any;
-  teamData: any[];
-  userInitials: string;
-  isAdmin?: boolean; // Add admin prop
-}
-
-const DealsPivot: React.FC<DealsPivotProps> = ({ 
-  deals, 
-  handleOpenInstruction, 
-  selectedDealRef, 
-  onClearSelection,
-  onSelectDeal,
-  showOnlyMyDeals = false,
-  onToggleMyDeals,
-  currentUser,
-  teamData,
-  userInitials,
-  isAdmin = false // Add isAdmin parameter
-}) => {
-  const [openFollowUpIdx, setOpenFollowUpIdx] = useState<number | null>(null);
-  const [followUpContent, setFollowUpContent] = useState<string>("");
-  const [showClosedDeals, setShowClosedDeals] = useState<boolean>(false);
-  
-  const filteredDeals = useMemo(() => {
-    let dealsToShow = deals;
-    
-    // Apply "my deals" filter if enabled (removed selectedDealRef filtering)
-    if (showOnlyMyDeals && currentUser) {
-      // Filter deals that belong to the current user (you may need to adjust this logic based on your data structure)
-      dealsToShow = deals.filter(deal => 
-        deal.Email === currentUser.Email || 
-        deal.Lead === currentUser.Email ||
-        deal.assignedTo === currentUser.Email
-      );
-    }
-    
-    // Apply the closed deals filter
-    if (!showClosedDeals) {
-      dealsToShow = dealsToShow.filter(deal => String(deal.Status).toLowerCase() !== 'closed');
-    }
-    
-    return dealsToShow;
-  }, [deals, showClosedDeals, selectedDealRef, showOnlyMyDeals, currentUser]);
-  
-  const closedDealsCount = deals.filter(deal => String(deal.Status).toLowerCase() === 'closed').length;
-  const openDealsCount = deals.length - closedDealsCount;
-  
-  const gridContainerStyle = mergeStyles({
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-    maxWidth: "100%",
-    width: "100%",
-    margin: "0 auto",
-    boxSizing: "border-box",
-  });
-  
-  return (
-    <div>
-      {/* Toggle Controls */}
-      {!selectedDealRef && (
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          marginBottom: '16px',
-          padding: '8px 12px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '6px',
-          border: '1px solid #e1dfdd'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#666' }}>
-              {showClosedDeals ? `All Deals (${deals.length})` : `Open Deals (${openDealsCount})`}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {/* Show Everyone's/Mine Toggle - Admin Only */}
-            {isAdmin && (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                fontSize: '0.85rem'
-              }}>
-                <span style={{ color: '#666' }}>
-                  {showOnlyMyDeals ? 'Show Mine' : 'Show Everyone\'s'}
-                </span>
-                <div
-                  onClick={onToggleMyDeals}
-                  style={{
-                    width: '36px',
-                    height: '20px',
-                    borderRadius: '10px',
-                    backgroundColor: showOnlyMyDeals ? '#0078d4' : '#d1d1d1',
-                    position: 'relative',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s ease',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      backgroundColor: 'white',
-                      position: 'absolute',
-                      top: '2px',
-                      left: showOnlyMyDeals ? '18px' : '2px',
-                      transition: 'left 0.2s ease',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* Show Closed Deals Toggle */}
-            {closedDealsCount > 0 && (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                fontSize: '0.85rem'
-              }}>
-                <span style={{ color: '#666' }}>Show closed deals ({closedDealsCount})</span>
-                <div
-                  onClick={() => setShowClosedDeals(!showClosedDeals)}
-                  style={{
-                    width: '36px',
-                    height: '20px',
-                    borderRadius: '10px',
-                    backgroundColor: showClosedDeals ? '#0078d4' : '#d1d1d1',
-                    position: 'relative',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s ease',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      backgroundColor: 'white',
-                      position: 'absolute',
-                      top: '2px',
-                      left: showClosedDeals ? '18px' : '2px',
-                      transition: 'left 0.2s ease',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
-      <div className={gridContainerStyle}>
-        {filteredDeals.map((deal, idx) => {
-        const row = Math.floor(idx / 4);
-        const col = idx % 4;
-        const animationDelay = row * 0.2 + col * 0.1;
-        const isClosed = String(deal.Status).toLowerCase() === "closed";
-        const showFollowUpEditor = openFollowUpIdx === idx;
-        return (
-          <div key={idx} style={{ position: 'relative' }}>
-            <DealCard
-              deal={deal}
-              animationDelay={animationDelay}
-              onFollowUp={() => setOpenFollowUpIdx(idx)}
-              teamData={null}
-              userInitials={userInitials}
-              isSingleView={selectedDealRef === deal.DealId}
-              expanded={selectedDealRef === deal.InstructionRef}
-              selected={selectedDealRef === deal.InstructionRef}
-              onSelect={() => {
-                // Toggle selection: if already selected, unselect; otherwise select
-                if (selectedDealRef === deal.InstructionRef) {
-                  onClearSelection?.();
-                } else {
-                  // Just select the deal for inline expansion
-                  onSelectDeal?.(deal.InstructionRef);
-                }
-              }}
-            />
-
-            {showFollowUpEditor && (
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                background: '#fff',
-                zIndex: 10,
-                boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-                borderRadius: 8,
-                padding: 24,
-              }}>
-                <InstructionEditor
-                  value={followUpContent}
-                  onChange={setFollowUpContent}
-                  templates={[]}
-                  showTemplateCallout={false}
-                />
-                <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-                  <PrimaryButton
-                    text="Send Follow Up"
-                    onClick={() => {
-                      // TODO: Implement follow up send logic
-                      setOpenFollowUpIdx(null);
-                    }}
-                  />
-                  <PrimaryButton
-                    text="Cancel"
-                    onClick={() => setOpenFollowUpIdx(null)}
-                    styles={{ root: { background: '#eee', color: '#333' } }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-    </div>
   );
 };
 

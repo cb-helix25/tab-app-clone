@@ -165,6 +165,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const eidStatus = (eid?.EIDStatus || '').toLowerCase();
     const eidResult = (eid as any)?.EIDOverallResult?.toLowerCase();
     const eidPassed = eidResult === 'passed' || eidResult === 'pass';
+    const isInstructedOrLater = stage === 'proof-of-id-complete' || isCompleted;
+    const fastTrackedId = isInstructedOrLater && !eidPassed; // stage advanced without EID pass
+    const fastTrackedPayment = isInstructedOrLater && !paymentComplete; // stage advanced without payment success
     
     let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
     if (!eid || eidStatus === 'pending') {
@@ -400,7 +403,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                verifyIdStatus === 'received' ? '#3690CE' : '#666',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        gap: '6px'
                     }}>
                         <span style={{
                             width: '8px',
@@ -413,6 +416,22 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         {verifyIdStatus === 'complete' ? 'Verified' : 
                          verifyIdStatus === 'review' ? 'Review' :
                          verifyIdStatus === 'received' ? 'Received' : 'Pending'}
+                        {fastTrackedId && (
+                            <span
+                                title="Stage advanced without EID pass (fast-tracked)"
+                                style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 600,
+                                    color: '#b88600',
+                                    backgroundColor: '#fffbe6',
+                                    border: '1px solid #FFB90030',
+                                    borderRadius: '10px',
+                                    padding: '2px 6px'
+                                }}
+                            >
+                                Fast-tracked
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -425,7 +444,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         color: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#666',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        gap: '6px'
                     }}>
                         <span style={{
                             width: '8px',
@@ -434,6 +453,22 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             backgroundColor: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#ccc'
                         }} />
                         {paymentComplete ? 'Complete' : paymentFailed ? 'Failed' : 'Pending'}
+                        {fastTrackedPayment && (
+                            <span
+                                title="Stage advanced without payment success (fast-tracked)"
+                                style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 600,
+                                    color: '#b88600',
+                                    backgroundColor: '#fffbe6',
+                                    border: '1px solid #FFB90030',
+                                    borderRadius: '10px',
+                                    padding: '2px 6px'
+                                }}
+                            >
+                                Fast-tracked
+                            </span>
+                        )}
                     </div>
                 </div>
 
