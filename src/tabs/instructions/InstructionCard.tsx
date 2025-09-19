@@ -1305,7 +1305,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     }} title="Fast-tracked">
                       <svg width="14" height="14" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="8" cy="8" r="7" fill="#FFFFFF" />
-                        <text x="8" y="11" textAnchor="middle" fontSize="10" fontWeight="900" fill={String(colours.yellow)}>!</text>
+                        <text x="8" y="11" textAnchor="middle" fontSize="10" fontWeight="900" fill="#f59e0b">!</text>
                       </svg>
                     </span>
                   ) : (
@@ -1321,8 +1321,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     }}>
                       <svg width="14" height="14" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
                         <circle cx="8" cy="8" r="7" fill="#FFFFFF" />
-                        {/* Modern thinner check: smaller footprint and balanced proportions */}
-                        <path d="M5 8.3 L7.2 10.2 L11.2 5.8" stroke={String(colours.green)} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M5 8.3 L7.2 10.2 L11.2 5.8" stroke="#22c55e" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
                   )

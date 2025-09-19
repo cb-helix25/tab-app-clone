@@ -24,15 +24,14 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
 } from 'react-icons/fa';
-import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
-import { FaShieldAlt } from 'react-icons/fa';
+import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment, MdSync, MdExpandMore, MdChevronRight } from 'react-icons/md';
+import { FaShieldAlt, FaIdCard } from 'react-icons/fa';
 import QuickActionsCard from "../home/QuickActionsCard"; // legacy, to be removed after full migration
 import { useTheme } from "../../app/functionality/ThemeContext";
 import { useNavigatorActions } from "../../app/functionality/NavigatorContext";
 import { colours } from "../../app/styles/colours";
 import { dashboardTokens } from "./componentTokens";
 import InstructionCard from "./InstructionCard";
-
 import RiskComplianceCard from "./RiskComplianceCard";
 import JointClientCard, { ClientInfo } from "./JointClientCard";
 import DealCard from "./DealCard";
@@ -102,14 +101,14 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
   const [forceNewMatter, setForceNewMatter] = useState(false);
   const [showCclDraftPage, setShowCclDraftPage] = useState(false);
-  const [workbenchService, setWorkbenchService] = useState<string>("");
-  const [workbenchAmount, setWorkbenchAmount] = useState<string>("");
+  const [isWorkbenchVisible, setIsWorkbenchVisible] = useState(true);
 
   // Flat tab navigation: default to Clients
   const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('clients');
   
   // Unified enquiries data for name mapping (separate from main enquiries)
   const [unifiedEnquiries, setUnifiedEnquiries] = useState<any[]>([]);
+  const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   
   // Client name cache for performance optimization
   // Enhanced caching for client name resolution
@@ -486,18 +485,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   
 
-  // Prefill workbench fields when the target deal changes
-  useEffect(() => {
-    if (selectedDeal) {
-      setWorkbenchService(String(selectedDeal.ServiceDescription ?? ""));
-      const amt = (selectedDeal as any).Amount;
-      setWorkbenchAmount(amt === null || amt === undefined ? "" : String(amt));
-    } else {
-      setWorkbenchService("");
-      setWorkbenchAmount("");
-    }
-  }, [selectedDeal]);
-  
   // Filter states
   const [clientsActionFilter, setClientsActionFilter] = useState<'All' | 'Verify ID' | 'Assess Risk' | 'Open Matter' | 'Draft CCL' | 'Complete'>('All');
   const [pitchesStatusFilter, setPitchesStatusFilter] = useState<'All' | 'Open' | 'Closed'>('All');
@@ -557,6 +544,9 @@ const Instructions: React.FC<InstructionsProps> = ({
       setActiveTab('pitches');
     }
   }, [isLocalhost, activeTab]);
+  
+  // Show workbench when instruction is selected
+  // Removed automatic workbench hiding logic - workbench now stays visible
   
   // Get effective instruction data based on admin mode and user filtering
   const effectiveInstructionData = useMemo(() => {
@@ -2810,7 +2800,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className={sectionContainerStyle(isDarkMode)}>
         {/* Local development immediate Matter Opening CTA */}
-        {isLocalhostEnv && activeTab === 'clients' && !showNewMatterPage && openMatterCandidates.length > 0 && (
+        {isLocalhostEnv && activeTab === 'clients' && !showNewMatterPage && openMatterCandidates.length > 0 && !isWorkbenchVisible && (
           <div style={{
             position: 'fixed',
             bottom: '96px',
@@ -3019,522 +3009,432 @@ const Instructions: React.FC<InstructionsProps> = ({
             />
           )}
         </div>
-        {/* Global Action Area - always visible, enhanced when instruction selected */}
-        {activeTab === "clients" && !showNewMatterPage && !showRiskPage && !showEIDPage && (
-          <div 
-            className={`global-action-area${selectedInstruction ? ' expanded' : ''}`}
-            style={{
-              opacity: 1, // Always visible
-              transform: 'translateY(0)',
-              transition: 'opacity 0.4s ease, transform 0.4s ease',
-              pointerEvents: 'auto', // Always interactive
-            }}
-          >
-            {/* Workbench header with status and context */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              marginBottom: selectedInstruction ? 16 : 8,
-              paddingBottom: selectedInstruction ? 12 : 0,
-              borderBottom: selectedInstruction ? '1px solid #e1e5ea' : 'none'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ fontWeight: 700, color: '#061733', fontSize: 16 }}>Workbench</div>
-                {selectedInstruction && (
-                  <div style={{
-                    padding: '4px 8px',
-                    borderRadius: 4,
-                    background: selectedInstruction.Stage === 'instructed' ? '#e8f5e8' : '#fff3cd',
-                    color: selectedInstruction.Stage === 'instructed' ? '#2d5a2d' : '#8b6914',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    {selectedInstruction.Stage || 'Active'}
-                  </div>
-                )}
-              </div>
-              {selectedInstruction ? (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {/* InstructionRef chip */}
-                  {selectedInstruction.InstructionRef && (
-                    <span
-                      title="Instruction Reference - Click to copy"
-                      onClick={() => navigator.clipboard?.writeText(selectedInstruction.InstructionRef)}
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: 999,
-                        background: 'linear-gradient(135deg, #3690CE 0%, #2b7bbd 100%)',
-                        border: '1px solid #2b7bbd',
-                        boxShadow: '0 4px 6px rgba(54, 144, 206, 0.15)',
-                        fontSize: 12,
-                        color: '#FFFFFF',
-                        cursor: 'pointer',
-                        transition: 'transform 0.18s, box-shadow 0.18s'
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 6px 12px rgba(54, 144, 206, 0.25)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(54, 144, 206, 0.15)';
-                      }}
-                    >
-                      #{selectedInstruction.InstructionRef}
-                    </span>
-                  )}
-                  {/* Client name chip if available */}
-                  {(selectedInstruction.FirstName || selectedInstruction.LastName) && (
-                    <span
-                      title="Client Name"
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: 999,
-                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                        border: '1px solid #e1e5ea',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
-                        fontSize: 12,
-                        color: '#061733'
-                      }}
-                    >
-                      {[selectedInstruction.FirstName, selectedInstruction.LastName].filter(Boolean).join(' ')}
-                    </span>
-                  )}
-                  {/* Service type chip if available */}
-                  {selectedDeal?.ServiceDescription && (
-                    <span
-                      title="Service Type"
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: 999,
-                        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                        border: '1px solid #0ea5e9',
-                        boxShadow: '0 4px 6px rgba(14, 165, 233, 0.1)',
-                        fontSize: 12,
-                        color: '#0c4a6e',
-                        maxWidth: 120,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {selectedDeal.ServiceDescription}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <div style={{ 
-                  fontSize: 12, 
-                  color: '#6B6B6B',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8
-                }}>
-                  <i className="ms-Icon ms-Icon--Info" style={{ fontSize: 14 }} />
-                  Select an instruction to use the Workbench
-                </div>
-              )}
-            </div>
-            {/* Workbench Content */}
-            {selectedInstruction ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Next Steps Section */}
-                <div style={{
-                  padding: '12px 14px',
-                  border: '1px solid #e1e5ea',
-                  borderRadius: 8,
-                  background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}>
-                  <div style={{ 
-                    fontSize: 13, 
-                    fontWeight: 600, 
-                    color: '#374151', 
-                    marginBottom: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}>
-                    <i className="ms-Icon ms-Icon--Flow" style={{ fontSize: 14 }} />
-                    Next Steps
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button
-                      className={`global-action-btn${verifyButtonDisabled ? ' completed' : verifyButtonReview ? ' review' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'verify' ? ' next-action-pulse' : ''}`}
-                      onClick={verifyButtonDisabled ? undefined : handleGlobalEIDCheck}
-                      onMouseDown={e => !verifyButtonDisabled && e.currentTarget.classList.add('pressed')}
-                      onMouseUp={e => !verifyButtonDisabled && e.currentTarget.classList.remove('pressed')}
-                      onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-                      style={{
-                        borderColor: verifyButtonDisabled
-                          ? '#d4ddd4'
-                          : verifyButtonReview
-                          ? '#ffe066'
-                          : selectedInstruction
-                          ? '#3690CE'
-                          : undefined,
-                        backgroundColor: verifyButtonDisabled
-                          ? '#f8faf8'
-                          : verifyButtonReview
-                          ? '#fffbe6'
-                          : undefined,
-                        opacity: verifyButtonDisabled ? 0.75 : 1,
-                        transform: 'translateY(0)',
-                        transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, border-color 0.2s ease',
-                        pointerEvents: 'auto',
-                        margin: 0
-                      }}
-                    >
-                      <span
-                        className="global-action-icon icon-hover"
-                        style={{
-                          color: verifyButtonDisabled
-                            ? '#6b8e6b'
-                            : verifyButtonReview
-                            ? '#bfa100'
-                            : selectedInstruction
-                            ? '#3690CE'
-                            : undefined,
-                        }}
-                      >
-                        {verifyButtonDisabled ? <FaCheckCircle /> : (
-                          <>
-                            <FaIdBadge className="icon-outline" />
-                            <FaRegIdBadge className="icon-filled" />
-                          </>
-                        )}
-                      </span>
-                      <span
-                        className="global-action-label"
-                        style={{
-                          color: verifyButtonDisabled
-                            ? '#6b8e6b'
-                            : verifyButtonReview
-                            ? '#bfa100'
-                            : selectedInstruction
-                            ? '#3690CE'
-                            : undefined,
-                          textDecoration: verifyButtonDisabled ? 'line-through' : 'none',
-                          textDecorationColor: verifyButtonDisabled ? '#6b8e6b' : undefined,
-                          textDecorationThickness: verifyButtonDisabled ? '1px' : undefined,
-                        }}
-                      >
-                        {verifyButtonLabel}
-                      </span>
-                    </button>
-
-                    <button
-                      className={`global-action-btn${riskButtonDisabled ? ' completed' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'risk' ? ' next-action-pulse' : ''}`}
-                      onClick={riskButtonDisabled ? undefined : handleGlobalRiskAssessment}
-                      onMouseDown={e => !riskButtonDisabled && e.currentTarget.classList.add('pressed')}
-                      onMouseUp={e => !riskButtonDisabled && e.currentTarget.classList.remove('pressed')}
-                      onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-                      style={{
-                        borderColor: riskButtonDisabled
-                          ? '#d4ddd4'
-                          : selectedInstruction
-                          ? '#3690CE'
-                          : undefined,
-                        backgroundColor: riskButtonDisabled 
-                          ? '#f8faf8' 
-                          : undefined,
-                        opacity: riskButtonDisabled ? 0.75 : 1,
-                        transform: 'translateY(0)',
-                        transition: 'opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s, border-color 0.2s ease',
-                        pointerEvents: 'auto',
-                        cursor: riskButtonDisabled ? 'default' : 'pointer',
-                        margin: 0
-                      }}
-                    >
-                      <span className="global-action-icon icon-hover" style={{
-                        color: riskButtonDisabled
-                          ? '#6b8e6b'
-                          : selectedInstruction
-                          ? '#3690CE'
-                          : undefined
-                      }}>
-                        {riskButtonDisabled ? <FaCheckCircle /> : (
-                          <>
-                            <FaExclamationTriangle className="icon-outline" />
-                            <FaExclamationTriangle className="icon-filled" />
-                          </>
-                        )}
-                      </span>
-                      <span
-                        className="global-action-label"
-                        style={{
-                          color: riskButtonDisabled
-                            ? '#6b8e6b'
-                            : selectedInstruction
-                            ? '#3690CE'
-                            : undefined,
-                          textDecoration: riskButtonDisabled ? 'line-through' : 'none',
-                          textDecorationColor: riskButtonDisabled ? '#6b8e6b' : undefined,
-                          textDecorationThickness: riskButtonDisabled ? '1px' : undefined
-                        }}
-                      >
-                        Assess Risk
-                      </span>
-                    </button>
-
-                    <button
-                      className={`global-action-btn${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
-                      onClick={handleGlobalOpenMatter}
-                      onMouseDown={e => e.currentTarget.classList.add('pressed')}
-                      onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-                      onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-                      style={{
-                        borderColor: selectedInstruction ? '#3690CE' : undefined,
-                        transform: 'translateY(0)',
-                        transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s',
-                        pointerEvents: 'auto',
-                        margin: 0
-                      }}
-                    >
-                      <span className="global-action-icon icon-hover" style={{ color: selectedInstruction ? '#3690CE' : undefined }}>
-                        <FaFolder className="icon-outline" />
-                        <FaRegFolder className="icon-filled" />
-                      </span>
-                      <span className="global-action-label" style={{ color: selectedInstruction ? '#3690CE' : undefined }}>
-                        Open Matter
-                      </span>
-                    </button>
-
-                    <button
-                      className={`global-action-btn${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'ccl' ? ' next-action-pulse' : ''}`}
-                      onClick={() => setShowCclDraftPage(true)}
-                      onMouseDown={e => e.currentTarget.classList.add('pressed')}
-                      onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-                      onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-                      style={{
-                        borderColor: selectedInstruction ? '#3690CE' : undefined,
-                        transform: 'translateY(0)',
-                        transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s',
-                        pointerEvents: 'auto',
-                        margin: 0
-                      }}
-                    >
-                      <span className="global-action-icon icon-hover" style={{ color: selectedInstruction ? '#3690CE' : undefined }}>
-                        <FaFileAlt className="icon-outline" />
-                        <FaRegFileAlt className="icon-filled" />
-                      </span>
-                      <span className="global-action-label" style={{ color: selectedInstruction ? '#3690CE' : undefined }}>
-                        Draft CCL
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Deal Details Section */}
-                {selectedDeal && (
-                  <div
-                    style={{
-                      padding: '14px 16px',
-                      border: '1px solid #e1e5ea',
-                      borderRadius: 8,
-                      background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                    }}
-                  >
+        
+        {/* Smart Contextual Action Panel - Unified Interface */}
+        {activeTab === "clients" && (
+          <>
+            <style>{`
+              @keyframes pulse {
+                0% { box-shadow: 0 0 0 0 rgba(54, 144, 206, 0.7); }
+                70% { box-shadow: 0 0 0 10px rgba(54, 144, 206, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(54, 144, 206, 0); }
+              }
+              
+              @keyframes slideUp {
+                from { transform: translateY(100%); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+              }
+              
+              .advanced-tools {
+                animation: slideUp 0.3s ease-out;
+              }
+            `}</style>
+            <div
+              style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                background: isDarkMode ? colours.dark.background : '#ffffff',
+                borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
+                boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.15)',
+                zIndex: 1000,
+                transition: 'all 0.3s ease',
+              }}
+            >
+              {/* Advanced Tools Section - Context-aware expansion */}
+              {isWorkbenchVisible && selectedInstruction && (
+                <div 
+                  className="advanced-tools"
+                  style={{
+                    padding: '12px 20px',
+                    background: isDarkMode ? colours.dark.cardBackground : '#f8fafc',
+                    borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ 
-                      fontSize: 13, 
-                      fontWeight: 600, 
-                      color: '#374151', 
-                      marginBottom: 12,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}>
-                      <i className="ms-Icon ms-Icon--EditSolid12" style={{ fontSize: 14 }} />
-                      Deal Details
-                      <div style={{
-                        fontSize: 10,
-                        background: '#f0f9ff',
-                        color: '#0369a1',
-                        padding: '2px 6px',
-                        borderRadius: 10,
-                        fontWeight: 500
+                      width: 3, 
+                      height: 3, 
+                      borderRadius: '50%', 
+                      background: colours.blue,
+                      animation: 'pulse 2s infinite'
+                    }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ 
+                        fontSize: '11px', 
+                        fontWeight: 700, 
+                        color: isDarkMode ? colours.dark.text : '#1f2937',
+                        letterSpacing: '0.02em',
+                        fontFamily: 'monospace'
                       }}>
-                        QUICK EDIT
-                      </div>
+                        {selectedInstruction.InstructionRef}
+                      </span>
+                      <span style={{ 
+                        fontSize: '9px', 
+                        fontWeight: 500, 
+                        color: isDarkMode ? colours.dark.subText : '#6b7280',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        opacity: 0.8
+                      }}>
+                        Workbench
+                      </span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      {/* Service Field */}
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        <div style={{ 
-                          minWidth: 100,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: '#6B7280',
-                          paddingTop: 8,
-                          textAlign: 'right'
-                        }}>
-                          Service:
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <input
-                            type="text"
-                            value={workbenchService}
-                            onChange={(e) => setWorkbenchService(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleDealEdit(parseFloat(workbenchAmount) || 0, { ServiceDescription: workbenchService, Amount: parseFloat(workbenchAmount) || 0 });
-                              }
-                              if (e.key === 'Escape') {
-                                e.currentTarget.blur();
-                                setWorkbenchService(selectedDeal?.ServiceDescription || '');
-                              }
-                            }}
-                            placeholder="Enter service description..."
-                            style={{
-                              width: '100%',
-                              padding: '8px 12px',
-                              border: '1px solid #d1d5db',
-                              borderRadius: 6,
-                              fontSize: 13,
-                              color: '#111827',
-                              background: '#ffffff',
-                              transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
-                            }}
-                            onFocus={(e) => {
-                              e.target.style.borderColor = '#3690CE';
-                              e.target.style.boxShadow = '0 0 0 3px rgba(54, 144, 206, 0.1)';
-                            }}
-                            onBlur={(e) => {
-                              e.target.style.borderColor = '#d1d5db';
-                              e.target.style.boxShadow = 'none';
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Amount Field */}
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        <div style={{ 
-                          minWidth: 100,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: '#6B7280',
-                          paddingTop: 8,
-                          textAlign: 'right'
-                        }}>
-                          Amount:
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ position: 'relative' }}>
-                            <span style={{
-                              position: 'absolute',
-                              left: 12,
-                              top: '50%',
-                              transform: 'translateY(-50%)',
-                              fontSize: 13,
-                              color: '#6B7280',
-                              fontWeight: 600,
-                              pointerEvents: 'none'
-                            }}>
-                              £
-                            </span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={workbenchAmount}
-                              onChange={(e) => setWorkbenchAmount(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleDealEdit(parseFloat(workbenchAmount) || 0, { ServiceDescription: workbenchService, Amount: parseFloat(workbenchAmount) || 0 });
-                                }
-                                if (e.key === 'Escape') {
-                                  e.currentTarget.blur();
-                                  setWorkbenchAmount(selectedDeal?.Amount?.toString() || '');
-                                }
-                              }}
-                              placeholder="0.00"
-                              style={{
-                                width: '200px',
-                                paddingLeft: 28,
-                                paddingRight: 12,
-                                paddingTop: 8,
-                                paddingBottom: 8,
-                                border: '1px solid #d1d5db',
-                                borderRadius: 6,
-                                fontSize: 13,
-                                color: '#111827',
-                                background: '#ffffff',
-                                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
-                              }}
-                              onFocus={(e) => {
-                                e.target.style.borderColor = '#3690CE';
-                                e.target.style.boxShadow = '0 0 0 3px rgba(54, 144, 206, 0.1)';
-                              }}
-                              onBlur={(e) => {
-                                e.target.style.borderColor = '#d1d5db';
-                                e.target.style.boxShadow = 'none';
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Save Button */}
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'flex-end',
-                        paddingTop: 8,
-                        borderTop: '1px solid #f1f5f9'
-                      }}>
+                  </div>
+                  
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '6px', 
+                    flexWrap: 'wrap',
+                    alignItems: 'center'
+                  }}>
+                    {/* Smart contextual tools based on instruction status */}
+                    {selectedInstruction?.Status === 'New' && (
+                      <button
+                        onClick={() => console.log('New instruction workflow')}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          borderRadius: '4px',
+                          border: `1px solid #8b5cf6`,
+                          background: 'transparent',
+                          color: '#8b5cf6',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.025em',
+                        }}
+                      >
+                        Auto Process
+                      </button>
+                    )}
+                    
+                    {/* Admin-only tools */}
+                    {isAdminUser() && (
+                      <>
+                        <div style={{ width: '1px', height: '16px', background: isDarkMode ? colours.dark.border : '#d1d5db', margin: '0 4px' }} />
                         <button
-                          title="Save changes"
-                          onClick={async () => {
-                            try {
-                              await handleDealEdit(parseFloat(workbenchAmount) || 0, { ServiceDescription: workbenchService, Amount: parseFloat(workbenchAmount) || 0 });
-                            } catch (error) {
-                              console.error('Save failed:', error);
-                            }
-                          }}
+                          onClick={() => console.log('System diagnostics')}
                           style={{
-                            padding: '10px 16px',
-                            borderRadius: 6,
-                            border: '1px solid #3690CE',
-                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                            color: '#061733',
+                            padding: '4px 8px',
+                            fontSize: '10px',
+                            borderRadius: '4px',
+                            border: `1px solid #ef4444`,
+                            background: 'transparent',
+                            color: '#ef4444',
                             cursor: 'pointer',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
-                            fontSize: 13,
-                            fontWeight: 500,
-                            transition: 'all 0.18s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 8px 16px rgba(54, 144, 206, 0.15)';
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #3690CE 0%, #2b7bbd 100%)';
-                            e.currentTarget.style.color = '#ffffff';
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.07)';
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                            e.currentTarget.style.color = '#061733';
+                            fontWeight: '500',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.025em',
                           }}
                         >
-                          <i className="ms-Icon ms-Icon--Save" style={{ fontSize: 12 }} />
-                          Save
+                          System
                         </button>
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
+              )}
+
+              {/* Core Actions - Always visible */}
+              <div style={{ padding: '16px 20px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '12px',
+                  maxWidth: '800px',
+                  margin: '0 auto',
+                }}>
+                  <button
+                    onClick={handleGlobalEIDCheck}
+                    disabled={verifyButtonDisabled}
+                    onMouseEnter={(e) => {
+                      if (!verifyButtonDisabled) {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        setHoveredButton('verify');
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      setHoveredButton(null);
+                    }}
+                    style={{
+                      padding: '12px 20px',
+                      borderRadius: '8px',
+                      border: `2px solid ${verifyButtonDisabled ? colours.green : verifyButtonReview ? colours.yellow : colours.blue}`,
+                      background: verifyButtonDisabled ? '#f0f9ff' : 'transparent',
+                      color: verifyButtonDisabled ? colours.green : verifyButtonReview ? colours.yellow : colours.blue,
+                      cursor: verifyButtonDisabled ? 'default' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      opacity: verifyButtonDisabled ? 0.8 : 1,
+                      animation: nextReadyAction === 'verify' ? 'pulse 2s infinite' : 'none',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '120px',
+                    }}
+                  >
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'verify' ? 0 : 1,
+                      transform: hoveredButton === 'verify' ? 'scale(0.8)' : 'scale(1)',
+                      position: hoveredButton === 'verify' ? 'absolute' : 'static'
+                    }}>
+                      <FaIdCard size={20} />
+                    </span>
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'verify' ? 1 : 0,
+                      transform: hoveredButton === 'verify' ? 'scale(1)' : 'scale(0.8)',
+                      position: hoveredButton === 'verify' ? 'static' : 'absolute'
+                    }}>
+                      {verifyButtonLabel}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={handleGlobalRiskAssessment}
+                    disabled={riskButtonDisabled}
+                    onMouseEnter={(e) => {
+                      if (!riskButtonDisabled) {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        setHoveredButton('risk');
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      setHoveredButton(null);
+                    }}
+                    style={{
+                      padding: '12px 20px',
+                      borderRadius: '8px',
+                      border: `2px solid ${riskButtonDisabled ? colours.green : colours.blue}`,
+                      background: riskButtonDisabled ? '#f0f9ff' : 'transparent',
+                      color: riskButtonDisabled ? colours.green : colours.blue,
+                      cursor: riskButtonDisabled ? 'default' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      opacity: riskButtonDisabled ? 0.8 : 1,
+                      animation: nextReadyAction === 'risk' ? 'pulse 2s infinite' : 'none',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '120px',
+                    }}
+                  >
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'risk' ? 0 : 1,
+                      transform: hoveredButton === 'risk' ? 'scale(0.8)' : 'scale(1)',
+                      position: hoveredButton === 'risk' ? 'absolute' : 'static'
+                    }}>
+                      <FaShieldAlt size={20} />
+                    </span>
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'risk' ? 1 : 0,
+                      transform: hoveredButton === 'risk' ? 'scale(1)' : 'scale(0.8)',
+                      position: hoveredButton === 'risk' ? 'static' : 'absolute'
+                    }}>
+                      Assess Risk
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={handleGlobalOpenMatter}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      setHoveredButton('matter');
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      setHoveredButton(null);
+                    }}
+                    style={{
+                      padding: '12px 20px',
+                      borderRadius: '8px',
+                      border: `2px solid ${colours.blue}`,
+                      background: 'transparent',
+                      color: colours.blue,
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      animation: nextReadyAction === 'matter' ? 'pulse 2s infinite' : 'none',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '120px',
+                    }}
+                  >
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'matter' ? 0 : 1,
+                      transform: hoveredButton === 'matter' ? 'scale(0.8)' : 'scale(1)',
+                      position: hoveredButton === 'matter' ? 'absolute' : 'static'
+                    }}>
+                      <FaFolder size={20} />
+                    </span>
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'matter' ? 1 : 0,
+                      transform: hoveredButton === 'matter' ? 'scale(1)' : 'scale(0.8)',
+                      position: hoveredButton === 'matter' ? 'static' : 'absolute'
+                    }}>
+                      Open Matter
+                    </span>
+                  </button>
+
+                  {/* Doc Sync - Only available after matter opening */}
+                  <button
+                    onClick={() => console.log('Document sync')}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      setHoveredButton('sync');
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      setHoveredButton(null);
+                    }}
+                    style={{
+                      padding: '12px 20px',
+                      borderRadius: '8px',
+                      border: `2px solid ${colours.green}`,
+                      background: 'transparent',
+                      color: colours.green,
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s ease',
+                      opacity: selectedOverviewItem?.instruction?.MatterRef ? 1 : 0.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '120px',
+                    }}
+                    title={selectedOverviewItem?.instruction?.MatterRef ? 'Sync documents to matter' : 'Matter must be opened first'}
+                  >
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'sync' ? 0 : 1,
+                      transform: hoveredButton === 'sync' ? 'scale(0.8)' : 'scale(1)',
+                      position: hoveredButton === 'sync' ? 'absolute' : 'static'
+                    }}>
+                      <MdSync size={20} />
+                    </span>
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'sync' ? 1 : 0,
+                      transform: hoveredButton === 'sync' ? 'scale(1)' : 'scale(0.8)',
+                      position: hoveredButton === 'sync' ? 'static' : 'absolute'
+                    }}>
+                      Sync Docs
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowCclDraftPage(true)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      setHoveredButton('ccl');
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      setHoveredButton(null);
+                    }}
+                    style={{
+                      padding: '12px 20px',
+                      borderRadius: '8px',
+                      border: `2px solid ${colours.blue}`,
+                      background: 'transparent',
+                      color: colours.blue,
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      animation: nextReadyAction === 'ccl' ? 'pulse 2s infinite' : 'none',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '120px',
+                    }}
+                  >
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'ccl' ? 0 : 1,
+                      transform: hoveredButton === 'ccl' ? 'scale(0.8)' : 'scale(1)',
+                      position: hoveredButton === 'ccl' ? 'absolute' : 'static'
+                    }}>
+                      <FaFileAlt size={20} />
+                    </span>
+                    <span style={{ 
+                      transition: 'all 0.3s ease',
+                      opacity: hoveredButton === 'ccl' ? 1 : 0,
+                      transform: hoveredButton === 'ccl' ? 'scale(1)' : 'scale(0.8)',
+                      position: hoveredButton === 'ccl' ? 'static' : 'absolute'
+                    }}>
+                      Draft CCL
+                    </span>
+                  </button>
+
+                  {/* Smart Tools Toggle - Only shows when instruction selected */}
+                  {selectedInstruction && (
+                    <>
+                      <div style={{ width: '1px', height: '24px', background: isDarkMode ? colours.dark.border : '#e2e8f0', borderRadius: '1px', margin: '0 8px' }} />
+                      <button
+                        onClick={() => setIsWorkbenchVisible(!isWorkbenchVisible)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.background = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: 'transparent',
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: '500',
+                          transition: 'all 0.2s ease',
+                          opacity: 0.7,
+                          letterSpacing: '0.5px',
+                          textTransform: 'uppercase',
+                        }}
+                        title={isWorkbenchVisible ? 'Hide Advanced Tools' : 'Show Advanced Tools'}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            transition: 'transform 0.2s ease',
+                            transform: isWorkbenchVisible ? 'rotate(0deg)' : 'rotate(-90deg)'
+                          }}>
+                            <MdExpandMore size={14} />
+                          </span>
+                          Tools
+                        </span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            ) : null}
-          </div>
+            </div>
+          </>
         )}
       </Stack>
     </section>
+
+    {/* Dialogs and Modals */}
     <Dialog
         hidden={!isResumeDialogOpen}
         onDismiss={() => setIsResumeDialogOpen(false)}
@@ -3559,50 +3459,33 @@ const Instructions: React.FC<InstructionsProps> = ({
               }, 100);
             }}
             style={{
-              flex: '1 1 260px',
+              flex: '1 1 200px',
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
               gap: 12,
-              padding: '20px 24px',
-              borderRadius: 12,
+              padding: '16px 20px',
               border: '2px solid #3690CE',
+              borderRadius: 8,
               background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
               color: '#061733',
               cursor: 'pointer',
-              boxShadow: '0 6px 20px rgba(54, 144, 206, 0.15)',
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: 600,
-              textAlign: 'center',
               transition: 'all 0.2s ease',
-              minHeight: '120px'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 12px 32px rgba(54, 144, 206, 0.25)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(54, 144, 206, 0.15)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(54, 144, 206, 0.15)';
+              e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            <div style={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3690CE 0%, #2b7bbd 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              fontSize: 20,
-              fontWeight: 'bold'
-            }}>
-              ↻
-            </div>
+            <div style={{ fontSize: 18, color: '#3690CE' }}>↻</div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Resume</div>
-              <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.4 }}>Continue from where you left off</div>
+              <div style={{ fontWeight: 700, marginBottom: 2 }}>Resume</div>
+              <div style={{ fontSize: 12, color: '#6B7280' }}>Continue where you left off</div>
             </div>
           </button>
 
@@ -3610,52 +3493,35 @@ const Instructions: React.FC<InstructionsProps> = ({
             type="button"
             onClick={handleStartNewMatter}
             style={{
-              flex: '1 1 280px',
+              flex: '1 1 200px',
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
               gap: 12,
-              padding: '20px 24px',
-              borderRadius: 12,
+              padding: '16px 20px',
               border: '2px solid #E5E7EB',
+              borderRadius: 8,
               background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
               color: '#374151',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: 600,
-              textAlign: 'center',
               transition: 'all 0.2s ease',
-              minHeight: '120px'
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-1px)';
               e.currentTarget.style.borderColor = '#9CA3AF';
-              e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.12)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0)';
               e.currentTarget.style.borderColor = '#E5E7EB';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+              e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            <div style={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              fontSize: 20,
-              fontWeight: 'bold'
-            }}>
-              +
-            </div>
+            <div style={{ fontSize: 18, color: '#6B7280' }}>+</div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Start New</div>
-              <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.4 }}>Begin a fresh matter opening</div>
+              <div style={{ fontWeight: 700, marginBottom: 2 }}>Start New</div>
+              <div style={{ fontSize: 12, color: '#6B7280' }}>Begin a fresh matter opening</div>
             </div>
           </button>
         </div>
