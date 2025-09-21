@@ -1184,22 +1184,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 ...(process.env.NODE_ENV === 'development' ? [
                   { 
                     key:'ccl', 
-                    label: (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        CCL
-                        <span style={{
-                          fontSize: '8px',
-                          fontWeight: 700,
-                          backgroundColor: colours.orange,
-                          color: 'white',
-                          padding: '1px 4px',
-                          borderRadius: '3px',
-                          letterSpacing: '0.3px'
-                        }}>
-                          DEV
-                        </span>
-                      </span>
-                    ), 
+                    label: 'CCL', 
                     icon:<FaClipboardCheck />, 
                     colour: cclStatus === 'complete' ? colours.green : (nextActionStep === 'ccl' ? colours.blue : colours.greyText) 
                   }

@@ -77,6 +77,56 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
     );
   }, [selectedInstruction, overviewItems]);
 
+  // Derive normalized Area of Work with color coding for header display
+  const areaOfWorkInfo = useMemo(() => {
+    if (!selectedInstruction) return { label: '', color: '#22c55e' };
+
+    const normalize = (raw?: unknown): { label: string; color: string } => {
+      const val = typeof raw === 'string' ? raw.trim() : '';
+      if (!val) return { label: '', color: '#22c55e' };
+      const l = val.toLowerCase();
+      if (l.includes('commercial')) return { label: 'Commercial', color: colours.blue }; // Use consistent blue
+      if (l.includes('construction')) return { label: 'Construction', color: '#f59e0b' }; // Amber
+      if (l.includes('property')) return { label: 'Property', color: '#10b981' }; // Emerald
+      if (l.includes('employment')) return { label: 'Employment', color: '#8b5cf6' }; // Violet
+      return { label: val, color: '#22c55e' }; // fallback
+    };
+
+    const inst: any = selectedInstruction as any;
+    const fields = [
+      inst?.AreaOfWork,
+      inst?.Area_of_Work,
+      inst?.areaOfWork,
+      inst?.PracticeArea,
+      inst?.practiceArea,
+      inst?.Department,
+      inst?.WorkType
+    ];
+    
+    for (const field of fields) {
+      const result = normalize(field);
+      if (result.label) return result;
+    }
+
+    const deal: any = (selectedDeal as any) || (selectedOverviewItem as any)?.deal;
+    const dealFields = [
+      deal?.AreaOfWork,
+      deal?.Area_of_Work,
+      deal?.areaOfWork,
+      deal?.PracticeArea,
+      deal?.practiceArea,
+      deal?.Department,
+      deal?.WorkType
+    ];
+    
+    for (const field of dealFields) {
+      const result = normalize(field);
+      if (result.label) return result;
+    }
+
+    return { label: '', color: '#22c55e' };
+  }, [selectedInstruction, selectedDeal, selectedOverviewItem]);
+
   // Check if an operation is the next action
   const isNextAction = (operationKey: string): boolean => {
     if (!nextAction) return false;
@@ -319,10 +369,24 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
         <div className={collapsedStyle} onClick={() => setIsExpanded(true)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: selectedInstruction ? '#22c55e' : '#6b7280' }} />
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: selectedInstruction ? areaOfWorkInfo.color : '#6b7280' }} />
               <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
                 {selectedInstruction ? `${selectedInstruction.InstructionRef} Workbench` : 'Workbench'}
               </span>
+              {areaOfWorkInfo.label && (
+                <span style={{
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: areaOfWorkInfo.color,
+                  textTransform: 'uppercase',
+                  background: `${areaOfWorkInfo.color}15`,
+                  padding: '1px 4px',
+                  borderRadius: 2,
+                  border: `1px solid ${areaOfWorkInfo.color}30`
+                }}>
+                  {areaOfWorkInfo.label}
+                </span>
+              )}
               {nextAction && (
                 <span style={{ 
                   fontSize: 9, 
@@ -373,6 +437,21 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
             <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151', textTransform: 'uppercase' }}>
               {selectedInstruction ? `${selectedInstruction.InstructionRef} Workbench` : 'Workbench Panel'}
             </span>
+            {areaOfWorkInfo.label && (
+              <span style={{
+                fontSize: 9,
+                fontWeight: 600,
+                color: areaOfWorkInfo.color,
+                textTransform: 'uppercase',
+                background: `${areaOfWorkInfo.color}15`,
+                padding: '1px 4px',
+                borderRadius: 2,
+                border: `1px solid ${areaOfWorkInfo.color}30`,
+                marginLeft: 8
+              }}>
+                {areaOfWorkInfo.label}
+              </span>
+            )}
             <span style={{ fontSize: 9, color: isDarkMode ? colours.dark.subText : '#6b7280', transform: 'rotate(180deg)' }}>▲</span>
           </div>
 

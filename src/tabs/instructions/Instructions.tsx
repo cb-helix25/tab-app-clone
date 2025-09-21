@@ -110,6 +110,12 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [unifiedEnquiries, setUnifiedEnquiries] = useState<any[]>([]);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   
+  // Manual instruction selection for actions when no card is selected
+  const [showInstructionSelector, setShowInstructionSelector] = useState(false);
+  const [selectorAction, setSelectorAction] = useState<'verify' | 'risk' | 'matter' | 'ccl' | null>(null);
+  const [selectorProcessing, setSelectorProcessing] = useState<string | null>(null); // instruction ref being processed
+  const [selectorResult, setSelectorResult] = useState<any>(null); // verification result
+  
   // Client name cache for performance optimization
   // Enhanced caching for client name resolution
   const clientNameCache = useMemo(() => {
@@ -1524,6 +1530,58 @@ const Instructions: React.FC<InstructionsProps> = ({
     [selectedInstruction, overviewItems],
   );
 
+  // Derive a normalized Area of Work label and color for the selected instruction
+  const areaOfWorkInfo = useMemo(() => {
+    if (!selectedInstruction) return { label: '', color: colours.blue };
+
+    const normalize = (raw?: unknown): { label: string; color: string } => {
+      const val = typeof raw === 'string' ? raw.trim() : '';
+      if (!val) return { label: '', color: colours.blue };
+      const l = val.toLowerCase();
+      if (l.includes('commercial')) return { label: 'Commercial', color: colours.blue }; // Use consistent blue
+      if (l.includes('construction')) return { label: 'Construction', color: '#f59e0b' }; // Amber
+      if (l.includes('property')) return { label: 'Property', color: '#10b981' }; // Emerald
+      if (l.includes('employment')) return { label: 'Employment', color: '#8b5cf6' }; // Violet
+      return { label: val, color: colours.blue }; // fallback: show as-is with default color
+    };
+
+    // Try instruction-level first
+    const inst: any = selectedInstruction as any;
+    const fields = [
+      inst?.AreaOfWork,
+      inst?.Area_of_Work,
+      inst?.areaOfWork,
+      inst?.PracticeArea,
+      inst?.practiceArea,
+      inst?.Department,
+      inst?.WorkType
+    ];
+    
+    for (const field of fields) {
+      const result = normalize(field);
+      if (result.label) return result;
+    }
+
+    // Then deal-level via selectedDeal or overview item
+    const deal: any = (selectedDeal as any) || (selectedOverviewItem as any)?.deal;
+    const dealFields = [
+      deal?.AreaOfWork,
+      deal?.Area_of_Work,
+      deal?.areaOfWork,
+      deal?.PracticeArea,
+      deal?.practiceArea,
+      deal?.Department,
+      deal?.WorkType
+    ];
+    
+    for (const field of dealFields) {
+      const result = normalize(field);
+      if (result.label) return result;
+    }
+
+    return { label: '', color: colours.blue };
+  }, [selectedInstruction, selectedDeal, selectedOverviewItem]);
+
   const poidResult =
     selectedOverviewItem?.eid?.EIDOverallResult?.toLowerCase() ?? "";
   const eidStatus = selectedOverviewItem?.eid?.EIDStatus?.toLowerCase() ?? "";
@@ -1584,6 +1642,12 @@ const Instructions: React.FC<InstructionsProps> = ({
     return !!hasMatter;
   }, [selectedInstruction, effectiveInstructionData]);
   
+  // Check if CCL has been submitted for this instruction
+  const cclCompleted = useMemo(() => {
+    if (!selectedInstruction) return false;
+    return !!selectedInstruction.CCLSubmitted;
+  }, [selectedInstruction]);
+  
   // Open Matter button should be enabled when:
   // 1. Both ID is verified AND payment is complete (normal flow), OR
   // 2. There's a matter opening in progress (so user can continue)
@@ -1599,8 +1663,8 @@ const Instructions: React.FC<InstructionsProps> = ({
       (selectedInstruction as any).matters?.length > 0
     );
     
-    // If instruction has a matter, prioritize CCL button
-    if (hasAssociatedMatter) {
+    // If instruction has a matter but CCL not submitted, prioritize CCL button
+    if (hasAssociatedMatter && !cclCompleted) {
       return 'ccl';
     }
     
@@ -1965,11 +2029,12 @@ const Instructions: React.FC<InstructionsProps> = ({
       const riskStatus = riskResultRaw ? (['low','low risk','pass','approved'].includes(riskResultRaw)? 'complete':'flagged') : 'pending';
       const paymentCompleted = (inst?.PaymentResult||'').toLowerCase() === 'successful';
       const hasMatter = inst?.MatterId;
+      const cclSubmitted = inst?.CCLSubmitted;
       let nextAction: string = 'Complete';
       if (verifyIdStatus !== 'complete') nextAction = 'Verify ID';
       else if (riskStatus === 'pending') nextAction = 'Assess Risk';
       else if (!hasMatter && poidPassed && paymentCompleted) nextAction = 'Open Matter';
-      else if (hasMatter) nextAction = 'Draft CCL';
+      else if (hasMatter && !cclSubmitted) nextAction = 'Draft CCL';
       return { ...item, nextAction };
     });
   }, [overviewItems]);
@@ -2681,10 +2746,37 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
   };
 
+  const handleSelectorEIDCheck = async (instruction: any) => {
+    setSelectorProcessing(instruction.InstructionRef);
+    setSelectorResult(null);
+    
+    try {
+      // Call the existing EID check logic
+      await handleEIDCheck(instruction);
+      // The result will be handled by the existing modal system
+      // We'll show a success message in the selector
+      setSelectorResult({ 
+        success: true, 
+        message: 'Verification initiated successfully',
+        instructionRef: instruction.InstructionRef
+      });
+    } catch (error) {
+      setSelectorResult({ 
+        error: 'Verification failed. Please try again.',
+        instructionRef: instruction.InstructionRef
+      });
+    } finally {
+      setSelectorProcessing(null);
+    }
+  };
+
   const handleGlobalEIDCheck = () => {
-    const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
-    if (targetInstruction) {
-      handleEIDCheck(targetInstruction);
+    if (selectedInstruction) {
+      handleEIDCheck(selectedInstruction);
+    } else {
+      // Show instruction selector for manual selection
+      setSelectorAction('verify');
+      setShowInstructionSelector(true);
     }
   };
 
@@ -3015,8 +3107,8 @@ const Instructions: React.FC<InstructionsProps> = ({
           <>
             <style>{`
               @keyframes pulse {
-                0% { box-shadow: 0 0 0 0 rgba(54, 144, 206, 0.7); }
-                70% { box-shadow: 0 0 0 10px rgba(54, 144, 206, 0); }
+                0% { box-shadow: 0 0 0 0 rgba(54, 144, 206, 0.4); }
+                70% { box-shadow: 0 0 0 3px rgba(54, 144, 206, 0); }
                 100% { box-shadow: 0 0 0 0 rgba(54, 144, 206, 0); }
               }
               
@@ -3052,35 +3144,54 @@ const Instructions: React.FC<InstructionsProps> = ({
                     borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ 
-                      width: 3, 
-                      height: 3, 
-                      borderRadius: '50%', 
-                      background: colours.blue,
-                      animation: 'pulse 2s infinite'
-                    }} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ 
-                        fontSize: '11px', 
-                        fontWeight: 700, 
-                        color: isDarkMode ? colours.dark.text : '#1f2937',
-                        letterSpacing: '0.02em',
-                        fontFamily: 'monospace'
-                      }}>
-                        {selectedInstruction.InstructionRef}
-                      </span>
-                      <span style={{ 
-                        fontSize: '9px', 
-                        fontWeight: 500, 
-                        color: isDarkMode ? colours.dark.subText : '#6b7280',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        opacity: 0.8
-                      }}>
-                        Workbench
-                      </span>
+                      <div style={{ 
+                        width: 3, 
+                        height: 3, 
+                        borderRadius: '50%', 
+                        background: areaOfWorkInfo.color,
+                        animation: 'pulse 2s infinite'
+                      }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          fontWeight: 700, 
+                          color: isDarkMode ? colours.dark.text : '#1f2937',
+                          letterSpacing: '0.02em',
+                          fontFamily: 'monospace'
+                        }}>
+                          {selectedInstruction.InstructionRef}
+                        </span>
+                        <span style={{ 
+                          fontSize: '9px', 
+                          fontWeight: 500, 
+                          color: isDarkMode ? colours.dark.subText : '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          opacity: 0.8
+                        }}>
+                          Workbench
+                        </span>
+                      </div>
                     </div>
+                    
+                    {/* Area of Work - positioned far right */}
+                    {areaOfWorkInfo.label && (
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        color: areaOfWorkInfo.color,
+                        letterSpacing: '0.03em',
+                        textTransform: 'uppercase',
+                        padding: '2px 6px',
+                        borderRadius: '3px',
+                        background: `${areaOfWorkInfo.color}15`,
+                        border: `1px solid ${areaOfWorkInfo.color}30`
+                      }}>
+                        {areaOfWorkInfo.label}
+                      </span>
+                    )}
                   </div>
                   
                   <div style={{ 
@@ -3176,21 +3287,23 @@ const Instructions: React.FC<InstructionsProps> = ({
                       alignItems: 'center',
                       justifyContent: 'center',
                       minWidth: '120px',
+                      position: 'relative',
                     }}
                   >
                     <span style={{ 
-                      transition: 'all 0.3s ease',
-                      opacity: hoveredButton === 'verify' ? 0 : 1,
-                      transform: hoveredButton === 'verify' ? 'scale(0.8)' : 'scale(1)',
-                      position: hoveredButton === 'verify' ? 'absolute' : 'static'
+                      transition: 'opacity 160ms ease',
+                      opacity: hoveredButton === 'verify' ? 0 : 1
                     }}>
                       <FaIdCard size={20} />
                     </span>
                     <span style={{ 
-                      transition: 'all 0.3s ease',
+                      transition: 'opacity 160ms ease',
                       opacity: hoveredButton === 'verify' ? 1 : 0,
-                      transform: hoveredButton === 'verify' ? 'scale(1)' : 'scale(0.8)',
-                      position: hoveredButton === 'verify' ? 'static' : 'absolute'
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      whiteSpace: 'nowrap'
                     }}>
                       {verifyButtonLabel}
                     </span>
@@ -3225,21 +3338,23 @@ const Instructions: React.FC<InstructionsProps> = ({
                       alignItems: 'center',
                       justifyContent: 'center',
                       minWidth: '120px',
+                      position: 'relative',
                     }}
                   >
                     <span style={{ 
-                      transition: 'all 0.3s ease',
-                      opacity: hoveredButton === 'risk' ? 0 : 1,
-                      transform: hoveredButton === 'risk' ? 'scale(0.8)' : 'scale(1)',
-                      position: hoveredButton === 'risk' ? 'absolute' : 'static'
+                      transition: 'opacity 160ms ease',
+                      opacity: hoveredButton === 'risk' ? 0 : 1
                     }}>
                       <FaShieldAlt size={20} />
                     </span>
                     <span style={{ 
-                      transition: 'all 0.3s ease',
+                      transition: 'opacity 160ms ease',
                       opacity: hoveredButton === 'risk' ? 1 : 0,
-                      transform: hoveredButton === 'risk' ? 'scale(1)' : 'scale(0.8)',
-                      position: hoveredButton === 'risk' ? 'static' : 'absolute'
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      whiteSpace: 'nowrap'
                     }}>
                       Assess Risk
                     </span>
@@ -3248,8 +3363,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                   <button
                     onClick={handleGlobalOpenMatter}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      setHoveredButton('matter');
+                      if (!matterLinked) {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        setHoveredButton('matter');
+                      }
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'translateY(0)';
@@ -3258,10 +3375,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                     style={{
                       padding: '12px 20px',
                       borderRadius: '8px',
-                      border: `2px solid ${colours.blue}`,
-                      background: 'transparent',
-                      color: colours.blue,
-                      cursor: 'pointer',
+                      border: `2px solid ${matterLinked ? colours.green : colours.blue}`,
+                      background: matterLinked ? '#f0f9ff' : 'transparent',
+                      color: matterLinked ? colours.green : colours.blue,
+                      cursor: matterLinked ? 'default' : 'pointer',
                       fontSize: '14px',
                       fontWeight: '600',
                       animation: nextReadyAction === 'matter' ? 'pulse 2s infinite' : 'none',
@@ -3270,21 +3387,23 @@ const Instructions: React.FC<InstructionsProps> = ({
                       alignItems: 'center',
                       justifyContent: 'center',
                       minWidth: '120px',
+                      position: 'relative',
                     }}
                   >
                     <span style={{ 
-                      transition: 'all 0.3s ease',
-                      opacity: hoveredButton === 'matter' ? 0 : 1,
-                      transform: hoveredButton === 'matter' ? 'scale(0.8)' : 'scale(1)',
-                      position: hoveredButton === 'matter' ? 'absolute' : 'static'
+                      transition: 'opacity 160ms ease',
+                      opacity: hoveredButton === 'matter' ? 0 : 1
                     }}>
                       <FaFolder size={20} />
                     </span>
                     <span style={{ 
-                      transition: 'all 0.3s ease',
+                      transition: 'opacity 160ms ease',
                       opacity: hoveredButton === 'matter' ? 1 : 0,
-                      transform: hoveredButton === 'matter' ? 'scale(1)' : 'scale(0.8)',
-                      position: hoveredButton === 'matter' ? 'static' : 'absolute'
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      whiteSpace: 'nowrap'
                     }}>
                       Open Matter
                     </span>
@@ -3294,8 +3413,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                   <button
                     onClick={() => console.log('Document sync')}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      setHoveredButton('sync');
+                      if (selectedOverviewItem?.instruction?.MatterRef) {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        setHoveredButton('sync');
+                      }
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'translateY(0)';
@@ -3305,9 +3426,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                       padding: '12px 20px',
                       borderRadius: '8px',
                       border: `2px solid ${colours.green}`,
-                      background: 'transparent',
+                      background: '#f0f9ff',
                       color: colours.green,
-                      cursor: 'pointer',
+                      cursor: selectedOverviewItem?.instruction?.MatterRef ? 'pointer' : 'default',
                       fontSize: '14px',
                       fontWeight: '600',
                       transition: 'all 0.2s ease',
@@ -3316,22 +3437,24 @@ const Instructions: React.FC<InstructionsProps> = ({
                       alignItems: 'center',
                       justifyContent: 'center',
                       minWidth: '120px',
+                      position: 'relative',
                     }}
                     title={selectedOverviewItem?.instruction?.MatterRef ? 'Sync documents to matter' : 'Matter must be opened first'}
                   >
                     <span style={{ 
-                      transition: 'all 0.3s ease',
-                      opacity: hoveredButton === 'sync' ? 0 : 1,
-                      transform: hoveredButton === 'sync' ? 'scale(0.8)' : 'scale(1)',
-                      position: hoveredButton === 'sync' ? 'absolute' : 'static'
+                      transition: 'opacity 160ms ease',
+                      opacity: hoveredButton === 'sync' ? 0 : 1
                     }}>
                       <MdSync size={20} />
                     </span>
                     <span style={{ 
-                      transition: 'all 0.3s ease',
+                      transition: 'opacity 160ms ease',
                       opacity: hoveredButton === 'sync' ? 1 : 0,
-                      transform: hoveredButton === 'sync' ? 'scale(1)' : 'scale(0.8)',
-                      position: hoveredButton === 'sync' ? 'static' : 'absolute'
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      whiteSpace: 'nowrap'
                     }}>
                       Sync Docs
                     </span>
@@ -3340,8 +3463,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                   <button
                     onClick={() => setShowCclDraftPage(true)}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      setHoveredButton('ccl');
+                      if (!cclCompleted) {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        setHoveredButton('ccl');
+                      }
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'translateY(0)';
@@ -3350,10 +3475,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                     style={{
                       padding: '12px 20px',
                       borderRadius: '8px',
-                      border: `2px solid ${colours.blue}`,
-                      background: 'transparent',
-                      color: colours.blue,
-                      cursor: 'pointer',
+                      border: `2px solid ${cclCompleted ? colours.green : colours.blue}`,
+                      background: cclCompleted ? '#f0f9ff' : 'transparent',
+                      color: cclCompleted ? colours.green : colours.blue,
+                      cursor: cclCompleted ? 'default' : 'pointer',
                       fontSize: '14px',
                       fontWeight: '600',
                       animation: nextReadyAction === 'ccl' ? 'pulse 2s infinite' : 'none',
@@ -3362,21 +3487,23 @@ const Instructions: React.FC<InstructionsProps> = ({
                       alignItems: 'center',
                       justifyContent: 'center',
                       minWidth: '120px',
+                      position: 'relative',
                     }}
                   >
                     <span style={{ 
-                      transition: 'all 0.3s ease',
-                      opacity: hoveredButton === 'ccl' ? 0 : 1,
-                      transform: hoveredButton === 'ccl' ? 'scale(0.8)' : 'scale(1)',
-                      position: hoveredButton === 'ccl' ? 'absolute' : 'static'
+                      transition: 'opacity 160ms ease',
+                      opacity: hoveredButton === 'ccl' ? 0 : 1
                     }}>
                       <FaFileAlt size={20} />
                     </span>
                     <span style={{ 
-                      transition: 'all 0.3s ease',
+                      transition: 'opacity 160ms ease',
                       opacity: hoveredButton === 'ccl' ? 1 : 0,
-                      transform: hoveredButton === 'ccl' ? 'scale(1)' : 'scale(0.8)',
-                      position: hoveredButton === 'ccl' ? 'static' : 'absolute'
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      whiteSpace: 'nowrap'
                     }}>
                       Draft CCL
                     </span>
@@ -3548,6 +3675,244 @@ const Instructions: React.FC<InstructionsProps> = ({
           await fetchUnifiedEnquiries();
         }}
       />
+
+      {/* Instruction Selector Modal */}
+      {showInstructionSelector && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: isDarkMode ? colours.dark.cardBackground : 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{
+                margin: 0,
+                color: isDarkMode ? colours.dark.text : colours.light.text,
+                fontSize: '18px',
+                fontWeight: '600'
+              }}>
+                Select Instruction for {selectorAction === 'verify' ? 'ID Verification' : 
+                                      selectorAction === 'risk' ? 'Risk Assessment' :
+                                      selectorAction === 'matter' ? 'Matter Opening' : 'CCL Draft'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowInstructionSelector(false);
+                  setSelectorAction(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: isDarkMode ? colours.dark.text : colours.light.text,
+                  padding: '4px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <Text style={{
+                color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                fontSize: '14px'
+              }}>
+                Choose an instruction to perform this action on:
+              </Text>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              maxHeight: '400px',
+              overflowY: 'auto'
+            }}>
+              {filteredOverviewItems.map((item: any) => {
+                const instruction = item.instruction;
+                if (!instruction) return null;
+
+                return (
+                  <button
+                    key={instruction.InstructionRef}
+                    onClick={async () => {
+                      if (selectorAction === 'verify') {
+                        await handleSelectorEIDCheck(instruction);
+                      }
+                      // Add other actions here as needed
+                      // Don't close the modal - let user see the result
+                    }}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 16px',
+                      border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                      borderRadius: '8px',
+                      background: isDarkMode ? colours.dark.background : 'white',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'left'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = isDarkMode ? colours.dark.cardHover : '#f8fafc';
+                      e.currentTarget.style.borderColor = colours.blue;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = isDarkMode ? colours.dark.background : 'white';
+                      e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#e2e8f0';
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        color: isDarkMode ? colours.dark.text : colours.light.text,
+                        marginBottom: '4px',
+                        letterSpacing: '-0.01em'
+                      }}>
+                        {instruction.Forename} {instruction.Surname}
+                      </div>
+                      {instruction.CompanyName && (
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          marginBottom: '4px',
+                          opacity: 0.9
+                        }}>
+                          {instruction.CompanyName}
+                        </div>
+                      )}
+                      <div style={{
+                        fontSize: '13px',
+                        color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                        fontFamily: 'monospace',
+                        fontWeight: '500'
+                      }}>
+                        {instruction.InstructionRef}
+                      </div>
+                      {instruction.Email && (
+                        <div style={{
+                          fontSize: '12px',
+                          color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                          marginTop: '2px',
+                          opacity: 0.8
+                        }}>
+                          {instruction.Email}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{
+                      fontSize: '13px',
+                      color: colours.blue,
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      Select
+                      <span style={{ fontSize: '16px' }}>→</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Processing indicator */}
+            {selectorProcessing && (
+              <div style={{
+                marginTop: '16px',
+                padding: '12px',
+                borderRadius: '8px',
+                backgroundColor: isDarkMode ? colours.dark.cardBackground : '#f8fafc',
+                border: `1px solid ${colours.blue}`,
+                fontSize: '14px',
+                color: isDarkMode ? colours.dark.text : colours.light.text,
+                textAlign: 'center'
+              }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                  Processing...
+                </div>
+                <div>Please wait while we verify the ID</div>
+              </div>
+            )}
+
+            {/* Result display */}
+            {selectorResult && (
+              <div style={{
+                marginTop: '16px',
+                padding: '12px',
+                borderRadius: '8px',
+                backgroundColor: selectorResult.success ? '#e8f5e8' : '#f5e8e8',
+                border: `1px solid ${selectorResult.success ? '#4CAF50' : '#f44336'}`,
+                fontSize: '14px'
+              }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                  {selectorResult.success ? '✓ Success' : '✗ Error'}
+                </div>
+                <div>{selectorResult.message}</div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'flex-end', 
+              gap: '8px', 
+              marginTop: '16px' 
+            }}>
+              <button
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #ccc',
+                  backgroundColor: isDarkMode ? colours.dark.background : 'white',
+                  color: isDarkMode ? colours.dark.text : '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onClick={() => {
+                  setShowInstructionSelector(false);
+                  setSelectorAction(null);
+                  setSelectorProcessing(null);
+                  setSelectorResult(null);
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.cardHover : '#f5f5f5';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.background : 'white';
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
