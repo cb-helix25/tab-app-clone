@@ -1,236 +1,251 @@
-/* Animated blue bottom border highlight for quick actions */
-/* invisible change 2 */
+/* Quick Actions Card - Simple Static Display (No Hover Effects) */
 
-.quick-action-content {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  max-width: 100%;
-  min-width: 0;
-  overflow: visible;
-}
-
-.quick-action-label {
-  flex: 1 1 0%;
-  min-width: 0;
-  overflow: visible;
-  text-overflow: unset;
-  white-space: nowrap;
-  display: inline-block;
-}
-
-.quick-action-animated-border {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 0%;
-  height: 1px;
-  background: linear-gradient(90deg, #2196f3 0%, #1976d2 100%);
-  border-radius: 0;
-  opacity: 0;
-  pointer-events: none;
-  transition: width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.2s;
-  z-index: 2;
-}
-
-.quickActionCard:hover .quick-action-animated-border {
-  width: 100%;
-  opacity: 1;
-  transition: width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.2s;
-}
-
-.quickActionCard:active {
-  background-color: #eaf4fb !important;
-  box-shadow: none !important;
-}
-
-.quickActionCard:active .quick-action-animated-border {
-  width: 100%;
-  opacity: 1;
-  background: linear-gradient(90deg, #1976d2 0%, #2196f3 100%);
-}
-
-.quickActionCard.selected .quick-action-animated-border {
-  width: 100%;
-  opacity: 1;
-  background: linear-gradient(90deg, #1976d2 0%, #2196f3 100%);
-}
-
-.quickActionCard.selected {
-  background-color: #eaf4fb;
-  box-shadow: none;
-}
-
-/* Remove shadow on press/selected, use subtle background and border only */
-/* invisible change */
-/* Pulsing keyframes moved to animations.css */
-
-/* Base styling for QuickActionsCard */
 .quickActionCard {
-  background-color: var(--card-bg, #ffffff);
-  transition: background-color 0.2s, transform 0.1s, border-color 0.2s;
-  border: 2px solid transparent;
-  opacity: 0;
-  animation: dropIn 0.3s ease forwards;
-  animation-delay: calc(var(--card-index, 0) * 0.1s);
-  min-width: 0;
-  flex: 0 0 auto;
-  overflow: visible;
-}
-
-.quickActionCard .icon-wrapper {
   position: relative;
-  display: inline-flex;
-  width: 24px;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.quickActionCard .icon-outline,
-.quickActionCard .icon-filled {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  display: inline-flex;
-  transition: opacity 0.35s ease, transform 0.35s ease;
-}
-
-.quickActionCard .icon-filled {
-  opacity: 0;
-}
-
-.quickActionCard:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-    transform: scale(1.05);
-  }
-  
-  .quickActionCard:hover .icon-outline {
-    opacity: 0;
-  }
-  
-  .quickActionCard:hover .icon-filled {
-    opacity: 1;
-    color: var(--helix-cta, #D65541);
-    transform: translate(-50%, -50%) scale(1.15);
-  }
-  
-  .quickActionCard:active {
-    transform: scale(0.98);
-    border-radius: 0 !important;
-  }
-  
-  .quickActionCard:active .icon-filled,
-  .quickActionCard:active .ms-Text {
-    opacity: 1;
-    color: var(--helix-highlight) !important;
-  }
-  
-  
-  /* Remove default outline to match tab styling */
-  .quickActionCard:focus {
-    outline: none;
-  }
-  
-  .quickActionCard.selected {
-    color: var(--helix-highlight, #3690CE);
-    background-color: rgba(255, 255, 255, 0.1);
-    border: none;
-  }
-  
-  .quickActionCard.selected .icon-outline {
-    opacity: 0;
-  }
-  
-  .quickActionCard.selected .icon-filled {
-    opacity: 1;
-    color: var(--helix-cta, #D65541);
-  }
-  
-  .quickActionCard.vertical {
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    line-height: normal;
-    padding: 8px 12px;
-  }
-  
-  .quickActionCard.vertical .icon-wrapper {
-    margin-bottom: 4px;
-}
-
-.quickActionCard:active .icon-outline {
-  opacity: 0;
-}
-
-.quickActionCard:active .icon-filled {
-  opacity: 1;
-  color: var(--helix-cta, #D65541);
-}
-
-/* subtlePulse keyframes moved to animations.css */
-
-/* Simple hover expansion for compact quick actions */
-.quickActionCard {
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-              min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.2s ease;
+  height: 44px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease 0.6s, width 0.4s ease 0.6s, gap 0.4s ease 0.6s;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0 12px;
+  width: 44px;
+  min-width: 44px;
+  gap: 0;
   overflow: hidden;
-  will-change: width, padding, transform;
 }
 
-.quickActionCard .quick-action-label {
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: opacity;
-}
-
-/* On hover, expand to show full text */
 .quickActionCard:hover {
-  width: auto !important;
-  min-width: auto !important;
-  max-width: 160px;
-  padding-right: 12px !important;
-  transform: translateZ(0); /* Force GPU acceleration */
-  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
-              min-width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              padding 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.2s ease;
+  width: auto;
+  min-width: 120px;
+  gap: 8px;
+  justify-content: flex-start;
+  transition-delay: 0s;
+}
+
+/* Keep expanded when panel is active or when this specific card opened a panel */
+.quickActionCard.panel-active,
+.quickActionCard.selected {
+  width: auto;
+  min-width: 120px;
+  gap: 8px;
+  justify-content: flex-start;
+  transition-delay: 0s;
+}
+
+.quickActionCard::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background-color: #3690CE;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+  border-radius: 1px;
+}
+
+.quickActionCard:hover {
+  background-color: rgba(54, 144, 206, 0.05);
+  width: auto;
+  min-width: 120px;
+  gap: 8px;
+  transition-delay: 0s;
+}
+
+.quickActionCard.selected::after {
+  transform: scaleX(1);
+}
+
+/* Icon container - subtle styling */
+.quick-action-icon {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #eee;
+  opacity: 0.4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, opacity 0.3s ease;
+}
+
+/* Show outline icons by default, hide filled icons */
+.icon-outline {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 1;
+  color: inherit;
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+.icon-filled {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  color: inherit;
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+/* On hover/selected, show filled icons and hide outline icons */
+.quickActionCard:hover .icon-outline,
+.quickActionCard.selected .icon-outline {
+  opacity: 0;
+}
+
+.quickActionCard:hover .icon-filled,
+.quickActionCard.selected .icon-filled {
+  opacity: 1;
+}
+
+/* Label - hidden by default, revealed on hover */
+.quick-action-label {
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+  color: #eee;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease 0.4s, width 0.3s ease 0.4s;
 }
 
 .quickActionCard:hover .quick-action-label {
-  opacity: 1 !important;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1) 0.05s;
+  opacity: 1;
+  width: auto;
+  transition-delay: 0.15s;
 }
 
-/* Add slight delay on hover out to prevent jolting */
-.quickActionCard:not(:hover) {
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
-              min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
-              padding 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.05s;
+/* Show labels when panel is active or card is selected */
+.quickActionCard.panel-active .quick-action-label,
+.quickActionCard.selected .quick-action-label {
+  opacity: 1;
+  width: auto;
+  transition-delay: 0s;
 }
 
-.quickActionCard:not(:hover) .quick-action-label {
-  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+.quickActionCard:hover .quick-action-label,
+.quickActionCard.selected .quick-action-label {
+  color: #3690CE;
+  opacity: 1;
 }
 
-/* Override for immediate actions - always show text and don't expand on hover */
-.quickActionCard.always-show-text {
-  width: auto !important;
-  min-width: auto !important;
-  padding-right: 12px !important;
+.quickActionCard:hover .quick-action-icon,
+.quickActionCard.selected .quick-action-icon {
+  color: #3690CE;
+  opacity: 1;
 }
 
-.quickActionCard.always-show-text .quick-action-label {
-  opacity: 1 !important;
+/* Panel active states */
+.quickActionCard.panel-active .quick-action-label {
+  color: #3690CE;
 }
 
-.quickActionCard.always-show-text:hover {
-  width: auto !important;
-  min-width: auto !important;
-  max-width: none !important;
-  padding-right: 12px !important;
+.quickActionCard.panel-active .quick-action-icon {
+  color: #3690CE;
+  opacity: 1;
+}
+
+/* Focus states */
+.quickActionCard:focus-visible {
+  outline: 2px solid #3690CE;
+  outline-offset: 2px;
+}
+
+/* Disabled state */
+.quickActionCard:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.quickActionCard:disabled:hover {
+  background-color: transparent;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .quick-action-icon {
+    color: #333;
+    opacity: 0.4;
+  }
+  
+  .quick-action-label {
+    color: #333;
+  }
+  
+  .quickActionCard:hover .quick-action-label,
+  .quickActionCard.selected .quick-action-label {
+    color: #4DA6E0;
+  }
+  
+  .quickActionCard:hover .quick-action-icon,
+  .quickActionCard.selected .quick-action-icon {
+    color: #4DA6E0;
+    opacity: 1;
+  }
+
+  .quickActionCard::after {
+    background-color: #4DA6E0;
+  }
+}
+
+/* Vertical layout support */
+.quickActionCard.vertical {
+  flex-direction: column;
+  height: auto;
+  padding: 12px;
+  width: auto;
+  gap: 4px;
+  min-width: 80px;
+}
+
+.quickActionCard.vertical .quick-action-label {
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .quickActionCard {
+    min-width: 100px;
+    padding: 0 10px;
+  }
+  
+  .quick-action-label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 600px) {
+  .quickActionCard {
+    min-width: 90px;
+    padding: 0 8px;
+    height: 40px;
+    gap: 6px;
+  }
+  
+  .quick-action-icon {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .icon-filled {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .quick-action-label {
+    font-size: 12px;
+  }
 }

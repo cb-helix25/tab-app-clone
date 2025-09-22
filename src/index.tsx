@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./app/styles/index.css";
 import App from "./app/App";
@@ -8,23 +8,19 @@ import * as microsoftTeams from "@microsoft/teams-js";
 import { isInTeams } from "./app/functionality/isInTeams";
 import { Matter, UserData, Enquiry, TeamData, NormalizedMatter } from "./app/functionality/types";
 import { mergeMattersFromSources } from "./utils/matterNormalization";
-// Local sample data used when REACT_APP_USE_LOCAL_DATA is set
-import localUserData from "./localData/localUserData.json";
-import localEnquiries from "./localData/localEnquiries.json";
-import localMatters from "./localData/localMatters.json";
-import localTeamData from "./localData/team-sql-data.json";
-import { getLiveLocalEnquiries } from "./tabs/home/Home";
 
 import "./utils/callLogger";
-import Data from "./tabs/Data";
 import { getProxyBaseUrl } from "./utils/getProxyBaseUrl";
-
 import { initializeIcons } from "@fluentui/react";
+const Data = lazy(() => import("./tabs/Data"));
 
-// Initialize icons only once
-if (!(window as any).__iconsInitialized) {
-  initializeIcons();
-  (window as any).__iconsInitialized = true;
+// Initialize icons once, but defer to idle to speed first paint
+if (typeof window !== 'undefined' && !(window as any).__iconsInitialized) {
+  const init = () => {
+    initializeIcons();
+    (window as any).__iconsInitialized = true;
+  };
+  (window as any).requestIdleCallback ? (window as any).requestIdleCallback(init) : setTimeout(init, 0);
 }
 
 // Define the custom Fluent UI theme
@@ -425,7 +421,7 @@ async function fetchAllMatters(): Promise<Matter[]> {
     const getAllMattersCode = process.env.REACT_APP_GET_ALL_MATTERS_CODE;
     // Use Express server proxy when developing, same pattern as getEnquiries
     const getAllMattersUrl = isLocalDev 
-      ? `http://localhost:8080/getAllMatters${getAllMattersCode ? `?code=${getAllMattersCode}` : ''}` 
+      ? `http://localhost:8080/api/getAllMatters${getAllMattersCode ? `?code=${getAllMattersCode}` : ''}` 
       : `${proxyBaseUrl}/${process.env.REACT_APP_GET_ALL_MATTERS_PATH}?code=${getAllMattersCode}`;
     
     const response = await fetch(getAllMattersUrl, {
@@ -462,9 +458,9 @@ async function fetchMatters(fullName: string): Promise<Matter[]> {
   //  - LEGACY dataset (user) -> call legacy Azure Function via helix-keys proxy even in local dev
   //  - LEGACY dataset (all)  -> /api/getAllMatters (already legacy)
   // This ensures local dev still sees legacy data while allowing VNet toggle to work.
-  const legacyUrl = isLocalDev
-    ? `https://helix-keys-proxy.azurewebsites.net/api/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`
-    : `${proxyBaseUrl}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`;
+  // Route legacy per-user matters via server proxy to avoid exposing function keys
+  // Mounted under /api in the local Express server
+  const legacyUrl = '/api/getMatters';
 
   let legacyData: any[] = [];
 
@@ -485,6 +481,7 @@ async function fetchMatters(fullName: string): Promise<Matter[]> {
   let fetchedMatters = mapLegacyMatters(legacyData);
 
   if (fetchedMatters.length === 0) {
+    const { default: localMatters } = await import('./localData/localMatters.json');
     fetchedMatters = mapLegacyMatters(localMatters as unknown as any[]);
   }
 
@@ -564,8 +561,6 @@ async function fetchAllMatterSources(fullName: string): Promise<NormalizedMatter
 async function fetchTeamData(): Promise<TeamData[] | null> {
   console.log('🚀 fetchTeamData called...');
   const cacheKey = "teamData";
-  // Clear cache for testing
-  localStorage.removeItem(cacheKey);
   const cached = getCachedData<TeamData[]>(cacheKey);
   if (cached) {
     console.log('📦 Using cached team data:', cached.length, 'members');
@@ -757,6 +752,7 @@ const AppWithContext: React.FC = () => {
         } as microsoftTeams.Context);
         
         // Initialize local user data with selected areas
+        const { default: localUserData } = await import('./localData/localUserData.json');
         const initialUserData = [{
           ...localUserData[0],
           AOW: localSelectedAreas.join(', ')
@@ -783,6 +779,7 @@ const AppWithContext: React.FC = () => {
             
           } catch (enquiriesError) {
             console.warn('⚠️ Enquiries API failed, using fallback:', enquiriesError);
+            const { getLiveLocalEnquiries } = await import('./tabs/home/Home');
             enquiriesRes = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
           }
           
@@ -794,6 +791,7 @@ const AppWithContext: React.FC = () => {
           } catch (mattersError) {
             console.warn('⚠️ Matters API failed, using fallback:', mattersError);
             // Create fallback normalized matters from local data
+            const { default: localMatters } = await import('./localData/localMatters.json');
             const fallbackMatters = mergeMattersFromSources([], localMatters as unknown as Matter[], [], fullName);
             normalizedMatters = fallbackMatters;
           }
@@ -808,6 +806,8 @@ const AppWithContext: React.FC = () => {
           console.error('❌ Unexpected error in local dev:', err);
           
           // Fallback to local sample data with normalization
+          const { getLiveLocalEnquiries } = await import('./tabs/home/Home');
+          const { default: localMatters } = await import('./localData/localMatters.json');
           const fallbackEnquiries = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
           const fallbackMatters = mergeMattersFromSources([], localMatters as unknown as Matter[], [], fullName);
           
@@ -821,9 +821,11 @@ const AppWithContext: React.FC = () => {
           if (liveTeam && Array.isArray(liveTeam) && liveTeam.length > 0) {
             setTeamData(liveTeam);
           } else {
+            const { default: localTeamData } = await import('./localData/team-sql-data.json');
             setTeamData(localTeamData as TeamData[]);
           }
         } catch {
+          const { default: localTeamData } = await import('./localData/team-sql-data.json');
           setTeamData(localTeamData as TeamData[]);
         }
         setLoading(false);
@@ -861,7 +863,9 @@ if (window.location.pathname === '/data') {
   appRoot.render(
     <React.StrictMode>
       <ThemeProvider theme={customTheme}>
-        <Data />
+        <Suspense fallback={<div>Loading...</div>}>
+          <Data />
+        </Suspense>
       </ThemeProvider>
     </React.StrictMode>
   );

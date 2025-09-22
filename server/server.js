@@ -12,6 +12,10 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), override: fals
 require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
 const express = require('express');
 const morgan = require('morgan');
+const cors = require('cors');
+// Optional compression (safe no-op if not installed)
+let compression;
+try { compression = require('compression'); } catch { /* optional */ }
 const opLog = require('./utils/opLog');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
@@ -41,30 +45,48 @@ const teamLookupRouter = require('./routes/team-lookup');
 const teamDataRouter = require('./routes/teamData');
 const pitchTeamRouter = require('./routes/pitchTeam');
 const sendEmailRouter = require('./routes/sendEmail');
+const attendanceRouter = require('./routes/attendance');
+console.log('📋 Attendance router imported');
 // const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 // Initialize ops log (loads recent entries and ensures log dir)
 try { opLog.init(); } catch { /* best effort */ }
 
 const app = express();
+// Enable gzip compression if available
+if (compression) {
+    app.use(compression());
+}
 const PORT = process.env.PORT || 8080;
 
-// Enable CORS for local development
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-    } else {
-        next();
-    }
-});
+// Enable CORS: allow localhost in dev; restrict in production
+const isProd = process.env.NODE_ENV === 'production';
+const allowedOrigins = isProd
+    ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
-// Set up Key Vault client for retrieving secrets
-const credential = new DefaultAzureCredential();
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true); // same-origin/no-origin
+        if (allowedOrigins.length === 0 && isProd) return callback(new Error('CORS blocked: no origins configured'));
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error('CORS blocked'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Defer Key Vault client creation to route-time to avoid IMDS probe on boot
 const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
-const client = new SecretClient(vaultUrl, credential);
+let kvClient = null;
+function getKvClient() {
+    if (!kvClient) {
+        const credential = new DefaultAzureCredential();
+        kvClient = new SecretClient(vaultUrl, credential);
+    }
+    return kvClient;
+}
 
 // When running locally index.js lives in the `server` folder and the built
 // client files are one level up. However after deployment the build script
@@ -72,8 +94,10 @@ const client = new SecretClient(vaultUrl, credential);
 // Using `__dirname` directly works for both cases.
 const buildPath = path.join(__dirname);
 
-// basic request logging
-app.use(morgan('dev'));
+// basic request logging (disable verbose logs in production)
+if (process.env.NODE_ENV !== 'production') {
+    app.use(morgan('dev'));
+}
 app.use(express.json());
 app.use('/api/refresh', refreshRouter);
 app.use('/api/matter-requests', matterRequestsRouter);
@@ -106,15 +130,18 @@ app.use('/api/verify-id', verifyIdRouter);
 app.use('/api/team-lookup', teamLookupRouter);
 app.use('/api/team-data', teamDataRouter);
 app.use('/api/pitch-team', pitchTeamRouter);
-app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api', sendEmailRouter);
+
+// IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
+app.use('/api/attendance', attendanceRouter);
+console.log('📋 Attendance routes registered at /api/attendance');
 
 // Proxy routes to Azure Functions
 app.use('/', proxyToAzureFunctionsRouter);
 
 app.get('/api/keys/:name/preview', async (req, res) => {
     try {
-        const secret = await client.getSecret(req.params.name);
+        const secret = await getKvClient().getSecret(req.params.name);
         const length = parseInt(process.env.SECRET_PREVIEW_LEN || '4', 10);
         res.json({ preview: secret.value.slice(0, length) });
     } catch (err) {
@@ -127,7 +154,17 @@ app.use('/api/keys', keysRouter);
 app.use('/api/refresh', refreshRouter);
 
 // serve the built React files
-app.use(express.static(buildPath));
+// Serve static assets with better caching
+app.use(express.static(buildPath, {
+    etag: true,
+    setHeaders: (res, filePath) => {
+        if (/\.html?$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'no-cache');
+        } else if (/\.(?:js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|ico)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+    },
+}));
 
 // simple liveness probe
 app.get('/health', (_req, res) => {

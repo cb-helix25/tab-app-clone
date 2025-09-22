@@ -200,8 +200,9 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     newStatus: string,
     reason: string | null
   ): Promise<void> => {
-  const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_CODE}`;
-    const payload = { id: leaveId, newStatus, reason: reason || '' };
+  // Use new integrated server route instead of Azure Function
+  const url = `${getProxyBaseUrl()}/api/attendance/updateAnnualLeave`;
+    const payload = { id: leaveId, newStatus, rejection_notes: reason || '' };
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

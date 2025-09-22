@@ -1,109 +1,229 @@
 // src/app/functionality/BespokePanel.tsx
-// invisible change 2
+// Clean, smooth panel implementation
 
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { IconButton, Text } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react';
-import '../../app/styles/bespokePanel.css'; // Ensure the path is correct
+import { colours } from '../styles/colours';
 
 interface BespokePanelProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
+  description?: string;
   children: ReactNode;
-  width?: string; // Optional: for dynamic width
-  offsetTop?: number; // Optional: offset from top to avoid overlapping nav
+  width?: string;
+  offsetTop?: number;
+  isDarkMode?: boolean;
+  variant?: 'side' | 'modal';
+  icon?: React.ComponentType<any>;
 }
 
-const getOverlayStyle = (offsetTop: number) =>
+// Simple, clean overlay (avoid 100vw/100vh to prevent scrollbar width shifts)
+const getOverlayStyle = (offsetTop: number, isClosing: boolean, variant: 'side' | 'modal') =>
   mergeStyles({
     position: 'fixed',
-    top: offsetTop,
+    top: variant === 'side' ? offsetTop : 0,
     left: 0,
-    width: '100vw',
-    height: `calc(100vh - ${offsetTop}px)`,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.4)',
     display: 'flex',
-    justifyContent: 'flex-end', // Align panel to the right
-    zIndex: 1000,
-    transition: 'opacity 0.3s ease',
+    justifyContent: variant === 'side' ? 'flex-end' : 'center',
+    alignItems: variant === 'side' ? 'stretch' : 'center',
+    padding: variant === 'modal' ? '20px' : 0,
+    zIndex: 2000,
+    opacity: isClosing ? 0 : 1,
+    transition: 'opacity 0.2s ease',
+    margin: 0,
+    marginTop: '0 !important',
+    overflowY: 'auto',
   });
 
-const getPanelStyle = (width: string, closing: boolean) =>
+// Clean panel styling
+const getPanelStyle = (width: string, isClosing: boolean, isDarkMode: boolean, variant: 'side' | 'modal') =>
   mergeStyles({
-    backgroundColor: '#fff',
-    width: width || '1600px', // Default width doubled
-    maxWidth: '100%', // Responsive
-    height: '100%',
-    boxShadow: '-2px 0 8px rgba(0,0,0,0.3)',
+    background: isDarkMode ? colours.dark.background : colours.light.background,
+  width: variant === 'side' ? (width || '480px') : (width || 'min(95vw, 1400px)'),
+    maxWidth: variant === 'side' ? '90vw' : '95vw',
+    height: variant === 'side' ? '100%' : 'auto',
+    maxHeight: variant === 'side' ? 'none' : 'calc(100vh - 40px)',
+    boxShadow: isDarkMode
+      ? (variant === 'side' ? '-4px 0 16px rgba(0, 0, 0, 0.3)' : '0 10px 30px rgba(0,0,0,0.35)')
+      : (variant === 'side' ? '-4px 0 16px rgba(0, 0, 0, 0.15)' : '0 10px 30px rgba(0,0,0,0.15)'),
+    borderRadius: variant === 'side' ? 0 : 12,
     display: 'flex',
     flexDirection: 'column',
-    animation: closing ? 'slideOut 0.3s forwards' : 'slideIn 0.3s forwards',
-    position: 'relative',
+    transform: variant === 'side'
+      ? (isClosing ? 'translateX(100%)' : 'translateX(0)')
+      : (isClosing ? 'scale(0.98) translateY(-6px)' : 'scale(1) translateY(0)'),
+    transition: variant === 'side' ? 'transform 0.25s ease-out' : 'transform 0.18s ease-out',
+    overflow: 'hidden',
+    margin: variant === 'modal' ? 'auto' : undefined,
   });
 
-const headerStyle = mergeStyles({
-  padding: '16px 24px',
-  borderBottom: '1px solid #e1e1e1',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-});
+// Simple header
+const getHeaderStyle = (isDarkMode: boolean) =>
+  mergeStyles({
+    padding: '16px 20px',
+    background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+    borderBottom: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexShrink: 0,
+  });
 
-const contentStyle = mergeStyles({
-  padding: '20px',
-  overflowY: 'auto',
-  flexGrow: 1,
-});
+// Clean content area
+const getContentStyle = () =>
+  mergeStyles({
+    padding: '16px',
+    overflowY: 'auto',
+    flexGrow: 1,
+  });
 
-const BespokePanel: React.FC<BespokePanelProps> = ({ isOpen, onClose, title, children, width, offsetTop = 0 }) => {
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [closing, setClosing] = useState<boolean>(false);
+const BespokePanel: React.FC<BespokePanelProps> = ({ 
+  isOpen, 
+  onClose, 
+  title, 
+  description,
+  children, 
+  width, 
+  offsetTop = 0,
+  isDarkMode = false,
+  variant = 'side',
+  icon: IconComponent
+}) => {
+  const [isClosing, setIsClosing] = useState<boolean>(false);
+  const [isVisible, setIsVisible] = useState<boolean>(false);
 
   useEffect(() => {
-    if (isOpen && panelRef.current) {
-      panelRef.current.focus();
+    if (isOpen) {
+      // Simple scroll prevention without layout shift
+      document.body.style.overflow = 'hidden';
+      // Stabilize layout when scrollbar disappears
+      const htmlEl = document.documentElement;
+      const prevGutter = htmlEl.style.scrollbarGutter;
+      htmlEl.style.scrollbarGutter = 'stable';
+      setIsVisible(true);
+    } else if (isVisible && !isOpen) {
+      handleClose();
     }
-  }, [isOpen]);
+  }, [isOpen, isVisible]);
 
   const handleClose = () => {
-    setClosing(true);
-    // Wait for the animation to finish before calling onClose
+    if (isClosing) return;
+    
+    setIsClosing(true);
     setTimeout(() => {
-      setClosing(false);
+      // Simply restore scroll
+      document.body.style.overflow = '';
+      const htmlEl = document.documentElement;
+      htmlEl.style.scrollbarGutter = '';
+      
+      setIsClosing(false);
+      setIsVisible(false);
       onClose();
-    }, 300); // Duration should match the CSS animation duration
+    }, 250);
   };
 
-  if (!isOpen && !closing) return null;
+  // Handle escape key
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isVisible && !isClosing) {
+        handleClose();
+      }
+    };
+    
+    if (isVisible) {
+      document.addEventListener('keydown', handleEsc);
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [isVisible, isClosing]);
+
+  if (!isVisible) return null;
 
   return (
-    <div className={getOverlayStyle(offsetTop)} onClick={handleClose} aria-modal="true" role="dialog">
+    <div 
+      className={getOverlayStyle(offsetTop, isClosing, variant)} 
+      onClick={handleClose}
+    >
       <div
-        className={getPanelStyle(width || '1600px', closing)}
-        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the panel
-        ref={panelRef}
-        tabIndex={-1} // Make div focusable
+        className={getPanelStyle(width || '480px', isClosing, isDarkMode, variant)}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className={headerStyle}>
-          <Text variant="large" styles={{ root: { fontWeight: 700 } }}>
-            {title}
-          </Text>
+        <div className={getHeaderStyle(isDarkMode)}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            {IconComponent && typeof IconComponent === 'function' && (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                width: 20, 
+                height: 20,
+                marginTop: 2,
+              }}>
+                {React.createElement(IconComponent, {
+                  style: {
+                    fontSize: 20,
+                    color: isDarkMode ? colours.dark.text : colours.light.text,
+                  }
+                })}
+              </div>
+            )}
+            <div style={{ flex: 1 }}>
+              <Text 
+                variant="large" 
+                styles={{ 
+                  root: { 
+                    fontWeight: 600,
+                    color: isDarkMode ? colours.dark.text : colours.light.text,
+                    marginBottom: description ? '4px' : '0',
+                  } 
+                }}
+              >
+                {title}
+              </Text>
+              {description && (
+                <Text 
+                  variant="medium" 
+                  styles={{ 
+                    root: { 
+                      fontWeight: 400,
+                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                      fontSize: '12px',
+                      lineHeight: '1.4',
+                      display: 'block',
+                    } 
+                  }}
+                >
+                  {description}
+                </Text>
+              )}
+            </div>
+          </div>
           <IconButton
             iconProps={{ iconName: 'Cancel' }}
             ariaLabel="Close Panel"
             onClick={handleClose}
             styles={{
               root: {
-                color: '#666',
-              },
-              icon: {
-                fontSize: 20,
+                color: isDarkMode ? colours.dark.text : colours.light.text,
+                ':hover': {
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.1)' 
+                    : 'rgba(0, 0, 0, 0.05)',
+                },
               },
             }}
           />
         </div>
-        <div className={contentStyle}>{children}</div>
+        <div className={getContentStyle()}>
+          {children}
+        </div>
       </div>
     </div>
   );

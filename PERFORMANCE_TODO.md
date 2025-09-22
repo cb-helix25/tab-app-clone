@@ -5,16 +5,16 @@ Last updated: 2025-09-21
 Focus: Faster first byte and first render with minimal, safe edits shipped between other work.
 
 ## Server (startup/TTFB)
-- [ ] Defer Key Vault client creation to route-time (avoid IMDS on boot)
+- [x] Defer Key Vault client creation to route-time (avoid IMDS on boot)
   - Files: `server/server.js`, `server/index.js`
   - Action: Move `new DefaultAzureCredential()` and `new SecretClient(...)` inside `/api/keys*` handlers only.
-- [ ] Add compression and strong static cache headers
+- [x] Add compression and strong static cache headers
   - Files: `server/server.js`, `server/index.js`
   - Action: Add `compression()`; for `express.static(...)` set `immutable` long-cache for hashed JS/CSS and `no-cache` for HTML; keep ETag.
-- [ ] Reduce boot logging overhead in production
+- [x] Reduce boot logging overhead in production
   - Files: `server/server.js`, `server/index.js`
   - Action: Gate `morgan('dev')` and opLog middleware behind `NODE_ENV !== 'production'`.
-- [ ] Remove duplicate route registration
+- [x] Remove duplicate route registration
   - Files: `server/server.js`
   - Action: Deduplicate `app.use('/api/pitch-team', ...)`.
 - [ ] Lazy-require heavy/rare routers
@@ -22,13 +22,13 @@ Focus: Faster first byte and first render with minimal, safe edits shipped betwe
   - Action: `app.use('/api/xxx', (req,res,next)=> require('./routes/xxx')(req,res,next))` for low-traffic routes.
 
 ## Frontend (critical path)
-- [ ] Keep Home/Data out of initial bundle
+- [x] Keep Home/Data out of initial bundle
   - File: `src/index.tsx`
   - Action: Remove static imports of `Data` and `getLiveLocalEnquiries`; use dynamic import only when route/fallback executes.
-- [ ] Guard local JSON with dynamic import (prod shouldn’t bundle samples)
+- [x] Guard local JSON with dynamic import (prod shouldn’t bundle samples)
   - Files: `src/index.tsx`
   - Action: Load `localUserData.json`, `localEnquiries.json`, `localMatters.json`, `team-sql-data.json` via `import()` only when `REACT_APP_USE_LOCAL_DATA === 'true'`.
-- [ ] Defer Fluent UI icon initialization
+- [x] Defer Fluent UI icon initialization
   - File: `src/index.tsx`
   - Action: Call `initializeIcons()` in `requestIdleCallback` or first `useEffect`.
 - [ ] Fetch minimal data first, defer the rest
@@ -39,6 +39,9 @@ Focus: Faster first byte and first render with minimal, safe edits shipped betwe
   - Action: Choose NEW vs LEGACY once; only hit the other on error (avoid dual fetch by default).
 
 ## Caching/Network
+- [x] Respect client cache for team data
+  - File: `src/index.tsx`
+  - Action: Removed unconditional localStorage clear in `fetchTeamData` so TTL is honored.
 - [ ] Extend localStorage cache with versioned keys for team/matters
   - File: `src/index.tsx`
   - Action: Include a `vN-` prefix in keys; cache team data and normalized matters per user/date range.
@@ -61,3 +64,18 @@ Focus: Faster first byte and first render with minimal, safe edits shipped betwe
 
 ---
 Suggested order (small wins first): dedupe route, disable prod logging, add compression/static headers, defer Key Vault, remove static frontend imports, guard local JSON, single-source enquiries.
+
+---
+
+## Remove function keys from client (security + perf)
+
+Goal: eliminate all `REACT_APP_*_CODE` usage in the frontend and route Function calls via server-only endpoints. Avoids exposing secrets and centralizes retries, headers, and caching.
+
+Migration steps:
+1) Inventory frontend usages of `REACT_APP_*_CODE` and direct `.../api/<fn>?code=...` URLs.
+2) For each, create/confirm an Express route under `/api/...` that performs the call server-side (using env or Key Vault for the key).
+3) Update the frontend to call only the server route (no `code` in the browser). Remove `process.env.REACT_APP_*_CODE` references.
+4) Add minimal server-side caching or ETag passthrough where safe.
+5) Remove keys from `.env*` client files and CI build vars. Rotate keys if previously exposed.
+
+Status: In progress — CORS tightened; local All Matters path adjusted to `/api/getAllMatters`. Next: replace remaining client references (see README section).

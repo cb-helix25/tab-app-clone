@@ -126,7 +126,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
       window.removeEventListener('resize', onResize);
       if (ro) ro.disconnect();
     };
-  }, [tabs.length, selectedKey, iconOnly]);
+  }, [tabs.length, selectedKey]); // REMOVED iconOnly from dependencies to prevent infinite loop
 
   // Keep selection consistent when Home is active
   const pivotSelectedKey = selectedKey;
@@ -188,11 +188,21 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         role="button"
         tabIndex={0}
         aria-label="Home"
-        style={{ color: '#ffffff' }}
+        style={{ color: '#ffffff', marginRight: '16px' }}
       >
         <AiOutlineHome className="icon-outline" size={20} />
         <AiFillHome className="icon-filled" size={20} />
       </div>
+      {/* Vertical separator */}
+      <div
+        style={{
+          width: '1px',
+          height: '24px',
+          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+          marginRight: '12px',
+          flexShrink: 0,
+        }}
+      />
       <div ref={pivotWrapRef} style={{ flexGrow: 1, minWidth: 0 }}>
         <Pivot
           style={{ width: '100%' }}

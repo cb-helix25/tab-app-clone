@@ -14,6 +14,9 @@ require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+// Optional compression (safe if not installed)
+let compression;
+try { compression = require('compression'); } catch { /* optional */ }
 const { init: initOpLog, append: opAppend, sessionId: opSessionId } = require('./utils/opLog');
 const keysRouter = require('./routes/keys');
 const refreshRouter = require('./routes/refresh');
@@ -44,8 +47,14 @@ const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 const fileMapRouter = require('./routes/fileMap');
 const opsRouter = require('./routes/ops');
 const sendEmailRouter = require('./routes/sendEmail');
+const attendanceRouter = require('./routes/attendance');
+console.log('📋 Attendance router imported');
 
 const app = express();
+// Enable gzip compression if available
+if (compression) {
+    app.use(compression());
+}
 const PORT = process.env.PORT || 8080;
 
 // Initialize persistent operations log and add request logging middleware
@@ -60,19 +69,31 @@ app.use((req, res, next) => {
     next();
 });
 
-// Enable CORS for all routes to allow frontend on port 3000 to access API on port 8080
+// Enable CORS: allow localhost in dev; restrict in production
+const isProd = process.env.NODE_ENV === 'production';
+const allowedOrigins = isProd
+    ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true); // allow same-origin/no-origin (curl, server-side)
+        if (allowedOrigins.length === 0 && isProd) return callback(new Error('CORS blocked: no origins configured'));
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error('CORS blocked'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(morgan('dev'));
+// Reduce logging noise in production
+if (process.env.NODE_ENV !== 'production') {
+    app.use(morgan('dev'));
+}
 app.use(express.json());
 
 app.use('/api/keys', keysRouter);
-app.use('/api/refresh', refreshRouter);
 app.use('/api/matter-requests', matterRequestsRouter);
 app.use('/api/opponents', opponentsRouter);
 app.use('/api/risk-assessments', riskAssessmentsRouter);
@@ -106,6 +127,11 @@ app.use('/api/team-lookup', teamLookupRouter);
 app.use('/api/team-data', teamDataRouter);
 app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api/file-map', fileMapRouter);
+
+// IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
+app.use('/api/attendance', attendanceRouter);
+console.log('📋 Attendance routes registered at /api/attendance');
+
 app.use('/ccls', express.static(CCL_DIR));
 
 // Temporary debug helper: allow GET /api/update-deal?dealId=...&ServiceDescription=...&Amount=...
@@ -164,7 +190,16 @@ const buildPath = path.join(__dirname, 'static');
 // Only serve static files if the directory exists
 const fs = require('fs');
 if (fs.existsSync(buildPath)) {
-    app.use(express.static(buildPath));
+    app.use(express.static(buildPath, {
+        etag: true,
+        setHeaders: (res, filePath) => {
+            if (/\.html?$/i.test(filePath)) {
+                res.setHeader('Cache-Control', 'no-cache');
+            } else if (/\.(?:js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|ico)$/i.test(filePath)) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            }
+        },
+    }));
     
     // Catch-all route for SPA - only for non-API routes
     app.get('*', (req, res) => {

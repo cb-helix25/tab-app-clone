@@ -134,7 +134,7 @@ async function proxyToAzureFunction(req, res, functionName, port = 7072, method 
 
 // API Functions (port 7072) - These are the TypeScript functions
 router.get('/getSnippetEdits', (req, res) => proxyToAzureFunction(req, res, 'getSnippetEdits', 7072, 'GET'));
-router.post('/getAttendance', (req, res) => proxyToAzureFunction(req, res, 'getAttendance', 7072, 'POST'));
+// router.post('/getAttendance', (req, res) => proxyToAzureFunction(req, res, 'getAttendance', 7072, 'POST')); // DISABLED - using server route instead
 router.post('/getWIPClio', (req, res) => proxyToAzureFunction(req, res, 'getWIPClio', 7072, 'POST'));
 router.post('/getRecovered', (req, res) => proxyToAzureFunction(req, res, 'getRecovered', 7072, 'POST'));
 router.get('/getPOID6Years', (req, res) => proxyToAzureFunction(req, res, 'getPOID6years', 7072, 'GET'));

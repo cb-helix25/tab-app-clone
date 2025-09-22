@@ -137,6 +137,16 @@ This application uses a unified API architecture to efficiently serve instructio
 - Production data: `REACT_APP_USE_LOCAL_DATA=false` (default)
 - Local test data: `REACT_APP_USE_LOCAL_DATA=true`
 - VNet function authentication via `INSTRUCTIONS_FUNC_CODE` environment variable
+
+### Security: Do NOT expose Function keys in frontend
+- Frontend must not reference `REACT_APP_*_CODE` or call Function URLs with `?code=...`.
+- Always call server routes under `/api/...`; the Express server uses Key Vault or env to call Functions.
+- Configure CORS for production via `ALLOWED_ORIGINS` (comma-separated) so only trusted origins are allowed.
+
+Migration plan (summary):
+1) Replace any frontend `fetch` that includes `?code=` with an equivalent `/api/...` route.
+2) If a route doesn’t exist, add a proxy in `server/routes` that reads the key from Key Vault (or env) and forwards the request.
+3) Remove `REACT_APP_*_CODE` from client env and rotate exposed keys.
 ## Deployment
 
 When deploying to Azure Web Apps on Windows, build the project first so that the root directory contains `index.js` and the compiled React files. The provided [build-and-deploy.ps1](build-and-deploy.ps1) script automates this by running the build, copying the server files and their dependencies along with `web.config`, and then zipping the result for deployment. Deploying the repository directly without building will result in a 500 error because IIS cannot locate `index.js` or the required Node modules.

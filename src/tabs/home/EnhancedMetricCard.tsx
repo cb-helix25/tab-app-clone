@@ -9,6 +9,7 @@ interface EnhancedMetricCardProps {
   title: string;
   value: number;
   secondaryValue?: number; // For showing money alongside time
+  secondaryLabel?: string; // Optional label for secondary value on non-time cards
   previousValue?: number;
   prefix?: string;
   suffix?: string;
@@ -57,7 +58,7 @@ const cardClass = (isDark: boolean, variant: string, animationDelay: number, acc
   backgroundColor: isDark ? colours.dark.cardBackground : colours.light.cardBackground,
   border: `1px solid ${isDark ? colours.dark.border : colours.light.border}`,
   borderRadius: variant === 'compact' ? '6px' : '8px',
-  padding: variant === 'compact' ? '12px' : variant === 'featured' ? '20px' : '16px',
+  padding: variant === 'compact' ? '6px' : variant === 'featured' ? '8px' : '7px',
   position: 'relative',
   cursor: 'pointer',
   transition: 'all 0.2s ease',
@@ -65,8 +66,8 @@ const cardClass = (isDark: boolean, variant: string, animationDelay: number, acc
   overflow: 'hidden',
   display: 'flex',
   flexDirection: 'column',
-  gap: variant === 'compact' ? '6px' : '10px',
-  minHeight: variant === 'compact' ? '100px' : variant === 'featured' ? '140px' : '120px',
+  gap: variant === 'compact' ? '2px' : '3px',
+  minHeight: variant === 'compact' ? '65px' : variant === 'featured' ? '75px' : '70px',
   boxShadow: isDark
     ? '0 2px 8px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.08)'
     : '0 2px 8px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.01)',
@@ -96,16 +97,16 @@ const headerClass = mergeStyles({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  marginBottom: '4px',
+  marginBottom: '2px',
 });
 
 const titleClass = (isDark: boolean, variant: string) => mergeStyles({
-  fontSize: variant === 'compact' ? '13px' : variant === 'featured' ? '16px' : '14px',
+  fontSize: variant === 'compact' ? '11px' : variant === 'featured' ? '13px' : '12px',
   fontWeight: '600',
   color: isDark ? colours.dark.text : colours.light.text,
   textTransform: 'uppercase',
-  letterSpacing: '0.5px',
-  lineHeight: '1.2',
+  letterSpacing: '0.3px',
+  lineHeight: '1.1',
 });
 
 const valueContainerClass = mergeStyles({
@@ -116,14 +117,14 @@ const valueContainerClass = mergeStyles({
 });
 
 const valueClass = (isDark: boolean, variant: string) => mergeStyles({
-  fontSize: variant === 'compact' ? '18px' : variant === 'featured' ? '24px' : '20px',
+  fontSize: variant === 'compact' ? '16px' : variant === 'featured' ? '20px' : '18px',
   fontWeight: '700',
   color: isDark ? colours.dark.text : colours.light.text,
-  lineHeight: '1.1',
+  lineHeight: '1.0',
 });
 
 const secondaryValueClass = (isDark: boolean) => mergeStyles({
-  fontSize: '14px',
+  fontSize: '12px',
   fontWeight: '600',
   color: isDark ? colours.dark.text : colours.light.text,
   opacity: 0.8,
@@ -177,6 +178,7 @@ const EnhancedMetricCard: React.FC<EnhancedMetricCardProps> = ({
   title,
   value,
   secondaryValue,
+  secondaryLabel,
   previousValue,
   prefix = '',
   suffix = '',
@@ -260,24 +262,47 @@ const EnhancedMetricCard: React.FC<EnhancedMetricCardProps> = ({
               )}
             </div>
           ) : (
-            <span className={valueClass(isDarkMode, variant)}>
-              {isVisible ? (
-                <CountUp
-                  start={0}
-                  end={value}
-                  duration={1.5}
-                  delay={animationDelay}
-                  prefix={prefix}
-                  suffix={suffix}
-                  preserveValue
-                  useEasing
-                  decimals={0}
-                  easingFn={(t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b}
-                />
-              ) : (
-                `${prefix}0${suffix}`
+            <>
+              <span className={valueClass(isDarkMode, variant)}>
+                {isVisible ? (
+                  <CountUp
+                    start={0}
+                    end={value}
+                    duration={1.5}
+                    delay={animationDelay}
+                    prefix={prefix}
+                    suffix={suffix}
+                    preserveValue
+                    useEasing
+                    decimals={0}
+                    easingFn={(t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b}
+                  />
+                ) : (
+                  `${prefix}0${suffix}`
+                )}
+              </span>
+              {secondaryValue !== undefined && (
+                <div className={secondaryValueClass(isDarkMode)}>
+                  {secondaryLabel ? `${secondaryLabel}: ` : ''}
+                  {isVisible ? (
+                    <CountUp
+                      start={0}
+                      end={secondaryValue}
+                      duration={1.2}
+                      delay={animationDelay + 0.1}
+                      prefix={secondaryPrefix}
+                      suffix={secondarySuffix}
+                      preserveValue
+                      useEasing
+                      decimals={0}
+                      easingFn={(t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b}
+                    />
+                  ) : (
+                    `${secondaryPrefix}${0}${secondarySuffix}`
+                  )}
+                </div>
               )}
-            </span>
+            </>
           )}
 
           {previousValue !== undefined && changePercent !== 0 && (

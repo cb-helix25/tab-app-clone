@@ -296,9 +296,9 @@ function AnnualLeaveForm({
         hearing_details: hearingConfirmation === 'no' ? hearingDetails : '',
       };
   console.log('Annual Leave Form Payload:', payload);
-  // use helper so production builds don't point at localhost accidentally
+  // Use new integrated server route instead of Azure Function
   const base = getProxyBaseUrl();
-  const url = `${base}/${process.env.REACT_APP_INSERT_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_INSERT_ANNUAL_LEAVE_CODE}`;
+  const url = `${base}/api/attendance/annual-leave`;
   const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

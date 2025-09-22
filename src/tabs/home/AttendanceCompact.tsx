@@ -279,35 +279,55 @@ const AttendanceCompact = forwardRef<
 
             try {
                 const response = await fetch(
-                    `${getProxyBaseUrl()}/${process.env.REACT_APP_INSERT_ATTENDANCE_PATH}?code=${process.env.REACT_APP_INSERT_ATTENDANCE_CODE}`,
+                    `/api/attendance/updateAttendance`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload),
+                        body: JSON.stringify({ initials: userInitials, weekStart, attendanceDays }),
                     }
                 );
                 if (!response.ok) throw new Error(`Failed to save attendance: ${response.status}`);
-                const updatedRecords = await response.json();
-                if (onAttendanceUpdated) {
-                    const newRecords = updatedRecords.map((result: any) => ({
-                        Attendance_ID: result.entryId,
-                        Entry_ID: result.entryId,
-                        First_Name: firstName,
-                        Initials: userInitials,
-                        Level: teamData.find((t) => t.Initials === userInitials)?.Level || '',
-                        Week_Start: result.weekStart,
-                        Week_End: new Date(new Date(result.weekStart).setDate(new Date(result.weekStart).getDate() + 6))
+                const json = await response.json();
+                if (onAttendanceUpdated && json && json.success && json.record) {
+                    const rec = json.record;
+                    const newRecord = {
+                        Attendance_ID: rec.Attendance_ID ?? 0,
+                        Entry_ID: rec.Entry_ID ?? 0,
+                        First_Name: rec.First_Name || firstName,
+                        Initials: rec.Initials || userInitials,
+                        Level: teamData.find((t) => t.Initials === (rec.Initials || userInitials))?.Level || '',
+                        Week_Start: rec.Week_Start || weekStart,
+                        Week_End: rec.Week_End || new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6))
                             .toISOString()
                             .split('T')[0],
-                        ISO_Week: getISOWeek(new Date(result.weekStart)),
-                        Attendance_Days: result.attendanceDays,
-                        Confirmed_At: new Date().toISOString(),
-                    })) as AttendanceRecord[];
-                    onAttendanceUpdated(newRecords);
+                        ISO_Week: rec.ISO_Week ?? getISOWeek(new Date(rec.Week_Start || weekStart)),
+                        Attendance_Days: rec.Attendance_Days || attendanceDays,
+                        Confirmed_At: rec.Confirmed_At || new Date().toISOString(),
+                    } as AttendanceRecord;
+                    onAttendanceUpdated([newRecord]);
                 }
             } catch (error) {
                 console.error('Error saving attendance:', error);
-                alert('Failed to save attendance');
+                if (process.env.REACT_APP_ATTENDANCE_FALLBACK_LOCAL === 'true') {
+                    console.warn('⚠️ Falling back to local attendance update');
+                    const newRecord = {
+                        Attendance_ID: 0,
+                        Entry_ID: 0,
+                        First_Name: firstName,
+                        Initials: userInitials,
+                        Level: teamData.find((t) => t.Initials === userInitials)?.Level || '',
+                        Week_Start: weekStart,
+                        Week_End: new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6))
+                            .toISOString()
+                            .split('T')[0],
+                        ISO_Week: getISOWeek(new Date(weekStart)),
+                        Attendance_Days: attendanceDays,
+                        Confirmed_At: new Date().toISOString(),
+                    } as AttendanceRecord;
+                    onAttendanceUpdated && onAttendanceUpdated([newRecord]);
+                } else {
+                    alert('Failed to save attendance');
+                }
             }
         };
 

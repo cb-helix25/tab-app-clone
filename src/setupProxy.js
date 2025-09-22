@@ -21,6 +21,7 @@ module.exports = function(app) {
     '/api/instructions',
     '/api/verify-id',
     '/api/sendEmail', // Centralized server email route
+    '/api/attendance', // Attendance routes with annual leave integration
     '/ccls'
   ];
 
@@ -36,6 +37,7 @@ module.exports = function(app) {
     '/getOutstandingClientBalances',
     '/getSnippetBlocks',
     '/getAnnualLeave',
+    '/insertAttendance',
     '/insertNotableCaseInfo',
     '/insertDeal'  // Added for deal capture
   ];

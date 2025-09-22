@@ -5,9 +5,10 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { parseISO, isToday, format } from 'date-fns';
 
-// Live breakdown: Y, M, W, D, H, M, S (always show S)
+// Live breakdown: Y, M, W, D, H, with minutes for same day and seconds if under 1 hour
 function formatLiveBreakdown(from: Date, now: Date = new Date()): string {
   let diff = Math.max(0, Math.floor((now.getTime() - from.getTime()) / 1000));
+  const totalSeconds = diff;
   const S = diff % 60; diff = Math.floor(diff / 60);
   const M = diff % 60; diff = Math.floor(diff / 60);
   const H = diff % 24; diff = Math.floor(diff / 24);
@@ -15,14 +16,26 @@ function formatLiveBreakdown(from: Date, now: Date = new Date()): string {
   const W = diff % 4; diff = Math.floor(diff / 4);
   const Mo = diff % 12; diff = Math.floor(diff / 12);
   const Y = diff;
+  
   const parts = [];
+  const isUnderOneHour = totalSeconds < 3600; // Less than 1 hour
+  const isSameDay = from.toDateString() === now.toDateString(); // Same calendar day
+  
   if (Y) parts.push(Y + 'Y');
   if (Mo) parts.push(Mo + 'M');
   if (W) parts.push(W + 'W');
   if (D) parts.push(D + 'D');
   if (H) parts.push(H + 'H');
-  if (M) parts.push(M + 'M');
-  parts.push(S + 'S'); // Always show seconds for live counting
+  
+  // Show minutes if same day
+  if (isSameDay && M) parts.push(M + 'M');
+  
+  // Show seconds if under 1 hour
+  if (isUnderOneHour && S) parts.push(S + 'S');
+  
+  // If no time parts, show "0H" instead of nothing
+  if (parts.length === 0) parts.push('0H');
+  
   return parts.join(' ');
 }
 

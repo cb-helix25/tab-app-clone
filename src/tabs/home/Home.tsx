@@ -88,12 +88,14 @@ import EnhancedCollapsibleSection from './EnhancedCollapsibleSection';
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
 import QuickActionsBar from './QuickActionsBar';
+import { getQuickActionIcon } from './QuickActionsCard';
 import ImmediateActionsBar from './ImmediateActionsBar';
 import { getActionableInstructions } from './InstructionsPrompt';
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
 import Attendance from './AttendanceCompact';
-import AttendanceConfirmPanel from './AttendanceConfirmPanel';
+import EnhancedAttendance from './EnhancedAttendanceNew';
+import PersonalAttendanceConfirm from './PersonalAttendanceConfirm';
 
 import TransactionCard from '../transactions/TransactionCard';
 import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
@@ -700,6 +702,22 @@ const convertToISO = (dateStr: string): string => {
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 };
 
+// Robust date parser that accepts ISO (yyyy-mm-dd) and UK (dd/mm/yyyy)
+const parseOpenDate = (value: unknown): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+  const str = String(value).trim();
+  if (!str) return null;
+  // If looks like dd/mm/yyyy, convert to ISO first
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+    const iso = convertToISO(str);
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 interface AttendanceData {
   attendance: any[]; // Replace 'any[]' with a specific type if you know the structure
   team: any[];      // Replace 'any[]' with TeamMember[] or similar if known
@@ -721,8 +739,9 @@ let cachedRecoveredError: string | null = null;
 let cachedPrevRecovered: number | null = null;
 let cachedPrevRecoveredError: string | null = null;
 
-let cachedAllMatters: Matter[] | null = null;
+let cachedAllMatters: Matter[] | null = null; // Force refresh after database cleanup - cleared at 2025-09-21
 let cachedAllMattersError: string | null = null;
+const CACHE_INVALIDATION_KEY = 'matters-cache-v3'; // Changed to force refresh after test data deletion
 
 let cachedOutstandingBalances: any | null = null;
 
@@ -922,6 +941,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, instructionDa
   const [isBespokePanelOpen, setIsBespokePanelOpen] = useState<boolean>(false);
   const [bespokePanelContent, setBespokePanelContent] = useState<ReactNode>(null);
   const [bespokePanelTitle, setBespokePanelTitle] = useState<string>('');
+  const [bespokePanelDescription, setBespokePanelDescription] = useState<string>('');
+  const [bespokePanelIcon, setBespokePanelIcon] = useState<React.ComponentType<any> | null>(null);
   const [isContextPanelOpen, setIsContextPanelOpen] = useState<boolean>(false);
   const [bankHolidays, setBankHolidays] = useState<Set<string>>(new Set());
 
@@ -1446,16 +1467,44 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       const fetchData = async () => {
         try {
           setIsLoadingAttendance(true);
-          const attendanceResponse = await fetch(
-            `${proxyBaseUrl}/${process.env.REACT_APP_GET_ATTENDANCE_PATH}?code=${process.env.REACT_APP_GET_ATTENDANCE_CODE}`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json' } }
-          );
-          if (!attendanceResponse.ok)
+          const attendanceResponse = await fetch('/api/attendance/getAttendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (!attendanceResponse.ok) {
             throw new Error(`Failed to fetch attendance: ${attendanceResponse.status}`);
-          const attendanceData = await attendanceResponse.json();
-          cachedAttendance = attendanceData; // Store the full object, not just .attendance
-          setAttendanceRecords(attendanceData.attendance);
-          setAttendanceTeam(attendanceData.team); // store the "lite" team separately
+          }
+          
+          const attendanceResult = await attendanceResponse.json();
+          
+          if (attendanceResult.success) {
+            // Use the server response structure that now includes both attendance and team
+            const transformedData = {
+              attendance: attendanceResult.attendance.map((member: any) => ({
+                Attendance_ID: 0,
+                Entry_ID: 0,
+                First_Name: member.First,
+                Initials: member.Initials,
+                Level: member.Level || '',
+                Week_Start: new Date().toISOString().split('T')[0],
+                Week_End: new Date().toISOString().split('T')[0],
+                ISO_Week: Math.ceil(((new Date().getTime() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7),
+                Attendance_Days: member.Status || '',
+                Confirmed_At: member.IsConfirmed ? new Date().toISOString() : null,
+                status: member.Status,
+                isConfirmed: member.IsConfirmed,
+                isOnLeave: member.IsOnLeave
+              })),
+              team: attendanceResult.team || attendanceResult.attendance // Use team data if available, fallback to attendance
+            };
+            
+            cachedAttendance = transformedData;
+            setAttendanceRecords(transformedData.attendance);
+            setAttendanceTeam(transformedData.team);
+          } else {
+            throw new Error(attendanceResult.error || 'Failed to fetch attendance');
+          }
         } catch (error: any) {
           console.error('Error fetching attendance:', error);
           cachedAttendanceError = error.message || 'Unknown error occurred.';
@@ -1469,34 +1518,41 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         try {
           setIsLoadingAnnualLeave(true);
           const annualLeaveResponse = await fetch(
-            `${proxyBaseUrl}/${process.env.REACT_APP_GET_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_GET_ANNUAL_LEAVE_CODE}`,
+            `${proxyBaseUrl}/api/attendance/getAnnualLeave`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ initials: userData[0]?.Initials || '' }),
+              body: JSON.stringify({ userInitials: userData[0]?.Initials || '' }),
             }
           );
           if (!annualLeaveResponse.ok)
             throw new Error(`Failed to fetch annual leave: ${annualLeaveResponse.status}`);
           const annualLeaveData = await annualLeaveResponse.json();
-          if (annualLeaveData && Array.isArray(annualLeaveData.annual_leave)) {
-            const mappedAnnualLeave: AnnualLeaveRecord[] = annualLeaveData.annual_leave.map(
-              (rec: any) => ({
-                person: rec.person,
-                start_date: rec.start_date,
-                end_date: rec.end_date,
-                reason: rec.reason,
-                status: rec.status,
-                id: rec.request_id ? String(rec.request_id) : rec.id || `temp-${rec.start_date}-${rec.end_date}`,
-                rejection_notes: rec.rejection_notes || undefined,
-                approvers: ensureLZInApprovers(rec.approvers),
-                hearing_confirmation: rec.hearing_confirmation,
-                hearing_details: rec.hearing_details || undefined,
-              })
-            );
-            cachedAnnualLeave = mappedAnnualLeave;
-            setAnnualLeaveRecords(mappedAnnualLeave);
+          if (annualLeaveData) {
+            // Handle annual leave records
+            if (Array.isArray(annualLeaveData.annual_leave)) {
+              const mappedAnnualLeave: AnnualLeaveRecord[] = annualLeaveData.annual_leave.map(
+                (rec: any) => ({
+                  person: rec.person,
+                  start_date: rec.start_date,
+                  end_date: rec.end_date,
+                  reason: rec.reason,
+                  status: rec.status,
+                  id: rec.request_id ? String(rec.request_id) : rec.id || `temp-${rec.start_date}-${rec.end_date}`,
+                  rejection_notes: rec.rejection_notes || undefined,
+                  approvers: ensureLZInApprovers(rec.approvers),
+                  hearing_confirmation: rec.hearing_confirmation,
+                  hearing_details: rec.hearing_details || undefined,
+                })
+              );
+              cachedAnnualLeave = mappedAnnualLeave;
+              setAnnualLeaveRecords(mappedAnnualLeave);
+            } else {
+              // No annual leave records, set empty array
+              setAnnualLeaveRecords([]);
+            }
   
+            // Handle future leave records  
             if (Array.isArray(annualLeaveData.future_leave)) {
               const mappedFutureLeave: AnnualLeaveRecord[] = annualLeaveData.future_leave.map(
                 (rec: any) => ({
@@ -1514,16 +1570,23 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
               );
               cachedFutureLeaveRecords = mappedFutureLeave;
               setFutureLeaveRecords(mappedFutureLeave);
+            } else {
+              // No future leave records, set empty array
+              setFutureLeaveRecords([]);
             }
   
+            // Handle optional data
             if (annualLeaveData.user_details && annualLeaveData.user_details.totals) {
               setAnnualLeaveTotals(annualLeaveData.user_details.totals);
             }
-            if (annualLeaveData.all_data) {
-              setAnnualLeaveAllData(annualLeaveData.all_data);
+            if (annualLeaveData.user_leave) {
+              setAnnualLeaveAllData(annualLeaveData.user_leave);
             }
           } else {
-            throw new Error('Invalid annual leave data format.');
+            // Handle null/undefined response by setting empty arrays
+            console.warn('No annual leave data returned from API');
+            setAnnualLeaveRecords([]);
+            setFutureLeaveRecords([]);
           }
         } catch (error: any) {
           console.error('Error fetching annual leave:', error);
@@ -1636,12 +1699,42 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     }
   }, [userData]);  
 
+  // Reset cached matters when the selected user changes
   useEffect(() => {
+    const fullName = userData?.[0]?.FullName || '';
+    const initials = userData?.[0]?.Initials || '';
+    if (fullName || initials) {
+      cachedAllMatters = null;
+      cachedAllMattersError = null;
+    }
+  }, [userData?.[0]?.FullName, userData?.[0]?.Initials, userData?.[0]?.First, userData?.[0]?.Last]);
+
+  useEffect(() => {
+    // Check if cache should be invalidated due to database changes
+    const lastCacheVersion = localStorage.getItem('matters-cache-version');
+    const currentCacheVersion = 'v2-2025-09-21-db-cleanup';
+    
+    if (lastCacheVersion !== currentCacheVersion) {
+      console.log('🔄 Invalidating matters cache due to database changes');
+      cachedAllMatters = null;
+      cachedAllMattersError = null;
+      localStorage.setItem('matters-cache-version', currentCacheVersion);
+    }
+    
+    console.log('🔍 Matters loading path check:', {
+      hasCachedMatters: !!cachedAllMatters,
+      hasCachedError: !!cachedAllMattersError,
+      useLocalData,
+      REACT_APP_USE_LOCAL_DATA: process.env.REACT_APP_USE_LOCAL_DATA
+    });
+    
     if (cachedAllMatters || cachedAllMattersError) {
+      console.log('📦 Using cached matters:', cachedAllMatters?.length || 0);
       setAllMatters(cachedAllMatters || []);
       setAllMattersError(cachedAllMattersError);
       setIsLoadingAllMatters(false);
     } else if (useLocalData) {
+      console.log('🏠 Using local mock data');
       const mappedMatters: Matter[] = (localMatters as any) as Matter[];
       cachedAllMatters = mappedMatters;
       setAllMatters(mappedMatters);
@@ -1662,21 +1755,18 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
             headers: { 'Content-Type': 'application/json' }
           };
           
-          if (isLocalDev) {
-            // Use the local getMatters endpoint that works in the debugger
-            allMattersUrl = '/api/getMatters';
-            requestOptions.method = 'POST';
-            requestOptions.body = JSON.stringify({ 
-              fullName: userData?.[0]?.FullName || 'Lukasz Zemanek' 
-            });
-          } else {
-            // Use the proxy endpoint 
-            allMattersUrl = `${proxyBaseUrl}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`;
-            requestOptions.method = 'POST';
-            requestOptions.body = JSON.stringify({ 
-              fullName: userData?.[0]?.FullName || 'Lukasz Zemanek' 
-            });
-          }
+          // Always use server route (no function codes in client)
+          allMattersUrl = '/api/getMatters';
+          requestOptions.method = 'POST';
+          requestOptions.body = JSON.stringify({ 
+            fullName: userData?.[0]?.FullName || 'Lukasz Zemanek' 
+          });
+          
+          console.log('🌐 Making API call to fetch matters:', {
+            url: allMattersUrl,
+            method: requestOptions.method,
+            fullName: userData?.[0]?.FullName || 'Lukasz Zemanek'
+          });
           
           const response = await fetch(allMattersUrl, requestOptions);
           if (!response.ok) {
@@ -1742,57 +1832,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
             console.warn('Unexpected data format for getMatters:', rawData);
           }
 
-          // Fetch additional matters from SQL-backed decoupled function
-          try {
-            const sqlFullName = userData?.[0]?.FullName || 'Lukasz Zemanek';
-            const sqlResp = await fetch(`/api/getMatters?fullName=${encodeURIComponent(sqlFullName)}`);
-            if (sqlResp.ok) {
-              const sqlData = await sqlResp.json();
-              if (Array.isArray(sqlData.matters)) {
-                const sqlMapped: Matter[] = sqlData.matters.map((item: any) => ({
-                  MatterID: item.matter_id || item.MatterID,
-                  InstructionRef: item.instruction_ref || item.InstructionRef,
-                  DisplayNumber:
-                    item.display_number || item.DisplayNumber || '',
-                  OpenDate: item.open_date || item.OpenDate || '',
-                  MonthYear: item.month_year || item.MonthYear || '',
-                  YearMonthNumeric:
-                    item.year_month_numeric || item.YearMonthNumeric || 0,
-                  ClientID: item.client_id || item.ClientID || '',
-                  ClientName: item.client_name || item.ClientName || '',
-                  ClientPhone: item.client_phone || item.ClientPhone || '',
-                  ClientEmail: item.client_email || item.ClientEmail || '',
-                  Status: item.status || item.Status || '',
-                  UniqueID: item.matter_id || item.MatterID || '',
-                  Description: item.description || item.Description || '',
-                  PracticeArea: item.practice_area || item.PracticeArea || '',
-                  Source: item.source || item.Source || '',
-                  Referrer: item.referrer || item.Referrer || '',
-                  ResponsibleSolicitor:
-                    item.responsible_solicitor || item.ResponsibleSolicitor || '',
-                  OriginatingSolicitor:
-                    item.originating_solicitor || item.OriginatingSolicitor || '',
-                  SupervisingPartner:
-                    item.supervising_partner || item.SupervisingPartner || '',
-                  Opponent: item.opponent || item.OpponentID || '',
-                  OpponentSolicitor:
-                    item.opponent_solicitor || item.OpponentSolicitorID || '',
-                  CloseDate: item.close_date || item.CloseDate || '',
-                  ApproxValue: item.approx_value || item.ApproxValue || '',
-                  mod_stamp: item.mod_stamp || item.modStamp || '',
-                  method_of_contact:
-                    item.method_of_contact || item.methodOfContact || '',
-                  CCL_date: item.CCL_date || item.ccl_date || null,
-                  Rating: item.rating || item.Rating,
-                }));
-                mappedMatters = mappedMatters.concat(sqlMapped);
-              }
-            } else {
-              console.warn('Failed to fetch SQL matters:', sqlResp.status);
-            }
-          } catch (sqlErr) {
-            console.warn('Error fetching SQL matters:', sqlErr);
-          }
+          console.log('🔍 Final mappedMatters count:', mappedMatters.length);
 
           cachedAllMatters = mappedMatters;
           setAllMatters(mappedMatters);
@@ -1810,10 +1850,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       };
       fetchAllMattersData();
     }
-  // WARNING: onAllMattersFetched must be stable (memoized) to avoid infinite loops.
-  // If you cannot guarantee this, remove it from the dependency array.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userData?.[0]?.FullName, useLocalData]);
 
   // NEW: useEffect for fetching POID6Years data
   useEffect(() => {
@@ -2010,7 +2047,7 @@ const matchingTeamMember = attendanceTeam.find(
 const attendanceName = matchingTeamMember ? matchingTeamMember.First : '';
 
 const currentUserRecord = attendanceRecords.find(
-  (record: any) => (record.name || '').toLowerCase() === attendanceName.toLowerCase()
+  (record: any) => (record.name || '').toLowerCase() === (attendanceName || '').toLowerCase()
 );
 
 //////////////////////////////
@@ -2024,32 +2061,89 @@ const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
 const transformedAttendanceRecords = useMemo(() => {
   if (!cachedAttendance && !attendanceRecords.length) return [];
   const rawRecords = cachedAttendance?.attendance || attendanceRecords; // Fix here
+  
+  // Handle both old format (with weeks structure) and new API format
   return rawRecords
     .map((record: any) => {
-      const weekKeys = record.weeks ? Object.keys(record.weeks) : [];
-      return weekKeys.map((weekKey) => {
-        const rawStart = weekKey.split(' - ')[0].split(', ')[1];
-        const rawEnd = weekKey.split(' - ')[1].split(', ')[1];
-        const isoStart = convertToISO(rawStart);
-        const isoEnd = convertToISO(rawEnd);
-        return {
-          Attendance_ID: 0,
-          Entry_ID: 0,
-          First_Name: record.name || '',
-          Initials: transformedTeamData.find((t) => t.First.toLowerCase() === record.name.toLowerCase())?.Initials || '',
-          Level: '',
-          Week_Start: isoStart,
-          Week_End: isoEnd,
-          ISO_Week: getISOWeek(new Date(isoStart)),
-          Attendance_Days: record.weeks[weekKey].attendance || '',
-          Confirmed_At: record.weeks[weekKey].confirmed ? new Date().toISOString() : null,
+      // New API format: {Initials, First, Status, IsConfirmed, IsOnLeave}
+      if (record.Initials && record.First && !record.weeks) {
+        const currentWeekStart = getMondayOfCurrentWeek();
+        const nextWeekStart = new Date(currentWeekStart);
+        nextWeekStart.setDate(currentWeekStart.getDate() + 7);
+        
+        const formatDateLocal = (d: Date): string => {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
         };
-      });
+        
+        const currentWeekEnd = new Date(currentWeekStart);
+        currentWeekEnd.setDate(currentWeekStart.getDate() + 6);
+        
+        const nextWeekEnd = new Date(nextWeekStart);
+        nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
+        
+        // Return records for both current and next week
+        return [
+          {
+            Attendance_ID: 0,
+            Entry_ID: 0,
+            First_Name: record.First || '',
+            Initials: record.Initials || '',
+            Level: '',
+            Week_Start: formatDateLocal(currentWeekStart),
+            Week_End: formatDateLocal(currentWeekEnd),
+            ISO_Week: getISOWeek(currentWeekStart),
+            Attendance_Days: record.Status === 'away' ? '' : (record.Status || ''),
+            Confirmed_At: record.IsConfirmed ? new Date().toISOString() : null,
+          },
+          {
+            Attendance_ID: 0,
+            Entry_ID: 0,
+            First_Name: record.First || '',
+            Initials: record.Initials || '',
+            Level: '',
+            Week_Start: formatDateLocal(nextWeekStart),
+            Week_End: formatDateLocal(nextWeekEnd),
+            ISO_Week: getISOWeek(nextWeekStart),
+            Attendance_Days: '', // Next week starts empty
+            Confirmed_At: null,
+          }
+        ];
+      }
+      
+      // Old format: {name, weeks: {weekKey: {attendance, confirmed}}}
+      if (record.weeks) {
+        const weekKeys = Object.keys(record.weeks);
+        return weekKeys.map((weekKey) => {
+          const rawStart = weekKey.split(' - ')[0].split(', ')[1];
+          const rawEnd = weekKey.split(' - ')[1].split(', ')[1];
+          const isoStart = convertToISO(rawStart);
+          const isoEnd = convertToISO(rawEnd);
+          return {
+            Attendance_ID: 0,
+            Entry_ID: 0,
+            First_Name: record.name || '',
+            Initials: transformedTeamData.find((t) => t.First?.toLowerCase() === (record.name || '').toLowerCase())?.Initials || '',
+            Level: '',
+            Week_Start: isoStart,
+            Week_End: isoEnd,
+            ISO_Week: getISOWeek(new Date(isoStart)),
+            Attendance_Days: record.weeks[weekKey].attendance || '',
+            Confirmed_At: record.weeks[weekKey].confirmed ? new Date().toISOString() : null,
+          };
+        });
+      }
+      
+      // Fallback for unknown formats
+      return [];
     })
     .flat();
 }, [attendanceRecords, transformedTeamData]);
 
 const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
+  console.log('🔄 handleAttendanceUpdated called with', updatedRecords.length, 'record(s)');
   setAttendanceRecords((prevRecords) => {
     const newRecords = [...prevRecords];
     let isChanged = false; // Track if the state actually changes
@@ -2092,6 +2186,7 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
 
     // If no changes, do not trigger setState again
     if (!isChanged) {
+      console.log('🔄 No attendance changes detected; state unchanged');
       return prevRecords;
     }
 
@@ -2101,17 +2196,23 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
       team: cachedAttendance?.team || attendanceTeam, // Preserve team data
     };
 
+    console.log('🔄 Attendance state updated; new size:', newRecords.length);
     return newRecords;
   });
 };
 
 // Wrapper used by top-level AttendanceConfirmPanel to save attendance for the current user.
   const saveAttendance = async (weekStart: string, attendanceDays: string): Promise<void> => {
-  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || window.location.hostname === 'localhost';
+  console.log('🔍 saveAttendance called with weekStart:', weekStart, 'attendanceDays:', attendanceDays);
+  // Force endpoint testing - set to false to test real endpoint
+  const useLocalData = false; // Changed from: process.env.REACT_APP_USE_LOCAL_DATA === 'true' || window.location.hostname === 'localhost';
+  console.log('🔍 useLocalData:', useLocalData);
   const initials = userInitials || (userData?.[0]?.Initials || '');
   const firstName = (transformedTeamData.find((t) => t.Initials === initials)?.First) || '';
+  console.log('🔍 initials:', initials, 'firstName:', firstName);
 
   if (useLocalData) {
+    console.log('🔍 Using local data mode - creating mock record');
     const newRecord: AttendanceRecord = {
       Attendance_ID: 0,
       Entry_ID: 0,
@@ -2124,40 +2225,71 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
       Attendance_Days: attendanceDays,
       Confirmed_At: new Date().toISOString(),
     };
+    console.log('🔍 Created new record:', newRecord);
     // Reuse existing handler to merge into state
+    console.log('🔍 Calling handleAttendanceUpdated with:', [newRecord]);
     handleAttendanceUpdated([newRecord]);
+    console.log('🔍 Local data save completed');
     return;
   }
 
   try {
-    const url = `${proxyBaseUrl}/${process.env.REACT_APP_INSERT_ATTENDANCE_PATH}?code=${process.env.REACT_APP_INSERT_ATTENDANCE_CODE}`;
-    const payload = [{ firstName, initials, weekStart, attendanceDays }];
+    const url = `/api/attendance/updateAttendance`;
+    const payload = { initials, weekStart, attendanceDays };
+    console.log('🔍 Making API call to:', url);
+    console.log('🔍 Payload:', payload);
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(`Failed to save attendance: ${res.status}`);
-    const updated = await res.json();
-    // Map response into AttendanceRecord[] expected by handleAttendanceUpdated
-    const mapped: AttendanceRecord[] = (updated || []).map((result: any) => ({
-      Attendance_ID: result.entryId || 0,
-      Entry_ID: result.entryId || 0,
-      First_Name: firstName,
-      Initials: initials,
-  Level: (attendanceTeam.find((t: any) => t.Initials === initials)?.Level) || '',
-      Week_Start: result.weekStart || weekStart,
-      Week_End: new Date(new Date(result.weekStart || weekStart).setDate(new Date(result.weekStart || weekStart).getDate() + 6)).toISOString().split('T')[0],
-      ISO_Week: getISOWeek(new Date(result.weekStart || weekStart)),
-      Attendance_Days: result.attendanceDays || attendanceDays,
-      Confirmed_At: new Date().toISOString(),
-    }));
-    if (mapped.length) handleAttendanceUpdated(mapped);
+    console.log('🔍 API Response status:', res.status);
+    if (!res.ok) {
+      console.error('🔍 API call failed with status:', res.status);
+      throw new Error(`Failed to save attendance: ${res.status}`);
+    }
+    const json = await res.json();
+    console.log('🔍 API Response data:', json);
+    if (!json || json.success !== true || !json.record) {
+      throw new Error('Unexpected response from updateAttendance');
+    }
+    const rec = json.record;
+    const mapped: AttendanceRecord = {
+      Attendance_ID: rec.Attendance_ID ?? 0,
+      Entry_ID: rec.Entry_ID ?? 0,
+      First_Name: rec.First_Name || firstName,
+      Initials: rec.Initials || initials,
+      Level: (attendanceTeam.find((t: any) => t.Initials === (rec.Initials || initials))?.Level) || '',
+      Week_Start: rec.Week_Start || weekStart,
+      Week_End: rec.Week_End || new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6)).toISOString().split('T')[0],
+      ISO_Week: rec.ISO_Week ?? getISOWeek(new Date(rec.Week_Start || weekStart)),
+      Attendance_Days: rec.Attendance_Days || attendanceDays,
+      Confirmed_At: rec.Confirmed_At || new Date().toISOString(),
+    };
+    handleAttendanceUpdated([mapped]);
   } catch (err) {
     console.error('Error saving attendance (home):', err);
-    // Surface a minimal user visible error
-    // eslint-disable-next-line no-alert
-    alert('Failed to save attendance');
+    // Optional local fallback for testing
+    const fallbackLocal = process.env.REACT_APP_ATTENDANCE_FALLBACK_LOCAL === 'true';
+    if (fallbackLocal) {
+      console.warn('⚠️ Falling back to local attendance update');
+      const newRecord: AttendanceRecord = {
+        Attendance_ID: 0,
+        Entry_ID: 0,
+        First_Name: firstName,
+        Initials: initials,
+        Level: (attendanceTeam.find((t: any) => t.Initials === initials)?.Level) || '',
+        Week_Start: weekStart,
+        Week_End: new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6)).toISOString().split('T')[0],
+        ISO_Week: getISOWeek(new Date(weekStart)),
+        Attendance_Days: attendanceDays,
+        Confirmed_At: new Date().toISOString(),
+      };
+      handleAttendanceUpdated([newRecord]);
+      return; // treat as success in UI
+    }
+    // Bubble error so caller can show inline feedback
+    throw (err instanceof Error ? err : new Error('Failed to save attendance'));
   }
 };
 
@@ -2216,7 +2348,7 @@ const officeAttendanceButtonText = currentUserConfirmed
       .sort((a: any, b: any) => a.First.localeCompare(b.First))
       .map((t: any) => {
         const att = attendanceRecords.find(
-          (record: any) => record.name.toLowerCase() === t.First.toLowerCase()
+          (record: any) => (record.name || '').toLowerCase() === (t.First || '').toLowerCase()
         );
         const attending = att ? att.attendingToday : false;
   
@@ -2357,47 +2489,97 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     const userFullName =
       userData?.[0]?.FullName?.trim().toLowerCase() || `${userFirstName} ${userLastName}`;
     const userInitials = userData?.[0]?.Initials?.trim().toLowerCase() || '';
+    const memberForInitials = transformedTeamData.find(
+      (t) => (t.Initials || '').toLowerCase() === userInitials
+    );
+    const userNickname = memberForInitials?.Nickname?.trim().toLowerCase() || '';
   
     // Helper function to normalize names
     const normalizeName = (name: string | null | undefined): string => {
       if (!name) return '';
-      let normalized = name.trim().toLowerCase();
-      if (normalized === "bianca odonnell") {
-        normalized = "bianca o'donnell";
+      let normalized = String(name).trim().toLowerCase();
+      // Handle "Last, First" -> "first last"
+      if (normalized.includes(',')) {
+        const [last, first] = normalized.split(',').map(p => p.trim());
+        if (first && last) normalized = `${first} ${last}`;
       }
-      if (normalized === "samuel packwood") {
-        normalized = "sam packwood";
-      }
-      return normalized;
+  // Remove periods often used in initials like "r. chapman"
+  normalized = normalized.replace(/\./g, '');
+  // Strip parenthetical content e.g., "richard chapman (rc)" -> "richard chapman"
+  normalized = normalized.replace(/\s*\([^)]*\)\s*/g, ' ');
+  // Remove trailing decorations after separators like " - ", " / ", or " | "
+  normalized = normalized.replace(/\s[-/|].*$/, '');
+      // Known alias fixes
+      if (normalized === 'bianca odonnell') normalized = "bianca o'donnell";
+      if (normalized === 'samuel packwood') normalized = 'sam packwood';
+      return normalized.replace(/\s+/g, ' ');
     };
   
-    // Calculate matters opened count for conversion metrics
-    // Use Sam Packwood when in local dev or when prod user is LZ; otherwise use the current user
-    const isConversionUseSP = (process.env.REACT_APP_USE_LOCAL_DATA === 'true') || ((userInitials || '').toUpperCase() === 'LZ');
-    const targetFirst = isConversionUseSP ? 'sam' : userFirstName;
-    const targetLast = isConversionUseSP ? 'packwood' : userLastName;
-    const targetFull = isConversionUseSP ? 'sam packwood' : userFullName;
-    const targetInitials = isConversionUseSP ? 'sp' : userInitials;
+  // Calculate matters opened count for conversion metrics
+  // Always use the currently selected user; do not force a different user in local dev
+  const targetFirst = userFirstName;
+  const targetLast = userLastName;
+  const targetFull = userFullName;
+  const targetInitials = userInitials;
+
+  // Build a rich alias set for the selected user covering common variants seen in data
+  const buildUserAliasSet = (): Set<string> => {
+    const aliases: string[] = [];
+    const first = (targetFirst || '').trim();
+    const last = (targetLast || '').trim();
+    const full = (targetFull || '').trim();
+    const initials = (targetInitials || '').trim();
+    const nickname = (userNickname || '').trim();
+
+    // Full forms
+    if (full) aliases.push(full);
+    if (first && last) aliases.push(`${first} ${last}`);
+    if (nickname && last) aliases.push(`${nickname} ${last}`);
+
+    // Initials only (already checked separately but include here for uniformity)
+    if (initials) aliases.push(initials);
+
+    // First initial + last (e.g., "r chapman")
+    if (first && last) aliases.push(`${first[0]} ${last}`);
+
+    // Initial with dot + last (e.g., "r. chapman")
+    if (first && last) aliases.push(`${first[0]}. ${last}`);
+
+    // Normalize and dedupe
+    return new Set(aliases.map(a => normalizeName(a)));
+  };
+
+  const targetNamesSet = buildUserAliasSet();
 
     const mattersOpenedCount = allMatters
       ? allMatters.filter((m) => {
-          const openDate = new Date(m.OpenDate);
-          let solicitorName = m.OriginatingSolicitor || '';
-          solicitorName = normalizeName(solicitorName);
+          const openDate = parseOpenDate((m as any).OpenDate);
+          if (!openDate) return false; // skip invalid dates
 
-          return (
-            openDate.getMonth() === currentMonth &&
-            openDate.getFullYear() === currentYear &&
-            (
-              solicitorName === targetFull || // Exact full name match
-              solicitorName === `${targetFirst} ${targetLast}` || // First + Last match
-              solicitorName.includes(targetFirst) || // Contains first name
-              solicitorName.includes(targetLast) || // Contains last name
-              solicitorName === targetInitials // Match on initials
-            )
-          );
+          const isCurrentMonth =
+            openDate.getMonth() === currentMonth && openDate.getFullYear() === currentYear;
+          if (!isCurrentMonth) return false;
+
+          // Primary metric: only count matters where the selected user is the Responsible Solicitor
+          const responsibleName = normalizeName((m as any).ResponsibleSolicitor || '');
+          if (!responsibleName) return false;
+
+          // Check if user matches
+          const initialsNormalized = normalizeName(targetInitials);
+          const isMatch = targetNamesSet.has(responsibleName) || responsibleName === initialsNormalized;
+
+          return isMatch;
         }).length
-      : 0;  
+      : 0;
+
+    // Firm-wide matters opened this month (secondary metric)
+    const firmMattersOpenedCount = allMatters
+      ? allMatters.filter((m) => {
+          const openDate = parseOpenDate((m as any).OpenDate);
+          if (!openDate) return false;
+          return openDate.getMonth() === currentMonth && openDate.getFullYear() === currentYear;
+        }).length
+      : 0;
 
     if (!wipClioData) {
         return [
@@ -2409,8 +2591,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0 },
           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
-          { title: 'Enquiries This Month', isTimeMoney: false, count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
-          { title: 'Matters Opened', isTimeMoney: false, count: mattersOpenedCount, prevCount: 0 },
+          { title: 'Matters Opened', isTimeMoney: false, count: mattersOpenedCount, prevCount: 0, secondary: firmMattersOpenedCount },
         ];
       }
       
@@ -2496,7 +2677,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         annualLeaveRecords.some(
           (rec) =>
             rec.status === 'booked' &&
-            rec.person.toLowerCase() === userInitials.toLowerCase() &&
+            (rec.person || '').toLowerCase() === (userInitials || '').toLowerCase() &&
             dayString >= rec.start_date &&
             dayString <= rec.end_date
         )
@@ -2571,6 +2752,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         isTimeMoney: false,
         count: mattersOpenedCount,
         prevCount: 0,
+        secondary: firmMattersOpenedCount,
       },
     ];    
   }, [
@@ -2589,6 +2771,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     userData,
     allMatters,
     userInitials, // ADDED so we recalc if userInitials changes
+    transformedTeamData,
     outstandingBalancesData, // ADDED
     userMatterIDs,           // ADDED
   ]);
@@ -2625,7 +2808,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       [...annualLeaveRecords, ...futureLeaveRecords].filter(
         (x) =>
           (x.status === 'approved' || x.status === 'rejected') &&
-          x.person.toLowerCase() === userInitials.toLowerCase()
+          (x.person || '').toLowerCase() === (userInitials || '').toLowerCase()
       ),
     [annualLeaveRecords, futureLeaveRecords, userInitials]
   );
@@ -2809,24 +2992,62 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   type Action = { title: string; onClick: () => void; icon: string; disabled?: boolean };
   const handleActionClick = useCallback((action: { title: string; icon: string }) => {
     let content: React.ReactNode = <div>No form available.</div>;
-    const titleText = action.title;
+    let titleText = action.title;
+    let descriptionText = '';
+
+    // Map full titles to short titles and descriptions
+    const titleMap: Record<string, { shortTitle: string; description: string }> = {
+      'Create a Task': { shortTitle: 'New Task', description: 'Create and assign a new task or reminder' },
+      'Save Telephone Note': { shortTitle: 'Attendance Note', description: 'Record details from a phone conversation' },
+      'Request Annual Leave': { shortTitle: 'Book Leave', description: 'Submit a request for annual leave or time off' },
+      'Update Attendance': { shortTitle: 'Confirm Your Attendance', description: '' },
+      'Confirm Attendance': { shortTitle: 'Confirm Attendance', description: '' },
+      'Book Space': { shortTitle: 'Book Room', description: 'Reserve a meeting room or workspace' },
+    };
+
+    if (titleMap[titleText]) {
+      const mapped = titleMap[titleText];
+      titleText = mapped.shortTitle;
+      descriptionText = mapped.description;
+    }
   
-    switch (titleText) {
+    switch (action.title) {
       case "Confirm Attendance":
-      case "Update Attendance":
-        // Open the global BespokePanel containing the AttendanceConfirmPanel
+        // Open the personal attendance confirmation component
         content = (
-          <AttendanceConfirmPanel
+          <PersonalAttendanceConfirm
             isDarkMode={isDarkMode}
             attendanceRecords={transformedAttendanceRecords}
-            teamData={(transformedTeamData ?? []) as any[]}
             annualLeaveRecords={annualLeaveRecords}
             futureLeaveRecords={futureLeaveRecords}
             userData={userData}
             onSave={saveAttendance}
+            onClose={() => {
+              setBespokePanelContent(null);
+              setIsBespokePanelOpen(false);
+              resetQuickActionsSelection();
+            }}
           />
         );
-        break; // continue to open the panel via the shared logic below
+        break;
+      case "Update Attendance":
+        // Open the personal attendance confirmation component
+        content = (
+          <PersonalAttendanceConfirm
+            isDarkMode={isDarkMode}
+            attendanceRecords={transformedAttendanceRecords}
+            annualLeaveRecords={annualLeaveRecords}
+            futureLeaveRecords={futureLeaveRecords}
+            userData={userData}
+            onSave={saveAttendance}
+            onClose={() => {
+              setBespokePanelContent(null);
+              setIsBespokePanelOpen(false);
+              resetQuickActionsSelection();
+            }}
+          />
+        );
+        break;
       case 'Create a Task':
         content = (
           <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
@@ -2969,6 +3190,10 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   
     setBespokePanelContent(content);
     setBespokePanelTitle(titleText);
+    setBespokePanelDescription(descriptionText);
+    const iconComponent = getQuickActionIcon(action.icon);
+    console.log('Setting panel icon for action:', action, 'icon component:', iconComponent);
+    setBespokePanelIcon(iconComponent);
     setIsBespokePanelOpen(true);
   }, [
     attendanceRef,
@@ -3167,6 +3392,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           currentUserConfirmed={currentUserConfirmed}
           highlighted={false}
           resetSelectionRef={resetQuickActionsSelectionRef}
+          panelActive={isBespokePanelOpen || isContextPanelOpen || isOutstandingPanelOpen || isTransactionPopupOpen}
         />
         {!immediateActionsDismissedThisSession && (
           <ImmediateActionsBar
@@ -3218,7 +3444,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return transformedTeamData
       .map((member) => {
         const record = attendanceRecords.find(
-          (rec: any) => rec.name.toLowerCase() === member.First.toLowerCase()
+          (rec: any) => (rec.name || '').toLowerCase() === (member.First || '').toLowerCase()
         );
         return {
           name: member.First,
@@ -3485,6 +3711,8 @@ const conversionRate = enquiriesMonthToDate
                 <EnhancedMetricCard
                   title={enquiryMetrics[3]?.title || 'Matters Opened'}
                   value={enquiryMetrics[3]?.count || 0}
+                  secondaryValue={enquiryMetrics[3]?.secondary}
+                  secondaryLabel="Firm"
                   previousValue={enquiryMetrics[3]?.prevCount}
                   icon="CheckMark"
                   animationDelay={0}
@@ -3507,44 +3735,70 @@ const conversionRate = enquiriesMonthToDate
               </div>
         </EnhancedCollapsibleSection>
 
-      <SectionCard 
-        title="Transactions & Balances" 
-        id="transactions-section"
-        variant="default"
-        animationDelay={0.1}
-      >
-        <ActionSection
-          transactions={transactions}
-          userInitials={userInitials}
-          isDarkMode={isDarkMode}
-          onTransactionClick={handleTransactionClick}
-          matters={allMatters || []}
-          updateTransaction={updateTransaction}
-          outstandingBalances={myOutstandingBalances}
-        />
-      </SectionCard>
-
-      <SectionCard 
-        title="Attendance" 
-        id="attendance-section"
-        variant="default"
-        animationDelay={0.3}
-      >
-          <Attendance
-            ref={attendanceRef}
+      {useLocalData ? (
+        <SectionCard 
+          title="Transactions & Balances" 
+          id="transactions-section"
+          variant="default"
+          animationDelay={0.1}
+        >
+          <ActionSection
+            transactions={transactions}
+            userInitials={userInitials}
             isDarkMode={isDarkMode}
-            isLoadingAttendance={isLoadingAttendance}
-            isLoadingAnnualLeave={isLoadingAnnualLeave}
-            attendanceError={attendanceError}
-            annualLeaveError={annualLeaveError}
-            attendanceRecords={transformedAttendanceRecords}
-            teamData={transformedTeamData}
-            annualLeaveRecords={annualLeaveRecords}
-            futureLeaveRecords={futureLeaveRecords}
-            userData={userData}
-            onAttendanceUpdated={handleAttendanceUpdated}
+            onTransactionClick={handleTransactionClick}
+            matters={allMatters || []}
+            updateTransaction={updateTransaction}
+            outstandingBalances={myOutstandingBalances}
           />
-      </SectionCard>
+        </SectionCard>
+      ) : (
+        <SectionCard 
+          title="Transactions & Balances" 
+          id="transactions-section-disabled"
+          variant="default"
+          animationDelay={0.1}
+        >
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '20px', 
+            color: isDarkMode ? colours.dark.subText : colours.light.subText,
+            background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+            borderRadius: '8px',
+            border: `1px dashed ${isDarkMode ? colours.dark.border : colours.light.border}`
+          }}>
+            <Icon iconName="Build" style={{ fontSize: '24px', marginBottom: '8px', opacity: 0.5 }} />
+            <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>
+              Under Development
+            </Text>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Hide attendance section when bespoke panel is open */}
+      {!isBespokePanelOpen && (
+        <SectionCard 
+          title="Attendance" 
+          id="attendance-section"
+          variant="default"
+          animationDelay={0.3}
+        >
+            <EnhancedAttendance
+              ref={attendanceRef}
+              isDarkMode={isDarkMode}
+              isLoadingAttendance={isLoadingAttendance}
+              isLoadingAnnualLeave={isLoadingAnnualLeave}
+              attendanceError={attendanceError}
+              annualLeaveError={annualLeaveError}
+              attendanceRecords={transformedAttendanceRecords}
+                teamData={attendanceTeam}
+              annualLeaveRecords={annualLeaveRecords}
+              futureLeaveRecords={futureLeaveRecords}
+              userData={userData}
+              onAttendanceUpdated={handleAttendanceUpdated}
+            />
+        </SectionCard>
+      )}
 
 
       {/* Contexts Panel */}
@@ -3590,21 +3844,25 @@ const conversionRate = enquiriesMonthToDate
           resetQuickActionsSelection();
         }}
         title={bespokePanelTitle}
-          width="60%"
-          offsetTop={96}
-        >
-          {bespokePanelContent}
-        </BespokePanel>
+        description={bespokePanelDescription}
+        width="85%"
+        isDarkMode={isDarkMode}
+        variant="modal"
+        icon={bespokePanelIcon || undefined}
+      >
+        {bespokePanelContent}
+      </BespokePanel>
 
-        {/* Transaction Approval Popup */}
-        <BespokePanel
-          isOpen={isTransactionPopupOpen}
-          onClose={() => {
-            setIsTransactionPopupOpen(false);
-            resetQuickActionsSelection();
-          }}
-          title="Approve Transaction"
-          width="2000px"
+      {/* Transaction Approval Popup */}
+      <BespokePanel
+        isOpen={isTransactionPopupOpen}
+        onClose={() => {
+          setIsTransactionPopupOpen(false);
+          resetQuickActionsSelection();
+        }}
+        title="Approve Transaction"
+        width="2000px"
+        isDarkMode={isDarkMode}
       >
         {selectedTransaction && (
           <TransactionApprovalPopup

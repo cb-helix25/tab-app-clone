@@ -64,7 +64,8 @@ interface ReportingHomeProps {
 
 const GET_ANNUAL_LEAVE_ALL_PATH = process.env.REACT_APP_GET_ANNUAL_LEAVE_ALL_PATH;
 const GET_ANNUAL_LEAVE_ALL_CODE = process.env.REACT_APP_GET_ANNUAL_LEAVE_ALL_CODE;
-const getAnnualLeaveUrl = `${API_BASE_URL}/${GET_ANNUAL_LEAVE_ALL_PATH}?code=${GET_ANNUAL_LEAVE_ALL_CODE}`;
+// Use new integrated server route instead of Azure Function
+const getAnnualLeaveUrl = `${API_BASE_URL}/api/attendance/annual-leave-all`;
 
 const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, teamData }) => {
   const [selectedReport, setSelectedReport] = useState<string | null>(null);

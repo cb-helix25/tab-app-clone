@@ -6,10 +6,12 @@ export const colours = {
   darkBlue: '#061733',
   blue: '#3690CE',
   highlight: '#3690CE',
+  missedBlue: '#0d2f60', // Helix missed blue for office status
   accent: '#87F3F3',
   cta: '#D65541',
   grey: '#F4F4F6',
   greyText: '#6B6B6B',
+  subtleGrey: '#A0A0A0', // Lighter grey for away status - more subtle
   sectionBackground: '#FFFFFF',
   inactiveTrackLight: '#CCCCCC',
   highlightYellow: '#ffefc1',

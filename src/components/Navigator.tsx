@@ -21,7 +21,6 @@ const Navigator: React.FC = () => {
                 backgroundColor: isDarkMode
                     ? colours.dark.sectionBackground
                     : colours.light.sectionBackground,
-                borderBottom: `1px solid ${isDarkMode ? '#444' : '#e5e5e5'}`,
             }}
         >
             {content}

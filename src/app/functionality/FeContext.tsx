@@ -147,17 +147,12 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
   const getUserDataPath = process.env.REACT_APP_GET_USER_DATA_PATH;
   const getEnquiriesCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;
   const getEnquiriesPath = process.env.REACT_APP_GET_ENQUIRIES_PATH;
-  const getMattersCode = process.env.REACT_APP_GET_MATTERS_CODE;
-  const getMattersPath = process.env.REACT_APP_GET_MATTERS_PATH;
+  // Remove client dependency on function codes for matters
 
   // Construct URLs
   const getUserDataUrl = `${proxyBaseUrl}/${getUserDataPath}?code=${getUserDataCode}`;
   const getEnquiriesUrl = `${proxyBaseUrl}/${getEnquiriesPath}?code=${getEnquiriesCode}`;
-  const isLocalDev = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const getMattersUrl = isLocalDev
-    ? '/api/getMatters'
-    : `${proxyBaseUrl}/${getMattersPath}?code=${getMattersCode}`;
+  const getMattersUrl = '/api/getMatters';
 
   // Fetch User Data on Context Change
   const fetchUserData = useCallback(async (objectId: string): Promise<any> => {

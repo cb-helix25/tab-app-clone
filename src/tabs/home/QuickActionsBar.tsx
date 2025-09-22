@@ -1,5 +1,5 @@
 import React from 'react';
-// invisible change 2
+// Modern QuickActionsBar with professional animations and no layout jolts
 import { mergeStyles } from '@fluentui/react';
 import QuickActionsCard from './QuickActionsCard';
 import { colours } from '../../app/styles/colours';
@@ -15,58 +15,83 @@ interface QuickActionsBarProps {
     handleActionClick: (action: QuickAction) => void;
     currentUserConfirmed: boolean;
     highlighted?: boolean;
-    resetSelectionRef?: React.MutableRefObject<(() => void) | null>; // Ref to reset function
+    resetSelectionRef?: React.MutableRefObject<(() => void) | null>;
+    panelActive?: boolean;
 }
 
-const ACTION_BAR_HEIGHT = 48;
+const ACTION_BAR_HEIGHT = 44; // Compact bar height to match tab icon scale
 
 const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
     mergeStyles({
-        backgroundColor: isDarkMode
-            ? colours.dark.sectionBackground
-            : colours.light.sectionBackground,
+        // Professional gradient background
+        background: isDarkMode
+            ? 'linear-gradient(135deg, rgba(45, 45, 45, 0.95) 0%, rgba(58, 58, 58, 0.9) 100%)'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)',
+        
+        // Modern backdrop blur
+        backdropFilter: 'blur(12px)',
+        
+        // Professional shadows
         boxShadow: isDarkMode
-            ? '0 2px 4px rgba(0,0,0,0.4)'
-            : '0 2px 4px rgba(0,0,0,0.1)',
-        padding: '0 24px',
-        transition: 'background-color 0.3s, width 0.25s ease',
+            ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2)'
+            : '0 8px 32px rgba(6, 23, 51, 0.12), 0 4px 16px rgba(6, 23, 51, 0.08)',
+        
+        // Layout stability - compact padding and height
+        // Align content to left (remove excessive left padding)
+        padding: '4px 12px',
+        height: ACTION_BAR_HEIGHT,
+        minHeight: ACTION_BAR_HEIGHT,
+        
+        // Smooth professional transitions
+        transition: 'all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)',
+        
+        // Flex layout with proper spacing
         display: 'flex',
         flexDirection: 'row',
-        gap: '4px',
+        alignItems: 'center',
+        gap: '4px', // Tighter gap
+        
+        // Scrolling behavior
         overflowX: 'auto',
+        overflowY: 'hidden',
         msOverflowStyle: 'none',
         scrollbarWidth: 'none',
-        alignItems: 'center',
-        height: ACTION_BAR_HEIGHT,
-        paddingBottom: 0,
+        
+        // Position and layering
         position: 'sticky',
         top: ACTION_BAR_HEIGHT,
         zIndex: 999,
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-        minWidth: 0,
-        width: '100%',
-        flexWrap: 'nowrap',
-        // Add smooth container transitions to prevent jolting
-        contain: 'layout style', // Optimize for layout changes
+        
+        // More compact rounding
+        borderRadius: '10px 10px 0 0',
+        
+        // Layout containment for performance
+        contain: 'layout style',
+        
+        // Highlighted state with smooth scaling
         ...(highlighted && {
-            transform: 'scale(1.02)',
-            filter: 'brightness(1.05)',
-            boxShadow: '0 0 10px rgba(0,0,0,0.3)',
-            transition: 'transform 0.3s, filter 0.3s, box-shadow 0.3s',
+            transform: 'scale(1.01)',
+            filter: 'brightness(1.04)',
+            boxShadow: isDarkMode
+                ? '0 12px 40px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(54, 144, 206, 0.3)'
+                : '0 12px 40px rgba(6, 23, 51, 0.18), 0 6px 20px rgba(6, 23, 51, 0.12), 0 0 0 1px rgba(54, 144, 206, 0.2)',
         }),
+        
+        // Hide scrollbars while maintaining functionality
         selectors: {
             '::-webkit-scrollbar': {
                 display: 'none',
             },
         },
+        
+        // Responsive design
         '@media (max-width: 900px)': {
-            gap: '2px',
-            padding: '0 24px',
+            padding: '6px 24px',
+            gap: '4px',
         },
         '@media (max-width: 600px)': {
-            gap: '0px',
-            padding: '0 24px',
+            padding: '6px 20px',
+            gap: '2px',
         },
     });
 
@@ -77,17 +102,23 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     currentUserConfirmed,
     highlighted = false,
     resetSelectionRef,
+    panelActive = false,
 }) => {
     const [selected, setSelected] = React.useState<string | null>(null);
+    const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
-    // Expose reset function via ref
+    // Expose reset function via ref, but don't reset if panel is still active
     React.useEffect(() => {
         if (resetSelectionRef) {
-            resetSelectionRef.current = () => setSelected(null);
+            resetSelectionRef.current = () => {
+                if (!panelActive) {
+                    setSelected(null);
+                }
+            };
         }
-    }, [resetSelectionRef]);
+    }, [resetSelectionRef, panelActive]);
 
-    // Reset selection when component unmounts (when bar is hidden/removed)
+    // Reset selection when component unmounts
     React.useEffect(() => {
         return () => {
             setSelected(null);
@@ -95,22 +126,32 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     }, []);
 
     const onCardClick = (action: QuickAction) => {
+        // Smooth loading state transition
         setSelected(action.title);
-        handleActionClick(action);
+        setIsLoading(true);
+        
+        // Professional loading feedback
+        setTimeout(() => {
+            handleActionClick(action);
+            setIsLoading(false);
+        }, 150); // Brief loading state for smooth UX
     };
-    // Map long titles to short ones for space-saving
+
+    // Optimized title mapping for better UX
     const getShortTitle = (title: string) => {
         switch (title) {
             case 'Create a Task':
-                return 'Tasks';
+                return 'New Task';
             case 'Save Telephone Note':
-                return 'Tel Note';
+                return 'Attendance Note';
             case 'Request Annual Leave':
-                return 'Request Leave';
+                return 'Book Leave';
             case 'Update Attendance':
-                return 'Edit Attendance';
+                return 'Attendance';
+            case 'Confirm Attendance':
+                return 'Confirm Attendance';
             case 'Book Space':
-                return 'Spaces';
+                return 'Book Room';
             default:
                 return title;
         }
@@ -119,44 +160,74 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     return (
         <div
             className={quickLinksStyle(isDarkMode, highlighted)}
-            style={{
-                display: 'flex',
-                gap: '12px', // Increased gap for better separation
-                minHeight: ACTION_BAR_HEIGHT,
-                width: '100%',
-                flexWrap: 'nowrap',
-                overflowX: 'auto',
-                paddingTop: 2,
-                paddingBottom: 2,
-            }}
+            role="toolbar"
+            aria-label="Quick Actions"
         >
-            {quickActions.map((action, index) => (
-                <QuickActionsCard
-                    key={action.title}
-                    title={getShortTitle(action.title)}
-                    icon={action.icon}
-                    isDarkMode={isDarkMode}
-                    onClick={() => onCardClick(action)}
-                    iconColor={colours.cta}
-                    selected={selected === action.title}
-                    confirmed={action.title === 'Confirm Attendance' ? currentUserConfirmed : undefined}
+            {/* Centered container for quick actions */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    height: '100%',
+                }}
+            >
+                {quickActions.map((action, index) => (
+                    <QuickActionsCard
+                        key={action.title}
+                        title={getShortTitle(action.title)}
+                        icon={action.icon}
+                        isDarkMode={isDarkMode}
+                        onClick={() => onCardClick(action)}
+                        iconColor={colours.cta}
+                        selected={selected === action.title}
+                        confirmed={action.title === 'Confirm Attendance' ? currentUserConfirmed : undefined}
+                        disabled={isLoading && selected !== action.title}
+                        panelActive={panelActive && selected === action.title}
+                        style={{
+                            '--card-index': index,
+                            '--card-bg': isDarkMode 
+                                ? colours.dark.sectionBackground 
+                                : colours.light.sectionBackground,
+                            '--card-hover': isDarkMode 
+                                ? colours.dark.cardHover 
+                                : colours.light.cardHover,
+                            '--card-selected': isDarkMode 
+                                ? colours.dark.cardHover 
+                                : colours.light.cardHover,
+                            // Compact card height to match tab icons
+                            height: '44px',
+                            // Loading state visual feedback
+                            opacity: (isLoading && selected !== action.title) ? 0.6 : 1,
+                            filter: (isLoading && selected === action.title) 
+                                ? 'brightness(1.1)' 
+                                : 'none',
+                        } as React.CSSProperties}
+                    />
+                ))}
+            </div>
+            
+            {/* Loading overlay for smooth state transitions */}
+            {isLoading && (
+                <div
                     style={{
-                        '--card-index': index,
-                        fontSize: '15px',
-                        padding: '0 8px', // More compact padding
-                        height: '48px', // Changed from 44px to match Enquiries/Matters
-                        minWidth: '44px', // Start compact
-                        width: '44px', // Fixed compact width
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center', // Center the icon
-                        flex: '0 0 auto',
-                        marginLeft: index === 0 ? 0 : 0,
-                    } as React.CSSProperties}
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: isDarkMode 
+                            ? 'linear-gradient(135deg, rgba(45, 45, 45, 0.3) 0%, rgba(58, 58, 58, 0.2) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(248, 250, 252, 0.2) 100%)',
+                        backdropFilter: 'blur(2px)',
+                        borderRadius: '16px 16px 0 0',
+                        pointerEvents: 'none',
+                        transition: 'opacity 0.3s ease',
+                    }}
                 />
-            ))}
+            )}
         </div>
     );
-}
+};
 
 export default QuickActionsBar;

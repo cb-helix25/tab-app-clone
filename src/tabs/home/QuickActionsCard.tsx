@@ -1,67 +1,34 @@
 import React from 'react';
-// invisible change 2
-import { mergeStyles, Text, Icon } from '@fluentui/react';
 import {
   FaRegCheckSquare,
   FaCheckSquare,
-  FaRegListAlt,
-  FaListAlt,
-  FaRegCommentDots,
-  FaCommentDots,
   FaRegCalendarAlt,
   FaCalendarAlt,
-  FaRegCalendarCheck,
-  FaCalendarCheck,
-  FaRegTimesCircle,
-  FaTimesCircle,
+  FaRegClock,
+  FaClock,
+  FaRegBuilding,
+  FaBuilding,
+  FaPhone,
+  FaRegUser,
+  FaUser,
   FaRegFolder,
   FaFolder,
   FaRegIdBadge,
   FaIdBadge,
-  FaExclamationTriangle,
-  FaExclamationCircle,
-  FaRegEdit,
-  FaEdit,
-  FaRegMoneyBillAlt,
-  FaMoneyBillAlt,
-  FaCogs,
-  FaShieldAlt,
-  FaRegHandshake,
-  FaHandshake,
-  FaRegCheckCircle,
-  FaCheckCircle,
-  FaRegFileAlt,
-  FaFileAlt,
-  FaRegFile,
-  FaFile,
-  FaRegPlusSquare,
-  FaPlusSquare,
-  FaRegStickyNote,
-  FaStickyNote,
-  FaTimes,
-  FaCheck,
-  FaPlus,
-  FaDownload,
-  FaPhone,
-  FaRegClock,
-  FaClock,
   FaUserCheck,
-  FaTasks,
-  FaClipboardList,
-  FaRegBuilding,
-  FaBuilding,
+  FaMobileAlt,
+  FaRegCalendarCheck,
+  FaCalendarCheck,
 } from 'react-icons/fa';
 import {
-  AiOutlineCheck,
-  AiOutlineClose,
   AiOutlinePlus,
-  AiOutlineDownload,
+  AiFillPlusSquare,
 } from 'react-icons/ai';
 import {
-  MdOutlineWarning,
-  MdWarning,
-  MdOutlineMeetingRoom,
-  MdMeetingRoom,
+  MdOutlineEventSeat,
+  MdEventSeat,
+  MdPhone,
+  MdCall,
   MdOutlineAssessment,
   MdAssessment,
   MdOutlineArticle,
@@ -70,63 +37,12 @@ import {
   MdLocationCity,
   MdOutlineConstruction,
   MdConstruction,
-  MdOutlinePeople,
-  MdPeople,
-  MdHelp,
-  MdOutlineHelp,
-  MdPhone,
-  MdCall,
-  MdEventSeat,
-  MdOutlineEventSeat,
+  MdSmartphone,
 } from 'react-icons/md';
-import { PiTreePalm } from 'react-icons/pi';
-import { IconType } from 'react-icons';
+import { PiTreePalm, PiTreePalmFill } from 'react-icons/pi';
 import { colours } from '../../app/styles/colours';
-import { cardStyles } from '../instructions/componentTokens';
 import '../../app/styles/QuickActionsCard.css';
-import { componentTokens } from '../../app/styles/componentTokens';
 import AnimatedPulsingDot from '../../components/AnimatedPulsingDot';
-
-const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
-  Accept: { outline: FaRegCheckSquare, filled: FaCheckSquare },
-  CheckCircle: { outline: FaRegCheckCircle, filled: FaCheckCircle },
-  // Better task/checklist icon - more recognizable
-  Checklist: { outline: FaTasks, filled: FaClipboardList },
-  // Better phone/comment icon for telephone notes
-  Comment: { outline: MdPhone, filled: MdCall },
-  // Attendance/time icons - clock is more intuitive than calendar for daily attendance
-  Calendar: { outline: FaRegClock, filled: FaClock },
-  CalendarCheck: { outline: FaUserCheck, filled: FaUserCheck },
-  // Room/space booking - seat icon is clearer for space booking
-  Room: { outline: MdOutlineEventSeat, filled: MdEventSeat },
-  // Warning/alert icons
-  Warning: { outline: MdOutlineWarning, filled: MdWarning },
-  Cancel: { outline: FaRegTimesCircle, filled: FaTimesCircle },
-  Document: { outline: FaRegFile, filled: FaFile },
-  FileTemplate: { outline: FaRegFileAlt, filled: FaFileAlt },
-  // Use a real folder icon for Open Matter (was FaRegFileAlt/FaFileAlt, which is a file/contract icon)
-  OpenFile: { outline: FaRegFolder, filled: FaFolder },
-  IdCheck: { outline: FaRegIdBadge, filled: FaIdBadge },
-  Assessment: { outline: MdOutlineAssessment, filled: MdAssessment },
-  KnowledgeArticle: { outline: MdOutlineArticle, filled: MdArticle },
-  CityNext: { outline: MdOutlineLocationCity, filled: MdLocationCity },
-  ConstructionCone: { outline: MdOutlineConstruction, filled: MdConstruction },
-  People: { outline: MdOutlinePeople, filled: MdPeople },
-  Help: { outline: MdOutlineHelp, filled: MdHelp },
-  PalmTree: { outline: PiTreePalm, filled: PiTreePalm },
-  // New icons for instructions page
-  List: { outline: FaRegListAlt, filled: FaListAlt },
-  Money: { outline: FaRegHandshake, filled: FaHandshake },
-  Shield: { outline: FaShieldAlt, filled: FaShieldAlt },
-  Settings: { outline: FaCogs, filled: FaCogs },
-  Edit: { outline: FaRegEdit, filled: FaEdit },
-  EditCreate: { outline: FaRegStickyNote, filled: FaStickyNote },
-  // Lightweight action icons - using thinner Ant Design icons
-  LightCheck: { outline: AiOutlineCheck, filled: AiOutlineCheck },
-  LightCancel: { outline: AiOutlineClose, filled: AiOutlineClose },
-  LightAdd: { outline: AiOutlinePlus, filled: AiOutlinePlus },
-  LightDownload: { outline: AiOutlineDownload, filled: AiOutlineDownload },
-};
 
 interface QuickActionsCardProps {
   title: string;
@@ -134,281 +50,149 @@ interface QuickActionsCardProps {
   isDarkMode: boolean;
   onClick: () => void;
   iconColor?: string;
-  confirmed?: boolean;
-  style?: React.CSSProperties;
   selected?: boolean;
-  /** Layout direction. Use 'column' for client type buttons */
-  orientation?: 'row' | 'column';
-  /** Show a pulsing dot indicator */
-  showPulsingDot?: boolean;
-  /** Whether the card should be disabled */
+  confirmed?: boolean;
   disabled?: boolean;
-  /** Always show text instead of reveal on hover */
+  style?: React.CSSProperties;
+  orientation?: 'row' | 'column';
   alwaysShowText?: boolean;
+  showPulsingDot?: boolean;
+  panelActive?: boolean;
 }
+
+// Icon mapping with outline/filled pairs
+const iconMap: Record<string, { outline: React.ComponentType<any>; filled: React.ComponentType<any> }> = {
+  Accept: { outline: FaRegCheckSquare, filled: FaCheckSquare },
+  Checklist: { outline: FaRegCheckSquare, filled: FaCheckSquare },
+  Comment: { outline: MdSmartphone, filled: FaMobileAlt },
+  Calendar: { outline: FaRegCalendarCheck, filled: FaCalendarCheck },
+  CalendarCheck: { outline: FaRegUser, filled: FaUser },
+  Room: { outline: MdOutlineEventSeat, filled: MdEventSeat },
+  Building: { outline: FaRegBuilding, filled: FaBuilding },
+  Plus: { outline: AiOutlinePlus, filled: AiFillPlusSquare },
+  Phone: { outline: MdSmartphone, filled: FaMobileAlt },
+  Leave: { outline: PiTreePalm, filled: PiTreePalmFill },
+  PalmTree: { outline: PiTreePalm, filled: PiTreePalmFill },
+  OpenFile: { outline: FaRegFolder, filled: FaFolder },
+  IdCheck: { outline: FaRegIdBadge, filled: FaIdBadge },
+  Assessment: { outline: MdOutlineAssessment, filled: MdAssessment },
+  KnowledgeArticle: { outline: MdOutlineArticle, filled: MdArticle },
+  CityNext: { outline: MdOutlineLocationCity, filled: MdLocationCity },
+  ConstructionCone: { outline: MdOutlineConstruction, filled: MdConstruction },
+};
+
+// Export function to get filled icon for panel headers
+export const getQuickActionIcon = (iconName: string): React.ComponentType<any> | null => {
+  const mapping = iconMap[iconName];
+  if (!mapping) {
+    console.log(`❌ No mapping found for icon: ${iconName}`);
+    return null;
+  }
+  
+  const IconComponent = mapping.filled;
+  
+  console.log(`🔍 Processing icon "${iconName}":`, {
+    type: typeof IconComponent,
+    isFunction: typeof IconComponent === 'function',
+    hasDefault: IconComponent && typeof IconComponent === 'object' && (IconComponent as any).default,
+    iconComponent: IconComponent
+  });
+  
+  // React Icons are functions, but might be wrapped differently in different environments
+  if (typeof IconComponent === 'function') {
+    return IconComponent;
+  }
+  
+  // Try to get the default export if it's an object
+  if (IconComponent && typeof IconComponent === 'object' && (IconComponent as any).default) {
+    const defaultIcon = (IconComponent as any).default;
+    console.log(`🔧 Using default export for "${iconName}":`, typeof defaultIcon);
+    return defaultIcon;
+  }
+  
+  // If still not a function, return null
+  console.log(`❌ Could not resolve icon component for "${iconName}"`);
+  return null;
+};
 
 const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   title,
   icon,
   isDarkMode,
   onClick,
-  iconColor,
-  confirmed,
-  style,
-  selected,
-  orientation = 'row',
-  showPulsingDot = false,
+  selected = false,
   disabled = false,
+  style = {},
+  orientation = 'row',
   alwaysShowText = false,
+  showPulsingDot = false,
+  panelActive = false,
 }) => {
-  // Base card style
-  const baseCardStyle = mergeStyles({
-    backgroundColor: isDarkMode
-      ? colours.dark.sectionBackground
-      : colours.light.sectionBackground,
-    color: disabled ? '#888' : (isDarkMode ? colours.dark.text : colours.light.text),
-    padding: orientation === 'column' ? '8px 12px' : '0 12px',
-    height: orientation === 'column' ? 'auto' : '48px',
-    lineHeight: orientation === 'column' ? 'normal' : '48px',
-    fontSize: '16px',
-    borderRadius: 0,
-    display: 'flex',
-    flexDirection: orientation,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: orientation === 'column' ? '4px' : '7px',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    transition: 'background-color 0.2s, transform 0.1s, border-color 0.2s',
-    border: '2px solid transparent',
-    opacity: disabled ? 0.5 : 1,
-    pointerEvents: disabled ? 'none' : 'auto',
-  } as any);
 
-
-  const customStyle = {};
-  const combinedCardStyle = mergeStyles(baseCardStyle, customStyle);
-
-  const cardVars: React.CSSProperties = {
-    '--card-bg': isDarkMode
-      ? colours.dark.sectionBackground
-      : colours.light.sectionBackground,
-    '--card-hover': isDarkMode
-      ? colours.dark.cardHover
-      : colours.light.cardHover,
-    '--card-selected': isDarkMode
-      ? colours.dark.cardHover
-      : colours.light.cardHover,
-  } as React.CSSProperties;
-
-  // Icon logic
-  let attendanceIconName = icon;
-  // Use a lighter grey for inactive quick action icons (lighter than instructions)
-  const inactiveGrey = '#c7ccd3'; // lighter than #bfc5cc
-  let attendanceIconStyle = mergeStyles({
-    fontSize: '19px',
-    color: disabled ? '#e0e3e8' : (selected ? (iconColor || colours.cta) : inactiveGrey),
-    marginRight: '4px',
-  });
-
-  if (title === 'Confirm Attendance') {
-    if (confirmed) {
-      attendanceIconName = 'CalendarCheck';
-      attendanceIconStyle = mergeStyles(attendanceIconStyle, { color: iconColor || colours.cta });
-    } else {
-      attendanceIconName = 'Calendar';
-      attendanceIconStyle = mergeStyles(attendanceIconStyle, {
-        color: colours.red,
-        animation: 'redPulse 2s infinite',
-        boxShadow: 'inset 0 0 5px rgba(255,0,0,0.5)',
-      });
+  // Get icon components
+  const getIcons = (iconName: string) => {
+    const mapping = iconMap[iconName];
+    if (mapping) {
+      return {
+        OutlineIcon: mapping.outline,
+        FilledIcon: mapping.filled,
+      };
     }
-  } else if (title === 'Approve Annual Leave') {
-    attendanceIconName = 'PalmTree';
-    attendanceIconStyle = mergeStyles(attendanceIconStyle, {
-      color: colours.cta,
-    });
-  } else if (title === 'Open Matter') {
-  // Always use the original folder icon (OpenFile) for Open Matter, no green pulse
-    attendanceIconName = 'OpenFile';
-    attendanceIconStyle = mergeStyles(attendanceIconStyle, {
-      color: colours.cta,
-    });
-  } else if (title === 'Book Requested Leave') {
-    attendanceIconName = 'Accept';
-    attendanceIconStyle = mergeStyles(attendanceIconStyle, {
-      color: colours.green,
-      animation: 'greenPulse 2s infinite',
-      boxShadow: 'inset 0 0 5px rgba(16,124,16,0.5)',
-    });
-  }
+    // Fallback
+    return {
+      OutlineIcon: FaRegCheckSquare,
+      FilledIcon: FaCheckSquare,
+    };
+  };
 
-  // Dismiss button rework: if title is 'Dismiss', render special dismiss button
-  if (title === 'Dismiss') {
-    return (
-      <div
-        className="nav-button dismiss-button"
-        onClick={onClick}
-        style={{
-          background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-          border: isDarkMode ? '1px solid #444' : '1px solid #e1dfdd',
-          borderRadius: '0px',
-          width: '48px',
-          height: '32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          boxShadow: isDarkMode ? '0 1px 2px rgba(6,23,51,0.10)' : '0 1px 2px rgba(6,23,51,0.04)',
-          position: 'relative',
-          overflow: 'hidden',
-          marginLeft: 8,
-        }}
-        tabIndex={0}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLDivElement).style.background = '#ffefed';
-          (e.currentTarget as HTMLDivElement).style.border = '1px solid #D65541';
-          (e.currentTarget as HTMLDivElement).style.width = '120px';
-          (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLDivElement).style.background = isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground;
-          (e.currentTarget as HTMLDivElement).style.border = isDarkMode ? '1px solid #444' : '1px solid #e1dfdd';
-          (e.currentTarget as HTMLDivElement).style.width = '48px';
-          (e.currentTarget as HTMLDivElement).style.boxShadow = isDarkMode ? '0 1px 2px rgba(6,23,51,0.10)' : '0 1px 2px rgba(6,23,51,0.04)';
-        }}
-      >
-        {/* Dismiss Icon (X) */}
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          style={{
-            transition: 'color 0.3s, opacity 0.3s',
-            color: '#D65541',
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-          }}
-          className="dismiss-icon"
-        >
-          <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        {/* Expandable Text */}
-        <span
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: '14px',
-            fontWeight: 600,
-            color: '#D65541',
-            opacity: 0,
-            transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            whiteSpace: 'nowrap',
-          }}
-          className="nav-text"
-        >
-          Dismiss
-        </span>
-        <style>{`
-          .nav-button.dismiss-button:hover .nav-text {
-            opacity: 1 !important;
-          }
-          .nav-button.dismiss-button:hover .dismiss-icon {
-            opacity: 0 !important;
-          }
-        `}</style>
-      </div>
-    );
-  }
+  const { OutlineIcon, FilledIcon } = getIcons(icon);
 
-  // Text style
-  const textStyle = mergeStyles({
-    fontWeight: 600,
-    fontSize: '14px',
-    whiteSpace: 'nowrap',
-    textAlign: 'center',
-  });
-
-  const dynamicClasses = mergeStyles(
-    combinedCardStyle,
+  // Dynamic classes
+  const cardClasses = [
+    'quickActionCard',
     selected && 'selected',
-    orientation === 'column' && 'vertical'
-  );
+    orientation === 'column' && 'vertical',
+    alwaysShowText && 'always-show-text',
+    disabled && 'disabled',
+    panelActive && 'panel-active'
+  ].filter(Boolean).join(' ');
+
+  const iconStyle = {
+    fontSize: 20,
+    color: isDarkMode ? colours.dark.text : colours.light.text,
+  };
 
   return (
     <div
-      className={`quickActionCard icon-hover ${dynamicClasses} ${alwaysShowText ? 'always-show-text' : ''}`}
-      style={{ ...cardVars, ...style, position: 'relative', overflow: 'visible' }}
+      className={cardClasses}
       onClick={disabled ? undefined : onClick}
       role="button"
       tabIndex={disabled ? -1 : 0}
+      style={style}
       onKeyPress={(e) => {
         if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
           onClick();
         }
       }}
     >
-      <span className="quick-action-content">
-        <span className="icon-wrapper">
-          {(() => {
-            if (!attendanceIconName) {
-              return null;
-            }
-            const mapping = iconMap[attendanceIconName];
-            if (mapping) {
-              const OutlineIcon = mapping.outline;
-              const FilledIcon = mapping.filled;
-              return (
-                <>
-                  <OutlineIcon className={`icon-outline ${attendanceIconStyle}`} />
-                  <FilledIcon className={`icon-filled ${attendanceIconStyle}`} />
-                </>
-              );
-            }
-            // fallback to Fluent UI icons when no mapping exists
-            return <Icon iconName={attendanceIconName} className={attendanceIconStyle} />;
-          })()}
-        </span>
-        {showPulsingDot && orientation === 'row' ? (
-          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
-            <Text variant="small" styles={{ root: textStyle }} className="quick-action-label">
-              {title}
-            </Text>
-            <AnimatedPulsingDot show={showPulsingDot} size={6} animationDuration={350} />
-          </span>
-        ) : (
-          <>
-            <Text 
-              variant="small" 
-              styles={{ 
-                root: {
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  whiteSpace: 'nowrap',
-                  textAlign: 'center',
-                  opacity: alwaysShowText ? 1 : 0, // Show by default if alwaysShowText is true
-                  marginLeft: '6px',
-                  transition: 'opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                }
-              }} 
-              className="quick-action-label"
-            >
-              {title}
-            </Text>
-            {showPulsingDot && orientation === 'column' && (
-              <AnimatedPulsingDot show={showPulsingDot} size={6} animationDuration={350} />
-            )}
-          </>
+      {/* Icon container */}
+      <div className="quick-action-icon">
+        <OutlineIcon className="icon-outline" style={iconStyle} />
+        <FilledIcon className="icon-filled" style={iconStyle} />
+      </div>
+
+      {/* Label */}
+      <span className="quick-action-label">
+        {title}
+        {showPulsingDot && (
+          <AnimatedPulsingDot 
+            show={showPulsingDot} 
+            size={6} 
+            animationDuration={350} 
+            style={{ marginLeft: 6 }}
+          />
         )}
       </span>
-      {/* Animated blue bottom border highlight */}
-      <span className="quick-action-animated-border" aria-hidden="true" />
     </div>
   );
 };
