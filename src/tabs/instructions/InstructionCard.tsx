@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
-import { TextField, DefaultButton, PrimaryButton } from '@fluentui/react';
+import { TextField, DefaultButton, PrimaryButton, Dropdown, IDropdownOption } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
+import OperationStatusToast from '../enquiries/pitch-builder/OperationStatusToast';
 import {
   FaUser, 
   FaUsers, 
@@ -33,7 +34,9 @@ import {
   FaPlayCircle,
   FaSpinner,
   FaCheckCircle,
-  FaEdit
+  FaEdit,
+  FaUserEdit,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 
 // Helper to capitalise first letter (placed after all imports to satisfy eslint import/first)
@@ -106,6 +109,10 @@ export interface InstructionCardProps {
   onEIDClick?: () => void;
   /** Invoked to start the Risk Assessment flow when none exists yet */
   onRiskClick?: () => void;
+  /** Invoked to edit an existing Risk Assessment */
+  onEditRisk?: (instructionRef: string) => void;
+  /** Invoked to delete an existing Risk Assessment */
+  onDeleteRisk?: (instructionRef: string) => void;
   onOpenMatter?: (instruction: any) => void;
   idVerificationLoading?: boolean;
   animationDelay?: number;
@@ -206,6 +213,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   onClick,
   onEIDClick,
   onRiskClick,
+  onEditRisk,
+  onDeleteRisk,
   onOpenMatter,
   idVerificationLoading = false,
   animationDelay = 0,
@@ -220,6 +229,17 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     ServiceDescription: '',
     Amount: ''
   });
+
+  // Manual status override state
+  const [showStatusOverride, setShowStatusOverride] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  
+  // Toast state for API feedback
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'error';
+    message: string;
+  }>({ show: false, type: 'success', message: '' });
   const [isSavingDeal, setIsSavingDeal] = useState(false);
   const [activeStep, setActiveStep] = useState<string>('');
   const [showRiskDetails, setShowRiskDetails] = useState(false);
@@ -287,6 +307,86 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       setIsSavingDeal(false);
     }
   };
+
+  // Manual status override handlers
+  const handleManualStatusOverride = async (status: 'initialised' | 'processing' | 'instructed' | 'pitched', label: string) => {
+    const instructionRef = instruction?.InstructionRef;
+    if (!instructionRef) return;
+
+    setIsUpdatingStatus(true);
+    
+    try {
+      // Map UI status to database values
+      const statusMapping = {
+        'initialised': { stage: 'initialised', internalStatus: 'pitch' },
+        'processing': { stage: 'proof-of-id-complete', internalStatus: 'poid' },
+        'instructed': { stage: 'proof-of-id-complete', internalStatus: 'paid' },
+        'pitched': { stage: 'initialised', internalStatus: 'pitch' }
+      };
+
+      const { stage, internalStatus } = statusMapping[status];
+
+      const response = await fetch('/api/updateInstructionStatus', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          instructionRef,
+          stage,
+          internalStatus,
+          overrideReason: `Manual override to ${label} via UI`,
+          userInitials: 'UI' // Could get from auth context in production
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local instruction object to reflect changes immediately
+        if (instruction) {
+          instruction.Stage = stage;
+          instruction.InternalStatus = internalStatus;
+          instruction.LastUpdated = new Date().toISOString();
+        }
+
+        setToast({
+          show: true,
+          type: 'success',
+          message: `Status updated to ${label}`
+        });
+
+        // Auto-hide success toast
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 2000);
+        
+      } else {
+        throw new Error(result.error || 'Failed to update status');
+      }
+      
+    } catch (error) {
+      console.error('Failed to update instruction status:', error);
+      
+      setToast({
+        show: true,
+        type: 'error',
+        message: `Failed to update status: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+      
+      // Auto-hide error toast
+      setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
+    } finally {
+      setIsUpdatingStatus(false);
+      setShowStatusOverride(false);
+    }
+  };
+
+  const statusOptions: IDropdownOption[] = [
+    { key: 'initialised', text: 'Initialised' },
+    { key: 'processing', text: 'ID Completed' },
+    { key: 'instructed', text: 'Instructed' },
+    { key: 'pitched', text: 'Pitched' }
+  ];
+
   // Fetch matter details when showMatterDetails is opened
   useEffect(() => {
     if (showMatterDetails && (instruction?.InstructionRef || instruction?.instructionRef) && !matterData && !loadingMatterDetails) {
@@ -616,21 +716,55 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
   // Determine the pitch stage - one bubble that changes
   const getPitchStage = () => {
-    // Normalise stage for robust matching (instructions data only)
+    // Normalise stage and internal status for robust matching
     const stageLower = (instruction?.Stage || instruction?.stage || '').toLowerCase();
-    // Instructed strictly from instructions data: proof-of-id-complete
+    const internalStatus = (instruction?.InternalStatus || instruction?.internalStatus || '').toLowerCase();
+    
+    // Check if this was manually overridden (has OverrideReason)
+    const isManualOverride = instruction?.OverrideReason;
+    
+    // Instructed: proof-of-id-complete stage with paid status indicates fully instructed
     if (instruction?.InstructionRef && stageLower === 'proof-of-id-complete') {
-  return { key: 'instructed', label: 'Instructed', icon: <FaIdBadge />, colour: colours.green };
+      if (internalStatus === 'paid') {
+        return { 
+          key: 'instructed', 
+          label: isManualOverride ? 'Instructed*' : 'Instructed', 
+          icon: isManualOverride ? <FaUserEdit /> : <FaIdBadge />, 
+          colour: colours.green 
+        };
+      } else {
+        // proof-of-id-complete but not paid - all cases show as ID Completed
+        return { 
+          key: 'processing', 
+          label: isManualOverride ? 'ID Completed*' : 'ID Completed', 
+          icon: isManualOverride ? <FaUserEdit /> : <FaSpinner />, 
+          colour: colours.orange 
+        };
+      }
     }
-    // Initialised strictly from instructions data
+    
+    // Initialised for cases without proof-of-id-complete (including pitch status without ID completion)
     if (instruction?.InstructionRef && stageLower === 'initialised') {
-      return { key: 'initialised', label: 'Initialised', icon: <FaPlayCircle />, colour: colours.blue };
+      return { 
+        key: 'initialised', 
+        label: isManualOverride ? 'Initialised*' : 'Initialised', 
+        icon: isManualOverride ? <FaUserEdit /> : <FaPlayCircle />, 
+        colour: colours.blue 
+      };
     }
+    
     // Pitched = deal exists (pitch sent)
     if (hasDeal) {
       const label = pitchWhen ? `Pitched ${pitchWhen}` : 'Pitched';
-      return { key: 'pitched', label, icon: <FaEnvelope />, colour: colours.greyText };
+      const overrideLabel = isManualOverride ? `${label}*` : label;
+      return { 
+        key: 'pitched', 
+        label: overrideLabel, 
+        icon: isManualOverride ? <FaUserEdit /> : <FaEnvelope />, 
+        colour: colours.greyText 
+      };
     }
+    
     // Default state
     return { key: 'pitched', label: 'Pitched', icon: <FaEnvelope />, colour: colours.greyText };
   };
@@ -1203,7 +1337,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     // For pitched deals, make actions clickable; for instruction cards, only nextActionStep is clickable
                     // Exception: ID verification and Risk Assessment are always clickable to view details
                     // Don't allow clicks on disabled steps
-                    if(!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed')) {
+                    if(!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed' || step.key === 'processing')) {
                       if (step.key === 'id' && onEIDClick) {
                         onEIDClick();
                       } else if (step.key === 'risk') {
@@ -1216,7 +1350,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         }
                       } else if (step.key === 'payment') {
                         setShowPaymentDetails(prev => !prev);
-                      } else if (step.key === 'instructed') {
+                      } else if (step.key === 'instructed' || step.key === 'processing') {
                         setShowInstructionDetails(prev => !prev);
                       } else if (step.key === 'documents') {
                         setShowDocumentDetails(prev => !prev);
@@ -1252,7 +1386,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     borderRadius: 16,
                     fontSize: 10,
                     fontWeight: 700,
-                    cursor: (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed')) ? 'pointer' : 'default',
+                    cursor: (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed' || step.key === 'processing')) ? 'pointer' : 'default',
                     opacity: isDisabled ? 0.35 : 1,
                     transform: 'translateY(0) scale(1)',
                     transition: 'opacity .2s ease-out, transform .2s ease-out, background .2s, color .2s, border .2s',
@@ -1261,12 +1395,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     alignItems: 'center',
                     gap: 6,
                     selectors: {
-                      ':hover': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed')) ? {
+                      ':hover': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed' || step.key === 'processing')) ? {
                         background: colours.blue,
                         borderColor: colours.blue,
                         color: '#fff'
                       } : {},
-                      ':active': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed')) ? {
+                      ':active': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed' || step.key === 'processing')) ? {
                         background: colours.blue,
                         color: '#fff',
                         transform: 'scale(0.96)'
@@ -1314,6 +1448,42 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               </button>
             );
           })}
+          
+          {/* Status Override Button - only show for status chip */}
+          {instruction?.InstructionRef && pitchStage && (
+            <button
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                setShowStatusOverride(!showStatusOverride);
+              }}
+              className={mergeStyles({
+                border: '1px solid',
+                borderColor: colours.greyText,
+                borderRadius: '6px',
+                padding: '2px 6px',
+                fontSize: '11px',
+                fontWeight: 500,
+                background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                color: colours.greyText,
+                cursor: 'pointer',
+                transition: 'all .2s ease-out',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                selectors: {
+                  ':hover': {
+                    background: colours.blue,
+                    borderColor: colours.blue,
+                    color: '#fff'
+                  }
+                }
+              })}
+              title="Override Status"
+            >
+              <FaEdit style={{ fontSize: 10 }} />
+              Override
+            </button>
+          )}
           
           {/* Edit moved into deal summary to avoid looking like an action */}
           
@@ -1409,19 +1579,59 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           <div style={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: '8px',
             marginBottom: '12px',
             paddingBottom: '8px',
             borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(54,144,206,0.1)'}`
           }}>
-            <FaShieldAlt style={{ color: colours.blue, fontSize: '16px' }} />
-            <span style={{
-              fontSize: '14px',
-              fontWeight: 700,
-              color: isDarkMode ? '#fff' : colours.darkBlue
-            }}>
-              Risk Assessment Details
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FaShieldAlt style={{ color: colours.blue, fontSize: '16px' }} />
+              <span style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                color: isDarkMode ? '#fff' : colours.darkBlue
+              }}>
+                Risk Assessment Details
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); instruction?.InstructionRef && onEditRisk?.(instruction.InstructionRef); }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(54,144,206,0.3)',
+                  background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                  color: colours.cta,
+                  cursor: 'pointer'
+                }}
+                title="Edit risk assessment"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!instruction?.InstructionRef) return;
+                  const ok = window.confirm('Delete this risk assessment? This cannot be undone.');
+                  if (ok) onDeleteRisk?.(instruction.InstructionRef);
+                }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(220, 38, 38, 0.35)',
+                  background: isDarkMode ? 'rgba(220,38,38,0.15)' : 'linear-gradient(135deg, #fff5f5 0%, #ffecec 100%)',
+                  color: colours.red,
+                  cursor: 'pointer'
+                }}
+                title="Delete risk assessment"
+              >
+                Delete
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
@@ -2585,6 +2795,112 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           )}
         </div>
       )}
+
+      {/* Status Override Dropdown */}
+      {showStatusOverride && (
+        <div style={{
+          position: 'absolute',
+          top: '50px',
+          right: '10px',
+          background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+          border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+          borderRadius: '8px',
+          padding: '12px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          zIndex: 1000,
+          minWidth: '200px'
+        }}>
+          <div style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            marginBottom: '8px',
+            color: isDarkMode ? colours.dark.text : colours.light.text,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <FaExclamationTriangle style={{ color: colours.orange }} />
+            Manual Override
+          </div>
+          
+          <div style={{ fontSize: '11px', marginBottom: '12px', color: colours.greyText }}>
+            Override system status for: {instruction?.InstructionRef}
+          </div>
+
+          {isUpdatingStatus ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+              color: colours.greyText,
+              fontSize: '12px'
+            }}>
+              <FaSpinner style={{ 
+                marginRight: '8px',
+                animation: 'spin 1s linear infinite'
+              }} />
+              Updating status...
+              <style>
+                {`
+                  @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                  }
+                `}
+              </style>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {statusOptions.map(option => (
+                <button
+                  key={option.key}
+                  onClick={() => handleManualStatusOverride(
+                    option.key as 'initialised' | 'processing' | 'instructed' | 'pitched',
+                    option.text as string
+                  )}
+                  style={{
+                    padding: '6px 8px',
+                    border: '1px solid',
+                    borderColor: isDarkMode ? colours.dark.border : colours.light.border,
+                    borderRadius: '4px',
+                    background: 'transparent',
+                    color: isDarkMode ? colours.dark.text : colours.light.text,
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    textAlign: 'left'
+                  }}
+                >
+                  {option.text}
+                </button>
+              ))}
+              
+              <button
+                onClick={() => setShowStatusOverride(false)}
+                style={{
+                  padding: '4px 8px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: colours.greyText,
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  textAlign: 'center',
+                  marginTop: '4px'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Toast for API feedback */}
+      <OperationStatusToast
+        visible={toast.show}
+        type={toast.type}
+        message={toast.message}
+      />
     </div>
   );
 };

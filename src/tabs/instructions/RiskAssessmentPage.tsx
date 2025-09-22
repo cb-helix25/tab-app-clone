@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 // invisible change 2.1
 //
 import { Stack, Dialog, DialogType, DialogFooter, DefaultButton, PrimaryButton } from '@fluentui/react';
+import OperationStatusToast from '../enquiries/pitch-builder/OperationStatusToast';
 import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
 import { dashboardTokens } from './componentTokens';
 import '../../app/styles/NewMatters.css';
@@ -20,6 +21,11 @@ interface RiskAssessmentPageProps {
 }
 
 const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk, onSave }) => {
+    const [toast, setToast] = useState<{
+        visible: boolean;
+        message: string;
+        type: 'success' | 'error' | 'info' | 'warning';
+    }>({ visible: false, message: '', type: 'info' });
     const [riskCore, setRiskCore] = useState<RiskCore>({
         clientType: existingRisk?.ClientType ?? '',
         clientTypeValue: existingRisk?.ClientType_Value ?? 0,
@@ -212,15 +218,21 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
             // Notify parent of new risk assessment so it can refresh UI
             onSave?.(payload);
 
-            // Show success message (you could add a toast notification here)
-            alert('Risk assessment submitted successfully!');
+            // Native in-app toast
+            setToast({ visible: true, message: 'Risk assessment saved', type: 'success' });
+            // Allow toast to be visible briefly before navigating back
+            setTimeout(() => {
+                setToast((t) => ({ ...t, visible: false }));
+                onBack();
+            }, 1200);
             
         } catch (err) {
             console.error('❌ Risk assessment submit failed', err);
-            alert('Failed to submit risk assessment. Please try again.');
+            setToast({ visible: true, message: 'Failed to save risk assessment', type: 'error' });
+            // Auto-hide error after a short delay; stay on page for correction
+            setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2000);
         }
         
-        onBack();
     };
 
     return (
@@ -450,6 +462,12 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                     }
                 }
             `}</style>
+            {/* Toast */}
+            <OperationStatusToast 
+                visible={toast.visible}
+                message={toast.message}
+                type={toast.type}
+            />
         </Stack>
     );
 };

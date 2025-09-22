@@ -2,6 +2,7 @@
 // Clean, smooth panel implementation
 
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconButton, Text } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react';
 import { colours } from '../styles/colours';
@@ -96,6 +97,7 @@ const BespokePanel: React.FC<BespokePanelProps> = ({
 }) => {
   const [isClosing, setIsClosing] = useState<boolean>(false);
   const [isVisible, setIsVisible] = useState<boolean>(false);
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -110,6 +112,24 @@ const BespokePanel: React.FC<BespokePanelProps> = ({
       handleClose();
     }
   }, [isOpen, isVisible]);
+
+  // Ensure we render at document.body level to avoid parent overflow/position contexts
+  useEffect(() => {
+    // Guard for non-browser environments
+    if (typeof document === 'undefined') return;
+    const container = document.createElement('div');
+    container.setAttribute('data-bespoke-panel-portal', '');
+    // Keep neutral styles; overlay inside handles positioning
+    document.body.appendChild(container);
+    setPortalContainer(container);
+    return () => {
+      try {
+        document.body.removeChild(container);
+      } catch (_) {
+        // ignore if already removed
+      }
+    };
+  }, []);
 
   const handleClose = () => {
     if (isClosing) return;
@@ -146,10 +166,12 @@ const BespokePanel: React.FC<BespokePanelProps> = ({
 
   if (!isVisible) return null;
 
-  return (
-    <div 
-      className={getOverlayStyle(offsetTop, isClosing, variant)} 
+  const overlayNode = (
+    <div
+      className={getOverlayStyle(offsetTop, isClosing, variant)}
       onClick={handleClose}
+      role="dialog"
+      aria-modal="true"
     >
       <div
         className={getPanelStyle(width || '480px', isClosing, isDarkMode, variant)}
@@ -158,46 +180,48 @@ const BespokePanel: React.FC<BespokePanelProps> = ({
         <div className={getHeaderStyle(isDarkMode)}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
             {IconComponent && typeof IconComponent === 'function' && (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                width: 20, 
-                height: 20,
-                marginTop: 2,
-              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 20,
+                  height: 20,
+                  marginTop: 2,
+                }}
+              >
                 {React.createElement(IconComponent, {
                   style: {
                     fontSize: 20,
                     color: isDarkMode ? colours.dark.text : colours.light.text,
-                  }
+                  },
                 })}
               </div>
             )}
             <div style={{ flex: 1 }}>
-              <Text 
-                variant="large" 
-                styles={{ 
-                  root: { 
+              <Text
+                variant="large"
+                styles={{
+                  root: {
                     fontWeight: 600,
                     color: isDarkMode ? colours.dark.text : colours.light.text,
                     marginBottom: description ? '4px' : '0',
-                  } 
+                  },
                 }}
               >
                 {title}
               </Text>
               {description && (
-                <Text 
-                  variant="medium" 
-                  styles={{ 
-                    root: { 
+                <Text
+                  variant="medium"
+                  styles={{
+                    root: {
                       fontWeight: 400,
                       color: isDarkMode ? colours.dark.subText : colours.light.subText,
                       fontSize: '12px',
                       lineHeight: '1.4',
                       display: 'block',
-                    } 
+                    },
                   }}
                 >
                   {description}
@@ -213,20 +237,21 @@ const BespokePanel: React.FC<BespokePanelProps> = ({
               root: {
                 color: isDarkMode ? colours.dark.text : colours.light.text,
                 ':hover': {
-                  backgroundColor: isDarkMode 
-                    ? 'rgba(255, 255, 255, 0.1)' 
+                  backgroundColor: isDarkMode
+                    ? 'rgba(255, 255, 255, 0.1)'
                     : 'rgba(0, 0, 0, 0.05)',
                 },
               },
             }}
           />
         </div>
-        <div className={getContentStyle()}>
-          {children}
-        </div>
+        <div className={getContentStyle()}>{children}</div>
       </div>
     </div>
   );
+
+  // Use portal when available; fall back to inline render to avoid blank state race conditions
+  return portalContainer ? createPortal(overlayNode, portalContainer) : overlayNode;
 };
 
 export default BespokePanel;

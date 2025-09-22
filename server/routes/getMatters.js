@@ -15,8 +15,9 @@ async function fetchMattersFromDb() {
     
     let pool;
     try {
-        pool = await sql.connect(conn);
-        const result = await pool.request().query('SELECT * FROM Matters');
+        // Use a dedicated connection pool for this request to ensure correct DB context
+        pool = await new sql.ConnectionPool(conn).connect();
+        const result = await pool.request().query('SELECT * FROM [dbo].[Matters]');
         
         if (!result.recordset || !Array.isArray(result.recordset)) {
             throw new Error('Query returned no valid recordset');

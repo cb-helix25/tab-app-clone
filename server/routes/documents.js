@@ -1,6 +1,11 @@
 const express = require('express');
 const { DefaultAzureCredential } = require('@azure/identity');
-const { BlobServiceClient } = require('@azure/storage-blob');
+const {
+    BlobServiceClient,
+    StorageSharedKeyCredential,
+    BlobSASPermissions,
+    generateBlobSASQueryParameters,
+} = require('@azure/storage-blob');
 const sql = require('mssql');
 
 const router = express.Router();
@@ -42,6 +47,88 @@ async function getDbConfig() {
 // Database connection pool
 let pool;
 
+// Blob service client (reused)
+let blobServiceClient = null;
+const storageAccountName = 'instructionfiles';
+
+function getBlobServiceClient() {
+    if (blobServiceClient) return blobServiceClient;
+
+    const connectionString = process.env.INSTRUCTIONS_STORAGE_CONNECTION_STRING || process.env.AZURE_STORAGE_CONNECTION_STRING;
+    const accountKey = process.env.INSTRUCTIONS_STORAGE_ACCOUNT_KEY || process.env.AZURE_STORAGE_ACCOUNT_KEY;
+
+    if (connectionString) {
+        blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+        return blobServiceClient;
+    }
+    if (accountKey) {
+        const sharedKeyCredential = new StorageSharedKeyCredential(storageAccountName, accountKey);
+        blobServiceClient = new BlobServiceClient(
+            `https://${storageAccountName}.blob.core.windows.net`,
+            sharedKeyCredential
+        );
+        return blobServiceClient;
+    }
+    // Fall back to DefaultAzureCredential (managed identity or dev login)
+    const credential = new DefaultAzureCredential();
+    blobServiceClient = new BlobServiceClient(
+        `https://${storageAccountName}.blob.core.windows.net`,
+        credential
+    );
+    return blobServiceClient;
+}
+
+async function generateBlobSasUrl(containerName, blobName, filename, minutes = 15) {
+    try {
+        const svc = getBlobServiceClient();
+
+        // If service is using shared key, we can build SAS directly. Detect via credential type.
+        // Access to underlying credential isn't public; try to create either shared-key SAS or user delegation SAS.
+        const now = new Date();
+        const startsOn = new Date(now.valueOf() - 5 * 60 * 1000); // 5 min clock skew
+        const expiresOn = new Date(now.valueOf() + minutes * 60 * 1000);
+
+        // Attempt user delegation SAS via AAD first; if it fails, try shared key if available
+        try {
+            // getUserDelegationKey works only with AAD credentials and requires appropriate RBAC
+            const userDelegationKey = await svc.getUserDelegationKey(startsOn, expiresOn);
+            const sas = generateBlobSASQueryParameters(
+                {
+                    containerName,
+                    blobName,
+                    permissions: BlobSASPermissions.parse('r'),
+                    startsOn,
+                    expiresOn,
+                    contentDisposition: filename ? `inline; filename="${filename}"` : undefined,
+                },
+                userDelegationKey,
+                storageAccountName
+            ).toString();
+            return `https://${storageAccountName}.blob.core.windows.net/${encodeURIComponent(containerName)}/${encodeURIComponent(blobName)}?${sas}`;
+        } catch (e) {
+            // Try shared key path when available
+            const accountKey = process.env.INSTRUCTIONS_STORAGE_ACCOUNT_KEY || process.env.AZURE_STORAGE_ACCOUNT_KEY;
+            if (!accountKey) throw e;
+            const sharedKeyCredential = new StorageSharedKeyCredential(storageAccountName, accountKey);
+            const sas = generateBlobSASQueryParameters(
+                {
+                    containerName,
+                    blobName,
+                    permissions: BlobSASPermissions.parse('r'),
+                    startsOn,
+                    expiresOn,
+                    contentDisposition: filename ? `inline; filename="${filename}"` : undefined,
+                },
+                sharedKeyCredential
+            ).toString();
+            return `https://${storageAccountName}.blob.core.windows.net/${encodeURIComponent(containerName)}/${encodeURIComponent(blobName)}?${sas}`;
+        }
+    } catch (err) {
+        // Best effort; return null to allow caller to fallback
+        return null;
+    }
+}
+
 // Initialize database connection
 async function initializeDatabase() {
     if (!pool) {
@@ -72,15 +159,38 @@ router.get('/:instructionRef', async (req, res) => {
                 WHERE InstructionRef = @instructionRef
                 ORDER BY UploadedAt DESC
             `);
-        
-        const documents = result.recordset.map(doc => ({
-            ...doc,
-            previewUrl: `/api/documents/preview/${instructionRef}/${doc.DocumentId}`,
-            directUrl: doc.BlobUrl, // Provide direct URL as fallback
-            authWarning: 'Storage account requires authentication - preview may not work directly'
-        }));
-        
-        res.json(documents);
+                // Precompute preview URLs; for Office docs we prefer a short-lived SAS URL so Office Online can fetch it
+                const officeExts = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
+                const docsOut = [];
+                for (const doc of result.recordset) {
+                    const fileName = doc.FileName || '';
+                    const ext = (fileName.split('.').pop() || '').toLowerCase();
+
+                    let previewUrl = `/api/documents/preview/${instructionRef}/${doc.DocumentId}`; // default proxy
+
+                    if (officeExts.has(ext) && doc.BlobUrl) {
+                        try {
+                            const urlObj = new URL(doc.BlobUrl);
+                            const parts = urlObj.pathname.split('/');
+                            const container = parts[1];
+                            const blob = decodeURIComponent(parts.slice(2).join('/'));
+                            const sasUrl = await generateBlobSasUrl(container, blob, fileName, 15);
+                            if (sasUrl) {
+                                // Use SAS URL as the preview base; client will wrap with Office viewer
+                                previewUrl = sasUrl;
+                            }
+                        } catch { /* fallback to proxy */ }
+                    }
+
+                    docsOut.push({
+                        ...doc,
+                        previewUrl, // used by client for iframe or Office viewer src
+                        directUrl: doc.BlobUrl,
+                        authWarning: 'Preview uses short-lived access; link expires soon.'
+                    });
+                }
+
+                res.json(docsOut);
         
     } catch (error) {
         console.error('Error fetching documents:', error);
@@ -115,33 +225,7 @@ router.get('/preview/:instructionRef/:documentId', async (req, res) => {
         const { BlobUrl, FileName } = result.recordset[0];
         
         // Try different authentication approaches
-        let blobServiceClient;
-        const storageAccountName = 'instructionfiles';
-        
-        // Check for storage account connection string or access key
-        const connectionString = process.env.INSTRUCTIONS_STORAGE_CONNECTION_STRING || 
-                                process.env.AZURE_STORAGE_CONNECTION_STRING;
-        const accountKey = process.env.INSTRUCTIONS_STORAGE_ACCOUNT_KEY || 
-                          process.env.AZURE_STORAGE_ACCOUNT_KEY;
-        
-        if (connectionString) {
-            const { BlobServiceClient } = require('@azure/storage-blob');
-            blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-        } else if (accountKey) {
-            const { BlobServiceClient, StorageSharedKeyCredential } = require('@azure/storage-blob');
-            const sharedKeyCredential = new StorageSharedKeyCredential(storageAccountName, accountKey);
-            blobServiceClient = new BlobServiceClient(
-                `https://${storageAccountName}.blob.core.windows.net`,
-                sharedKeyCredential
-            );
-        } else {
-            // Fall back to DefaultAzureCredential
-            const credential = new DefaultAzureCredential();
-            blobServiceClient = new BlobServiceClient(
-                `https://${storageAccountName}.blob.core.windows.net`,
-                credential
-            );
-        }
+        const blobServiceClient = getBlobServiceClient();
         
         // Parse blob URL to get container and blob name
         const url = new URL(BlobUrl);

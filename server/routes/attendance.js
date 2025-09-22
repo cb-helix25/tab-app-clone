@@ -1,5 +1,5 @@
 const express = require('express');
-const sql = require('mssql');
+const { sql, withRequest } = require('../utils/db');
 const axios = require('axios');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
@@ -49,16 +49,7 @@ router.get('/debug-team-schema', async (req, res) => {
   }
 });
 
-// Helper function to get SQL password from environment or Key Vault
-async function getSqlPassword() {
-  // For now, extract from connection string in .env
-  const connStr = process.env.SQL_CONNECTION_STRING;
-  if (connStr) {
-    const passwordMatch = connStr.match(/Password=([^;]+)/);
-    return passwordMatch ? passwordMatch[1] : null;
-  }
-  return null;
-}
+// (getSqlPassword is defined later for all routes; keep a single definition to avoid confusion)
 
 // Helper function to check annual leave
 async function checkAnnualLeave() {
@@ -71,21 +62,18 @@ async function checkAnnualLeave() {
 
     // Connection to helix-project-data for annual leave
     const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-    
-    const projectPool = await sql.connect(projectDataConnStr);
-    
+
     // Get people currently on approved annual leave
     const today = new Date().toISOString().split('T')[0];
-    const leaveResult = await projectPool.request()
-      .input('today', sql.Date, today)
-      .query(`
+    const leaveResult = await withRequest(projectDataConnStr, (req, sql) =>
+      req.input('today', sql.Date, today)
+        .query(`
         SELECT fe AS person
         FROM annualLeave 
         WHERE status = 'booked'
         AND @today BETWEEN start_date AND end_date
-      `);
-    
-    await projectPool.close();
+      `)
+    );
     
     // Create a set of people currently on leave
     const peopleOnLeave = new Set();
@@ -105,10 +93,9 @@ async function checkAnnualLeave() {
 // Support both GET and POST for flexibility
 const getAttendanceHandler = async (req, res) => {
   try {
-    const pool = await sql.connect(process.env.SQL_CONNECTION_STRING);
     
     // Get current attendance data from the correct attendance table
-    const result = await pool.request().query(`
+    const result = await withRequest(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
       SELECT 
         [First_Name] AS First,
         [Level],
@@ -120,10 +107,10 @@ const getAttendanceHandler = async (req, res) => {
       WHERE [Week_Start] <= CAST(GETDATE() AS DATE) 
         AND [Week_End] >= CAST(GETDATE() AS DATE)
       ORDER BY [First_Name]
-    `);
+    `));
 
     // Get team roster data from the correct team table
-    const teamResult = await pool.request().query(`
+    const teamResult = await withRequest(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
       SELECT 
         [First],
         [Initials],
@@ -132,7 +119,7 @@ const getAttendanceHandler = async (req, res) => {
       FROM [dbo].[team]
       WHERE [status] <> 'inactive'
       ORDER BY [First]
-    `);
+    `));
 
     // Check who's on annual leave
     const peopleOnLeave = await checkAnnualLeave();
@@ -147,7 +134,7 @@ const getAttendanceHandler = async (req, res) => {
       return {
         First: record.First,
         Initials: initials,
-        Status: isOnLeave ? 'out-of-office' : record.Status, // Override status if on leave
+        Status: isOnLeave ? 'away' : record.Status, // Override status if on leave
         Level: record.Level,
         IsOnLeave: isOnLeave ? 1 : 0,
         Week_Start: record.Week_Start,
@@ -189,123 +176,7 @@ const getAttendanceHandler = async (req, res) => {
 router.post('/getAttendance', getAttendanceHandler);
 router.get('/getAttendance', getAttendanceHandler);
 
-// Get annual leave data
-router.post('/getAnnualLeave', async (req, res) => {
-  try {
-    const { userInitials } = req.body;
-    const password = await getSqlPassword();
-    
-    if (!password) {
-      return res.status(500).json({
-        success: false,
-        error: 'Could not retrieve database credentials'
-      });
-    }
-
-    // Connection to helix-project-data for annual leave
-    const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-    
-    const projectPool = await sql.connect(projectDataConnStr);
-    
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Get current annual leave (people away today)
-    const currentLeaveResult = await projectPool.request()
-      .input('today', sql.Date, today)
-      .query(`
-        SELECT 
-          request_id,
-          fe AS person,
-          start_date,
-          end_date,
-          reason,
-          status,
-          days_taken,
-          leave_type,
-          rejection_notes
-        FROM annualLeave 
-        WHERE status = 'booked'
-        AND @today BETWEEN start_date AND end_date
-        ORDER BY fe
-      `);
-
-    // Get future annual leave
-    const futureLeaveResult = await projectPool.request()
-      .input('today', sql.Date, today)
-      .query(`
-        SELECT 
-          request_id,
-          fe AS person,
-          start_date,
-          end_date,
-          reason,
-          status,
-          days_taken,
-          leave_type,
-          rejection_notes
-        FROM annualLeave 
-        WHERE start_date > @today
-        AND (status = 'booked' OR status = 'approved')
-        ORDER BY start_date, fe
-      `);
-
-    // Get user-specific annual leave if userInitials provided
-    let userLeaveResult = null;
-    if (userInitials) {
-      userLeaveResult = await projectPool.request()
-        .input('initials', sql.VarChar(10), userInitials)
-        .query(`
-          SELECT 
-            request_id,
-            fe AS person,
-            start_date,
-            end_date,
-            reason,
-            status,
-            days_taken,
-            leave_type,
-            rejection_notes
-          FROM annualLeave 
-          WHERE fe = @initials
-          ORDER BY start_date DESC
-        `);
-    }
-    
-    await projectPool.close();
-
-    const response = {
-      success: true,
-      annual_leave: currentLeaveResult.recordset,
-      future_leave: futureLeaveResult.recordset
-    };
-
-    if (userLeaveResult) {
-      response.user_leave = userLeaveResult.recordset;
-      // Add user_details structure for compatibility
-      response.user_details = {
-        totals: {
-          // Calculate basic totals from user's leave records
-          total_days_taken: userLeaveResult.recordset
-            .filter(r => r.status === 'booked')
-            .reduce((sum, r) => sum + (r.days_taken || 0), 0),
-          pending_requests: userLeaveResult.recordset
-            .filter(r => r.status === 'pending').length,
-          approved_requests: userLeaveResult.recordset
-            .filter(r => r.status === 'approved').length
-        }
-      };
-    }
-
-    res.json(response);
-
-  } catch (error) {
-    console.error('Error fetching annual leave:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+// Removed duplicate older '/getAnnualLeave' route that omitted hearing fields; the enhanced version remains below
 
 // Update attendance data
 router.post('/updateAttendance', async (req, res) => {
@@ -340,7 +211,7 @@ router.post('/updateAttendance', async (req, res) => {
     // Get user's full name from team data (or use existing if available)
     const teamResult = await pool.request()
       .input('initials', sql.VarChar(10), initials)
-      .query(`SELECT First FROM team WHERE Initials = @initials`);
+      .query(`SELECT First FROM [dbo].[team] WHERE Initials = @initials`);
     
     const firstName = teamResult.recordset[0]?.First || 'Unknown';
 
@@ -428,17 +299,40 @@ router.post('/updateAttendance', async (req, res) => {
 
 // ===== ANNUAL LEAVE ROUTES =====
 
-// Helper function to get SQL password from Key Vault
+// Helper function to get SQL password from Key Vault with simple in-memory cache
+let cachedSqlPassword = null;
+let sqlPasswordExpiry = 0; // epoch ms
+let sqlPasswordPromise = null; // de-dup concurrent fetches
 async function getSqlPassword() {
-  try {
-    const kvUri = "https://helix-keys.vault.azure.net/";
-    const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
-    const secret = await secretClient.getSecret("sql-databaseserver-password");
-    return secret.value;
-  } catch (error) {
-    console.error('Error getting SQL password from Key Vault:', error);
-    return null;
+  // Allow local override via env for dev
+  const envPwd = process.env.SQL_DATABASESERVER_PASSWORD || process.env.SQL_DB_PASSWORD || process.env.SQL_PASSWORD;
+  if (envPwd && !cachedSqlPassword) {
+    cachedSqlPassword = envPwd;
+    sqlPasswordExpiry = Date.now() + 60 * 60 * 1000; // 1h TTL
   }
+
+  const now = Date.now();
+  if (cachedSqlPassword && now < sqlPasswordExpiry) return cachedSqlPassword;
+  if (sqlPasswordPromise) return sqlPasswordPromise;
+
+  sqlPasswordPromise = (async () => {
+    try {
+      const kvUri = "https://helix-keys.vault.azure.net/";
+      const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
+      const secret = await secretClient.getSecret("sql-databaseserver-password");
+      cachedSqlPassword = secret.value;
+      sqlPasswordExpiry = Date.now() + 60 * 60 * 1000; // 1 hour cache
+      return cachedSqlPassword;
+    } catch (error) {
+      console.error('Error getting SQL password from Key Vault:', error);
+      // Keep any existing cached value if present; otherwise null
+      return cachedSqlPassword;
+    } finally {
+      sqlPasswordPromise = null;
+    }
+  })();
+
+  return sqlPasswordPromise;
 }
 
 // Helper function to get Clio secrets from Key Vault
@@ -493,105 +387,20 @@ router.post('/getAnnualLeave', async (req, res) => {
   try {
     const { userInitials } = req.body;
     const password = await getSqlPassword();
-    
+
     if (!password) {
-      return res.status(500).json({
-        success: false,
-        error: 'Could not retrieve database credentials'
-      });
+      return res.status(500).json({ success: false, error: 'Could not retrieve database credentials' });
     }
 
-    // Connection to helix-project-data for annual leave
     const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-    
-    const projectPool = await sql.connect(projectDataConnStr);
-    
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Get current annual leave (people away today)
-    const currentLeaveResult = await projectPool.request()
-      .input('today', sql.Date, today)
-      .query(`
-        SELECT 
-          request_id,
-          fe AS person,
-          start_date,
-          end_date,
-          reason,
-          status,
-          days_taken,
-          leave_type,
-          rejection_notes,
-          hearing_confirmation,
-          hearing_details
-        FROM annualLeave 
-        WHERE status = 'booked'
-        AND @today BETWEEN start_date AND end_date
-        ORDER BY fe
-      `);
-
-    // Get future annual leave
-    const futureLeaveResult = await projectPool.request()
-      .input('today', sql.Date, today)
-      .query(`
-        SELECT 
-          request_id,
-          fe AS person,
-          start_date,
-          end_date,
-          reason,
-          status,
-          days_taken,
-          leave_type,
-          rejection_notes,
-          hearing_confirmation,
-          hearing_details
-        FROM annualLeave 
-        WHERE start_date > @today
-        AND status IN ('requested', 'approved', 'booked')
-        ORDER BY start_date, fe
-      `);
-
-    // Get all annual leave for user details
-    const allLeaveResult = await projectPool.request()
-      .query(`
-        SELECT 
-          request_id,
-          fe AS person,
-          start_date,
-          end_date,
-          reason,
-          status,
-          days_taken,
-          leave_type,
-          rejection_notes,
-          hearing_confirmation,
-          hearing_details
-        FROM annualLeave 
-        ORDER BY start_date DESC
-      `);
-
-    // Get team data for user details
     const coreDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-core-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-    const corePool = await sql.connect(coreDataConnStr);
-    
-    const teamResult = await corePool.request().query(`
-      SELECT Initials, AOW, holiday_entitlement FROM team WHERE status = 'Active'
-    `);
 
-    // Calculate user-specific totals if userInitials provided
-    let userDetails = { leaveEntries: [], totals: { standard: 0, unpaid: 0, sale: 0, rejected: 0 } };
-    
-    if (userInitials) {
-      const fiscalStart = getFiscalYearStart(new Date());
-      const fiscalStartStr = fiscalStart.toISOString().split('T')[0];
-      const fiscalEndStr = new Date(fiscalStart.getFullYear() + 1, 2, 31).toISOString().split('T')[0];
-      
-      const userLeaveResult = await projectPool.request()
-        .input('initials', sql.VarChar(10), userInitials)
-        .input('fiscalStart', sql.Date, fiscalStartStr)
-        .input('fiscalEnd', sql.Date, fiscalEndStr)
-        .query(`
+    const today = new Date().toISOString().split('T')[0];
+
+    // Queries using pooled connections (no global sql.connect)
+    const [currentLeaveResult, futureLeaveResult, allLeaveResult, teamResult] = await Promise.all([
+      withRequest(projectDataConnStr, (reqSql, s) =>
+        reqSql.input('today', s.Date, today).query(`
           SELECT 
             request_id,
             fe AS person,
@@ -604,16 +413,94 @@ router.post('/getAnnualLeave', async (req, res) => {
             rejection_notes,
             hearing_confirmation,
             hearing_details
-          FROM annualLeave 
-          WHERE fe = @initials
-          AND start_date >= @fiscalStart 
-          AND end_date <= @fiscalEnd
+          FROM [dbo].[annualLeave]
+          WHERE status = 'booked'
+            AND @today BETWEEN start_date AND end_date
+          ORDER BY fe
+        `)
+      ),
+      withRequest(projectDataConnStr, (reqSql, s) =>
+        reqSql.input('today', s.Date, today).query(`
+          SELECT 
+            request_id,
+            fe AS person,
+            start_date,
+            end_date,
+            reason,
+            status,
+            days_taken,
+            leave_type,
+            rejection_notes,
+            hearing_confirmation,
+            hearing_details
+          FROM [dbo].[annualLeave]
+          WHERE start_date > @today
+            AND status IN ('requested', 'approved', 'booked')
+          ORDER BY start_date, fe
+        `)
+      ),
+      withRequest(projectDataConnStr, (reqSql) =>
+        reqSql.query(`
+          SELECT 
+            request_id,
+            fe AS person,
+            start_date,
+            end_date,
+            reason,
+            status,
+            days_taken,
+            leave_type,
+            rejection_notes,
+            hearing_confirmation,
+            hearing_details
+          FROM [dbo].[annualLeave]
           ORDER BY start_date DESC
-        `);
+        `)
+      ),
+      withRequest(coreDataConnStr, (reqSql) =>
+        reqSql.query(`
+          SELECT Initials, AOW, holiday_entitlement 
+          FROM [dbo].[team]
+          WHERE status = 'Active'
+        `)
+      )
+    ]);
+
+    // Calculate user-specific totals if userInitials provided
+    let userDetails = { leaveEntries: [], totals: { standard: 0, unpaid: 0, sale: 0, rejected: 0 } };
+
+    if (userInitials) {
+      const fiscalStart = getFiscalYearStart(new Date());
+      const fiscalStartStr = fiscalStart.toISOString().split('T')[0];
+      const fiscalEndStr = new Date(fiscalStart.getFullYear() + 1, 2, 31).toISOString().split('T')[0];
+
+      const userLeaveResult = await withRequest(projectDataConnStr, (reqSql, s) =>
+        reqSql
+          .input('initials', s.VarChar(10), userInitials)
+          .input('fiscalStart', s.Date, fiscalStartStr)
+          .input('fiscalEnd', s.Date, fiscalEndStr)
+          .query(`
+            SELECT 
+              request_id,
+              fe AS person,
+              start_date,
+              end_date,
+              reason,
+              status,
+              days_taken,
+              leave_type,
+              rejection_notes,
+              hearing_confirmation,
+              hearing_details
+            FROM [dbo].[annualLeave]
+            WHERE fe = @initials
+              AND start_date >= @fiscalStart 
+              AND end_date <= @fiscalEnd
+            ORDER BY start_date DESC
+          `)
+      );
 
       userDetails.leaveEntries = userLeaveResult.recordset;
-      
-      // Calculate totals
       userDetails.leaveEntries.forEach(entry => {
         const days = entry.days_taken || 0;
         if (entry.status === 'rejected') {
@@ -628,9 +515,6 @@ router.post('/getAnnualLeave', async (req, res) => {
       });
     }
 
-    await projectPool.close();
-    await corePool.close();
-
     res.json({
       success: true,
       annual_leave: currentLeaveResult.recordset,
@@ -642,10 +526,7 @@ router.post('/getAnnualLeave', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching annual leave:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch annual leave data'
-    });
+    res.status(500).json({ success: false, error: 'Failed to fetch annual leave data' });
   }
 });
 

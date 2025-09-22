@@ -193,3 +193,51 @@ router.get('/:instructionRef', async (req, res) => {
 });
 
 module.exports = router;
+/**
+ * Delete risk assessment for an instruction
+ * DELETE /api/risk-assessments/:instructionRef
+ */
+router.delete('/:instructionRef', async (req, res) => {
+    const { instructionRef } = req.params;
+
+    if (!instructionRef) {
+        return res.status(400).json({ error: 'Missing instructionRef' });
+    }
+
+    console.log(`[risk-assessments] Deleting risk assessment for ${instructionRef}`);
+
+    let pool;
+    try {
+        const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
+        if (!connectionString) {
+            throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
+        }
+
+        pool = await sql.connect(connectionString);
+
+        const result = await pool.request()
+            .input('ref', sql.NVarChar, instructionRef)
+            .query(`
+                DELETE FROM [dbo].[RiskAssessment]
+                WHERE MatterId = @ref OR InstructionRef = @ref
+            `);
+
+        const rows = result.rowsAffected?.[0] ?? 0;
+        if (rows === 0) {
+            return res.status(404).json({ error: 'Risk assessment not found' });
+        }
+
+        res.json({ success: true, deleted: rows });
+
+    } catch (error) {
+        console.error(`[risk-assessments] Error deleting risk assessment:`, error);
+        res.status(500).json({ 
+            error: 'Failed to delete risk assessment',
+            details: error.message 
+        });
+    } finally {
+        if (pool) {
+            await pool.close();
+        }
+    }
+});

@@ -43,5 +43,6 @@ import "./functions/submitSnippetEdit";
 import "./functions/updateAnnualLeave";
 import "./functions/updateEnquiryRating";
 import "./functions/updateTransactions";
+import "./functions/updateInstructionStatus";
 
 export default app;

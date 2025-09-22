@@ -37,9 +37,11 @@
     "permissions": [
         "identity"
     ],
-    "validDomains": [
-        "link-hub-v1-fehchxeqgxe9bsha.uksouth-01.azurewebsites.net"
-    ],
+        "validDomains": [
+            "link-hub-v1-fehchxeqgxe9bsha.uksouth-01.azurewebsites.net",
+            "view.officeapps.live.com",
+            "*.blob.core.windows.net"
+        ],
     "webApplicationInfo": {
         "id": "bee758ec-919c-45b2-9cdf-540c6419561f",
         "resource": "api://bee758ec-919c-45b2-9cdf-540c6419561f"

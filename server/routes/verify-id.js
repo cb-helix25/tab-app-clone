@@ -67,7 +67,8 @@ router.post('/', async (req, res) => {
       throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
     }
 
-    pool = await sql.connect(connectionString);
+  // Use a dedicated pool to avoid interfering with/global pool connected to other DBs
+  pool = await new sql.ConnectionPool(connectionString).connect();
 
     // Fetch instruction data needed for Tiller API
     const result = await pool.request()
@@ -191,7 +192,8 @@ router.get('/:instructionRef/details', async (req, res) => {
       throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
     }
 
-    pool = await sql.connect(connectionString);
+  // Dedicated pool per request to ensure correct DB
+  pool = await new sql.ConnectionPool(connectionString).connect();
 
     // Query to get instruction and verification details
     const query = `
@@ -201,14 +203,12 @@ router.get('/:instructionRef/details', async (req, res) => {
         i.LastName, 
         i.Email,
         v.EIDOverallResult,
-        v.PEPAndSanctionsCheckResult,
-        v.AddressVerificationResult,
         v.EIDRawResponse,
         v.EIDCheckedDate
       FROM Instructions i
-      LEFT JOIN IDVerifications v ON i.InstructionRef = v.InstructionRef
-      WHERE i.InstructionRef = @instructionRef
-      ORDER BY v.EIDCheckedDate DESC
+  LEFT JOIN IDVerifications v ON i.InstructionRef = v.InstructionRef
+  WHERE i.InstructionRef = @instructionRef
+  ORDER BY v.EIDCheckedDate DESC, v.EIDCheckedTime DESC
     `;
 
     const request = pool.request();
@@ -225,34 +225,43 @@ router.get('/:instructionRef/details', async (req, res) => {
     // Parse the raw response to determine actual status
     let rawResponse = null;
     try {
-      rawResponse = record.EIDRawResponse ? JSON.parse(record.EIDRawResponse) : null;
+      const parsed = record.EIDRawResponse ? JSON.parse(record.EIDRawResponse) : null;
+      // Normalise: our insert path may store an array wrapper; prefer first element
+      rawResponse = Array.isArray(parsed) ? (parsed[0] || null) : parsed;
     } catch (parseError) {
       console.error('Failed to parse EIDRawResponse:', parseError);
     }
 
     // Determine actual verification results from raw response
-    let overallResult = record.EIDOverallResult || 'unknown';
-    let pepResult = record.PEPAndSanctionsCheckResult || 'unknown';  
-    let addressResult = record.AddressVerificationResult || 'unknown';
+  let overallResult = record.EIDOverallResult || 'unknown';
+  let pepResult = 'unknown';  
+  let addressResult = 'unknown';
 
     if (rawResponse) {
       // Extract actual results from Tiller response
       overallResult = rawResponse.overallResult?.result || rawResponse.result || overallResult;
-      
-      // Find PEP & Sanctions check result
-      const pepCheck = rawResponse.checkStatuses?.find(check => 
-        check.sourceResults?.rule === 'Pep & Sanctions Check'
-      );
-      if (pepCheck) {
-        pepResult = pepCheck.result?.result || pepResult;
+
+      const checks = Array.isArray(rawResponse.checkStatuses) ? rawResponse.checkStatuses : [];
+
+      // Normalise helper
+      const norm = (s) => (typeof s === 'string' ? s.toLowerCase() : '');
+
+      // Find PEP & Sanctions check result (handle naming variants)
+      const pepCheck = checks.find((c) => {
+        const title = norm(c?.sourceResults?.title || c?.sourceResults?.rule);
+        return title.includes('pep') || title.includes('sanction');
+      });
+      if (pepCheck && pepCheck.result) {
+        pepResult = pepCheck.result.result || pepResult;
       }
-      
-      // Find Address Verification check result
-      const addressCheck = rawResponse.checkStatuses?.find(check => 
-        check.sourceResults?.rule === 'Address Verification Check'
-      );
-      if (addressCheck) {
-        addressResult = addressCheck.result?.result || addressResult;
+
+      // Find Address Verification check result (handle naming variants)
+      const addressCheck = checks.find((c) => {
+        const title = norm(c?.sourceResults?.title || c?.sourceResults?.rule);
+        return title.includes('address');
+      });
+      if (addressCheck && addressCheck.result) {
+        addressResult = addressCheck.result.result || addressResult;
       }
     }
 
@@ -304,7 +313,8 @@ router.post('/:instructionRef/request-documents', async (req, res) => {
       throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
     }
 
-    pool = await sql.connect(connectionString);
+  // Dedicated pool per request to ensure correct DB
+  pool = await new sql.ConnectionPool(connectionString).connect();
 
     // Get the instruction details and current verification status
     const getInstructionQuery = `
@@ -415,7 +425,8 @@ router.post('/:instructionRef/approve', async (req, res) => {
       throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
     }
 
-    pool = await sql.connect(connectionString);
+  // Dedicated pool per request to ensure correct DB
+  pool = await new sql.ConnectionPool(connectionString).connect();
 
     // Get the instruction details first
     const getInstructionQuery = `
@@ -990,7 +1001,8 @@ router.post('/:instructionRef/test-state', async (req, res) => {
       throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
     }
 
-    pool = await sql.connect(connectionString);
+  // Dedicated pool per request to ensure correct DB
+  pool = await new sql.ConnectionPool(connectionString).connect();
 
     // Map state to database values
     let eidOverallResult;
@@ -1088,7 +1100,8 @@ router.post('/:instructionRef/draft-request', async (req, res) => {
       throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
     }
 
-    pool = await sql.connect(connectionString);
+  // Dedicated pool per request to ensure correct DB
+  pool = await new sql.ConnectionPool(connectionString).connect();
 
     // Get the instruction details
     const getInstructionQuery = `

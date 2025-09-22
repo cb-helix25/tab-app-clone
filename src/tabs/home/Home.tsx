@@ -31,6 +31,7 @@ import {
   Toggle,
   keyframes,
 } from '@fluentui/react';
+import { debugLog } from '../../utils/debug';
 import { FaCheck } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import MetricCard from './MetricCard';
@@ -382,9 +383,15 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
 //////////////////////
 
 const quickActionOrder: Record<string, number> = {
+  'Update Attendance': 1,
   'Confirm Attendance': 1,
   'Open Matter': 2,
   'Review Instructions': 3,
+  // Instruction workflow actions
+  'Review ID': 3,
+  'Verify ID': 3,
+  'Assess Risk': 4,
+  'Submit to CCL': 5,
   'Create a Task': 4,
   'Request CollabSpace': 5,
   'Save Telephone Note': 6,
@@ -400,7 +407,7 @@ const quickActionOrder: Record<string, number> = {
 //////////////////////
 
 const quickActions: QuickLink[] = [
-  { title: 'Confirm Attendance', icon: 'Calendar' },
+  { title: 'Update Attendance', icon: 'Calendar' },
   { title: 'Create a Task', icon: 'Checklist' },
   { title: 'Save Telephone Note', icon: 'Comment' },
   { title: 'Request Annual Leave', icon: 'PalmTree' }, // Better icon for vacation/leave
@@ -1518,7 +1525,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         try {
           setIsLoadingAnnualLeave(true);
           const annualLeaveResponse = await fetch(
-            `${proxyBaseUrl}/api/attendance/getAnnualLeave`,
+            `/api/attendance/getAnnualLeave`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -2143,7 +2150,7 @@ const transformedAttendanceRecords = useMemo(() => {
 }, [attendanceRecords, transformedTeamData]);
 
 const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
-  console.log('🔄 handleAttendanceUpdated called with', updatedRecords.length, 'record(s)');
+  debugLog('handleAttendanceUpdated records:', updatedRecords.length);
   setAttendanceRecords((prevRecords) => {
     const newRecords = [...prevRecords];
     let isChanged = false; // Track if the state actually changes
@@ -2186,7 +2193,7 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
 
     // If no changes, do not trigger setState again
     if (!isChanged) {
-      console.log('🔄 No attendance changes detected; state unchanged');
+      debugLog('No attendance changes; state unchanged');
       return prevRecords;
     }
 
@@ -2196,23 +2203,23 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
       team: cachedAttendance?.team || attendanceTeam, // Preserve team data
     };
 
-    console.log('🔄 Attendance state updated; new size:', newRecords.length);
+    debugLog('Attendance state updated; size:', newRecords.length);
     return newRecords;
   });
 };
 
 // Wrapper used by top-level AttendanceConfirmPanel to save attendance for the current user.
   const saveAttendance = async (weekStart: string, attendanceDays: string): Promise<void> => {
-  console.log('🔍 saveAttendance called with weekStart:', weekStart, 'attendanceDays:', attendanceDays);
+  debugLog('saveAttendance', weekStart, attendanceDays);
   // Force endpoint testing - set to false to test real endpoint
   const useLocalData = false; // Changed from: process.env.REACT_APP_USE_LOCAL_DATA === 'true' || window.location.hostname === 'localhost';
-  console.log('🔍 useLocalData:', useLocalData);
+  debugLog('useLocalData:', useLocalData);
   const initials = userInitials || (userData?.[0]?.Initials || '');
   const firstName = (transformedTeamData.find((t) => t.Initials === initials)?.First) || '';
-  console.log('🔍 initials:', initials, 'firstName:', firstName);
+  debugLog('user initials/name:', initials, firstName);
 
   if (useLocalData) {
-    console.log('🔍 Using local data mode - creating mock record');
+  debugLog('Using local data mode - creating mock record');
     const newRecord: AttendanceRecord = {
       Attendance_ID: 0,
       Entry_ID: 0,
@@ -2225,31 +2232,29 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
       Attendance_Days: attendanceDays,
       Confirmed_At: new Date().toISOString(),
     };
-    console.log('🔍 Created new record:', newRecord);
     // Reuse existing handler to merge into state
-    console.log('🔍 Calling handleAttendanceUpdated with:', [newRecord]);
+    debugLog('Calling handleAttendanceUpdated with 1 record');
     handleAttendanceUpdated([newRecord]);
-    console.log('🔍 Local data save completed');
+    debugLog('Local data save completed');
     return;
   }
 
   try {
     const url = `/api/attendance/updateAttendance`;
     const payload = { initials, weekStart, attendanceDays };
-    console.log('🔍 Making API call to:', url);
-    console.log('🔍 Payload:', payload);
+  debugLog('API call:', url, payload);
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    console.log('🔍 API Response status:', res.status);
+  debugLog('API status:', res.status);
     if (!res.ok) {
       console.error('🔍 API call failed with status:', res.status);
       throw new Error(`Failed to save attendance: ${res.status}`);
     }
     const json = await res.json();
-    console.log('🔍 API Response data:', json);
+  debugLog('API json:', json);
     if (!json || json.success !== true || !json.record) {
       throw new Error('Unexpected response from updateAttendance');
     }
@@ -2888,6 +2893,61 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     }
   };
 
+  // Test handler for localhost annual leave approvals
+  const handleTestApproveLeaveClick = useCallback(() => {
+    // Create dummy test data for localhost testing
+    const testApprovals = [
+      {
+        id: 'test-1',
+        person: 'Test User',
+        start_date: '2025-09-25',
+        end_date: '2025-09-27',
+        reason: 'Family vacation',
+        status: 'requested',
+        hearing_confirmation: null,
+        hearing_details: '',
+      },
+      {
+        id: 'test-2', 
+        person: 'Another User',
+        start_date: '2025-10-01',
+        end_date: '2025-10-03',
+        reason: 'Medical appointment',
+        status: 'requested',
+        hearing_confirmation: null,
+        hearing_details: '',
+      }
+    ];
+
+    setBespokePanelContent(
+      <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+        <AnnualLeaveApprovals
+          approvals={testApprovals}
+          futureLeave={futureLeaveRecords.map((item) => ({
+            id: item.id,
+            person: item.person,
+            start_date: item.start_date,
+            end_date: item.end_date,
+            reason: item.reason,
+            status: item.status,
+            hearing_confirmation: item.hearing_confirmation,
+            hearing_details: item.hearing_details,
+          }))}
+          onClose={() => {
+            setIsBespokePanelOpen(false);
+            resetQuickActionsSelection();
+          }}
+          team={(teamData ?? []) as any}
+          totals={annualLeaveTotals}
+          allLeaveEntries={annualLeaveAllData}
+          onApprovalUpdate={handleApprovalUpdate}  // Pass the callback here
+        />
+      </Suspense>
+    );
+    setBespokePanelTitle('Approve Annual Leave (Test)');
+    setIsBespokePanelOpen(true);
+  }, [futureLeaveRecords, annualLeaveTotals, annualLeaveAllData, handleApprovalUpdate]);
+
   const handleBookLeaveClick = () => {
     if (bookingsNeeded.length > 0) {
       setBespokePanelContent(
@@ -2960,6 +3020,17 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
 
   const immediateALActions = useMemo(() => {
     const actions: { title: string; onClick: () => void; icon?: string; styles?: any }[] = [];
+    
+    // Add test annual leave approval for localhost (only if no real approvals exist)
+    if (isLocalhost && approvalsNeeded.length === 0) {
+      actions.push({
+        title: 'Approve Annual Leave (Test)',
+        onClick: handleTestApproveLeaveClick,
+        icon: 'PalmTree',
+        styles: approveButtonStyles,
+      });
+    }
+    
     if (isApprover && approvalsNeeded.length > 0) {
       actions.push({
         title: 'Approve Annual Leave',
@@ -2985,7 +3056,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       });
     }
     return actions;
-  }, [isApprover, approvalsNeeded, snippetApprovalsNeeded, bookingsNeeded, approveButtonStyles, bookButtonStyles]);
+  }, [isApprover, approvalsNeeded, snippetApprovalsNeeded, bookingsNeeded, approveButtonStyles, bookButtonStyles, handleTestApproveLeaveClick]);
 
   // Build immediate actions list
   // Ensure every action has an icon (never undefined)
@@ -3142,29 +3213,12 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         break;
       case 'Verify ID':
       case 'Review ID':
-        content = (
-          <div style={{ padding: '20px' }}>
-            <Text variant="medium" style={{ marginBottom: '15px', display: 'block' }}>
-              ID verification functionality is available in the Instructions tab.
-            </Text>
-            <DefaultButton 
-              text="Go to Instructions" 
-              onClick={() => {
-                try {
-                  window.dispatchEvent(new CustomEvent('navigateToInstructions'));
-                } catch (error) {
-                  console.error('Failed to dispatch navigation event:', error);
-                }
-                setIsBespokePanelOpen(false);
-              }} 
-              style={{ marginRight: '10px' }}
-            />
-            <DefaultButton 
-              text="Close" 
-              onClick={() => setIsBespokePanelOpen(false)}
-            />
-          </div>
-        );
+        try {
+          window.dispatchEvent(new CustomEvent('navigateToInstructions'));
+        } catch (error) {
+          console.error('Failed to dispatch navigation event:', error);
+        }
+        return; // Navigate without opening panel
         break;
       case 'Assess Risk':
         content = <CognitoForm dataKey="QzaAr_2Q7kesClKq8g229g" dataForm="70" />; // Risk Assessment form
@@ -3247,8 +3301,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     if ((hasActiveMatter && (userInitials === 'LZ' || isLocalhost)) || isLocalhost) {
       actions.push({
   title: 'Open Matter',
-        icon: 'OpenFolderHorizontal',
-  onClick: () => handleActionClick({ title: 'Open Matter', icon: 'OpenFolderHorizontal' }),
+        icon: 'OpenFile',
+  onClick: () => handleActionClick({ title: 'Open Matter', icon: 'OpenFile' }),
       });
     }
     // Local dev immediate Matter Opening: surface when any instruction is ready
@@ -3267,8 +3321,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         if (candidates.length > 0) {
           actions.push({
             title: candidates.length === 1 ? 'Open Matter' : 'Open Matters',
-            icon: 'FolderHorizontal',
-            onClick: () => handleActionClick({ title: 'Open a Matter', icon: 'FolderHorizontal' }),
+            icon: 'OpenFile',
+            onClick: () => handleActionClick({ title: 'Open a Matter', icon: 'OpenFile' }),
           });
         }
       } catch { /* swallow */ }
@@ -3276,8 +3330,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     if (hasActivePitch) {
       actions.push({
         title: 'Resume Pitch',
-        icon: 'Mail',
-        onClick: () => handleActionClick({ title: 'Resume Pitch', icon: 'Mail' }),
+        icon: 'Presentation',
+        onClick: () => handleActionClick({ title: 'Resume Pitch', icon: 'Presentation' }),
       });
     }
     
@@ -3301,9 +3355,12 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         icon: a.icon || '',
       }))
     );
-    actions.sort(
-      (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
-    );
+    // Normalize titles (strip count suffix like " (3)") when sorting
+    const sortKey = (title: string) => {
+      const base = title.replace(/\s*\(\d+\)$/,'');
+      return quickActionOrder[base] ?? quickActionOrder[title] ?? 99;
+    };
+    actions.sort((a, b) => sortKey(a.title) - sortKey(b.title));
     return actions;
   }, [
     isLoadingAttendance,
@@ -3357,9 +3414,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   const normalQuickActions = useMemo(() => {
     const actions = quickActions
       .filter((action) => {
-        if (action.title === 'Confirm Attendance') {
-          return currentUserConfirmed;
-        }
         if (action.title === 'Unclaimed Enquiries') {
           return ['LZ', 'JW', 'AC'].includes(userInitials);
         }
@@ -3367,18 +3421,12 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           return true;
         }
         return true;
-      })
-      .map((action) => {
-        if (action.title === 'Confirm Attendance') {
-          return { ...action, title: 'Update Attendance' };
-        }
-        return action;
       });
     actions.sort(
       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
     );
     return actions;
-  }, [currentUserConfirmed, userInitials]);
+  }, [userInitials]);
 
 
   // Use useLayoutEffect to avoid infinite loops and set content once per dependency change

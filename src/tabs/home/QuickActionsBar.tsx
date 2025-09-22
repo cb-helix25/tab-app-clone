@@ -181,7 +181,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                         onClick={() => onCardClick(action)}
                         iconColor={colours.cta}
                         selected={selected === action.title}
-                        confirmed={action.title === 'Confirm Attendance' ? currentUserConfirmed : undefined}
+                        confirmed={action.title === 'Confirm Attendance' || action.title === 'Update Attendance' ? currentUserConfirmed : undefined}
                         disabled={isLoading && selected !== action.title}
                         panelActive={panelActive && selected === action.title}
                         style={{

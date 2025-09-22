@@ -38,6 +38,8 @@ import {
   MdOutlineConstruction,
   MdConstruction,
   MdSmartphone,
+  MdOutlineSlideshow,
+  MdSlideshow,
 } from 'react-icons/md';
 import { PiTreePalm, PiTreePalmFill } from 'react-icons/pi';
 import { colours } from '../../app/styles/colours';
@@ -79,6 +81,7 @@ const iconMap: Record<string, { outline: React.ComponentType<any>; filled: React
   KnowledgeArticle: { outline: MdOutlineArticle, filled: MdArticle },
   CityNext: { outline: MdOutlineLocationCity, filled: MdLocationCity },
   ConstructionCone: { outline: MdOutlineConstruction, filled: MdConstruction },
+  Presentation: { outline: MdOutlineSlideshow, filled: MdSlideshow },
 };
 
 // Export function to get filled icon for panel headers

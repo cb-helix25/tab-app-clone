@@ -25,7 +25,7 @@ import {
   FaExclamationTriangle,
 } from 'react-icons/fa';
 import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment, MdSync, MdExpandMore, MdChevronRight } from 'react-icons/md';
-import { FaShieldAlt, FaIdCard } from 'react-icons/fa';
+import { FaShieldAlt, FaIdCard, FaCreditCard } from 'react-icons/fa';
 import QuickActionsCard from "../home/QuickActionsCard"; // legacy, to be removed after full migration
 import { useTheme } from "../../app/functionality/ThemeContext";
 import { useNavigatorActions } from "../../app/functionality/NavigatorContext";
@@ -101,10 +101,38 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
   const [forceNewMatter, setForceNewMatter] = useState(false);
   const [showCclDraftPage, setShowCclDraftPage] = useState(false);
-  const [isWorkbenchVisible, setIsWorkbenchVisible] = useState(true);
+  const [isWorkbenchVisible, setIsWorkbenchVisible] = useState(false);
 
   // Flat tab navigation: default to Clients
   const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('clients');
+  
+  // Comprehensive workbench tab management
+  const [activeWorkbenchTab, setActiveWorkbenchTab] = useState('identity');
+  
+  // Workbench expansion state management
+  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({});
+  
+  const toggleSection = (sectionKey: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey]
+    }));
+  };
+  
+  // Modal states for workbench operations
+  const [showRiskDetails, setShowRiskDetails] = useState(false);
+  const [showPaymentDetails, setShowPaymentDetails] = useState(false);
+  const [showMatterDetails, setShowMatterDetails] = useState(false);
+  
+  // Utility function for file size formatting
+  const formatBytes = (bytes: number, decimals = 2) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  };
   
   // Unified enquiries data for name mapping (separate from main enquiries)
   const [unifiedEnquiries, setUnifiedEnquiries] = useState<any[]>([]);
@@ -349,6 +377,18 @@ const Instructions: React.FC<InstructionsProps> = ({
   const handleRiskAssessmentSave = (risk: any) => {
     setInstructionData(prev =>
       prev.map(prospect => {
+        // Only update the prospect that contains this instruction
+        const hasInstruction = (prospect.instructions || []).some(
+          (inst: any) => inst.InstructionRef === risk.InstructionRef,
+        );
+        const hasDealForInstruction = (prospect.deals || []).some(
+          (d: any) => d.InstructionRef === risk.InstructionRef,
+        );
+
+        if (!hasInstruction && !hasDealForInstruction) {
+          return prospect; // untouched
+        }
+
         const updatedProspect = { ...prospect } as any;
         const riskKey = updatedProspect.riskAssessments
           ? 'riskAssessments'
@@ -356,10 +396,13 @@ const Instructions: React.FC<InstructionsProps> = ({
           ? 'compliance'
           : 'riskAssessments';
 
-        updatedProspect[riskKey] = Array.isArray(updatedProspect[riskKey])
-          ? updatedProspect[riskKey].filter((r: any) => r.InstructionRef !== risk.InstructionRef)
+        const currentProspectRisks = Array.isArray(updatedProspect[riskKey])
+          ? updatedProspect[riskKey]
           : [];
-        updatedProspect[riskKey].push(risk);
+        updatedProspect[riskKey] = [
+          ...currentProspectRisks.filter((r: any) => r.InstructionRef !== risk.InstructionRef),
+          risk,
+        ];
 
         updatedProspect.instructions = (updatedProspect.instructions || []).map((inst: any) => {
           if (inst.InstructionRef === risk.InstructionRef) {
@@ -368,13 +411,18 @@ const Instructions: React.FC<InstructionsProps> = ({
               : inst.compliance
               ? 'compliance'
               : 'riskAssessments';
-            inst[instRiskKey] = Array.isArray(inst[instRiskKey])
-              ? inst[instRiskKey].filter((r: any) => r.InstructionRef !== risk.InstructionRef)
-              : [];
-            inst[instRiskKey].push(risk);
+            const currentInstRisks = Array.isArray(inst[instRiskKey]) ? inst[instRiskKey] : [];
+            return {
+              ...inst,
+              [instRiskKey]: [
+                ...currentInstRisks.filter((r: any) => r.InstructionRef !== risk.InstructionRef),
+                risk,
+              ],
+            };
           }
           return inst;
         });
+
         return updatedProspect;
       }),
     );
@@ -394,6 +442,43 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
 
     setSelectedRisk(risk);
+  };
+
+  const handleRiskAssessmentDelete = async (instructionRef: string) => {
+    try {
+      const res = await fetch(`/api/risk-assessments/${encodeURIComponent(instructionRef)}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Delete failed ${res.status}: ${text}`);
+      }
+
+      // Update local state: remove risk from matching prospect/instruction
+      setInstructionData(prev => prev.map(prospect => {
+        const contains = (prospect.instructions || []).some((i: any) => i.InstructionRef === instructionRef);
+        if (!contains) return prospect;
+        const updated = { ...prospect } as any;
+        const key = updated.riskAssessments ? 'riskAssessments' : (updated.compliance ? 'compliance' : 'riskAssessments');
+        if (Array.isArray(updated[key])) {
+          updated[key] = updated[key].filter((r: any) => r.InstructionRef !== instructionRef);
+        }
+        updated.instructions = (updated.instructions || []).map((inst: any) => {
+          if (inst.InstructionRef !== instructionRef) return inst;
+          const instKey = inst.riskAssessments ? 'riskAssessments' : (inst.compliance ? 'compliance' : 'riskAssessments');
+          const arr = Array.isArray(inst[instKey]) ? inst[instKey].filter((r: any) => r.InstructionRef !== instructionRef) : [];
+          return { ...inst, [instKey]: arr };
+        });
+        return updated;
+      }));
+
+      // If the currently selected instruction matches, clear selectedRisk
+      if (selectedInstruction?.InstructionRef === instructionRef) {
+        setSelectedRisk(null);
+      }
+
+    } catch (err) {
+      console.error('Failed to delete risk assessment', err);
+      alert('Failed to delete risk assessment.');
+    }
   };
 
   // Handle deal editing
@@ -1295,7 +1380,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
       padding: "16px",
-      paddingBottom: activeTab === "clients" ? "120px" : "16px", // Add bottom padding for global action area
+      paddingBottom: activeTab === "clients" && !selectedInstruction ? "120px" : "16px", // No extra padding when workbench replaces global actions
       borderRadius: 0,
       boxShadow: dark
         ? `0 4px 12px ${colours.dark.border}`
@@ -1304,11 +1389,11 @@ const Instructions: React.FC<InstructionsProps> = ({
       // Responsive padding
       '@media (max-width: 768px)': {
         padding: "12px",
-        paddingBottom: activeTab === "clients" ? "100px" : "12px",
+        paddingBottom: activeTab === "clients" && !selectedInstruction ? "100px" : "12px",
       },
       '@media (max-width: 480px)': {
         padding: "8px",
-        paddingBottom: activeTab === "clients" ? "80px" : "8px",
+        paddingBottom: activeTab === "clients" && !selectedInstruction ? "80px" : "8px",
       },
     });
 
@@ -2330,6 +2415,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     if (item) {
       setSelectedInstruction(item.instruction ?? item);
       setSelectedRisk(item.risk ?? item.riskAssessments?.[0] ?? null);
+      // Risk assessment logic without auto-opening workbench
     }
     setPendingInstructionRef('');
     setShowRiskPage(true);
@@ -2907,6 +2993,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                 key={`matter-cta-${c.instruction.InstructionRef}`}
                 onClick={() => {
                   setSelectedInstruction(c.instruction);
+                  // Instruction selected - header will show expand option
                   setTimeout(()=> handleGlobalOpenMatter(), 50);
                 }}
                 style={{
@@ -3043,6 +3130,11 @@ const Instructions: React.FC<InstructionsProps> = ({
                         getClientNameByProspectId={getClientNameByProspectId}
                         onDealEdit={handleDealEdit}
                         onRiskClick={() => handleRiskAssessment(item)}
+                          onEditRisk={(ref) => {
+                            const found = overviewItems.find(o => o.instruction?.InstructionRef === ref);
+                            if (found) handleRiskAssessment(found);
+                          }}
+                          onDeleteRisk={handleRiskAssessmentDelete}
                         onOpenMatter={handleOpenMatter}
                         onSelect={() => {
                           // Toggle selection: if already selected, unselect; otherwise select
@@ -3051,6 +3143,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                               setSelectedInstruction(null);
                             } else {
                               setSelectedInstruction(item.instruction);
+                              // New instruction selected - header will show expand option
                             }
                           });
                         }}
@@ -3117,8 +3210,82 @@ const Instructions: React.FC<InstructionsProps> = ({
                 to { transform: translateY(0); opacity: 1; }
               }
               
+              @keyframes workbenchSlideIn {
+                from { 
+                  transform: translateY(-20px); 
+                  opacity: 0; 
+                  scale: 0.98;
+                }
+                to { 
+                  transform: translateY(0); 
+                  opacity: 1; 
+                  scale: 1;
+                }
+              }
+              
+              @keyframes workbenchSlideOut {
+                from { 
+                  transform: translateY(0); 
+                  opacity: 1; 
+                  scale: 1;
+                }
+                to { 
+                  transform: translateY(-10px); 
+                  opacity: 0; 
+                  scale: 0.98;
+                }
+              }
+              
+              @keyframes slideDown {
+                from { 
+                  transform: translateY(-10px); 
+                  opacity: 0; 
+                  scale: 0.98;
+                }
+                to { 
+                  transform: translateY(0); 
+                  opacity: 1; 
+                  scale: 1;
+                }
+              }
+              
               .advanced-tools {
                 animation: slideUp 0.3s ease-out;
+              }
+              
+              .comprehensive-workbench {
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              }
+              
+              .workbench-tab-button {
+                transition: all 0.2s ease;
+              }
+              
+              .workbench-tab-button:hover {
+                background-color: rgba(54, 144, 206, 0.1) !important;
+                transform: translateY(-1px);
+              }
+              
+              .expandable-section {
+                transition: all 0.3s ease;
+                overflow: hidden;
+              }
+              
+              .expandable-content {
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transform-origin: top;
+              }
+              
+              .expand-button {
+                transition: all 0.2s ease;
+              }
+              
+              .expand-button:hover {
+                background-color: rgba(54, 144, 206, 0.08) !important;
+              }
+              
+              .expand-arrow {
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
               }
             `}</style>
             <div
@@ -3134,28 +3301,45 @@ const Instructions: React.FC<InstructionsProps> = ({
                 transition: 'all 0.3s ease',
               }}
             >
-              {/* Advanced Tools Section - Context-aware expansion */}
-              {isWorkbenchVisible && selectedInstruction && (
-                <div 
-                  className="advanced-tools"
-                  style={{
-                    padding: '12px 20px',
-                    background: isDarkMode ? colours.dark.cardBackground : '#f8fafc',
-                    borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{ 
-                        width: 3, 
-                        height: 3, 
-                        borderRadius: '50%', 
-                        background: areaOfWorkInfo.color,
-                        animation: 'pulse 2s infinite'
-                      }} />
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {/* Global Actions - Always visible, expandable when instruction selected */}
+              <div style={{ padding: '16px 20px' }}>
+                {selectedInstruction ? (
+                  /* Instruction-specific actions with expandable workbench */
+                  <div>
+                    {/* Header with expand indicator */}
+                    <div 
+                      onClick={() => setIsWorkbenchVisible(!isWorkbenchVisible)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '12px 16px',
+                        background: isDarkMode ? colours.dark.cardBackground : '#f8fafc',
+                        border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        marginBottom: isWorkbenchVisible ? '16px' : '0'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardHover : '#f1f5f9';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardBackground : '#f8fafc';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ 
+                          width: 4, 
+                          height: 4, 
+                          borderRadius: '50%', 
+                          background: areaOfWorkInfo.color,
+                          animation: 'pulse 2s infinite'
+                        }} />
                         <span style={{ 
-                          fontSize: '11px', 
+                          fontSize: '12px', 
                           fontWeight: 700, 
                           color: isDarkMode ? colours.dark.text : '#1f2937',
                           letterSpacing: '0.02em',
@@ -3164,92 +3348,973 @@ const Instructions: React.FC<InstructionsProps> = ({
                           {selectedInstruction.InstructionRef}
                         </span>
                         <span style={{ 
-                          fontSize: '9px', 
+                          fontSize: '10px', 
                           fontWeight: 500, 
                           color: isDarkMode ? colours.dark.subText : '#6b7280',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
-                          opacity: 0.8
+                          opacity: 0.6
                         }}>
-                          Workbench
+                          Operations Workbench
+                        </span>
+                        {areaOfWorkInfo.label && (
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            color: areaOfWorkInfo.color,
+                            letterSpacing: '0.03em',
+                            textTransform: 'uppercase',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: `${areaOfWorkInfo.color}15`,
+                            border: `1px solid ${areaOfWorkInfo.color}30`
+                          }}>
+                            {areaOfWorkInfo.label}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ 
+                          fontSize: '10px', 
+                          color: isDarkMode ? colours.dark.subText : '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em'
+                        }}>
+                          {isWorkbenchVisible ? 'Collapse' : 'Expand'}
+                        </span>
+                        <span style={{ 
+                          fontSize: '12px', 
+                          color: isDarkMode ? colours.dark.subText : '#6b7280',
+                          transform: isWorkbenchVisible ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease'
+                        }}>
+                          ▲
                         </span>
                       </div>
                     </div>
-                    
-                    {/* Area of Work - positioned far right */}
-                    {areaOfWorkInfo.label && (
-                      <span style={{
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        color: areaOfWorkInfo.color,
-                        letterSpacing: '0.03em',
-                        textTransform: 'uppercase',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        background: `${areaOfWorkInfo.color}15`,
-                        border: `1px solid ${areaOfWorkInfo.color}30`
-                      }}>
-                        {areaOfWorkInfo.label}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '6px', 
-                    flexWrap: 'wrap',
-                    alignItems: 'center'
-                  }}>
-                    {/* Smart contextual tools based on instruction status */}
-                    {selectedInstruction?.Status === 'New' && (
-                      <button
-                        onClick={() => console.log('New instruction workflow')}
+
+                    {/* Expandable Workbench Content */}
+                    {isWorkbenchVisible && (
+                      <div 
+                        className="comprehensive-workbench"
                         style={{
-                          padding: '4px 8px',
-                          fontSize: '10px',
-                          borderRadius: '4px',
-                          border: `1px solid #8b5cf6`,
-                          background: 'transparent',
-                          color: '#8b5cf6',
-                          cursor: 'pointer',
-                          fontWeight: '500',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.025em',
+                          background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          boxShadow: isDarkMode 
+                            ? '0 4px 6px rgba(0, 0, 0, 0.3)' 
+                            : '0 4px 6px rgba(0, 0, 0, 0.07)',
+                          animation: 'workbenchSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                          transform: 'translateY(0)',
+                          opacity: 1,
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                       >
-                        Auto Process
+                  {/* Tab Navigation */}
+                  <div style={{
+                    display: 'flex',
+                    background: isDarkMode ? colours.dark.cardBackground : '#f8fafc',
+                    borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                    padding: '0 16px'
+                  }}>
+                    {[
+                      { 
+                        key: 'identity', 
+                        label: 'Identity', 
+                        status: verifyIdStatus,
+                        icon: <FaIdCard size={12} />,
+                        count: verificationFound ? 1 : 0
+                      },
+                      { 
+                        key: 'risk', 
+                        label: 'Risk', 
+                        status: riskStatus,
+                        icon: <FaShieldAlt size={12} />,
+                        count: selectedOverviewItem?.risk ? 1 : 0
+                      },
+                      { 
+                        key: 'payment', 
+                        label: 'Payment', 
+                        status: paymentCompleted ? 'complete' : 'pending',
+                        icon: <FaCreditCard size={12} />,
+                        count: selectedOverviewItem?.instruction?.payments?.length || 0
+                      },
+                      { 
+                        key: 'documents', 
+                        label: 'Documents', 
+                        status: selectedOverviewItem?.documents?.length > 0 ? 'complete' : 'pending',
+                        icon: <FaFileAlt size={12} />,
+                        count: selectedOverviewItem?.documents?.length || 0
+                      },
+                      { 
+                        key: 'matter', 
+                        label: 'Matter', 
+                        status: matterLinked ? 'complete' : 'pending',
+                        icon: <FaFolder size={12} />,
+                        count: matterLinked ? 1 : 0
+                      }
+                    ].map(tab => (
+                      <button
+                        key={tab.key}
+                        className="workbench-tab-button"
+                        onClick={() => setActiveWorkbenchTab(tab.key)}
+                        style={{
+                          padding: '12px 16px',
+                          border: 'none',
+                          background: activeWorkbenchTab === tab.key 
+                            ? (isDarkMode ? colours.dark.cardBackground : '#ffffff')
+                            : 'transparent',
+                          borderBottom: activeWorkbenchTab === tab.key 
+                            ? `2px solid ${colours.blue}` 
+                            : '2px solid transparent',
+                          color: activeWorkbenchTab === tab.key 
+                            ? (isDarkMode ? colours.dark.text : colours.light.text)
+                            : colours.greyText,
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: activeWorkbenchTab === tab.key ? 600 : 500,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s ease',
+                          position: 'relative'
+                        }}
+                      >
+                        {tab.icon}
+                        {tab.label}
+                        
+                        {/* Status indicator */}
+                        <span style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: tab.status === 'complete' ? colours.green :
+                                     tab.status === 'review' || tab.status === 'flagged' ? colours.orange :
+                                     colours.greyText,
+                          opacity: 0.8
+                        }} />
+                        
+                        {/* Count badge */}
+                        {tab.count > 0 && (
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: 600,
+                            color: colours.blue,
+                            background: `${colours.blue}15`,
+                            padding: '1px 4px',
+                            borderRadius: '8px',
+                            minWidth: '14px',
+                            textAlign: 'center'
+                          }}>
+                            {tab.count}
+                          </span>
+                        )}
                       </button>
-                    )}
-                    
-                    {/* Admin-only tools */}
-                    {isAdminUser() && (
-                      <>
-                        <div style={{ width: '1px', height: '16px', background: isDarkMode ? colours.dark.border : '#d1d5db', margin: '0 4px' }} />
-                        <button
-                          onClick={() => console.log('System diagnostics')}
-                          style={{
-                            padding: '4px 8px',
+                    ))}
+                  </div>
+
+                  {/* Tab Content Area */}
+                  <div style={{
+                    padding: '20px',
+                    minHeight: '300px',
+                    background: isDarkMode ? colours.dark.cardBackground : '#ffffff'
+                  }}>
+                    {activeWorkbenchTab === 'identity' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 16px 0', 
+                          fontSize: '14px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <FaIdCard size={14} color={verifyIdStatus === 'complete' ? colours.green : colours.blue} />
+                          Identity Data Inspector
+                          <span style={{
                             fontSize: '10px',
-                            borderRadius: '4px',
-                            border: `1px solid #ef4444`,
-                            background: 'transparent',
-                            color: '#ef4444',
-                            cursor: 'pointer',
-                            fontWeight: '500',
+                            fontWeight: 500,
+                            color: verifyIdStatus === 'complete' ? colours.green : colours.orange,
                             textTransform: 'uppercase',
-                            letterSpacing: '0.025em',
-                          }}
-                        >
-                          System
-                        </button>
-                      </>
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: verifyIdStatus === 'complete' ? `${colours.green}15` : `${colours.orange}15`
+                          }}>
+                            {verifyIdStatus}
+                          </span>
+                        </h3>
+                        
+                        {/* Comprehensive Data Panels */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                          {/* Personal Information */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Personal Information</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Name:</strong> {selectedInstruction?.Title} {selectedInstruction?.FirstName} {selectedInstruction?.LastName}</div>
+                              <div><strong>Email:</strong> {selectedInstruction?.Email || 'Not provided'}</div>
+                              <div><strong>Phone:</strong> {selectedInstruction?.Phone || 'Not provided'}</div>
+                              <div><strong>DOB:</strong> {selectedInstruction?.DOB ? new Date(selectedInstruction.DOB).toLocaleDateString() : 'Not provided'}</div>
+                              <div><strong>Gender:</strong> {selectedInstruction?.Gender || 'Not provided'}</div>
+                              <div><strong>Nationality:</strong> {selectedInstruction?.Nationality} ({selectedInstruction?.NationalityAlpha2})</div>
+                              <div><strong>Client Type:</strong> {selectedInstruction?.ClientType || 'Not specified'}</div>
+                            </div>
+                          </div>
+
+                          {/* Identification */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Identification</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>ID Type:</strong> {selectedInstruction?.IdType || 'Not specified'}</div>
+                              <div><strong>Passport:</strong> {selectedInstruction?.PassportNumber || 'Not provided'}</div>
+                              <div><strong>Driving License:</strong> {selectedInstruction?.DriversLicenseNumber || 'Not provided'}</div>
+                              <div><strong>Client ID:</strong> {selectedInstruction?.ClientId || 'Not assigned'}</div>
+                              <div><strong>Related Client:</strong> {selectedInstruction?.RelatedClientId || 'None'}</div>
+                              <div><strong>Matter ID:</strong> {selectedInstruction?.MatterId || 'Not assigned'}</div>
+                            </div>
+                          </div>
+
+                          {/* Residential Address */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Residential Address</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Address:</strong> {selectedInstruction?.HouseNumber} {selectedInstruction?.Street}</div>
+                              <div><strong>City:</strong> {selectedInstruction?.City}</div>
+                              <div><strong>County:</strong> {selectedInstruction?.County}</div>
+                              <div><strong>Postcode:</strong> {selectedInstruction?.Postcode}</div>
+                              <div><strong>Country:</strong> {selectedInstruction?.Country} ({selectedInstruction?.CountryCode})</div>
+                            </div>
+                          </div>
+
+                          {/* Company Information */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Company Information</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Company:</strong> {selectedInstruction?.CompanyName || 'Not applicable'}</div>
+                              <div><strong>Company Number:</strong> {selectedInstruction?.CompanyNumber || 'Not applicable'}</div>
+                              <div><strong>House Number:</strong> {selectedInstruction?.CompanyHouseNumber || 'Not applicable'}</div>
+                              <div><strong>Address:</strong> {selectedInstruction?.CompanyStreet ? `${selectedInstruction.CompanyStreet}, ${selectedInstruction.CompanyCity}` : 'Not applicable'}</div>
+                              <div><strong>Postcode:</strong> {selectedInstruction?.CompanyPostcode || 'Not applicable'}</div>
+                              <div><strong>Country:</strong> {selectedInstruction?.CompanyCountry ? `${selectedInstruction.CompanyCountry} (${selectedInstruction.CompanyCountryCode})` : 'Not applicable'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Verification Actions */}
+                        <div style={{
+                          padding: '16px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '8px',
+                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          marginBottom: '20px'
+                        }}>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Verification Status & Actions</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
+                              <div>EID Status: <strong style={{ color: eidStatus === 'Completed' ? colours.green : colours.orange }}>{eidStatus || 'Not initiated'}</strong></div>
+                              <div>POID Result: <strong style={{ color: poidResult === 'Verified' ? colours.green : colours.orange }}>{poidResult || 'Pending'}</strong></div>
+                              <div>Consent Given: <strong style={{ color: selectedInstruction?.ConsentGiven ? colours.green : colours.red }}>{selectedInstruction?.ConsentGiven ? 'Yes' : 'No'}</strong></div>
+                            </div>
+                            <button
+                              onClick={handleGlobalEIDCheck}
+                              disabled={verifyIdStatus === 'complete'}
+                              style={{
+                                padding: '8px 12px',
+                                fontSize: '11px',
+                                border: `1px solid ${verifyIdStatus === 'complete' ? colours.green : colours.blue}`,
+                                borderRadius: '4px',
+                                background: 'transparent',
+                                color: verifyIdStatus === 'complete' ? colours.green : colours.blue,
+                                cursor: verifyIdStatus === 'complete' ? 'default' : 'pointer',
+                                opacity: verifyIdStatus === 'complete' ? 0.6 : 1
+                              }}
+                            >
+                              {verifyButtonLabel}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Technical Details - Expandable */}
+                        <div style={{
+                          padding: '12px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '6px',
+                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                        }}>
+                          <button
+                            className="expand-button"
+                            onClick={() => toggleSection('identity-raw')}
+                            style={{
+                              width: '100%',
+                              background: 'none',
+                              border: 'none',
+                              color: colours.greyText,
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '4px 0'
+                            }}
+                          >
+                            <span>Technical Details & Raw Database Record</span>
+                            <span className="expand-arrow" style={{ transform: expandedSections['identity-raw'] ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                          </button>
+                          
+                          {expandedSections['identity-raw'] && (
+                            <div className="expandable-content" style={{ 
+                              marginTop: '12px',
+                              background: isDarkMode ? '#1a1a1a' : '#ffffff', 
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                              borderRadius: '6px', 
+                              padding: '12px', 
+                              fontSize: '10px', 
+                              fontFamily: 'Monaco, Consolas, monospace',
+                              maxHeight: '250px',
+                              overflowY: 'auto',
+                              color: isDarkMode ? '#e5e5e5' : '#374151',
+                              animation: 'slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }}>
+                              {selectedInstruction ? (
+                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {JSON.stringify(selectedInstruction, null, 2)}
+                                </pre>
+                              ) : (
+                                <div style={{ color: colours.greyText, fontStyle: 'italic' }}>
+                                  No instruction data available
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeWorkbenchTab === 'risk' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 16px 0', 
+                          fontSize: '14px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <FaShieldAlt size={14} color={riskStatus === 'complete' ? colours.green : 
+                                        riskStatus === 'flagged' ? colours.red : colours.blue} />
+                          Risk Assessment Data Inspector
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: riskStatus === 'complete' ? colours.green : 
+                                  riskStatus === 'flagged' ? colours.red : colours.orange,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: riskStatus === 'complete' ? `${colours.green}15` : 
+                                       riskStatus === 'flagged' ? `${colours.red}15` : `${colours.orange}15`
+                          }}>
+                            {riskStatus}
+                          </span>
+                        </h3>
+                        
+                        {/* Comprehensive Risk Assessment Data */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                          {/* Risk Summary */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.red }}>Risk Assessment Summary</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Result:</strong> <span style={{ color: selectedOverviewItem?.risk?.RiskAssessmentResult === 'High Risk' ? colours.red : selectedOverviewItem?.risk?.RiskAssessmentResult === 'Medium Risk' ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.RiskAssessmentResult || 'Pending Assessment'}</span></div>
+                              <div><strong>Risk Score:</strong> <span style={{ color: (selectedOverviewItem?.risk?.RiskScore > 15) ? colours.red : (selectedOverviewItem?.risk?.RiskScore > 10) ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.RiskScore || 'Not scored'}</span></div>
+                              <div><strong>Transaction Level:</strong> <span style={{ color: selectedOverviewItem?.risk?.TransactionRiskLevel === 'High Risk' ? colours.red : selectedOverviewItem?.risk?.TransactionRiskLevel === 'Medium Risk' ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.TransactionRiskLevel || 'Not assessed'}</span></div>
+                              <div><strong>Assessor:</strong> {selectedOverviewItem?.risk?.RiskAssessor || 'Not assigned'}</div>
+                              <div><strong>Compliance Date:</strong> {selectedOverviewItem?.risk?.ComplianceDate ? new Date(selectedOverviewItem.risk.ComplianceDate).toLocaleDateString() : 'Not completed'}</div>
+                              <div><strong>Expiry Date:</strong> {selectedOverviewItem?.risk?.ComplianceExpiry ? new Date(selectedOverviewItem.risk.ComplianceExpiry).toLocaleDateString() : 'Not set'}</div>
+                            </div>
+                          </div>
+
+                          {/* Client Risk Factors */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Client Risk Analysis</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Client Type:</strong> {selectedOverviewItem?.risk?.ClientType || 'Not specified'}</div>
+                              <div><strong>Client Type Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.ClientType_Value > 2) ? colours.red : (selectedOverviewItem?.risk?.ClientType_Value > 1) ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.ClientType_Value || 'Not rated'}</span></div>
+                              <div><strong>How Introduced:</strong> {selectedOverviewItem?.risk?.HowWasClientIntroduced || 'Not recorded'}</div>
+                              <div><strong>Introduction Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.HowWasClientIntroduced_Value > 2) ? colours.red : colours.green }}>{selectedOverviewItem?.risk?.HowWasClientIntroduced_Value || 'Not rated'}</span></div>
+                            </div>
+                          </div>
+
+                          {/* Funds Analysis */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.orange }}>Funds Analysis</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Source of Funds:</strong> {selectedOverviewItem?.risk?.SourceOfFunds || 'Not specified'}</div>
+                              <div><strong>Source Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.SourceOfFunds_Value > 2) ? colours.red : colours.green }}>{selectedOverviewItem?.risk?.SourceOfFunds_Value || 'Not rated'}</span></div>
+                              <div><strong>Destination:</strong> {selectedOverviewItem?.risk?.DestinationOfFunds || 'Not specified'}</div>
+                              <div><strong>Funds Type:</strong> {selectedOverviewItem?.risk?.FundsType || 'Not specified'}</div>
+                              <div><strong>Value of Instruction:</strong> <span style={{ color: selectedOverviewItem?.risk?.ValueOfInstruction === 'Above £500,000' ? colours.red : selectedOverviewItem?.risk?.ValueOfInstruction === 'Less than £10,000' ? colours.green : colours.orange }}>{selectedOverviewItem?.risk?.ValueOfInstruction || 'Not specified'}</span></div>
+                            </div>
+                          </div>
+
+                          {/* Compliance Checks */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.green }}>Compliance Factors</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Client Risk Factors:</strong> <span style={{ color: selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
+                              <div><strong>Transaction Risk Factors:</strong> <span style={{ color: selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
+                              <div><strong>AML Policy:</strong> <span style={{ color: selectedOverviewItem?.risk?.FirmWideAMLPolicyConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.FirmWideAMLPolicyConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
+                              <div><strong>Sanctions Risk:</strong> <span style={{ color: selectedOverviewItem?.risk?.FirmWideSanctionsRiskConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.FirmWideSanctionsRiskConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
+                              <div><strong>Limitation:</strong> {selectedOverviewItem?.risk?.Limitation || 'Not specified'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Risk Actions Panel */}
+                        <div style={{
+                          padding: '16px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '8px',
+                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          marginBottom: '20px'
+                        }}>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Risk Assessment Actions</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
+                              <div>Assessment Status: <strong style={{ color: selectedOverviewItem?.risk ? colours.green : colours.orange }}>{selectedOverviewItem?.risk ? 'Completed' : 'Pending'}</strong></div>
+                              <div>Risk Score Increment: <strong>{selectedOverviewItem?.risk?.RiskScoreIncrementBy || 'Not calculated'}</strong></div>
+                              <div>Reference: <strong>{selectedOverviewItem?.risk?.InstructionRef || selectedInstruction?.InstructionRef}</strong></div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {!selectedOverviewItem?.risk && (
+                                <button
+                                  onClick={() => {
+                                    const targetItem = overviewItems.find((item: any) => 
+                                      item.instruction?.InstructionRef === selectedInstruction?.InstructionRef
+                                    );
+                                    if (targetItem) handleRiskAssessment(targetItem);
+                                  }}
+                                  style={{
+                                    padding: '8px 12px',
+                                    fontSize: '11px',
+                                    border: `1px solid ${colours.blue}`,
+                                    borderRadius: '4px',
+                                    background: 'transparent',
+                                    color: colours.blue,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Create Assessment
+                                </button>
+                              )}
+                              {selectedOverviewItem?.risk && (
+                                <button
+                                  onClick={() => setShowRiskDetails(true)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    fontSize: '11px',
+                                    border: `1px solid ${colours.green}`,
+                                    borderRadius: '4px',
+                                    background: 'transparent',
+                                    color: colours.green,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  View Details
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Technical Details - Expandable */}
+                        <div style={{
+                          padding: '12px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '6px',
+                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                        }}>
+                          <button
+                            onClick={() => toggleSection('risk-raw')}
+                            style={{
+                              width: '100%',
+                              background: 'none',
+                              border: 'none',
+                              color: colours.greyText,
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '4px 0'
+                            }}
+                          >
+                            <span>Technical Details & Raw Risk Assessment Record</span>
+                            <span style={{ transform: expandedSections['risk-raw'] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                          </button>
+                          
+                          {expandedSections['risk-raw'] && (
+                            <div style={{ 
+                              marginTop: '12px',
+                              background: isDarkMode ? '#1a1a1a' : '#ffffff', 
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                              borderRadius: '6px', 
+                              padding: '12px', 
+                              fontSize: '10px', 
+                              fontFamily: 'Monaco, Consolas, monospace',
+                              maxHeight: '250px',
+                              overflowY: 'auto',
+                              color: isDarkMode ? '#e5e5e5' : '#374151'
+                            }}>
+                              {selectedOverviewItem?.risk ? (
+                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {JSON.stringify(selectedOverviewItem.risk, null, 2)}
+                                </pre>
+                              ) : (
+                                <div style={{ color: colours.greyText, fontStyle: 'italic' }}>No risk assessment data available</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeWorkbenchTab === 'payment' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 16px 0', 
+                          fontSize: '14px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <FaCreditCard size={14} color={paymentCompleted ? colours.green : colours.blue} />
+                          Payment Data Inspector
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: paymentCompleted ? colours.green : colours.orange,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: paymentCompleted ? `${colours.green}15` : `${colours.orange}15`
+                          }}>
+                            {paymentCompleted ? 'completed' : 'pending'}
+                          </span>
+                        </h3>
+                        
+                        {/* Payment Transaction Details */}
+                        <div style={{ marginBottom: '20px' }}>
+                          {selectedOverviewItem?.instruction?.payments?.length > 0 ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                              {selectedOverviewItem?.instruction?.payments?.map((payment: any, index: number) => (
+                                <div key={payment.id || index} style={{
+                                  padding: '16px',
+                                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                                  borderRadius: '8px',
+                                  background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                                }}>
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                                    {/* Payment Core Details */}
+                                    <div>
+                                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Payment #{index + 1}</h4>
+                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '3px' }}>
+                                        <div><strong>Payment ID:</strong> {payment.id}</div>
+                                        <div><strong>Stripe Intent:</strong> {payment.payment_intent_id}</div>
+                                        <div><strong>Amount:</strong> <span style={{ color: colours.green, fontWeight: 600 }}>£{payment.amount} {payment.currency}</span></div>
+                                        <div><strong>Amount Minor:</strong> {payment.amount_minor} pence</div>
+                                        <div><strong>Status:</strong> <span style={{ color: payment.payment_status === 'succeeded' ? colours.green : payment.payment_status === 'processing' ? colours.orange : colours.red }}>{payment.payment_status}</span></div>
+                                        <div><strong>Internal Status:</strong> <span style={{ color: payment.internal_status === 'completed' ? colours.green : colours.orange }}>{payment.internal_status}</span></div>
+                                      </div>
+                                    </div>
+
+                                    {/* Service Details */}
+                                    <div>
+                                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: colours.orange }}>Service Information</h4>
+                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '3px' }}>
+                                        <div><strong>Instruction Ref:</strong> {payment.instruction_ref}</div>
+                                        <div><strong>Service Desc:</strong> {payment.service_description || 'Not specified'}</div>
+                                        <div><strong>Area of Work:</strong> {payment.area_of_work || 'Not specified'}</div>
+                                        <div><strong>Receipt URL:</strong> {payment.receipt_url ? 
+                                          <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" style={{ color: colours.blue, textDecoration: 'none', fontSize: '10px' }}>
+                                            View Receipt ↗
+                                          </a> : 'Not available'
+                                        }</div>
+                                      </div>
+                                    </div>
+
+                                    {/* Timestamps & Security */}
+                                    <div>
+                                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: colours.green }}>Timestamps & Security</h4>
+                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '3px' }}>
+                                        <div><strong>Created:</strong> {new Date(payment.created_at).toLocaleString()}</div>
+                                        <div><strong>Updated:</strong> {new Date(payment.updated_at).toLocaleString()}</div>
+                                        <div><strong>Client Secret:</strong> <span style={{ fontFamily: 'monospace', fontSize: '9px', color: colours.greyText }}>
+                                          {payment.client_secret ? `${payment.client_secret.substring(0, 20)}...` : 'Not available'}
+                                        </span></div>
+                                        <div><strong>Webhook Events:</strong> {payment.webhook_events || 'None recorded'}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Metadata Section - Expandable */}
+                                  {payment.metadata && (
+                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}` }}>
+                                      <button
+                                        onClick={() => toggleSection(`payment-metadata-${index}`)}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          color: colours.greyText,
+                                          fontSize: '11px',
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          padding: '2px 0'
+                                        }}
+                                      >
+                                        <span style={{ transform: expandedSections[`payment-metadata-${index}`] ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▶</span>
+                                        <span>Transaction Metadata</span>
+                                      </button>
+                                      
+                                      {expandedSections[`payment-metadata-${index}`] && (
+                                        <div style={{ 
+                                          marginTop: '6px',
+                                          background: isDarkMode ? '#1a1a1a' : '#ffffff', 
+                                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                                          borderRadius: '4px', 
+                                          padding: '8px', 
+                                          fontSize: '9px', 
+                                          fontFamily: 'Monaco, Consolas, monospace',
+                                          color: isDarkMode ? '#e5e5e5' : '#374151',
+                                          maxHeight: '100px',
+                                          overflowY: 'auto'
+                                        }}>
+                                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                                            {typeof payment.metadata === 'string' ? payment.metadata : JSON.stringify(payment.metadata, null, 2)}
+                                          </pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{
+                              padding: '40px',
+                              textAlign: 'center',
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              borderRadius: '8px',
+                              background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                              color: colours.greyText
+                            }}>
+                              <FaCreditCard size={32} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                              <h4 style={{ margin: '0 0 8px 0', fontWeight: 500 }}>No Payment Transactions</h4>
+                              <p style={{ margin: 0, fontSize: '12px' }}>This instruction has no recorded payment transactions.</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Payment Summary */}
+                        <div style={{
+                          padding: '16px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '8px',
+                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          marginBottom: '20px'
+                        }}>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Payment Summary & Actions</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
+                              <div>Total Transactions: <strong>{selectedOverviewItem?.instruction?.payments?.length || 0}</strong></div>
+                              <div>Total Amount: <strong style={{ color: colours.green }}>
+                                £{selectedOverviewItem?.instruction?.payments?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0).toFixed(2) || '0.00'}
+                              </strong></div>
+                              <div>Successful Payments: <strong style={{ color: colours.green }}>
+                                {selectedOverviewItem?.instruction?.payments?.filter((p: any) => p.payment_status === 'succeeded').length || 0}
+                              </strong></div>
+                              <div>Deal Value: <strong>{selectedOverviewItem?.deal?.Amount ? `£${selectedOverviewItem.deal.Amount}` : 'Not specified'}</strong></div>
+                            </div>
+                            <button
+                              onClick={() => setShowPaymentDetails(true)}
+                              style={{
+                                padding: '8px 12px',
+                                fontSize: '11px',
+                                border: `1px solid ${colours.blue}`,
+                                borderRadius: '4px',
+                                background: 'transparent',
+                                color: colours.blue,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Technical Details - Expandable */}
+                        {selectedOverviewItem?.instruction?.payments?.length > 0 && (
+                          <div style={{
+                            padding: '12px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '6px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <button
+                              onClick={() => toggleSection('payment-raw')}
+                              style={{
+                                width: '100%',
+                                background: 'none',
+                                border: 'none',
+                                color: colours.greyText,
+                                fontSize: '11px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '4px 0'
+                              }}
+                            >
+                              <span>Technical Details & Raw Payment Records ({selectedOverviewItem?.instruction?.payments?.length || 0} Transactions)</span>
+                              <span style={{ transform: expandedSections['payment-raw'] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                            </button>
+                            
+                            {expandedSections['payment-raw'] && (
+                              <div style={{ 
+                                marginTop: '12px',
+                                background: isDarkMode ? '#1a1a1a' : '#ffffff', 
+                                border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                                borderRadius: '6px', 
+                                padding: '12px', 
+                                fontSize: '10px', 
+                                fontFamily: 'Monaco, Consolas, monospace',
+                                maxHeight: '300px',
+                                overflowY: 'auto',
+                                color: isDarkMode ? '#e5e5e5' : '#374151'
+                              }}>
+                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {JSON.stringify(selectedOverviewItem?.instruction?.payments || [], null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {activeWorkbenchTab === 'documents' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 16px 0', 
+                          fontSize: '14px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <FaFileAlt size={14} color={selectedOverviewItem?.documents?.length > 0 ? colours.green : colours.blue} />
+                          Document Management Operations
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: selectedOverviewItem?.documents?.length > 0 ? colours.green : colours.orange,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: selectedOverviewItem?.documents?.length > 0 ? `${colours.green}15` : `${colours.orange}15`
+                          }}>
+                            {selectedOverviewItem?.documents?.length || 0} documents
+                          </span>
+                        </h3>
+                        
+                        <div>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600 }}>Document Library</h4>
+                          {selectedOverviewItem?.documents && selectedOverviewItem.documents.length > 0 ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                              {selectedOverviewItem.documents.map((doc: any, index: number) => (
+                                <div
+                                  key={index}
+                                  style={{
+                                    padding: '12px',
+                                    border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                                    borderRadius: '6px',
+                                    background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => {
+                                    // Handle document click - could open viewer or show details
+                                    console.log('Document clicked:', doc);
+                                  }}
+                                >
+                                  <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px' }}>
+                                    {doc.filename || doc.DocumentName || `Document ${index + 1}`}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: colours.greyText }}>
+                                    Size: {doc.filesize ? formatBytes(doc.filesize) : 'Unknown'}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{
+                              padding: '20px',
+                              textAlign: 'center',
+                              color: colours.greyText,
+                              fontSize: '12px',
+                              fontStyle: 'italic'
+                            }}>
+                              No documents uploaded yet
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeWorkbenchTab === 'matter' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 16px 0', 
+                          fontSize: '14px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <FaFolder size={14} color={matterLinked ? colours.green : colours.blue} />
+                          Matter Operations
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: matterLinked ? colours.green : colours.orange,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: matterLinked ? `${colours.green}15` : `${colours.orange}15`
+                          }}>
+                            {matterLinked ? 'linked' : 'pending'}
+                          </span>
+                        </h3>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          {/* Matter Status */}
+                          <div style={{
+                            padding: '12px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '6px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600 }}>Matter Status</h4>
+                            <div style={{ fontSize: '11px', color: colours.greyText, lineHeight: '1.4' }}>
+                              <div>Linked: <strong>{matterLinked ? 'Yes' : 'No'}</strong></div>
+                              <div>Can Open: <strong>{canOpenMatter ? 'Yes' : 'No'}</strong></div>
+                              <div>Prerequisites: <strong>{poidPassed && paymentCompleted ? 'Complete' : 'Pending'}</strong></div>
+                            </div>
+                          </div>
+
+                          {/* Matter Actions */}
+                          <div style={{
+                            padding: '12px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '6px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600 }}>Matter Operations</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {canOpenMatter && (
+                                <button
+                                  onClick={() => {
+                                    if (selectedInstruction) {
+                                      handleOpenMatter(selectedInstruction);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: '8px 12px',
+                                    fontSize: '11px',
+                                    border: `1px solid ${colours.green}`,
+                                    borderRadius: '4px',
+                                    background: 'transparent',
+                                    color: colours.green,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Open Matter
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setShowMatterDetails(true)}
+                                style={{
+                                  padding: '8px 12px',
+                                  fontSize: '11px',
+                                  border: `1px solid ${colours.blue}`,
+                                  borderRadius: '4px',
+                                  background: 'transparent',
+                                  color: colours.blue,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                View Matter Details
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
-
-              {/* Core Actions - Always visible */}
-              <div style={{ padding: '16px 20px' }}>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Core Actions - Show only when no instruction selected */
                 <div style={{
                   display: 'flex',
                   justifyContent: 'center',
@@ -3509,51 +4574,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                     </span>
                   </button>
 
-                  {/* Smart Tools Toggle - Only shows when instruction selected */}
-                  {selectedInstruction && (
-                    <>
-                      <div style={{ width: '1px', height: '24px', background: isDarkMode ? colours.dark.border : '#e2e8f0', borderRadius: '1px', margin: '0 8px' }} />
-                      <button
-                        onClick={() => setIsWorkbenchVisible(!isWorkbenchVisible)}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-1px)';
-                          e.currentTarget.style.background = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.background = 'transparent';
-                        }}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          background: 'transparent',
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          cursor: 'pointer',
-                          fontSize: '11px',
-                          fontWeight: '500',
-                          transition: 'all 0.2s ease',
-                          opacity: 0.7,
-                          letterSpacing: '0.5px',
-                          textTransform: 'uppercase',
-                        }}
-                        title={isWorkbenchVisible ? 'Hide Advanced Tools' : 'Show Advanced Tools'}
-                      >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span style={{ 
-                            display: 'flex', 
-                            alignItems: 'center',
-                            transition: 'transform 0.2s ease',
-                            transform: isWorkbenchVisible ? 'rotate(0deg)' : 'rotate(-90deg)'
-                          }}>
-                            <MdExpandMore size={14} />
-                          </span>
-                          Tools
-                        </span>
-                      </button>
-                    </>
-                  )}
+
                 </div>
+                )}
               </div>
             </div>
           </>

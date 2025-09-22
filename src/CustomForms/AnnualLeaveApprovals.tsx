@@ -1,25 +1,21 @@
-import React, { useState } from 'react';
-import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
-// invisible change
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Stack,
   Text,
   DefaultButton,
   Persona,
   PersonaSize,
-  Label,
   TextField
 } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react';
-import { eachDayOfInterval, isWeekend, format, addDays } from 'date-fns';
+import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { colours } from '../app/styles/colours';
-import { formContainerStyle, inputFieldStyle } from './BespokeForms';
-import { sharedDefaultButtonStyles } from '../app/styles/ButtonStyles';
 import HelixAvatar from '../assets/helix avatar.png';
 import { PiTreePalm } from 'react-icons/pi';
 
 /* ---------------------------------------------------------------------------
-   Types
+   Types & Interfaces
 --------------------------------------------------------------------------- */
 export interface ApprovalEntry {
   id: string;
@@ -31,8 +27,8 @@ export interface ApprovalEntry {
   status: string;
   days_taken?: number;
   leave_type?: string;
-  hearing_confirmation?: string | boolean | null;  // Updated to match data
-  hearing_details?: string;                        // Kept as string | undefined
+  hearing_confirmation?: string | boolean | null;
+  hearing_details?: string;
 }
 
 export interface TeamMember {
@@ -43,18 +39,22 @@ export interface TeamMember {
   holiday_entitlement?: number;
 }
 
-interface AnnualLeaveApprovalsProps {
-  approvals: ApprovalEntry[];
-  futureLeave: ApprovalEntry[];
-  onClose: () => void;
-  team: TeamMember[];
-  totals: { standard: number; unpaid: number; purchase: number };
-  allLeaveEntries: ApprovalEntry[];
-  onApprovalUpdate?: (updatedRequestId: string, newStatus: string) => void; // <-- Add this line
+export interface LeaveEntry {
+  person: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  leave_type?: string;
+}
+
+export interface TotalsItem {
+  standard: number;
+  unpaid: number;
+  purchase: number;
 }
 
 /* ---------------------------------------------------------------------------
-   Fiscal Year Helpers (Apr 1 -> Mar 31)
+   Fiscal Year Helper Functions
 --------------------------------------------------------------------------- */
 function getFiscalYearStart(date: Date): number {
   const year = date.getFullYear();
@@ -69,120 +69,286 @@ function isDateInFiscalYear(date: Date, fyStartYear: number): boolean {
   return date >= start && date <= end;
 }
 
-/**
- * This function sums up days for *booked or requested* statuses in the same FY.
- * If the current request is in that dataset with status="requested",
- * it's already included.
- */
 function sumBookedAndRequestedDaysInFY(
-  allLeave: ApprovalEntry[],
+  allLeaveEntries: LeaveEntry[],
   person: string,
   fyStartYear: number
 ): number {
-  return allLeave
-    .filter((leave) => {
-      // Must match person
-      if (leave.person.toLowerCase() !== person.toLowerCase()) return false;
+  let totalDays = 0;
 
-      // Must be booked or requested (or approved, if that’s used)
-      const s = leave.status.toLowerCase();
-      if (s !== 'booked' && s !== 'requested') return false; 
+  allLeaveEntries
+    .filter(entry => entry.person === person)
+    .filter(entry => 
+      entry.status && 
+      (entry.status.toLowerCase() === 'booked' || 
+       entry.status.toLowerCase() === 'requested' ||
+       entry.status.toLowerCase() === 'approved')
+    )
+    .forEach(entry => {
+      const startDate = new Date(entry.start_date);
+      const endDate = new Date(entry.end_date);
 
-      // Must be standard leave type
-      if (!leave.leave_type || leave.leave_type.toLowerCase() !== 'standard') {
-        return false;
+      if (isDateInFiscalYear(startDate, fyStartYear) || isDateInFiscalYear(endDate, fyStartYear)) {
+        const businessDays = eachDayOfInterval({ start: startDate, end: endDate })
+          .filter(day => !isWeekend(day))
+          .length;
+        totalDays += businessDays;
       }
+    });
 
-      // Must lie within the fiscal year
-      const start = new Date(leave.start_date);
-      const end = new Date(leave.end_date);
-      return isDateInFiscalYear(start, fyStartYear) && isDateInFiscalYear(end, fyStartYear);
-    })
-    .reduce((acc, leave) => acc + (leave.days_taken || 0), 0);
-}
-
-/**
- * If days_taken is absent/0, fallback to ignoring weekends. 
- * (Only if you want to handle partial days or half-days carefully.)
- */
-function getRequestDays(entry: ApprovalEntry): number {
-  const dt = entry.days_taken ?? 0;
-  if (dt > 0) return dt;
-
-  // fallback if truly 0 or undefined: count weekdays in the interval
-  const start = new Date(entry.start_date);
-  const end = new Date(entry.end_date);
-  const days = eachDayOfInterval({ start, end }).filter(d => !isWeekend(d)).length;
-  return days;
-}
-
-function formatDateRange(startStr: string, endStr: string): string {
-  const start = new Date(startStr);
-  const end = new Date(endStr);
-  if (start.getFullYear() === end.getFullYear()) {
-    return `${format(start, 'd MMM')} - ${format(end, 'd MMM yyyy')}`;
-  }
-  return `${format(start, 'd MMM yyyy')} - ${format(end, 'd MMM yyyy')}`;
-}
-
-/**
- * Optional: for conflict display
- */
-function consolidateRanges(ranges: { start_date: string; end_date: string }[]) {
-  if (!ranges.length) return [];
-  const sorted = [...ranges].sort(
-    (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
-  );
-  const result = [sorted[0]];
-  for (let i = 1; i < sorted.length; i++) {
-    const last = result[result.length - 1];
-    const curr = sorted[i];
-    if (new Date(curr.start_date) <= addDays(new Date(last.end_date), 1)) {
-      if (new Date(curr.end_date) > new Date(last.end_date)) {
-        last.end_date = curr.end_date;
-      }
-    } else {
-      result.push(curr);
-    }
-  }
-  return result;
+  return totalDays;
 }
 
 /* ---------------------------------------------------------------------------
-   Styles
+   Types & Props
 --------------------------------------------------------------------------- */
-const containerEntryStyle = mergeStyles({
-  border: `1px solid ${colours.light.border}`,
-  padding: '20px',
-  borderRadius: '8px',
-  backgroundColor: '#fff',
-  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-});
-
-const labelStyleText = mergeStyles({
-  fontSize: '14px',
-  fontWeight: 600,
-  color: colours.highlight,
-  marginBottom: '5px',
-});
-
-const valueStyleText = mergeStyles({
-  fontSize: '18px',
-  color: colours.light.text,
-  marginBottom: '10px',
-});
-
-const Badge: React.FC<{ children: React.ReactNode; badgeStyle?: React.CSSProperties }> = ({
-  children,
-  badgeStyle,
-}) => (
-  <span style={{ padding: '4px 8px', borderRadius: '12px', fontWeight: 600, ...badgeStyle }}>
-    {children}
-  </span>
-);
+interface AnnualLeaveApprovalsProps {
+  approvals: ApprovalEntry[];
+  futureLeave: ApprovalEntry[];
+  onClose: () => void;
+  team: TeamMember[];
+  totals: TotalsItem[];
+  allLeaveEntries: LeaveEntry[];
+  onApprovalUpdate?: (id: string, newStatus: string) => void;
+}
 
 /* ---------------------------------------------------------------------------
-   Main
+   Litigation-Grade Professional Styling
+--------------------------------------------------------------------------- */
+const formContainerStyle = mergeStyles({
+  position: 'fixed',
+  inset: 0,
+  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  zIndex: 2147483000, // ensure above any app/panel overlays
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '20px',
+  overflow: 'auto',
+});
+
+const modalContentStyle = mergeStyles({
+  background: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
+  borderRadius: '16px',
+  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+  width: 'min(1200px, 96%)',
+  maxHeight: '90vh',
+  overflow: 'auto',
+  padding: '32px',
+  position: 'relative',
+  '@media (max-width: 768px)': {
+    padding: '20px',
+    borderRadius: '12px',
+    width: '98%',
+    maxHeight: '95vh',
+  },
+});
+
+const closeButtonStyle = mergeStyles({
+  position: 'absolute',
+  top: '16px',
+  right: '16px',
+  backgroundColor: 'transparent',
+  border: 'none',
+  fontSize: '24px',
+  cursor: 'pointer',
+  color: colours.greyText,
+  padding: '8px',
+  borderRadius: '50%',
+  width: '40px',
+  height: '40px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 0.2s ease',
+  ':hover': {
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    color: colours.light.text,
+  },
+});
+
+const professionalContainerStyle = mergeStyles({
+  background: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
+  border: `1px solid ${colours.light.border}`,
+  borderRadius: '16px',
+  padding: '32px',
+  marginBottom: '24px',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+  maxWidth: '100%',
+  overflow: 'hidden',
+  '@media (max-width: 768px)': {
+    padding: '20px',
+    borderRadius: '12px',
+  },
+});
+
+const headerSectionStyle = mergeStyles({
+  borderBottom: `2px solid ${colours.light.border}`,
+  paddingBottom: '20px',
+  marginBottom: '24px',
+});
+
+const requestHeaderStyle = mergeStyles({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '16px',
+});
+
+const sectionTitleStyle = mergeStyles({
+  fontSize: '16px',
+  fontWeight: 700,
+  color: colours.light.text,
+  marginBottom: '12px',
+  letterSpacing: '0.5px',
+  textTransform: 'uppercase',
+  borderLeft: `4px solid ${colours.cta}`,
+  paddingLeft: '12px',
+});
+
+const notesStyle = mergeStyles({
+  backgroundColor: '#f8fafc',
+  border: `1px solid ${colours.light.border}`,
+  borderRadius: '8px',
+  padding: '16px',
+  fontSize: '14px',
+  fontStyle: 'italic',
+  color: colours.light.text,
+  marginBottom: '20px',
+  lineHeight: '1.5',
+});
+
+const conflictsGridStyle = mergeStyles({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  gap: '16px',
+  marginBottom: '20px',
+  '@media (max-width: 768px)': {
+    gridTemplateColumns: '1fr',
+  },
+});
+
+const conflictCardStyle = mergeStyles({
+  backgroundColor: '#fff',
+  border: `1px solid ${colours.light.border}`,
+  borderRadius: '8px',
+  padding: '16px',
+  textAlign: 'center',
+  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+  transition: 'transform 0.2s ease',
+  ':hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+  },
+});
+
+const actionButtonsStyle = mergeStyles({
+  display: 'flex',
+  gap: '16px',
+  marginBottom: '16px',
+  justifyContent: 'center',
+  alignItems: 'center',
+  '@media (max-width: 768px)': {
+    flexDirection: 'column',
+    gap: '12px',
+  },
+});
+
+const statusBadgeStyle = (status: string) => mergeStyles({
+  padding: '6px 12px',
+  borderRadius: '20px',
+  fontSize: '12px',
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  backgroundColor: 
+    status === 'approved' ? '#e8f5e8' : 
+    status === 'rejected' ? '#fdf2f2' : '#fff3cd',
+  color: 
+    status === 'approved' ? '#2d5a2d' : 
+    status === 'rejected' ? '#721c24' : '#856404',
+  border: `1px solid ${
+    status === 'approved' ? '#a3d977' : 
+    status === 'rejected' ? '#f5c6cb' : '#ffeaa7'
+  }`,
+});
+
+const criticalInfoStyle = mergeStyles({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+  gap: '16px',
+  marginBottom: '20px',
+  '@media (max-width: 768px)': {
+    gridTemplateColumns: '1fr',
+    gap: '12px',
+  },
+});
+
+const infoCardStyle = mergeStyles({
+  backgroundColor: '#f8fafc',
+  border: `1px solid ${colours.light.border}`,
+  borderRadius: '8px',
+  padding: '16px',
+  textAlign: 'center',
+});
+
+const infoLabelStyle = mergeStyles({
+  fontSize: '12px',
+  fontWeight: 600,
+  color: colours.greyText,
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  marginBottom: '6px',
+});
+
+const infoValueStyle = mergeStyles({
+  fontSize: '16px',
+  fontWeight: 700,
+  color: colours.light.text,
+});
+
+const approveButtonStyle = mergeStyles({
+  backgroundColor: '#22c55e',
+  borderColor: '#22c55e',
+  color: '#fff',
+  fontWeight: 600,
+  padding: '12px 24px',
+  borderRadius: '8px',
+  transition: 'all 0.2s ease',
+  ':hover': {
+    backgroundColor: '#16a34a',
+    borderColor: '#16a34a',
+    transform: 'translateY(-1px)',
+  },
+});
+
+const rejectButtonStyle = mergeStyles({
+  backgroundColor: '#ef4444',
+  borderColor: '#ef4444',
+  color: '#fff',
+  fontWeight: 600,
+  padding: '12px 24px',
+  borderRadius: '8px',
+  transition: 'all 0.2s ease',
+  ':hover': {
+    backgroundColor: '#dc2626',
+    borderColor: '#dc2626',
+    transform: 'translateY(-1px)',
+  },
+});
+
+const rejectionNotesStyle = mergeStyles({
+  marginTop: '12px',
+  '& .ms-TextField-fieldGroup': {
+    borderRadius: '8px',
+    border: `2px solid ${colours.light.border}`,
+    ':focus-within': {
+      borderColor: colours.cta,
+    },
+  },
+});
+
+/* ---------------------------------------------------------------------------
+   Main Component
 --------------------------------------------------------------------------- */
 const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
   approvals,
@@ -193,15 +359,51 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
   allLeaveEntries,
   onApprovalUpdate,
 }) => {
+  // Portal container element
+  const [portalEl, setPortalEl] = useState<HTMLDivElement | null>(null);
+
+  // Create and attach a dedicated container for the portal
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const el = document.createElement('div');
+    el.setAttribute('data-annual-leave-modal', '');
+    document.body.appendChild(el);
+    setPortalEl(el);
+    return () => {
+      if (el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    };
+  }, []);
+
+  // Body scroll lock and ESC to close (apply regardless of portal readiness)
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onClose]);
+
   const [rejectionReason, setRejectionReason] = useState<{ [id: string]: string }>({});
+  const [processingStates, setProcessingStates] = useState<{ [id: string]: boolean }>({});
 
   const updateAnnualLeave = async (
     leaveId: string,
     newStatus: string,
     reason: string | null
   ): Promise<void> => {
-  // Use new integrated server route instead of Azure Function
-  const url = `${getProxyBaseUrl()}/api/attendance/updateAnnualLeave`;
+    const url = `/api/attendance/updateAnnualLeave`;
     const payload = { id: leaveId, newStatus, rejection_notes: reason || '' };
     const response = await fetch(url, {
       method: 'POST',
@@ -219,15 +421,8 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
   }
 
   function getEntitlement(initials: string): number {
-    console.log('getEntitlement called with initials:', initials);
-    console.log('Team data:', team);
     const normalizedInitials = initials.trim().toLowerCase();
     const member = team.find(m => m.Initials && m.Initials.trim().toLowerCase() === normalizedInitials);
-    if (!member) {
-      console.warn(`No team member found for initials: ${initials}`);
-    } else {
-      console.log('Found team member:', member);
-    }
     return member?.holiday_entitlement ?? 20;
   }
 
@@ -251,305 +446,347 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     return [...conflictApprovals, ...conflictFuture];
   }
 
+  function formatDateRange(start: string, end: string): string {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    
+    if (startDate.getTime() === endDate.getTime()) {
+      return format(startDate, 'EEEE, d MMMM yyyy');
+    }
+    
+    return `${format(startDate, 'EEEE, d MMMM yyyy')} - ${format(endDate, 'EEEE, d MMMM yyyy')}`;
+  }
+
+  function calculateBusinessDays(start: string, end: string): number {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    return eachDayOfInterval({ start: startDate, end: endDate }).filter(day => !isWeekend(day)).length;
+  }
+
   const ApprovalCard: React.FC<{ entry: ApprovalEntry }> = ({ entry }) => {
-    const recordId = entry.request_id ? String(entry.request_id) : entry.id;
-    const [updated, setUpdated] = useState(false);
-    const [confirmationMessage, setConfirmationMessage] = useState('');
-    const [localRejection, setLocalRejection] = useState('');
+    const [confirmationMessage, setConfirmationMessage] = useState<string>('');
+    const [localRejection, setLocalRejection] = useState<string>(rejectionReason[entry.id] || '');
 
-    // 1) figure out the FY
-    const fyStart = getFiscalYearStart(new Date(entry.start_date));
-
-    // 2) sum "booked + requested" for this person in that FY
-    const sumSoFar = sumBookedAndRequestedDaysInFY(
-      allLeaveEntries,
-      entry.person,
-      fyStart
-    );
-
-    // 3) That sum already includes this request if it's "requested" or "booked."
-    const daysSoFar = sumSoFar;
-
-    // 4) days remaining = entitlement - daysSoFar
+    const requestDays = calculateBusinessDays(entry.start_date, entry.end_date);
     const entitlement = getEntitlement(entry.person);
+    const fyStartYear = getFiscalYearStart(new Date());
+    const daysSoFar = sumBookedAndRequestedDaysInFY(allLeaveEntries, entry.person, fyStartYear);
     const daysRemaining = entitlement - daysSoFar;
-
-    // The request is just for display
-    const requestDays = getRequestDays(entry);
-
-    const localHandleApprove = async () => {
-      try {
-        await updateAnnualLeave(recordId, 'approved', null);
-        setUpdated(true);
-        setConfirmationMessage('Approved successfully');
-        
-        if (onApprovalUpdate) {
-          onApprovalUpdate(recordId, 'approved');
-        }
-      } catch (error) {
-        console.error(`Error approving leave ${recordId}:`, error);
-        setConfirmationMessage('Approval failed');
-      }
-    };
+    const availableSell = Math.max(0, daysRemaining - 5);
     
-    const localHandleReject = async () => {
-      try {
-        await updateAnnualLeave(recordId, 'rejected', localRejection);
-        setUpdated(true);
-        setConfirmationMessage('Rejected successfully');
-        
-        if (onApprovalUpdate) {
-          onApprovalUpdate(recordId, 'rejected');
-        }
-      } catch (error) {
-        console.error(`Error rejecting leave ${recordId}:`, error);
-        setConfirmationMessage('Rejection failed');
-      }
-    };
-    
-
-    // Conflicts
     const conflicts = getAllConflicts(entry);
-    const conflictsGrouped: {
-      [p: string]: {
-        nickname: string;
-        dateRanges: { start_date: string; end_date: string }[];
-        status: string;
-      };
-    } = {};
+    const isProcessing = processingStates[entry.id] || false;
 
-    conflicts.forEach(cf => {
-      const cKey = cf.person;
-      if (!conflictsGrouped[cKey]) {
-        conflictsGrouped[cKey] = {
-          nickname: getNickname(cf.person),
-          dateRanges: [],
-          status: cf.status.toLowerCase(),
-        };
+    const handleAction = async (action: 'approve' | 'reject') => {
+      if (isProcessing) return;
+      
+      setProcessingStates(prev => ({ ...prev, [entry.id]: true }));
+      
+      try {
+        const newStatus = action === 'approve' ? 'approved' : 'rejected';
+        const reason = action === 'reject' ? localRejection : null;
+        
+        await updateAnnualLeave(entry.id, newStatus, reason);
+        
+        if (onApprovalUpdate) {
+          onApprovalUpdate(entry.id, newStatus);
+        }
+        
+        setConfirmationMessage(
+          action === 'approve' 
+            ? `✓ Approved leave for ${getNickname(entry.person)}` 
+            : `✗ Rejected leave for ${getNickname(entry.person)}`
+        );
+        
+        setTimeout(() => setConfirmationMessage(''), 3000);
+        
+      } catch (error) {
+        console.error(`Failed to ${action} leave:`, error);
+        setConfirmationMessage(`❌ Failed to ${action} leave request`);
+        setTimeout(() => setConfirmationMessage(''), 5000);
+      } finally {
+        setProcessingStates(prev => ({ ...prev, [entry.id]: false }));
       }
-      conflictsGrouped[cKey].dateRanges.push({
-        start_date: cf.start_date,
-        end_date: cf.end_date,
-      });
-      if (conflictsGrouped[cKey].status !== cf.status.toLowerCase()) {
-        conflictsGrouped[cKey].status = 'requested';
-      }
-    });
-
-    const groupedArray = Object.values(conflictsGrouped);
-    const availableSell = 5 - totals.purchase;
+    };
 
     return (
-      <div
-        className={mergeStyles(
-          containerEntryStyle,
-          updated && { backgroundColor: '#f0f0f0', border: '2px solid #009900' }
-        )}
-      >
-        <Stack horizontal tokens={{ childrenGap: 20 }} verticalAlign="start">
-          <Persona
-            imageUrl={HelixAvatar}
-            text={getNickname(entry.person)}
-            size={PersonaSize.size48}
-            styles={{ primaryText: { fontWeight: 'bold', fontSize: '18px' } }}
-          />
-          <Stack tokens={{ childrenGap: 20 }} styles={{ root: { flex: 1 } }}>
-            <Stack
-              tokens={{ childrenGap: 10 }}
-              styles={{
-                root: {
-                  border: `1px solid ${colours.light.border}`,
-                  borderRadius: '4px',
-                  padding: '12px',
-                  backgroundColor: colours.light.grey,
-                },
+      <div className={professionalContainerStyle}>
+        {/* Header Section */}
+        <div className={headerSectionStyle}>
+          <div className={requestHeaderStyle}>
+            <Persona
+              imageUrl={HelixAvatar}
+              text={getNickname(entry.person)}
+              size={PersonaSize.size48}
+              styles={{ 
+                primaryText: { 
+                  fontWeight: 700, 
+                  fontSize: '18px',
+                  color: colours.light.text
+                } 
               }}
-            >
-              <Stack horizontal tokens={{ childrenGap: 40 }}>
-                <Stack>
-                  <Label className={labelStyleText}>Requested Dates:</Label>
-                  <Text className={valueStyleText}>
-                    {formatDateRange(entry.start_date, entry.end_date)}
-                  </Text>
-                </Stack>
-                <Stack>
-                  <Label className={labelStyleText}>Days Taken for This Request:</Label>
-                  <Text className={valueStyleText}>
-                    {requestDays} {requestDays === 1 ? 'day' : 'days'}
-                  </Text>
-                </Stack>
-              </Stack>
-              <Stack>
-                <Label className={labelStyleText}>Notes:</Label>
-                <Text className={valueStyleText}>
-                  {entry.reason?.trim()
-                    ? entry.reason
-                    : `${getNickname(entry.person)} hasn't left a note.`}
-                </Text>
-              </Stack>
-            </Stack>
-
-            {entry.hearing_confirmation !== undefined && (
-              <Stack tokens={{ childrenGap: 5 }}>
-                <Label className={labelStyleText}>Hearing Confirmation:</Label>
-                <Text className={valueStyleText}>
-                  {entry.hearing_confirmation === true || (typeof entry.hearing_confirmation === 'string' && entry.hearing_confirmation.toLowerCase() === 'yes')
-                    ? 'There are no hearings during my absence'
-                    : 'There are hearings during my absence'}
-                </Text>
-                {(entry.hearing_confirmation === false || entry.hearing_confirmation === null || (typeof entry.hearing_confirmation === 'string' && entry.hearing_confirmation.toLowerCase() === 'no')) && entry.hearing_details && (
-                  <>
-                    <Label className={labelStyleText}>Hearing Details:</Label>
-                    <Text className={valueStyleText}>{entry.hearing_details}</Text>
-                  </>
-                )}
-              </Stack>
-            )}
-
-            {/* Summaries */}
-            <Stack
-              horizontal
-              tokens={{ childrenGap: 40 }}
-              styles={{
-                root: {
-                  border: `1px solid ${colours.light.border}`,
-                  borderRadius: '4px',
-                  padding: '12px',
-                  backgroundColor: colours.light.grey,
-                },
-              }}
-            >
-              <Stack>
-                <Label className={labelStyleText}>Days taken so far this FY:</Label>
-                <Text className={valueStyleText}>
-                  {daysSoFar} {daysSoFar === 1 ? 'day' : 'days'}
-                </Text>
-              </Stack>
-              <Stack>
-                <Label className={labelStyleText}>Days remaining this FY (if approved):</Label>
-                <Text className={valueStyleText}>
-                  {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}
-                </Text>
-              </Stack>
-              <Stack>
-                <Label className={labelStyleText}>Available days to sell:</Label>
-                <Text className={valueStyleText}>
-                  {availableSell} {availableSell === 1 ? 'day' : 'days'}
-                </Text>
-              </Stack>
-            </Stack>
-
-            {/* Conflicts */}
-            <Stack tokens={{ childrenGap: 10 }} styles={{ root: { marginTop: 10 } }}>
-              <Label className={labelStyleText}>Team Conflicts:</Label>
-              {groupedArray.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                  {groupedArray.map((item, idx) => {
-                    const consolidated = consolidateRanges(item.dateRanges);
-                    let borderColor = colours.cta;
-                    if (item.status === 'approved') borderColor = colours.orange;
-                    else if (item.status === 'booked') borderColor = colours.green;
-
-                    return (
-                      <div
-                        key={idx}
-                        style={{
-                          border: `1px solid ${borderColor}`,
-                          backgroundColor: '#fff',
-                          padding: '5px',
-                          borderRadius: '4px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          minWidth: '150px',
-                        }}
-                      >
-                        <Persona
-                          imageUrl={HelixAvatar}
-                          text={item.nickname}
-                          size={PersonaSize.size48}
-                          styles={{ primaryText: { fontWeight: 'bold', fontSize: '16px' } }}
-                        />
-                        <div style={{ marginTop: '5px', textAlign: 'center', width: '100%' }}>
-                          <div style={{ fontWeight: 600, fontSize: '16px', color: colours.light.text }}>
-                            {item.nickname}
-                          </div>
-                          <div style={{ fontSize: '14px', fontWeight: 400, color: colours.light.text }}>
-                            {consolidated.map((dr, i2) => (
-                              <div key={i2}>
-                                {dr.start_date === dr.end_date
-                                  ? format(new Date(dr.start_date), 'd MMM')
-                                  : `${format(new Date(dr.start_date), 'd MMM')} - ${format(new Date(dr.end_date), 'd MMM')}`}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <Text className={valueStyleText}>No Conflicts</Text>
+            />
+            <div style={{ marginLeft: 'auto' }}>
+              {entry.status.toLowerCase() === 'approved' && (
+                <div className={statusBadgeStyle('approved')}>Approved</div>
               )}
-            </Stack>
-          </Stack>
-        </Stack>
-        {/* Status */}
-        <Stack horizontal tokens={{ childrenGap: 10 }} styles={{ root: { marginTop: 10 } }}>
-          {entry.status.toLowerCase() === 'approved' && (
-            <Badge badgeStyle={{ backgroundColor: '#e6ffe6', color: '#009900' }}>Approved</Badge>
-          )}
-          {entry.status.toLowerCase() === 'rejected' && (
-            <Badge badgeStyle={{ backgroundColor: '#fff9e6', color: '#cc0000' }}>Rejected</Badge>
-          )}
-        </Stack>
-        {/* Approve / Reject */}
-        <Stack horizontal tokens={{ childrenGap: 10 }} styles={{ root: { marginTop: 10, paddingBottom: 10 } }}>
-          <DefaultButton
-            text="Approve"
-            onClick={localHandleApprove}
-            styles={sharedDefaultButtonStyles}
-            onRenderIcon={() => (
-              <PiTreePalm style={{ color: '#009900', fontSize: 16 }} />
-            )}
-          />
-          <DefaultButton
-            text="Reject"
-            onClick={localHandleReject}
-            styles={sharedDefaultButtonStyles}
-            iconProps={{ iconName: 'Cancel', styles: { root: { color: '#cc0000' } } }}
-          />
-        </Stack>
-        <TextField
-          placeholder="Enter rejection notes"
-          value={localRejection}
-          onChange={(e, val) => setLocalRejection(val || '')}
-          styles={{ fieldGroup: inputFieldStyle }}
-          multiline
-          rows={3}
-        />
+              {entry.status.toLowerCase() === 'rejected' && (
+                <div className={statusBadgeStyle('rejected')}>Rejected</div>
+              )}
+              {entry.status.toLowerCase() === 'requested' && (
+                <div className={statusBadgeStyle('requested')}>Pending Review</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Critical Information Grid */}
+        <div className={criticalInfoStyle}>
+          <div className={infoCardStyle}>
+            <div className={infoLabelStyle}>Request Period</div>
+            <div className={infoValueStyle}>{formatDateRange(entry.start_date, entry.end_date)}</div>
+          </div>
+          
+          <div className={infoCardStyle}>
+            <div className={infoLabelStyle}>Business Days</div>
+            <div className={infoValueStyle}>{requestDays} days</div>
+          </div>
+          
+          <div className={infoCardStyle}>
+            <div className={infoLabelStyle}>FY Days Taken</div>
+            <div className={infoValueStyle}>{daysSoFar} / {entitlement}</div>
+          </div>
+          
+          <div className={infoCardStyle}>
+            <div className={infoLabelStyle}>Remaining After</div>
+            <div className={infoValueStyle} style={{ 
+              color: daysRemaining < 0 ? '#dc2626' : colours.light.text 
+            }}>
+              {daysRemaining} days
+            </div>
+          </div>
+        </div>
+
+        {/* Notes Section */}
+        {entry.reason?.trim() && (
+          <>
+            <div className={sectionTitleStyle}>Request Notes</div>
+            <div className={notesStyle}>
+              "{entry.reason}"
+            </div>
+          </>
+        )}
+
+        {/* Hearing Information */}
+        {entry.hearing_confirmation !== undefined && (
+          <>
+            <div className={sectionTitleStyle}>Hearing Confirmation</div>
+            <div className={notesStyle}>
+              <strong>
+                {(() => {
+                  const hc = entry.hearing_confirmation;
+                  if (typeof hc === 'boolean') {
+                    return hc ? '✓ No hearings during absence' : '⚠ Hearings may be affected';
+                  }
+                  if (typeof hc === 'string') {
+                    const s = hc.trim();
+                    const lower = s.toLowerCase();
+                    if (lower === 'yes') return '✓ No hearings during absence';
+                    if (lower === 'no') return '⚠ Hearings may be affected';
+                    // Show the provided confirmation text as-is when not a yes/no token
+                    return s;
+                  }
+                  return '';
+                })()}
+              </strong>
+              {(() => {
+                const hc = entry.hearing_confirmation;
+                const hasDetails = !!entry.hearing_details;
+                const lower = typeof hc === 'string' ? hc.trim().toLowerCase() : '';
+                const needsDetails = hc === false || hc === null || lower === 'no' || (typeof hc === 'string' && lower !== 'yes' && lower !== 'no');
+                return hasDetails && needsDetails ? (
+                  <div style={{ marginTop: '8px', fontStyle: 'normal' }}>
+                    <strong>Details:</strong> {entry.hearing_details}
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          </>
+        )}
+
+        {/* Team Conflicts */}
+        <div className={sectionTitleStyle}>Team Coverage Analysis</div>
+        {conflicts.length > 0 ? (
+          <div className={conflictsGridStyle}>
+            {conflicts.map((conflict, idx) => (
+              <div key={idx} className={conflictCardStyle}>
+                <Persona
+                  imageUrl={HelixAvatar}
+                  text={getNickname(conflict.person)}
+                  size={PersonaSize.size32}
+                  styles={{ 
+                    primaryText: { 
+                      fontWeight: 600, 
+                      fontSize: '14px',
+                      color: colours.light.text
+                    } 
+                  }}
+                />
+                <div style={{ marginTop: '8px', fontSize: '12px', color: colours.greyText }}>
+                  {formatDateRange(conflict.start_date, conflict.end_date)}
+                </div>
+                <div style={{ 
+                  marginTop: '4px', 
+                  fontSize: '11px', 
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  color: conflict.status === 'booked' ? '#16a34a' : '#ea580c'
+                }}>
+                  {conflict.status}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={notesStyle} style={{ color: '#16a34a', fontStyle: 'normal' }}>
+            ✓ No team conflicts identified
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        {entry.status.toLowerCase() === 'requested' && (
+          <>
+            <div className={actionButtonsStyle}>
+              <DefaultButton
+                text={isProcessing ? 'Processing...' : 'Approve Request'}
+                onClick={() => handleAction('approve')}
+                disabled={isProcessing}
+                className={approveButtonStyle}
+                iconProps={{ 
+                  iconName: 'CheckMark',
+                  styles: { root: { color: '#fff', fontSize: '14px' } }
+                }}
+              />
+              <DefaultButton
+                text={isProcessing ? 'Processing...' : 'Reject Request'}
+                onClick={() => handleAction('reject')}
+                disabled={isProcessing}
+                className={rejectButtonStyle}
+                iconProps={{ 
+                  iconName: 'Cancel',
+                  styles: { root: { color: '#fff', fontSize: '14px' } }
+                }}
+              />
+            </div>
+
+            <div className={rejectionNotesStyle}>
+              <TextField
+                label="Rejection Reason (required for rejections)"
+                placeholder="Provide clear reasoning for rejection..."
+                value={localRejection}
+                onChange={(e, val) => setLocalRejection(val || '')}
+                multiline
+                rows={3}
+                styles={{
+                  fieldGroup: {
+                    borderRadius: '8px',
+                    border: `2px solid ${colours.light.border}`,
+                  }
+                }}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Confirmation Message */}
         {confirmationMessage && (
-          <Text style={{ marginTop: 10, fontWeight: 'bold', color: '#009900' }}>
+          <div style={{ 
+            marginTop: '16px', 
+            padding: '12px', 
+            borderRadius: '8px',
+            backgroundColor: confirmationMessage.includes('✓') ? '#f0f9ff' : 
+                            confirmationMessage.includes('❌') ? '#fef2f2' : '#fffbeb',
+            border: `1px solid ${
+              confirmationMessage.includes('✓') ? '#0ea5e9' : 
+              confirmationMessage.includes('❌') ? '#ef4444' : '#f59e0b'
+            }`,
+            color: confirmationMessage.includes('✓') ? '#0c4a6e' : 
+                   confirmationMessage.includes('❌') ? '#7f1d1d' : '#92400e',
+            fontWeight: 600,
+            textAlign: 'center'
+          }}>
             {confirmationMessage}
-          </Text>
+          </div>
         )}
       </div>
     );
   };
 
-  return (
-    <div className={formContainerStyle}>
-      {approvals.length === 0 ? (
-        <Text style={{ fontSize: 20, color: colours.light.text }}>No items to approve.</Text>
-      ) : (
-        <Stack tokens={{ childrenGap: 20 }}>
-          {approvals.map(entry => (
-            <ApprovalCard key={entry.request_id ? String(entry.request_id) : entry.id} entry={entry} />
-          ))}
-        </Stack>
-      )}
+  const modalJsx = (
+    <div 
+      className={formContainerStyle}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      {/* Modal Content */}
+      <div className={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+        {/* Close Button */}
+        <button 
+          className={closeButtonStyle}
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
+        {approvals.length === 0 ? (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '40px 20px',
+            fontSize: '18px',
+            color: colours.greyText
+          }}>
+            <PiTreePalm style={{ fontSize: '48px', marginBottom: '16px', color: colours.green }} />
+            <div>No leave requests to review</div>
+            <div style={{ fontSize: '14px', marginTop: '8px' }}>
+              All annual leave requests have been processed.
+            </div>
+          </div>
+        ) : (
+          <Stack tokens={{ childrenGap: 24 }}>
+            <div style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              color: colours.light.text,
+              textAlign: 'center',
+              marginBottom: '8px'
+            }}>
+              Annual Leave Approvals
+            </div>
+            <div style={{
+              fontSize: '14px',
+              color: colours.greyText,
+              textAlign: 'center',
+              marginBottom: '16px'
+            }}>
+              {approvals.length} request{approvals.length !== 1 ? 's' : ''} require{approvals.length === 1 ? 's' : ''} your review
+            </div>
+            
+            {approvals.map(entry => (
+              <ApprovalCard key={entry.request_id ? String(entry.request_id) : entry.id} entry={entry} />
+            ))}
+          </Stack>
+        )}
+      </div>
     </div>
   );
+  
+  // Render inline until portal is ready, then via portal
+  if (!portalEl) return modalJsx;
+  return createPortal(modalJsx, portalEl);
 };
 
 export default AnnualLeaveApprovals;
