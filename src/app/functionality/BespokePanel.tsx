@@ -38,7 +38,8 @@ const getOverlayStyle = (offsetTop: number, isClosing: boolean, variant: 'side' 
     transition: 'opacity 0.2s ease',
     margin: 0,
     marginTop: '0 !important',
-    overflowY: 'auto',
+    // Only allow overlay to scroll in modal mode; for side panels, let panel content handle scrolling
+    overflowY: variant === 'modal' ? 'auto' : 'hidden',
   });
 
 // Clean panel styling
@@ -48,6 +49,7 @@ const getPanelStyle = (width: string, isClosing: boolean, isDarkMode: boolean, v
   width: variant === 'side' ? (width || '480px') : (width || 'min(95vw, 1400px)'),
     maxWidth: variant === 'side' ? '90vw' : '95vw',
     height: variant === 'side' ? '100%' : 'auto',
+    minHeight: 0,
     maxHeight: variant === 'side' ? 'none' : 'calc(100vh - 40px)',
     boxShadow: isDarkMode
       ? (variant === 'side' ? '-4px 0 16px rgba(0, 0, 0, 0.3)' : '0 10px 30px rgba(0,0,0,0.35)')
@@ -78,8 +80,12 @@ const getHeaderStyle = (isDarkMode: boolean) =>
 // Clean content area
 const getContentStyle = () =>
   mergeStyles({
+    display: 'flex',
+    flexDirection: 'column',
     padding: '16px',
     overflowY: 'auto',
+    // Critical for nested flex layouts: allow this container to shrink so inner scroll works
+    minHeight: 0,
     flexGrow: 1,
   });
 

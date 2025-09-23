@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { mergeStyles } from '@fluentui/merge-styles';
 import { colours } from '../../app/styles/colours';
+import OverridePills from './OverridePills';
+import MatterOperations from './MatterOperations';
 
 interface WorkbenchPanelProps {
   selectedInstruction: any;
@@ -14,6 +16,7 @@ interface WorkbenchPanelProps {
   onOpenMatter?: (inst: any) => void;
   onDraftCcl?: (ref: string) => void;
   nextAction?: string;
+  onStatusUpdate?: () => void;
 }
 
 const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
@@ -27,9 +30,10 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
   onAssessRisk,
   onOpenMatter,
   onDraftCcl,
-  nextAction
+  nextAction,
+  onStatusUpdate
 }) => {
-  const [activeTab, setActiveTab] = useState('operations');
+  const [activeTab, setActiveTab] = useState('identity');
   const [pipelineData, setPipelineData] = useState('');
   const [recordType, setRecordType] = useState('instruction');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -49,6 +53,11 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
           onVerifyId(selectedInstruction);
         }
         break;
+      case 'review-id':
+        if (onVerifyId) {
+          onVerifyId(selectedInstruction);
+        }
+        break;
       case 'assess-risk':
         if (onAssessRisk) {
           onAssessRisk(selectedInstruction);
@@ -63,6 +72,9 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
         if (onDraftCcl) {
           onDraftCcl(selectedInstruction.InstructionRef);
         }
+        break;
+      case 'sync-docs':
+        console.log('Requested document sync for matter', selectedInstruction.MatterId);
         break;
       default:
         console.log('Unhandled operation:', operation);
@@ -239,24 +251,26 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
     bottom: 0,
     left: 0,
     right: 0,
-    background: isDarkMode ? colours.dark.background : '#ffffff',
-    borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
-    boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.15)',
+    background: isDarkMode
+      ? colours.dark.background
+      : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+    borderTop: 'none',
+    boxShadow: 'none',
     zIndex: 1000,
     transform: `translateY(${isVisible ? '0' : '100%'})`,
     transition: 'transform 0.3s ease',
   });
 
   const collapsedStyle = mergeStyles({
-    padding: '10px 20px',
-    background: isDarkMode ? colours.dark.cardBackground : '#f8fafc',
+    padding: '8px 16px',
+    background: 'transparent',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     transition: 'background 0.2s ease',
     ':hover': {
-      background: isDarkMode ? colours.dark.cardHover : '#f1f5f9',
+      background: 'transparent',
     }
   });
 
@@ -320,9 +334,9 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
 
   const operationButtonStyle = mergeStyles({
     padding: '8px 12px',
-    borderRadius: 4,
+    borderRadius: 8,
     border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
-    background: '#3b82f6',
+    background: isDarkMode ? '#3b82f6' : 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
     color: '#ffffff',
     cursor: 'pointer',
     fontSize: 11,
@@ -334,7 +348,7 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
     letterSpacing: '0.025em',
     transition: 'all 0.2s ease',
     ':hover': {
-      background: '#2563eb',
+      background: isDarkMode ? '#2563eb' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
       transform: 'translateY(-1px)',
     },
     ':disabled': {
@@ -343,6 +357,35 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
       transform: 'none',
     }
   });
+
+  const primaryActionStyle = (opKey: string) => {
+    const isNext = isNextAction(opKey);
+    return mergeStyles({
+      padding: '10px 14px',
+      borderRadius: 10,
+      border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
+      background: isDarkMode ? colours.dark.cardHover : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+      color: isDarkMode ? colours.dark.text : colours.blue,
+      cursor: 'pointer',
+      fontSize: 12,
+      fontWeight: 600,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        transform: 'translateY(-1px)',
+      },
+      position: 'relative',
+      animation: isNext ? 'pulse 2s infinite' : 'none',
+      '@keyframes pulse': {
+        '0%': { boxShadow: `0 0 0 0 ${colours.blue}55` },
+        '70%': { boxShadow: `0 0 0 6px ${colours.blue}00` },
+        '100%': { boxShadow: `0 0 0 0 ${colours.blue}00` }
+      }
+    });
+  };
 
   const inputStyle = mergeStyles({
     padding: '8px 12px',
@@ -365,7 +408,6 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
   return (
     <div className={containerStyle}>
       {!isExpanded ? (
-        /* Collapsed State */
         <div className={collapsedStyle} onClick={() => setIsExpanded(true)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -402,15 +444,13 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
                 </span>
               )}
             </div>
-            
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {operations.map((operation) => {
                 const status = getActionStatus(operation.key);
                 const statusLabel = status === 'complete' ? '✓' : 
-                                  status === 'failed' ? '✗' : 
-                                  status === 'in-progress' ? '●' : 
-                                  isNextAction(operation.key) ? '▶' : '';
-                
+                  status === 'failed' ? '✗' : 
+                  status === 'in-progress' ? '●' : 
+                  isNextAction(operation.key) ? '▶' : '';
                 return (
                   <button
                     key={operation.key}
@@ -420,59 +460,554 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
                       handleSystemOperation(operation.key);
                     }}
                   >
-                    {statusLabel && <span style={{ marginRight: 2 }}>{statusLabel}</span>}
-                    {operation.label}
+                    {statusLabel && (
+                      <span style={{ fontSize: 10, fontWeight: 700 }}>{statusLabel}</span>
+                    )}
+                    <span>{operation.label}</span>
                   </button>
                 );
               })}
             </div>
           </div>
-
-          <span style={{ fontSize: 9, color: isDarkMode ? colours.dark.subText : '#6b7280' }}>▲</span>
         </div>
       ) : (
-        /* Expanded State */
-        <div>
-          <div className={collapsedStyle} onClick={() => setIsExpanded(false)} style={{ background: isDarkMode ? colours.dark.cardHover : '#f1f5f9' }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151', textTransform: 'uppercase' }}>
-              {selectedInstruction ? `${selectedInstruction.InstructionRef} Workbench` : 'Workbench Panel'}
-            </span>
-            {areaOfWorkInfo.label && (
-              <span style={{
-                fontSize: 9,
-                fontWeight: 600,
-                color: areaOfWorkInfo.color,
-                textTransform: 'uppercase',
-                background: `${areaOfWorkInfo.color}15`,
-                padding: '1px 4px',
-                borderRadius: 2,
-                border: `1px solid ${areaOfWorkInfo.color}30`,
-                marginLeft: 8
-              }}>
-                {areaOfWorkInfo.label}
-              </span>
-            )}
-            <span style={{ fontSize: 9, color: isDarkMode ? colours.dark.subText : '#6b7280', transform: 'rotate(180deg)' }}>▲</span>
+  <div style={{ padding: 8 }}>
+          {/* Tabs header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[
+                { key: 'identity', label: 'Identity' },
+                { key: 'risk', label: 'Risk' },
+                { key: 'payment', label: 'Payment' },
+                { key: 'documents', label: 'Documents' },
+                { key: 'matter', label: 'Matter' },
+                { key: 'override', label: 'Override' },
+                { key: 'operations', label: 'Operations' },
+                { key: 'maintenance', label: 'Maintenance' },
+                { key: 'compliance', label: 'Compliance' },
+                { key: 'import', label: 'Import' },
+              ].map((tab) => (
+                <button key={tab.key} className={tabStyle(activeTab === tab.key)} onClick={() => setActiveTab(tab.key)}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <button className={operationButtonStyle} onClick={() => setIsExpanded(false)}>
+              Close
+            </button>
           </div>
 
-          <div style={{ padding: '16px 20px', maxHeight: '60vh', overflowY: 'auto' }}>
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}` }}>
-              <button className={tabStyle(activeTab === 'operations')} onClick={() => setActiveTab('operations')}>
-                Bulk Operations
-              </button>
-              <button className={tabStyle(activeTab === 'maintenance')} onClick={() => setActiveTab('maintenance')}>
-                Data Maintenance
-              </button>
-              <button className={tabStyle(activeTab === 'compliance')} onClick={() => setActiveTab('compliance')}>
-                Compliance Tools
-              </button>
-              <button className={tabStyle(activeTab === 'import')} onClick={() => setActiveTab('import')}>
-                Data Import
-              </button>
-            </div>
+          {/* Primary actions toolbar */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 10,
+            flexWrap: 'wrap',
+            padding: '10px 0'
+          }}>
+            <button
+              className={primaryActionStyle('verify-id')}
+              onClick={() => {
+                const status = getActionStatus('verify-id');
+                handleSystemOperation(status === 'failed' ? 'review-id' : 'verify-id');
+              }}
+            >
+              Review ID
+            </button>
+            <button
+              className={primaryActionStyle('assess-risk')}
+              onClick={() => handleSystemOperation('assess-risk')}
+            >
+              Assess Risk
+            </button>
+            <button
+              className={primaryActionStyle('open-matter')}
+              disabled={!selectedInstruction || !selectedInstruction.ClientId || (!selectedInstruction.PassportNumber && !selectedInstruction.DriversLicenseNumber)}
+              onClick={() => handleSystemOperation('open-matter')}
+              title={!selectedInstruction?.ClientId ? 'Link client first' : (!selectedInstruction?.PassportNumber && !selectedInstruction?.DriversLicenseNumber ? 'ID required' : undefined) as any}
+            >
+              Open Matter
+            </button>
+            <button
+              className={primaryActionStyle('sync-docs')}
+              disabled={!selectedInstruction || !selectedInstruction.MatterId}
+              onClick={() => handleSystemOperation('sync-docs')}
+              title={!selectedInstruction?.MatterId ? 'Matter must be opened first' : undefined}
+            >
+              Sync Docs
+            </button>
+            <button
+              className={primaryActionStyle('draft-ccl')}
+              onClick={() => handleSystemOperation('draft-ccl')}
+            >
+              Draft CCL
+            </button>
+          </div>
 
-            {/* Operations Tab */}
+          {/* Tabs content */}
+          <div style={{ marginTop: 12 }}>
+            {activeTab === 'identity' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {selectedInstruction ? (
+                  <>
+                    {/* Flattened Info Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {[
+                          { label: 'Name', value: `${selectedInstruction.Title || ''} ${selectedInstruction.ClientName || selectedInstruction.FirstName || ''} ${selectedInstruction.LastName || ''}`.trim() },
+                          { label: 'Email', value: selectedInstruction.ClientEmail || selectedInstruction.Email },
+                          { label: 'Phone', value: selectedInstruction.PhoneNumber || selectedInstruction.MobileNumber },
+                          { label: 'DOB', value: selectedInstruction.DateOfBirth },
+                          { label: 'Gender', value: selectedInstruction.Gender },
+                          { label: 'Nationality', value: selectedInstruction.Nationality || selectedInstruction.Country },
+                          { label: 'Client Type', value: selectedInstruction.ClientType || selectedInstruction.EntityType || 'Individual' },
+                          { label: 'ID Type', value: selectedInstruction.PassportNumber ? 'passport' : selectedInstruction.DriversLicenseNumber ? 'driving license' : selectedInstruction.NationalIdNumber ? 'national id' : 'Not specified' },
+                          { label: 'Passport', value: selectedInstruction.PassportNumber },
+                          { label: 'Driving License', value: selectedInstruction.DriversLicenseNumber },
+                          { label: 'Client ID', value: selectedInstruction.ClientId || 'Not assigned' },
+                          { label: 'Related Client', value: selectedInstruction.RelatedClientId || 'None' },
+                          { label: 'Matter ID', value: selectedInstruction.MatterId }
+                        ].map((field) => (
+                          <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{
+                              fontSize: '10px',
+                              color: colours.greyText,
+                              fontWeight: 500,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              minWidth: '100px'
+                            }}>
+                              {field.label}:
+                            </span>
+                            <span style={{
+                              fontSize: '11px',
+                              color: field.value && field.value !== 'Not assigned' && field.value !== 'None' ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                              fontWeight: field.value && field.value !== 'Not assigned' && field.value !== 'None' ? 500 : 400,
+                              textAlign: 'right',
+                              fontStyle: field.value && field.value !== 'Not assigned' && field.value !== 'None' ? 'normal' : 'italic'
+                            }}>
+                              {field.value || 'Not provided'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {[
+                          { label: 'Address', value: `${selectedInstruction.AddressLine1 || ''} ${selectedInstruction.AddressLine2 || ''}`.trim() },
+                          { label: 'City', value: selectedInstruction.City },
+                          { label: 'County', value: selectedInstruction.County || selectedInstruction.State },
+                          { label: 'Postcode', value: selectedInstruction.Postcode || selectedInstruction.PostalCode },
+                          { label: 'Country', value: selectedInstruction.Country },
+                          { label: 'Company', value: selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : (selectedInstruction.CompanyName || 'Not provided') },
+                          { label: 'Company Number', value: selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : (selectedInstruction.CompanyNumber || 'Not provided') },
+                          { label: 'House Number', value: selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : (selectedInstruction.CompanyAddressLine1 || 'Not provided') },
+                          { label: 'Company Address', value: selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : (selectedInstruction.CompanyAddressLine2 || 'Not provided') },
+                          { label: 'Company Postcode', value: selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : (selectedInstruction.CompanyPostcode || 'Not provided') },
+                          { label: 'Company Country', value: selectedInstruction.ClientType === 'Individual' ? (selectedInstruction.Country || 'Not provided') : (selectedInstruction.CompanyCountry || 'Not provided') }
+                        ].map((field) => (
+                          <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{
+                              fontSize: '10px',
+                              color: colours.greyText,
+                              fontWeight: 500,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              minWidth: '120px'
+                            }}>
+                              {field.label}:
+                            </span>
+                            <span style={{
+                              fontSize: '11px',
+                              color: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                              fontWeight: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 500 : 400,
+                              textAlign: 'right',
+                              fontStyle: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 'normal' : 'italic'
+                            }}>
+                              {field.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Verification Status & Actions */}
+                    <div style={{ paddingTop: 4 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '12px', alignItems: 'start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ fontSize: '10px', fontWeight: 600, color: colours.greyText, textTransform: 'uppercase', marginBottom: '4px' }}>Identity Verification</div>
+                          {[
+                            { label: 'EID Status', value: selectedOverviewItem?.eid?.EIDStatus || 'Not started' },
+                            { label: 'POID Result', value: selectedOverviewItem?.eid?.EIDOverallResult || 'Pending' },
+                            { label: 'Consent Given', value: selectedInstruction.ConsentGiven ? 'Yes' : 'No' }
+                          ].map((field) => (
+                            <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{
+                                fontSize: '10px',
+                                color: colours.greyText,
+                                fontWeight: 500,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.025em'
+                              }}>
+                                {field.label}:
+                              </span>
+                              <span style={{
+                                fontSize: '11px',
+                                color: (() => {
+                                  if (field.label === 'POID Result' && field.value === 'review') return colours.red;
+                                  if (field.label === 'EID Status' && field.value === 'completed') return colours.green;
+                                  return isDarkMode ? colours.dark.text : '#111827';
+                                })(),
+                                fontWeight: 500,
+                                textAlign: 'right'
+                              }}>
+                                {field.value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ fontSize: '10px', fontWeight: 600, color: colours.greyText, textTransform: 'uppercase', marginBottom: '4px' }}>Matter Operations</div>
+                          {[
+                            { 
+                              label: 'Matter Status', 
+                              value: selectedInstruction.MatterId ? 'Linked & Active' : 'Not Created',
+                              color: selectedInstruction.MatterId ? colours.green : colours.orange,
+                              detail: selectedInstruction.MatterId ? `Matter ID: ${selectedInstruction.MatterId}` : 'Ready to open new matter'
+                            },
+                            { 
+                              label: 'Client Linked', 
+                              value: selectedInstruction.ClientId ? `Confirmed (${selectedInstruction.ClientId})` : 'Not linked',
+                              color: selectedInstruction.ClientId ? colours.green : colours.red,
+                              detail: selectedInstruction.ClientId ? 'Clio client record active' : 'Client linking required'
+                            },
+                            { 
+                              label: 'Prerequisites', 
+                              value: (() => {
+                                const hasClient = selectedInstruction.ClientId;
+                                const hasId = selectedInstruction.PassportNumber || selectedInstruction.DriversLicenseNumber;
+                                const hasConsent = selectedInstruction.ConsentGiven;
+                                if (hasClient && hasId && hasConsent) return 'Complete';
+                                if (hasClient && hasId) return 'Consent Pending';
+                                if (hasClient) return 'ID Document Needed';
+                                return 'Client & ID Required';
+                              })(),
+                              color: (() => {
+                                const hasClient = selectedInstruction.ClientId;
+                                const hasId = selectedInstruction.PassportNumber || selectedInstruction.DriversLicenseNumber;
+                                const hasConsent = selectedInstruction.ConsentGiven;
+                                if (hasClient && hasId && hasConsent) return colours.green;
+                                if (hasClient && hasId) return colours.orange;
+                                return colours.red;
+                              })(),
+                              detail: 'Client + ID + Consent required'
+                            },
+                            {
+                              label: 'Matter Type',
+                              value: selectedInstruction.AreaOfWork || selectedInstruction.ServiceType || 'Not specified',
+                              color: selectedInstruction.AreaOfWork ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                              detail: selectedInstruction.WorkDescription || 'Service type to be determined'
+                            },
+                            {
+                              label: 'Fee Estimate',
+                              value: selectedInstruction.EstimatedValue ? `£${selectedInstruction.EstimatedValue}` : selectedInstruction.QuoteAmount ? `£${selectedInstruction.QuoteAmount}` : 'TBC',
+                              color: selectedInstruction.EstimatedValue || selectedInstruction.QuoteAmount ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                              detail: selectedInstruction.FeeStructure || 'Fee structure to be agreed'
+                            },
+                            {
+                              label: 'Billing Setup',
+                              value: selectedInstruction.BillingContact ? 'Configured' : selectedInstruction.ClientId ? 'Default Client' : 'Pending',
+                              color: selectedInstruction.BillingContact || selectedInstruction.ClientId ? colours.green : colours.orange,
+                              detail: selectedInstruction.BillingContact || selectedInstruction.ClientEmail || 'Billing contact required'
+                            }
+                          ].map((field) => (
+                            <div key={field.label} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '2px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{
+                                  fontSize: '10px',
+                                  color: colours.greyText,
+                                  fontWeight: 500,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.025em'
+                                }}>
+                                  {field.label}:
+                                </span>
+                                <span style={{
+                                  fontSize: '11px',
+                                  color: field.color || (isDarkMode ? colours.dark.text : '#111827'),
+                                  fontWeight: 500,
+                                  textAlign: 'right'
+                                }}>
+                                  {field.value}
+                                </span>
+                              </div>
+                              {field.detail && (
+                                <div style={{
+                                  fontSize: '9px',
+                                  color: colours.greyText,
+                                  fontStyle: 'italic',
+                                  textAlign: 'right',
+                                  marginTop: '1px'
+                                }}>
+                                  {field.detail}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ fontSize: '10px', fontWeight: 600, color: colours.greyText, textTransform: 'uppercase', marginBottom: '4px' }}>Risk & Compliance</div>
+                          {(() => {
+                            const risk = selectedOverviewItem?.risk || selectedInstruction.RiskAssessment;
+                            const riskResult = risk?.RiskAssessmentResult?.toString().toLowerCase() || 'pending';
+                            return [
+                              { 
+                                label: 'Risk Assessment', 
+                                value: riskResult === 'low' ? 'Low Risk' : riskResult === 'medium' ? 'Medium Risk' : riskResult === 'high' ? 'High Risk' : 'Pending',
+                                color: riskResult === 'low' ? colours.green : riskResult === 'medium' ? colours.orange : riskResult === 'high' ? colours.red : colours.greyText
+                              },
+                              { 
+                                label: 'CCL Status', 
+                                value: selectedInstruction.CCLSubmitted ? 'Submitted' : 'Pending',
+                                color: selectedInstruction.CCLSubmitted ? colours.green : colours.greyText
+                              },
+                              { 
+                                label: 'AML Check', 
+                                value: selectedOverviewItem?.eid?.EIDOverallResult === 'passed' ? 'Cleared' : 'Pending',
+                                color: selectedOverviewItem?.eid?.EIDOverallResult === 'passed' ? colours.green : colours.greyText
+                              }
+                            ];
+                          })().map((field) => (
+                            <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{
+                                fontSize: '10px',
+                                color: colours.greyText,
+                                fontWeight: 500,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.025em'
+                              }}>
+                                {field.label}:
+                              </span>
+                              <span style={{
+                                fontSize: '11px',
+                                color: field.color,
+                                fontWeight: 500,
+                                textAlign: 'right'
+                              }}>
+                                {field.value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                          <div style={{ fontSize: '10px', fontWeight: 600, color: colours.greyText, textTransform: 'uppercase', marginBottom: '2px' }}>Actions</div>
+                          {selectedInstruction.MatterId && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                              <button
+                                className={operationButtonStyle}
+                                onClick={() => handleSystemOperation('view-matter')}
+                                style={{ fontSize: '10px', padding: '6px 12px', background: colours.green }}
+                              >
+                                📋 View Matter
+                              </button>
+                              <button
+                                className={operationButtonStyle}
+                                onClick={() => handleSystemOperation('matter-dashboard')}
+                                style={{ fontSize: '10px', padding: '6px 12px', background: colours.blue }}
+                              >
+                                📊 Matter Dashboard
+                              </button>
+                            </div>
+                          )}
+                          {selectedInstruction.ClientId && !selectedInstruction.MatterId && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                              <button
+                                className={operationButtonStyle}
+                                onClick={() => handleSystemOperation('open-matter')}
+                                style={{ fontSize: '10px', padding: '6px 12px', background: colours.green }}
+                                disabled={!selectedInstruction.PassportNumber && !selectedInstruction.DriversLicenseNumber}
+                              >
+                                🚀 Open Matter
+                              </button>
+                              <button
+                                className={operationButtonStyle}
+                                onClick={() => handleSystemOperation('preview-matter')}
+                                style={{ fontSize: '10px', padding: '6px 12px', background: colours.orange }}
+                              >
+                                👁️ Preview Setup
+                              </button>
+                            </div>
+                          )}
+                          {!selectedInstruction.ClientId && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                              <button
+                                className={operationButtonStyle}
+                                onClick={() => handleSystemOperation('link-client')}
+                                style={{ fontSize: '10px', padding: '6px 12px', background: colours.red }}
+                              >
+                                🔗 Link Client
+                              </button>
+                              <button
+                                className={operationButtonStyle}
+                                onClick={() => handleSystemOperation('create-client')}
+                                style={{ fontSize: '10px', padding: '6px 12px', background: colours.blue }}
+                              >
+                                ➕ Create Client
+                              </button>
+                            </div>
+                          )}
+                          {selectedOverviewItem?.eid?.EIDOverallResult === 'review' && (
+                            <button
+                              className={operationButtonStyle}
+                              onClick={() => handleSystemOperation('review-id')}
+                              style={{ fontSize: '10px', padding: '6px 12px', background: colours.orange }}
+                            >
+                              🔍 Review ID
+                            </button>
+                          )}
+                          {selectedInstruction.MatterId && (
+                            <div style={{ 
+                              display: 'flex', 
+                              flexDirection: 'column', 
+                              gap: '2px', 
+                              alignItems: 'flex-end',
+                              marginTop: '8px',
+                              borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingTop: '6px'
+                            }}>
+                              <button
+                                className={operationButtonStyle}
+                                onClick={() => handleSystemOperation('matter-billing')}
+                                style={{ fontSize: '9px', padding: '4px 8px', background: '#8b5cf6' }}
+                              >
+                                💷 Billing
+                              </button>
+                              <button
+                                className={operationButtonStyle}
+                                onClick={() => handleSystemOperation('matter-documents')}
+                                style={{ fontSize: '9px', padding: '4px 8px', background: '#14b8a6' }}
+                              >
+                                📄 Documents
+                              </button>
+                              <button
+                                className={operationButtonStyle}
+                                onClick={() => handleSystemOperation('matter-timeline')}
+                                style={{ fontSize: '9px', padding: '4px 8px', background: '#6366f1' }}
+                              >
+                                ⏱️ Timeline
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{
+                    padding: '8px 0',
+                    textAlign: 'center',
+                    color: colours.greyText,
+                    fontSize: '12px'
+                  }}>
+                    Select an instruction to inspect identity data
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'matter' && (
+              <MatterOperations
+                selectedInstruction={selectedInstruction}
+                selectedOverviewItem={selectedOverviewItem}
+                isDarkMode={isDarkMode}
+                onStatusUpdate={onStatusUpdate}
+              />
+            )}
+
+            {activeTab === 'risk' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Risk Summary</div>
+                  {(() => {
+                    const risk = selectedOverviewItem?.risk || selectedInstruction?.RiskAssessment;
+                    const riskResult = risk?.RiskAssessmentResult?.toString().toLowerCase() || 'pending';
+                    const items = [
+                      { label: 'Assessment Result', value: riskResult || 'pending' },
+                      { label: 'Risk Score', value: risk?.RiskScore ?? 'n/a' },
+                      { label: 'Assessor', value: risk?.RiskAssessor ?? 'n/a' },
+                      { label: 'Reviewed', value: risk?.ComplianceDate ?? 'n/a' }
+                    ];
+                    return items;
+                  })().map((f) => (
+                    <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 10, color: colours.greyText, textTransform: 'uppercase' }}>{f.label}</span>
+                      <span style={{ fontSize: 11 }}>{String(f.value)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', gap: 8 }}>
+                  <button className={operationButtonStyle} onClick={() => handleSystemOperation('assess-risk')}>Assess Risk</button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'payment' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Payment Details</div>
+                  {[
+                    { label: 'Fee Estimate', value: selectedInstruction?.EstimatedValue ?? selectedInstruction?.QuoteAmount ?? 'TBC' },
+                    { label: 'Fee Structure', value: selectedInstruction?.FeeStructure ?? 'Not set' },
+                    { label: 'Billing Contact', value: selectedInstruction?.BillingContact ?? selectedInstruction?.ClientEmail ?? 'Not set' }
+                  ].map((f) => (
+                    <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 10, color: colours.greyText, textTransform: 'uppercase' }}>{f.label}</span>
+                      <span style={{ fontSize: 11 }}>{String(f.value)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', gap: 8 }}>
+                  <button className={operationButtonStyle} onClick={() => handleSystemOperation('matter-billing')} disabled={!selectedInstruction?.MatterId}>Open Billing</button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'documents' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'start' }}>
+                <div style={{ fontSize: 12, color: colours.greyText }}>Sync matter documents and generated letters. Requires an open matter.</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className={operationButtonStyle} onClick={() => handleSystemOperation('sync-docs')} disabled={!selectedInstruction?.MatterId} title={!selectedInstruction?.MatterId ? 'Matter must be opened first' : undefined}>Sync Docs</button>
+                  <button className={operationButtonStyle} onClick={() => handleSystemOperation('matter-documents')} disabled={!selectedInstruction?.MatterId}>Open Documents</button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'override' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {selectedInstruction ? (
+                  <OverridePills
+                    instruction={selectedInstruction}
+                    selectedOverviewItem={selectedOverviewItem}
+                    isDarkMode={isDarkMode}
+                    onStatusUpdate={() => {
+                      console.log('Status updated - refresh instruction data');
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    padding: '8px 0',
+                    textAlign: 'center',
+                    color: colours.greyText,
+                    fontSize: '12px'
+                  }}>
+                    Select an instruction to access override controls
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'operations' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
@@ -536,7 +1071,6 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
               </div>
             )}
 
-            {/* Maintenance Tab */}
             {activeTab === 'maintenance' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
@@ -581,7 +1115,6 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
               </div>
             )}
 
-            {/* Compliance Tab */}
             {activeTab === 'compliance' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
@@ -623,7 +1156,6 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
               </div>
             )}
 
-            {/* Import Tab */}
             {activeTab === 'import' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>

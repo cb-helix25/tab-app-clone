@@ -227,7 +227,7 @@ const FormDetails: React.FC<FormDetailsProps> = ({
       width="60%"
       offsetTop={offsetTop}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+  <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {submissionSuccess && (
           <MessageBar
             messageBarType={MessageBarType.success}
@@ -245,9 +245,9 @@ const FormDetails: React.FC<FormDetailsProps> = ({
           </MessageBar>
         )}
 
-        <div style={{ flexGrow: 1, overflowY: 'auto', padding: '20px' }}>
+  <div style={{ flexGrow: 1, padding: '20px', minHeight: 0 }}>
           {link.embedScript ? (
-            <div ref={formContainerRef} style={{ flexGrow: 1 }}>
+            <div ref={formContainerRef} style={{ flexGrow: 1, minHeight: 0 }}>
               {!isCognitoLoaded && (
                 <div style={loaderStyle}>
                   <img
@@ -282,7 +282,7 @@ const FormDetails: React.FC<FormDetailsProps> = ({
           )}
         </div>
 
-        <div className={detailsContainerStyle(isDarkMode)}>
+  <div className={detailsContainerStyle(isDarkMode)} style={{ flexShrink: 0 }}>
           <Stack tokens={{ childrenGap: 6 }}>
             <Text>
               <Link

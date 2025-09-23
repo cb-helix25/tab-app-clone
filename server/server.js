@@ -25,6 +25,7 @@ const matterRequestsRouter = require('./routes/matterRequests');
 const opponentsRouter = require('./routes/opponents');
 const clioContactsRouter = require('./routes/clioContacts');
 const clioMattersRouter = require('./routes/clioMatters');
+const clioClientQueryRouter = require('./routes/clio-client-query');
 const getMattersRouter = require('./routes/getMatters');
 const getAllMattersRouter = require('./routes/getAllMatters');
 const riskAssessmentsRouter = require('./routes/riskAssessments');
@@ -59,19 +60,9 @@ if (compression) {
 }
 const PORT = process.env.PORT || 8080;
 
-// Enable CORS: allow localhost in dev; restrict in production
-const isProd = process.env.NODE_ENV === 'production';
-const allowedOrigins = isProd
-    ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
-
+// TEMP: Open CORS to all origins (reflect request origin). Revert to allowlist when ready.
 app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true); // same-origin/no-origin
-        if (allowedOrigins.length === 0 && isProd) return callback(new Error('CORS blocked: no origins configured'));
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error('CORS blocked'));
-    },
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -106,6 +97,7 @@ app.use('/api/risk-assessments', riskAssessmentsRouter);
 app.use('/api/bundle', bundleRouter);
 app.use('/api/clio-contacts', clioContactsRouter);
 app.use('/api/clio-matters', clioMattersRouter);
+app.use('/api/clio-client-query', clioClientQueryRouter);
 app.use('/api/getMatters', getMattersRouter);
 app.use('/api/getAllMatters', getAllMattersRouter);
 // app.use('/api/ccl', cclRouter);

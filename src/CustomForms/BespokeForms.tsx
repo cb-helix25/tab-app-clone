@@ -7,6 +7,7 @@ import {
   Toggle,
   PrimaryButton,
   DefaultButton,
+  VirtualizedComboBox,
   ComboBox,
   IComboBox,
   IComboBoxOption,
@@ -233,6 +234,13 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
   value,
 }) => {
   const [filterText, setFilterText] = React.useState<string>('');
+  const [debouncedFilter, setDebouncedFilter] = React.useState<string>('');
+
+  // Debounce filter text to reduce filtering churn while typing
+  React.useEffect(() => {
+    const id = setTimeout(() => setDebouncedFilter(filterText), 150);
+    return () => clearTimeout(id);
+  }, [filterText]);
 
   // Create clean options from matters data with performance optimization
   const options = React.useMemo<IComboBoxOption[]>(() => {
@@ -260,18 +268,18 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
 
   // Optimized filtering function
   const handleResolveOptions = React.useCallback((comboBoxOptions: IComboBoxOption[]): IComboBoxOption[] => {
-    if (!filterText || filterText.length < 2) {
+    if (!debouncedFilter || debouncedFilter.length < 2) {
       return options.slice(0, 50); // Show only first 50 when no filter
     }
-    
-    const lowercaseFilter = filterText.toLowerCase();
+
+    const lowercaseFilter = debouncedFilter.toLowerCase();
     return options
       .filter(option => 
         option.text.toLowerCase().includes(lowercaseFilter) ||
         option.key.toString().toLowerCase().includes(lowercaseFilter)
       )
       .slice(0, 100); // Limit filtered results to 100
-  }, [options, filterText]);
+  }, [options, debouncedFilter]);
 
   // Handle input change with debouncing effect
   const handleInputValueChange = React.useCallback((inputValue: string) => {
@@ -287,18 +295,34 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
   return (
     <div>
       <div className="question-banner">{field.label}</div>
-      <ComboBox
+      <VirtualizedComboBox
         placeholder="Select or enter Matter Reference"
         required={field.required}
         options={options}
         allowFreeform={true}
         autoComplete="on"
-        selectedKey={value || undefined}
+        // Use text-only control to avoid selectedKey/text conflicts with freeform
         text={value || ''}
         onInputValueChange={handleInputValueChange}
         onChange={handleChange}
         onResolveOptions={handleResolveOptions}
         disabled={isSubmitting}
+        useComboBoxAsMenuWidth={true}
+        calloutProps={{ calloutMaxHeight: 320 }}
+        onRenderOption={(item) => (
+          <span
+            style={{
+              display: 'block',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '100%'
+            }}
+            title={item?.text}
+          >
+            {item?.text}
+          </span>
+        )}
         styles={{
           root: { 
             width: '100%',
@@ -313,18 +337,22 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
             fontSize: '14px',
           },
           callout: {
-            maxHeight: 280,
-            minWidth: 400,
+            maxHeight: 320,
             zIndex: 1100,
           },
           optionsContainer: {
-            maxHeight: 280,
+            maxHeight: 320,
+            overflowY: 'auto',
             selectors: {
               '.ms-ComboBox-option': {
                 minHeight: '36px !important',
                 padding: '8px 12px !important',
                 fontSize: '14px !important',
                 lineHeight: '1.3 !important',
+                // Truncate long entries for performance and readability
+                whiteSpace: 'nowrap',
+                textOverflow: 'ellipsis',
+                overflow: 'hidden',
               },
             },
           },
@@ -403,6 +431,9 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
   const handleClear = () => {
     setFormValues({});
   };
+
+  // Track drag-over state per file field to style the drop zone
+  const [dragOver, setDragOver] = React.useState<Record<string, boolean>>({});
 
   return (
     <form onSubmit={handleSubmit} style={style}>
@@ -682,6 +713,8 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
 
               case 'file':
                 const fileValue = formValues[field.name];
+                const isDragging = !!dragOver[field.name];
+                const fileInputId = `file-input-${index}`;
                 return (
                   <div key={index}>
                     {questionBanner}
@@ -689,16 +722,14 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                       text="Upload File"
                       iconProps={{ iconName: 'Upload' }}
                       onClick={() => {
-                        const fileInput = document.getElementById(
-                          `file-input-${index}`
-                        );
+                        const fileInput = document.getElementById(fileInputId) as HTMLInputElement | null;
                         fileInput?.click();
                       }}
                       styles={sharedPrimaryButtonStyles}
                       disabled={isSubmitting}
                     />
                     <input
-                      id={`file-input-${index}`}
+                      id={fileInputId}
                       type="file"
                       required={field.required}
                       onChange={(e) =>
@@ -709,6 +740,64 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                       }
                       style={{ display: 'none' }}
                     />
+                    {/* Drag-and-drop zone */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Drag and drop file here, or click to select"
+                      onClick={() => {
+                        const fileInput = document.getElementById(fileInputId) as HTMLInputElement | null;
+                        fileInput?.click();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          const fileInput = document.getElementById(fileInputId) as HTMLInputElement | null;
+                          fileInput?.click();
+                        }
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'copy';
+                        setDragOver((prev) => ({ ...prev, [field.name]: true }));
+                      }}
+                      onDragEnter={(e) => {
+                        e.preventDefault();
+                        setDragOver((prev) => ({ ...prev, [field.name]: true }));
+                      }}
+                      onDragLeave={() => {
+                        setDragOver((prev) => ({ ...prev, [field.name]: false }));
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragOver((prev) => ({ ...prev, [field.name]: false }));
+                        const files = e.dataTransfer?.files;
+                        if (files && files.length > 0) {
+                          void handleFileChange(field.name, files[0]);
+                        }
+                      }}
+                      style={{
+                        marginTop: 8,
+                        padding: '16px',
+                        minHeight: 90,
+                        border: `2px dashed ${colours.highlight}`,
+                        borderRadius: 8,
+                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                        cursor: 'pointer',
+                        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                        boxShadow: isDragging ? '0 4px 6px rgba(0, 0, 0, 0.07)' : 'none',
+                        borderColor: isDragging ? colours.light.cta : colours.highlight,
+                        color: '#6b7280',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        fontSize: 12,
+                        userSelect: 'none',
+                      }}
+                    >
+                      Drag & drop a file here, or click to select
+                    </div>
                     {fileValue?.fileName && (
                       <span
                         style={{
@@ -728,7 +817,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                         display: 'block',
                       }}
                     >
-                      Drag and drop a file or click to select one.
+                      You can also drag a file into the drop zone above.
                     </span>
                     {field.helpText && (
                       <span

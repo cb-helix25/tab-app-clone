@@ -189,11 +189,10 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     try {
       setIsLoadingAllData(true);
       hasFetchedAllData.current = true;
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       
-      // Call the unified route to get ALL enquiries (both legacy and new sources)
-      // Use the same route for both local and production - the one that works!
-      const allDataUrl = '/api/enquiries-unified';
+  // Call server-side routes to aggregate ALL enquiries to avoid browser CORS
+  const allDataUrl = isLocalDev ? '/api/enquiries-unified' : '/api/enquiries-combined';
       
       console.log('🌐 Fetching ALL enquiries (unified) from:', allDataUrl);
       
@@ -415,6 +414,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         Value: raw.Value || raw.value,
         Initial_first_call_notes: raw.Initial_first_call_notes || raw.notes,
         Call_Taker: raw.Call_Taker || raw.rep,
+        // Map Ultimate_Source to source field for enquiry cards
+        source: raw.source || raw.Ultimate_Source || 'originalForward',
         __sourceType: sourceType
       };
       return rec;

@@ -140,85 +140,55 @@ async function fetchEnquiries(
     return cached;
   }
 
-  // FOR TESTING: Only fetch from the NEW decoupled function to simulate production behavior
+  // Primary source: use server-side routes to avoid browser CORS issues
+  //  - Both local and production: use unified route for proper Ultimate_Source -> source mapping
   let enquiries: Enquiry[] = [];
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const isLZUser = userInitials.toUpperCase() === 'LZ';
-  
-  if (isLocalDev || isLZUser) {
-    try {
-      // Use unified route for direct database access (bypasses Azure Functions)
-      // This gives us both main + instructions database data in one call
-      const newDataUrl = isLocalDev 
-        ? `/api/enquiries-unified` // Direct database route for local dev
-        : `/api/enquiries-combined`; // Production unified route through server proxy
-      
-      const newResponse = await fetch(newDataUrl, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      if (newResponse.ok) {
-        const newData = await newResponse.json();
-        
-        let rawNewEnquiries: any[] = [];
-        if (Array.isArray(newData)) {
-          rawNewEnquiries = newData;
-        } else if (Array.isArray(newData.enquiries)) {
-          rawNewEnquiries = newData.enquiries;
-        }
-        
-        // Filter new enquiries to match user's criteria (unless fetchAll is true)
-        // New space uses Initials matching, old space uses email matching
-        const userEmail = email.toLowerCase();
-        const userInitialsUpper = userInitials.toUpperCase();
-        
-        let filteredNewEnquiries = rawNewEnquiries;
-        
-        if (!fetchAll) {
-          filteredNewEnquiries = rawNewEnquiries.filter(enq => {
-            const pocInitials = (enq.Point_of_Contact || enq.poc || '').toUpperCase();
-            const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
+  try {
+    const primaryUrl = '/api/enquiries-unified';
+    const resp = await fetch(primaryUrl, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+    if (resp.ok) {
+      const data = await resp.json();
+      let raw: any[] = [];
+      if (Array.isArray(data)) raw = data; else if (Array.isArray(data.enquiries)) raw = data.enquiries;
 
-            const matchesInitials = pocInitials === userInitialsUpper;
-            const matchesEmail = pocEmail === userEmail;
-            // Only treat enquiries sent to the team inbox as unclaimed
-            const unclaimedEmails = ['team@helix-law.com'];
-            const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocInitials === 'TEAM';
-
-            return matchesInitials || matchesEmail || isUnclaimed;
-          });
-        }
-        
-        // Convert to Enquiry format if needed
-        const newEnquiries = filteredNewEnquiries.map(enq => ({
-          ID: enq.ID || enq.id || String(Math.random()),
-          Date_Created: enq.Date_Created || enq.date_created || enq.datetime,
-          Touchpoint_Date: enq.Touchpoint_Date || enq.touchpoint_date || enq.datetime,
-          Email: enq.Email || enq.email,
-          Area_of_Work: enq.Area_of_Work || enq.area_of_work || enq.aow,
-          Type_of_Work: enq.Type_of_Work || enq.type_of_work || enq.tow,
-          Method_of_Contact: enq.Method_of_Contact || enq.method_of_contact || enq.moc,
-          Point_of_Contact: enq.Point_of_Contact || enq.poc,
-          First_Name: enq.First_Name || enq.first_name || enq.first,
-          Last_Name: enq.Last_Name || enq.last_name || enq.last,
-          Phone_Number: enq.Phone_Number || enq.phone_number || enq.phone,
-          Company: enq.Company || enq.company,
-          Value: enq.Value || enq.value,
-          Rating: enq.Rating || enq.rating,
-          // Add any other fields as needed
-          ...enq
-        })) as Enquiry[];
-
-        // Add the NEW enquiries to the beginning of the array
-        enquiries = [...newEnquiries, ...enquiries];
-        
-      } else {
-        const errorText = await newResponse.text().catch(() => 'Could not read error response');
+      // Filter to user scope unless fetchAll
+      const userEmail = email.toLowerCase();
+      const userInitialsUpper = userInitials.toUpperCase();
+      let filtered = raw;
+      if (!fetchAll) {
+        filtered = raw.filter(enq => {
+          const poc = (enq.Point_of_Contact || enq.poc || '') as string;
+          const pocInitials = poc.toUpperCase();
+          const pocEmail = poc.toLowerCase();
+          const matchesInitials = pocInitials === userInitialsUpper;
+          const matchesEmail = pocEmail === userEmail;
+          const unclaimedEmails = ['team@helix-law.com'];
+          const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocInitials === 'TEAM';
+          return matchesInitials || matchesEmail || isUnclaimed;
+        });
       }
-    } catch (error) {
-      // Error is expected when NEW API is not available
+
+      enquiries = filtered.map(enq => ({
+        ID: (enq as any).ID || (enq as any).id || String(Math.random()),
+        Date_Created: (enq as any).Date_Created || (enq as any).date_created || (enq as any).datetime,
+        Touchpoint_Date: (enq as any).Touchpoint_Date || (enq as any).touchpoint_date || (enq as any).datetime,
+        Email: (enq as any).Email || (enq as any).email,
+        Area_of_Work: (enq as any).Area_of_Work || (enq as any).area_of_work || (enq as any).aow,
+        Type_of_Work: (enq as any).Type_of_Work || (enq as any).type_of_work || (enq as any).tow,
+        Method_of_Contact: (enq as any).Method_of_Contact || (enq as any).method_of_contact || (enq as any).moc,
+        Point_of_Contact: (enq as any).Point_of_Contact || (enq as any).poc,
+        First_Name: (enq as any).First_Name || (enq as any).first_name || (enq as any).first,
+        Last_Name: (enq as any).Last_Name || (enq as any).last_name || (enq as any).last,
+        Phone_Number: (enq as any).Phone_Number || (enq as any).phone_number || (enq as any).phone,
+        Company: (enq as any).Company || (enq as any).company,
+        Value: (enq as any).Value || (enq as any).value,
+        Rating: (enq as any).Rating || (enq as any).rating,
+        ...enq
+      })) as Enquiry[];
     }
+  } catch {
+    // non-blocking; fallback below
   }
 
   // Fetch LEGACY enquiries as a fallback ONLY if we don't already have results

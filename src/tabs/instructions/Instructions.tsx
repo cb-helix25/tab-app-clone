@@ -25,14 +25,16 @@ import {
   FaExclamationTriangle,
 } from 'react-icons/fa';
 import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment, MdSync, MdExpandMore, MdChevronRight } from 'react-icons/md';
-import { FaShieldAlt, FaIdCard, FaCreditCard } from 'react-icons/fa';
+import { FaShieldAlt, FaIdCard, FaCreditCard, FaCogs } from 'react-icons/fa';
 import QuickActionsCard from "../home/QuickActionsCard"; // legacy, to be removed after full migration
 import { useTheme } from "../../app/functionality/ThemeContext";
 import { useNavigatorActions } from "../../app/functionality/NavigatorContext";
 import { colours } from "../../app/styles/colours";
 import { dashboardTokens } from "./componentTokens";
 import InstructionCard from "./InstructionCard";
+import OverridePills from "./OverridePills";
 import RiskComplianceCard from "./RiskComplianceCard";
+import MatterOperations from "./MatterOperations";
 import JointClientCard, { ClientInfo } from "./JointClientCard";
 import DealCard from "./DealCard";
 import type { DealSummary } from "./JointClientCard";
@@ -523,6 +525,13 @@ const Instructions: React.FC<InstructionsProps> = ({
       throw error;
     }
   }, []);
+
+  // Handle status updates from matter operations
+  const handleStatusUpdate = () => {
+    console.log('Status update triggered - refreshing instruction data');
+    // Force a refresh of instruction data if needed
+    setInstructionData(prev => [...prev]); // Trigger re-render
+  };
 
   // Notify parent when matter opening workflow state changes
   useEffect(() => {
@@ -1737,6 +1746,36 @@ const Instructions: React.FC<InstructionsProps> = ({
   // 1. Both ID is verified AND payment is complete (normal flow), OR
   // 2. There's a matter opening in progress (so user can continue)
   const canOpenMatter = (poidPassed && paymentCompleted) || hasActiveMatterOpening();
+
+  // Derive current matter display number for the selected instruction (fallback across common field names)
+  const currentMatterDisplayNumber = useMemo(() => {
+    const mid = selectedInstruction?.MatterId;
+    const iref = selectedInstruction?.InstructionRef;
+
+    const getDisplay = (m: unknown): string | '' => {
+      if (!m || typeof m !== 'object') return '';
+      const mm = m as Record<string, unknown>;
+      const dn = (mm.DisplayNumber || mm['Display Number'] || mm.displayNumber || mm.display_number);
+      return typeof dn === 'string' ? dn : '';
+    };
+
+    // 1) Check top-level matters prop if provided
+    const fromMatters = (matters || []).find((m: any) =>
+      (m?.MatterID && mid && m.MatterID === mid) || (m?.InstructionRef && iref && m.InstructionRef === iref)
+    );
+    const dnFromMatters = getDisplay(fromMatters);
+    if (dnFromMatters) return dnFromMatters;
+
+    // 2) Check prospect-scoped matters within effectiveInstructionData
+    const prospect = effectiveInstructionData.find(p => p.instructions?.some((inst: any) => inst.InstructionRef === iref));
+    const fromProspect = prospect?.matters?.find((m: any) =>
+      (m?.MatterID && mid && m.MatterID === mid) || (m?.InstructionRef && iref && m.InstructionRef === iref)
+    );
+    const dnFromProspect = getDisplay(fromProspect);
+    if (dnFromProspect) return dnFromProspect;
+
+    return '';
+  }, [selectedInstruction, matters, effectiveInstructionData]);
   
   // Determine which button should pulse to indicate next ready action
   const getNextReadyAction = (): 'verify' | 'risk' | 'matter' | 'ccl' | null => {
@@ -3287,6 +3326,23 @@ const Instructions: React.FC<InstructionsProps> = ({
               .expand-arrow {
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
               }
+              /* Animated swap between Global Actions and Workbench header */
+              .swap-section {
+                transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin 0.3s ease, padding 0.3s ease;
+                will-change: opacity, transform, max-height, margin, padding;
+                overflow: hidden;
+                transform-origin: center;
+              }
+              .swap-hidden {
+                opacity: 0;
+                transform: translateY(-12px) scale(0.95);
+                max-height: 0 !important;
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                pointer-events: none;
+              }
             `}</style>
             <div
               style={{
@@ -3301,1028 +3357,20 @@ const Instructions: React.FC<InstructionsProps> = ({
                 transition: 'all 0.3s ease',
               }}
             >
-              {/* Global Actions - Always visible, expandable when instruction selected */}
-              <div style={{ padding: '16px 20px' }}>
-                {selectedInstruction ? (
-                  /* Instruction-specific actions with expandable workbench */
-                  <div>
-                    {/* Header with expand indicator */}
-                    <div 
-                      onClick={() => setIsWorkbenchVisible(!isWorkbenchVisible)}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '12px 16px',
-                        background: isDarkMode ? colours.dark.cardBackground : '#f8fafc',
-                        border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        marginBottom: isWorkbenchVisible ? '16px' : '0'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardHover : '#f1f5f9';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardBackground : '#f8fafc';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ 
-                          width: 4, 
-                          height: 4, 
-                          borderRadius: '50%', 
-                          background: areaOfWorkInfo.color,
-                          animation: 'pulse 2s infinite'
-                        }} />
-                        <span style={{ 
-                          fontSize: '12px', 
-                          fontWeight: 700, 
-                          color: isDarkMode ? colours.dark.text : '#1f2937',
-                          letterSpacing: '0.02em',
-                          fontFamily: 'monospace'
-                        }}>
-                          {selectedInstruction.InstructionRef}
-                        </span>
-                        <span style={{ 
-                          fontSize: '10px', 
-                          fontWeight: 500, 
-                          color: isDarkMode ? colours.dark.subText : '#6b7280',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          opacity: 0.6
-                        }}>
-                          Operations Workbench
-                        </span>
-                        {areaOfWorkInfo.label && (
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            color: areaOfWorkInfo.color,
-                            letterSpacing: '0.03em',
-                            textTransform: 'uppercase',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            background: `${areaOfWorkInfo.color}15`,
-                            border: `1px solid ${areaOfWorkInfo.color}30`
-                          }}>
-                            {areaOfWorkInfo.label}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ 
-                          fontSize: '10px', 
-                          color: isDarkMode ? colours.dark.subText : '#6b7280',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em'
-                        }}>
-                          {isWorkbenchVisible ? 'Collapse' : 'Expand'}
-                        </span>
-                        <span style={{ 
-                          fontSize: '12px', 
-                          color: isDarkMode ? colours.dark.subText : '#6b7280',
-                          transform: isWorkbenchVisible ? 'rotate(180deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.2s ease'
-                        }}>
-                          ▲
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Expandable Workbench Content */}
-                    {isWorkbenchVisible && (
-                      <div 
-                        className="comprehensive-workbench"
-                        style={{
-                          background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '8px',
-                          overflow: 'hidden',
-                          boxShadow: isDarkMode 
-                            ? '0 4px 6px rgba(0, 0, 0, 0.3)' 
-                            : '0 4px 6px rgba(0, 0, 0, 0.07)',
-                          animation: 'workbenchSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                          transform: 'translateY(0)',
-                          opacity: 1,
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}
-                      >
-                  {/* Tab Navigation */}
-                  <div style={{
+              {/* Unified bottom panel with animated swap */}
+              <div style={{ padding: '12px 16px' }}>
+                {/* Global Actions (pre-selection) */}
+                <div
+                  className={`swap-section ${selectedInstruction ? 'swap-hidden' : ''}`}
+                  style={{
                     display: 'flex',
-                    background: isDarkMode ? colours.dark.cardBackground : '#f8fafc',
-                    borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                    padding: '0 16px'
-                  }}>
-                    {[
-                      { 
-                        key: 'identity', 
-                        label: 'Identity', 
-                        status: verifyIdStatus,
-                        icon: <FaIdCard size={12} />,
-                        count: verificationFound ? 1 : 0
-                      },
-                      { 
-                        key: 'risk', 
-                        label: 'Risk', 
-                        status: riskStatus,
-                        icon: <FaShieldAlt size={12} />,
-                        count: selectedOverviewItem?.risk ? 1 : 0
-                      },
-                      { 
-                        key: 'payment', 
-                        label: 'Payment', 
-                        status: paymentCompleted ? 'complete' : 'pending',
-                        icon: <FaCreditCard size={12} />,
-                        count: selectedOverviewItem?.instruction?.payments?.length || 0
-                      },
-                      { 
-                        key: 'documents', 
-                        label: 'Documents', 
-                        status: selectedOverviewItem?.documents?.length > 0 ? 'complete' : 'pending',
-                        icon: <FaFileAlt size={12} />,
-                        count: selectedOverviewItem?.documents?.length || 0
-                      },
-                      { 
-                        key: 'matter', 
-                        label: 'Matter', 
-                        status: matterLinked ? 'complete' : 'pending',
-                        icon: <FaFolder size={12} />,
-                        count: matterLinked ? 1 : 0
-                      }
-                    ].map(tab => (
-                      <button
-                        key={tab.key}
-                        className="workbench-tab-button"
-                        onClick={() => setActiveWorkbenchTab(tab.key)}
-                        style={{
-                          padding: '12px 16px',
-                          border: 'none',
-                          background: activeWorkbenchTab === tab.key 
-                            ? (isDarkMode ? colours.dark.cardBackground : '#ffffff')
-                            : 'transparent',
-                          borderBottom: activeWorkbenchTab === tab.key 
-                            ? `2px solid ${colours.blue}` 
-                            : '2px solid transparent',
-                          color: activeWorkbenchTab === tab.key 
-                            ? (isDarkMode ? colours.dark.text : colours.light.text)
-                            : colours.greyText,
-                          cursor: 'pointer',
-                          fontSize: '11px',
-                          fontWeight: activeWorkbenchTab === tab.key ? 600 : 500,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.2s ease',
-                          position: 'relative'
-                        }}
-                      >
-                        {tab.icon}
-                        {tab.label}
-                        
-                        {/* Status indicator */}
-                        <span style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          background: tab.status === 'complete' ? colours.green :
-                                     tab.status === 'review' || tab.status === 'flagged' ? colours.orange :
-                                     colours.greyText,
-                          opacity: 0.8
-                        }} />
-                        
-                        {/* Count badge */}
-                        {tab.count > 0 && (
-                          <span style={{
-                            fontSize: '9px',
-                            fontWeight: 600,
-                            color: colours.blue,
-                            background: `${colours.blue}15`,
-                            padding: '1px 4px',
-                            borderRadius: '8px',
-                            minWidth: '14px',
-                            textAlign: 'center'
-                          }}>
-                            {tab.count}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Tab Content Area */}
-                  <div style={{
-                    padding: '20px',
-                    minHeight: '300px',
-                    background: isDarkMode ? colours.dark.cardBackground : '#ffffff'
-                  }}>
-                    {activeWorkbenchTab === 'identity' && (
-                      <div>
-                        <h3 style={{ 
-                          margin: '0 0 16px 0', 
-                          fontSize: '14px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <FaIdCard size={14} color={verifyIdStatus === 'complete' ? colours.green : colours.blue} />
-                          Identity Data Inspector
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: verifyIdStatus === 'complete' ? colours.green : colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: verifyIdStatus === 'complete' ? `${colours.green}15` : `${colours.orange}15`
-                          }}>
-                            {verifyIdStatus}
-                          </span>
-                        </h3>
-                        
-                        {/* Comprehensive Data Panels */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-                          {/* Personal Information */}
-                          <div style={{
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Personal Information</h4>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>Name:</strong> {selectedInstruction?.Title} {selectedInstruction?.FirstName} {selectedInstruction?.LastName}</div>
-                              <div><strong>Email:</strong> {selectedInstruction?.Email || 'Not provided'}</div>
-                              <div><strong>Phone:</strong> {selectedInstruction?.Phone || 'Not provided'}</div>
-                              <div><strong>DOB:</strong> {selectedInstruction?.DOB ? new Date(selectedInstruction.DOB).toLocaleDateString() : 'Not provided'}</div>
-                              <div><strong>Gender:</strong> {selectedInstruction?.Gender || 'Not provided'}</div>
-                              <div><strong>Nationality:</strong> {selectedInstruction?.Nationality} ({selectedInstruction?.NationalityAlpha2})</div>
-                              <div><strong>Client Type:</strong> {selectedInstruction?.ClientType || 'Not specified'}</div>
-                            </div>
-                          </div>
-
-                          {/* Identification */}
-                          <div style={{
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Identification</h4>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>ID Type:</strong> {selectedInstruction?.IdType || 'Not specified'}</div>
-                              <div><strong>Passport:</strong> {selectedInstruction?.PassportNumber || 'Not provided'}</div>
-                              <div><strong>Driving License:</strong> {selectedInstruction?.DriversLicenseNumber || 'Not provided'}</div>
-                              <div><strong>Client ID:</strong> {selectedInstruction?.ClientId || 'Not assigned'}</div>
-                              <div><strong>Related Client:</strong> {selectedInstruction?.RelatedClientId || 'None'}</div>
-                              <div><strong>Matter ID:</strong> {selectedInstruction?.MatterId || 'Not assigned'}</div>
-                            </div>
-                          </div>
-
-                          {/* Residential Address */}
-                          <div style={{
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Residential Address</h4>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>Address:</strong> {selectedInstruction?.HouseNumber} {selectedInstruction?.Street}</div>
-                              <div><strong>City:</strong> {selectedInstruction?.City}</div>
-                              <div><strong>County:</strong> {selectedInstruction?.County}</div>
-                              <div><strong>Postcode:</strong> {selectedInstruction?.Postcode}</div>
-                              <div><strong>Country:</strong> {selectedInstruction?.Country} ({selectedInstruction?.CountryCode})</div>
-                            </div>
-                          </div>
-
-                          {/* Company Information */}
-                          <div style={{
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Company Information</h4>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>Company:</strong> {selectedInstruction?.CompanyName || 'Not applicable'}</div>
-                              <div><strong>Company Number:</strong> {selectedInstruction?.CompanyNumber || 'Not applicable'}</div>
-                              <div><strong>House Number:</strong> {selectedInstruction?.CompanyHouseNumber || 'Not applicable'}</div>
-                              <div><strong>Address:</strong> {selectedInstruction?.CompanyStreet ? `${selectedInstruction.CompanyStreet}, ${selectedInstruction.CompanyCity}` : 'Not applicable'}</div>
-                              <div><strong>Postcode:</strong> {selectedInstruction?.CompanyPostcode || 'Not applicable'}</div>
-                              <div><strong>Country:</strong> {selectedInstruction?.CompanyCountry ? `${selectedInstruction.CompanyCountry} (${selectedInstruction.CompanyCountryCode})` : 'Not applicable'}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Verification Actions */}
-                        <div style={{
-                          padding: '16px',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '8px',
-                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
-                          marginBottom: '20px'
-                        }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Verification Status & Actions</h4>
-                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
-                              <div>EID Status: <strong style={{ color: eidStatus === 'Completed' ? colours.green : colours.orange }}>{eidStatus || 'Not initiated'}</strong></div>
-                              <div>POID Result: <strong style={{ color: poidResult === 'Verified' ? colours.green : colours.orange }}>{poidResult || 'Pending'}</strong></div>
-                              <div>Consent Given: <strong style={{ color: selectedInstruction?.ConsentGiven ? colours.green : colours.red }}>{selectedInstruction?.ConsentGiven ? 'Yes' : 'No'}</strong></div>
-                            </div>
-                            <button
-                              onClick={handleGlobalEIDCheck}
-                              disabled={verifyIdStatus === 'complete'}
-                              style={{
-                                padding: '8px 12px',
-                                fontSize: '11px',
-                                border: `1px solid ${verifyIdStatus === 'complete' ? colours.green : colours.blue}`,
-                                borderRadius: '4px',
-                                background: 'transparent',
-                                color: verifyIdStatus === 'complete' ? colours.green : colours.blue,
-                                cursor: verifyIdStatus === 'complete' ? 'default' : 'pointer',
-                                opacity: verifyIdStatus === 'complete' ? 0.6 : 1
-                              }}
-                            >
-                              {verifyButtonLabel}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Technical Details - Expandable */}
-                        <div style={{
-                          padding: '12px',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '6px',
-                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                        }}>
-                          <button
-                            className="expand-button"
-                            onClick={() => toggleSection('identity-raw')}
-                            style={{
-                              width: '100%',
-                              background: 'none',
-                              border: 'none',
-                              color: colours.greyText,
-                              fontSize: '11px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '4px 0'
-                            }}
-                          >
-                            <span>Technical Details & Raw Database Record</span>
-                            <span className="expand-arrow" style={{ transform: expandedSections['identity-raw'] ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-                          </button>
-                          
-                          {expandedSections['identity-raw'] && (
-                            <div className="expandable-content" style={{ 
-                              marginTop: '12px',
-                              background: isDarkMode ? '#1a1a1a' : '#ffffff', 
-                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
-                              borderRadius: '6px', 
-                              padding: '12px', 
-                              fontSize: '10px', 
-                              fontFamily: 'Monaco, Consolas, monospace',
-                              maxHeight: '250px',
-                              overflowY: 'auto',
-                              color: isDarkMode ? '#e5e5e5' : '#374151',
-                              animation: 'slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                            }}>
-                              {selectedInstruction ? (
-                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {JSON.stringify(selectedInstruction, null, 2)}
-                                </pre>
-                              ) : (
-                                <div style={{ color: colours.greyText, fontStyle: 'italic' }}>
-                                  No instruction data available
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {activeWorkbenchTab === 'risk' && (
-                      <div>
-                        <h3 style={{ 
-                          margin: '0 0 16px 0', 
-                          fontSize: '14px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <FaShieldAlt size={14} color={riskStatus === 'complete' ? colours.green : 
-                                        riskStatus === 'flagged' ? colours.red : colours.blue} />
-                          Risk Assessment Data Inspector
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: riskStatus === 'complete' ? colours.green : 
-                                  riskStatus === 'flagged' ? colours.red : colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: riskStatus === 'complete' ? `${colours.green}15` : 
-                                       riskStatus === 'flagged' ? `${colours.red}15` : `${colours.orange}15`
-                          }}>
-                            {riskStatus}
-                          </span>
-                        </h3>
-                        
-                        {/* Comprehensive Risk Assessment Data */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-                          {/* Risk Summary */}
-                          <div style={{
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.red }}>Risk Assessment Summary</h4>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>Result:</strong> <span style={{ color: selectedOverviewItem?.risk?.RiskAssessmentResult === 'High Risk' ? colours.red : selectedOverviewItem?.risk?.RiskAssessmentResult === 'Medium Risk' ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.RiskAssessmentResult || 'Pending Assessment'}</span></div>
-                              <div><strong>Risk Score:</strong> <span style={{ color: (selectedOverviewItem?.risk?.RiskScore > 15) ? colours.red : (selectedOverviewItem?.risk?.RiskScore > 10) ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.RiskScore || 'Not scored'}</span></div>
-                              <div><strong>Transaction Level:</strong> <span style={{ color: selectedOverviewItem?.risk?.TransactionRiskLevel === 'High Risk' ? colours.red : selectedOverviewItem?.risk?.TransactionRiskLevel === 'Medium Risk' ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.TransactionRiskLevel || 'Not assessed'}</span></div>
-                              <div><strong>Assessor:</strong> {selectedOverviewItem?.risk?.RiskAssessor || 'Not assigned'}</div>
-                              <div><strong>Compliance Date:</strong> {selectedOverviewItem?.risk?.ComplianceDate ? new Date(selectedOverviewItem.risk.ComplianceDate).toLocaleDateString() : 'Not completed'}</div>
-                              <div><strong>Expiry Date:</strong> {selectedOverviewItem?.risk?.ComplianceExpiry ? new Date(selectedOverviewItem.risk.ComplianceExpiry).toLocaleDateString() : 'Not set'}</div>
-                            </div>
-                          </div>
-
-                          {/* Client Risk Factors */}
-                          <div style={{
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Client Risk Analysis</h4>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>Client Type:</strong> {selectedOverviewItem?.risk?.ClientType || 'Not specified'}</div>
-                              <div><strong>Client Type Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.ClientType_Value > 2) ? colours.red : (selectedOverviewItem?.risk?.ClientType_Value > 1) ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.ClientType_Value || 'Not rated'}</span></div>
-                              <div><strong>How Introduced:</strong> {selectedOverviewItem?.risk?.HowWasClientIntroduced || 'Not recorded'}</div>
-                              <div><strong>Introduction Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.HowWasClientIntroduced_Value > 2) ? colours.red : colours.green }}>{selectedOverviewItem?.risk?.HowWasClientIntroduced_Value || 'Not rated'}</span></div>
-                            </div>
-                          </div>
-
-                          {/* Funds Analysis */}
-                          <div style={{
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.orange }}>Funds Analysis</h4>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>Source of Funds:</strong> {selectedOverviewItem?.risk?.SourceOfFunds || 'Not specified'}</div>
-                              <div><strong>Source Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.SourceOfFunds_Value > 2) ? colours.red : colours.green }}>{selectedOverviewItem?.risk?.SourceOfFunds_Value || 'Not rated'}</span></div>
-                              <div><strong>Destination:</strong> {selectedOverviewItem?.risk?.DestinationOfFunds || 'Not specified'}</div>
-                              <div><strong>Funds Type:</strong> {selectedOverviewItem?.risk?.FundsType || 'Not specified'}</div>
-                              <div><strong>Value of Instruction:</strong> <span style={{ color: selectedOverviewItem?.risk?.ValueOfInstruction === 'Above £500,000' ? colours.red : selectedOverviewItem?.risk?.ValueOfInstruction === 'Less than £10,000' ? colours.green : colours.orange }}>{selectedOverviewItem?.risk?.ValueOfInstruction || 'Not specified'}</span></div>
-                            </div>
-                          </div>
-
-                          {/* Compliance Checks */}
-                          <div style={{
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.green }}>Compliance Factors</h4>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>Client Risk Factors:</strong> <span style={{ color: selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
-                              <div><strong>Transaction Risk Factors:</strong> <span style={{ color: selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
-                              <div><strong>AML Policy:</strong> <span style={{ color: selectedOverviewItem?.risk?.FirmWideAMLPolicyConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.FirmWideAMLPolicyConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
-                              <div><strong>Sanctions Risk:</strong> <span style={{ color: selectedOverviewItem?.risk?.FirmWideSanctionsRiskConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.FirmWideSanctionsRiskConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
-                              <div><strong>Limitation:</strong> {selectedOverviewItem?.risk?.Limitation || 'Not specified'}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Risk Actions Panel */}
-                        <div style={{
-                          padding: '16px',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '8px',
-                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
-                          marginBottom: '20px'
-                        }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Risk Assessment Actions</h4>
-                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
-                              <div>Assessment Status: <strong style={{ color: selectedOverviewItem?.risk ? colours.green : colours.orange }}>{selectedOverviewItem?.risk ? 'Completed' : 'Pending'}</strong></div>
-                              <div>Risk Score Increment: <strong>{selectedOverviewItem?.risk?.RiskScoreIncrementBy || 'Not calculated'}</strong></div>
-                              <div>Reference: <strong>{selectedOverviewItem?.risk?.InstructionRef || selectedInstruction?.InstructionRef}</strong></div>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {!selectedOverviewItem?.risk && (
-                                <button
-                                  onClick={() => {
-                                    const targetItem = overviewItems.find((item: any) => 
-                                      item.instruction?.InstructionRef === selectedInstruction?.InstructionRef
-                                    );
-                                    if (targetItem) handleRiskAssessment(targetItem);
-                                  }}
-                                  style={{
-                                    padding: '8px 12px',
-                                    fontSize: '11px',
-                                    border: `1px solid ${colours.blue}`,
-                                    borderRadius: '4px',
-                                    background: 'transparent',
-                                    color: colours.blue,
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  Create Assessment
-                                </button>
-                              )}
-                              {selectedOverviewItem?.risk && (
-                                <button
-                                  onClick={() => setShowRiskDetails(true)}
-                                  style={{
-                                    padding: '8px 12px',
-                                    fontSize: '11px',
-                                    border: `1px solid ${colours.green}`,
-                                    borderRadius: '4px',
-                                    background: 'transparent',
-                                    color: colours.green,
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  View Details
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Technical Details - Expandable */}
-                        <div style={{
-                          padding: '12px',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '6px',
-                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                        }}>
-                          <button
-                            onClick={() => toggleSection('risk-raw')}
-                            style={{
-                              width: '100%',
-                              background: 'none',
-                              border: 'none',
-                              color: colours.greyText,
-                              fontSize: '11px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '4px 0'
-                            }}
-                          >
-                            <span>Technical Details & Raw Risk Assessment Record</span>
-                            <span style={{ transform: expandedSections['risk-raw'] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
-                          </button>
-                          
-                          {expandedSections['risk-raw'] && (
-                            <div style={{ 
-                              marginTop: '12px',
-                              background: isDarkMode ? '#1a1a1a' : '#ffffff', 
-                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
-                              borderRadius: '6px', 
-                              padding: '12px', 
-                              fontSize: '10px', 
-                              fontFamily: 'Monaco, Consolas, monospace',
-                              maxHeight: '250px',
-                              overflowY: 'auto',
-                              color: isDarkMode ? '#e5e5e5' : '#374151'
-                            }}>
-                              {selectedOverviewItem?.risk ? (
-                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {JSON.stringify(selectedOverviewItem.risk, null, 2)}
-                                </pre>
-                              ) : (
-                                <div style={{ color: colours.greyText, fontStyle: 'italic' }}>No risk assessment data available</div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {activeWorkbenchTab === 'payment' && (
-                      <div>
-                        <h3 style={{ 
-                          margin: '0 0 16px 0', 
-                          fontSize: '14px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <FaCreditCard size={14} color={paymentCompleted ? colours.green : colours.blue} />
-                          Payment Data Inspector
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: paymentCompleted ? colours.green : colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: paymentCompleted ? `${colours.green}15` : `${colours.orange}15`
-                          }}>
-                            {paymentCompleted ? 'completed' : 'pending'}
-                          </span>
-                        </h3>
-                        
-                        {/* Payment Transaction Details */}
-                        <div style={{ marginBottom: '20px' }}>
-                          {selectedOverviewItem?.instruction?.payments?.length > 0 ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                              {selectedOverviewItem?.instruction?.payments?.map((payment: any, index: number) => (
-                                <div key={payment.id || index} style={{
-                                  padding: '16px',
-                                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                                  borderRadius: '8px',
-                                  background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                                }}>
-                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-                                    {/* Payment Core Details */}
-                                    <div>
-                                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Payment #{index + 1}</h4>
-                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '3px' }}>
-                                        <div><strong>Payment ID:</strong> {payment.id}</div>
-                                        <div><strong>Stripe Intent:</strong> {payment.payment_intent_id}</div>
-                                        <div><strong>Amount:</strong> <span style={{ color: colours.green, fontWeight: 600 }}>£{payment.amount} {payment.currency}</span></div>
-                                        <div><strong>Amount Minor:</strong> {payment.amount_minor} pence</div>
-                                        <div><strong>Status:</strong> <span style={{ color: payment.payment_status === 'succeeded' ? colours.green : payment.payment_status === 'processing' ? colours.orange : colours.red }}>{payment.payment_status}</span></div>
-                                        <div><strong>Internal Status:</strong> <span style={{ color: payment.internal_status === 'completed' ? colours.green : colours.orange }}>{payment.internal_status}</span></div>
-                                      </div>
-                                    </div>
-
-                                    {/* Service Details */}
-                                    <div>
-                                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: colours.orange }}>Service Information</h4>
-                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '3px' }}>
-                                        <div><strong>Instruction Ref:</strong> {payment.instruction_ref}</div>
-                                        <div><strong>Service Desc:</strong> {payment.service_description || 'Not specified'}</div>
-                                        <div><strong>Area of Work:</strong> {payment.area_of_work || 'Not specified'}</div>
-                                        <div><strong>Receipt URL:</strong> {payment.receipt_url ? 
-                                          <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" style={{ color: colours.blue, textDecoration: 'none', fontSize: '10px' }}>
-                                            View Receipt ↗
-                                          </a> : 'Not available'
-                                        }</div>
-                                      </div>
-                                    </div>
-
-                                    {/* Timestamps & Security */}
-                                    <div>
-                                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: colours.green }}>Timestamps & Security</h4>
-                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '3px' }}>
-                                        <div><strong>Created:</strong> {new Date(payment.created_at).toLocaleString()}</div>
-                                        <div><strong>Updated:</strong> {new Date(payment.updated_at).toLocaleString()}</div>
-                                        <div><strong>Client Secret:</strong> <span style={{ fontFamily: 'monospace', fontSize: '9px', color: colours.greyText }}>
-                                          {payment.client_secret ? `${payment.client_secret.substring(0, 20)}...` : 'Not available'}
-                                        </span></div>
-                                        <div><strong>Webhook Events:</strong> {payment.webhook_events || 'None recorded'}</div>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Metadata Section - Expandable */}
-                                  {payment.metadata && (
-                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}` }}>
-                                      <button
-                                        onClick={() => toggleSection(`payment-metadata-${index}`)}
-                                        style={{
-                                          background: 'none',
-                                          border: 'none',
-                                          color: colours.greyText,
-                                          fontSize: '11px',
-                                          cursor: 'pointer',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '6px',
-                                          padding: '2px 0'
-                                        }}
-                                      >
-                                        <span style={{ transform: expandedSections[`payment-metadata-${index}`] ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▶</span>
-                                        <span>Transaction Metadata</span>
-                                      </button>
-                                      
-                                      {expandedSections[`payment-metadata-${index}`] && (
-                                        <div style={{ 
-                                          marginTop: '6px',
-                                          background: isDarkMode ? '#1a1a1a' : '#ffffff', 
-                                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
-                                          borderRadius: '4px', 
-                                          padding: '8px', 
-                                          fontSize: '9px', 
-                                          fontFamily: 'Monaco, Consolas, monospace',
-                                          color: isDarkMode ? '#e5e5e5' : '#374151',
-                                          maxHeight: '100px',
-                                          overflowY: 'auto'
-                                        }}>
-                                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                                            {typeof payment.metadata === 'string' ? payment.metadata : JSON.stringify(payment.metadata, null, 2)}
-                                          </pre>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div style={{
-                              padding: '40px',
-                              textAlign: 'center',
-                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                              borderRadius: '8px',
-                              background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
-                              color: colours.greyText
-                            }}>
-                              <FaCreditCard size={32} style={{ marginBottom: '16px', opacity: 0.5 }} />
-                              <h4 style={{ margin: '0 0 8px 0', fontWeight: 500 }}>No Payment Transactions</h4>
-                              <p style={{ margin: 0, fontSize: '12px' }}>This instruction has no recorded payment transactions.</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Payment Summary */}
-                        <div style={{
-                          padding: '16px',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '8px',
-                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
-                          marginBottom: '20px'
-                        }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Payment Summary & Actions</h4>
-                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
-                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
-                              <div>Total Transactions: <strong>{selectedOverviewItem?.instruction?.payments?.length || 0}</strong></div>
-                              <div>Total Amount: <strong style={{ color: colours.green }}>
-                                £{selectedOverviewItem?.instruction?.payments?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0).toFixed(2) || '0.00'}
-                              </strong></div>
-                              <div>Successful Payments: <strong style={{ color: colours.green }}>
-                                {selectedOverviewItem?.instruction?.payments?.filter((p: any) => p.payment_status === 'succeeded').length || 0}
-                              </strong></div>
-                              <div>Deal Value: <strong>{selectedOverviewItem?.deal?.Amount ? `£${selectedOverviewItem.deal.Amount}` : 'Not specified'}</strong></div>
-                            </div>
-                            <button
-                              onClick={() => setShowPaymentDetails(true)}
-                              style={{
-                                padding: '8px 12px',
-                                fontSize: '11px',
-                                border: `1px solid ${colours.blue}`,
-                                borderRadius: '4px',
-                                background: 'transparent',
-                                color: colours.blue,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              View Details
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Technical Details - Expandable */}
-                        {selectedOverviewItem?.instruction?.payments?.length > 0 && (
-                          <div style={{
-                            padding: '12px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '6px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <button
-                              onClick={() => toggleSection('payment-raw')}
-                              style={{
-                                width: '100%',
-                                background: 'none',
-                                border: 'none',
-                                color: colours.greyText,
-                                fontSize: '11px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '4px 0'
-                              }}
-                            >
-                              <span>Technical Details & Raw Payment Records ({selectedOverviewItem?.instruction?.payments?.length || 0} Transactions)</span>
-                              <span style={{ transform: expandedSections['payment-raw'] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
-                            </button>
-                            
-                            {expandedSections['payment-raw'] && (
-                              <div style={{ 
-                                marginTop: '12px',
-                                background: isDarkMode ? '#1a1a1a' : '#ffffff', 
-                                border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
-                                borderRadius: '6px', 
-                                padding: '12px', 
-                                fontSize: '10px', 
-                                fontFamily: 'Monaco, Consolas, monospace',
-                                maxHeight: '300px',
-                                overflowY: 'auto',
-                                color: isDarkMode ? '#e5e5e5' : '#374151'
-                              }}>
-                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {JSON.stringify(selectedOverviewItem?.instruction?.payments || [], null, 2)}
-                                </pre>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {activeWorkbenchTab === 'documents' && (
-                      <div>
-                        <h3 style={{ 
-                          margin: '0 0 16px 0', 
-                          fontSize: '14px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <FaFileAlt size={14} color={selectedOverviewItem?.documents?.length > 0 ? colours.green : colours.blue} />
-                          Document Management Operations
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: selectedOverviewItem?.documents?.length > 0 ? colours.green : colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: selectedOverviewItem?.documents?.length > 0 ? `${colours.green}15` : `${colours.orange}15`
-                          }}>
-                            {selectedOverviewItem?.documents?.length || 0} documents
-                          </span>
-                        </h3>
-                        
-                        <div>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600 }}>Document Library</h4>
-                          {selectedOverviewItem?.documents && selectedOverviewItem.documents.length > 0 ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                              {selectedOverviewItem.documents.map((doc: any, index: number) => (
-                                <div
-                                  key={index}
-                                  style={{
-                                    padding: '12px',
-                                    border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                                    borderRadius: '6px',
-                                    background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
-                                    cursor: 'pointer'
-                                  }}
-                                  onClick={() => {
-                                    // Handle document click - could open viewer or show details
-                                    console.log('Document clicked:', doc);
-                                  }}
-                                >
-                                  <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px' }}>
-                                    {doc.filename || doc.DocumentName || `Document ${index + 1}`}
-                                  </div>
-                                  <div style={{ fontSize: '10px', color: colours.greyText }}>
-                                    Size: {doc.filesize ? formatBytes(doc.filesize) : 'Unknown'}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div style={{
-                              padding: '20px',
-                              textAlign: 'center',
-                              color: colours.greyText,
-                              fontSize: '12px',
-                              fontStyle: 'italic'
-                            }}>
-                              No documents uploaded yet
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {activeWorkbenchTab === 'matter' && (
-                      <div>
-                        <h3 style={{ 
-                          margin: '0 0 16px 0', 
-                          fontSize: '14px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <FaFolder size={14} color={matterLinked ? colours.green : colours.blue} />
-                          Matter Operations
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: matterLinked ? colours.green : colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: matterLinked ? `${colours.green}15` : `${colours.orange}15`
-                          }}>
-                            {matterLinked ? 'linked' : 'pending'}
-                          </span>
-                        </h3>
-                        
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                          {/* Matter Status */}
-                          <div style={{
-                            padding: '12px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '6px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600 }}>Matter Status</h4>
-                            <div style={{ fontSize: '11px', color: colours.greyText, lineHeight: '1.4' }}>
-                              <div>Linked: <strong>{matterLinked ? 'Yes' : 'No'}</strong></div>
-                              <div>Can Open: <strong>{canOpenMatter ? 'Yes' : 'No'}</strong></div>
-                              <div>Prerequisites: <strong>{poidPassed && paymentCompleted ? 'Complete' : 'Pending'}</strong></div>
-                            </div>
-                          </div>
-
-                          {/* Matter Actions */}
-                          <div style={{
-                            padding: '12px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '6px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
-                          }}>
-                            <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600 }}>Matter Operations</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {canOpenMatter && (
-                                <button
-                                  onClick={() => {
-                                    if (selectedInstruction) {
-                                      handleOpenMatter(selectedInstruction);
-                                    }
-                                  }}
-                                  style={{
-                                    padding: '8px 12px',
-                                    fontSize: '11px',
-                                    border: `1px solid ${colours.green}`,
-                                    borderRadius: '4px',
-                                    background: 'transparent',
-                                    color: colours.green,
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  Open Matter
-                                </button>
-                              )}
-                              <button
-                                onClick={() => setShowMatterDetails(true)}
-                                style={{
-                                  padding: '8px 12px',
-                                  fontSize: '11px',
-                                  border: `1px solid ${colours.blue}`,
-                                  borderRadius: '4px',
-                                  background: 'transparent',
-                                  color: colours.blue,
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                View Matter Details
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  /* Core Actions - Show only when no instruction selected */
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: '12px',
-                  maxWidth: '800px',
-                  margin: '0 auto',
-                }}>
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: '12px',
+                    maxWidth: '800px',
+                    margin: '0 auto',
+                  }}
+                >
                   <button
                     onClick={handleGlobalEIDCheck}
                     disabled={verifyButtonDisabled}
@@ -4573,10 +3621,1161 @@ const Instructions: React.FC<InstructionsProps> = ({
                       Draft CCL
                     </span>
                   </button>
-
-
                 </div>
-                )}
+
+                {/* Workbench header + content (post-selection) */}
+                <div
+                  className={`swap-section ${selectedInstruction ? '' : 'swap-hidden'}`}
+                  style={{ marginTop: '0' }}
+                >
+                  {/* Header with expand indicator */}
+                  {selectedInstruction && (
+                    <div 
+                      onClick={() => setIsWorkbenchVisible(!isWorkbenchVisible)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '0',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        marginBottom: isWorkbenchVisible ? '12px' : '0'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ 
+                          width: 3, 
+                          height: 3, 
+                          borderRadius: '50%', 
+                          background: areaOfWorkInfo.color,
+                          animation: 'pulse 2s infinite'
+                        }} />
+                        <span style={{ 
+                          fontSize: '11px', 
+                          fontWeight: 600, 
+                          color: isDarkMode ? colours.dark.text : '#1f2937',
+                          letterSpacing: '0.02em',
+                          fontFamily: 'monospace'
+                        }}>
+                          {selectedInstruction.InstructionRef}
+                        </span>
+                        {areaOfWorkInfo.label && (
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: 500,
+                            color: isDarkMode ? colours.dark.subText : '#6b7280',
+                            letterSpacing: '0.03em',
+                            textTransform: 'uppercase'
+                          }}>
+                            {areaOfWorkInfo.label}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ 
+                          fontSize: '9px', 
+                          color: isDarkMode ? colours.dark.subText : '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em'
+                        }}>
+                          {isWorkbenchVisible ? 'Collapse' : 'Expand'}
+                        </span>
+                        <div style={{ 
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: isDarkMode ? colours.dark.subText : '#6b7280',
+                          transform: isWorkbenchVisible ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          padding: '1px'
+                        }}>
+                          <MdExpandMore size={14} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Expandable Workbench Content */}
+                  {selectedInstruction && isWorkbenchVisible && (
+                    <div 
+                      className="comprehensive-workbench"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '0',
+                        overflow: 'hidden',
+                        boxShadow: 'none',
+                        animation: 'workbenchSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transform: 'translateY(0)',
+                        opacity: 1,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                    >
+                  {/* Tab Navigation */}
+                  <div style={{
+                    display: 'flex',
+                    background: 'transparent',
+                    borderBottom: 'none',
+                    padding: '0 12px'
+                  }}>
+                    {[
+                      { 
+                        key: 'identity', 
+                        label: 'Identity', 
+                        status: verifyIdStatus,
+                        icon: <FaIdCard size={12} />,
+                        isComplete: !!(selectedInstruction?.PassportNumber || selectedInstruction?.DriversLicenseNumber)
+                      },
+                      { 
+                        key: 'risk', 
+                        label: 'Risk', 
+                        status: riskStatus,
+                        icon: <FaShieldAlt size={12} />,
+                        isComplete: riskStatus === 'complete'
+                      },
+                      { 
+                        key: 'payment', 
+                        label: 'Payment', 
+                        status: paymentCompleted ? 'complete' : 'pending',
+                        icon: <FaCreditCard size={12} />,
+                        isComplete: paymentCompleted
+                      },
+                      { 
+                        key: 'documents', 
+                        label: 'Documents', 
+                        status: selectedOverviewItem?.documents?.length > 0 ? 'complete' : 'pending',
+                        icon: <FaFileAlt size={12} />,
+                        isComplete: selectedOverviewItem?.documents?.length > 0
+                      },
+                      { 
+                        key: 'matter', 
+                        label: 'Matter', 
+                        status: matterLinked ? 'complete' : 'pending',
+                        icon: <FaFolder size={12} />,
+                        isComplete: !!selectedInstruction?.MatterId
+                      },
+                      { 
+                        key: 'override', 
+                        label: 'Override', 
+                        status: 'available',
+                        icon: <FaCogs size={12} />,
+                        isComplete: false
+                      }
+                    ].map(tab => (
+                      <button
+                        key={tab.key}
+                        className="workbench-tab-button"
+                        onClick={() => setActiveWorkbenchTab(tab.key)}
+                        style={{
+                          padding: '12px 16px',
+                          border: 'none',
+                          background: activeWorkbenchTab === tab.key 
+                            ? (isDarkMode ? colours.dark.cardBackground : '#ffffff')
+                            : 'transparent',
+                          borderBottom: activeWorkbenchTab === tab.key 
+                            ? `2px solid ${tab.isComplete ? colours.green : colours.blue}` 
+                            : '2px solid transparent',
+                          color: tab.isComplete ? colours.green : (activeWorkbenchTab === tab.key 
+                            ? (isDarkMode ? colours.dark.text : colours.light.text)
+                            : colours.greyText),
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: activeWorkbenchTab === tab.key ? 600 : 500,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s ease',
+                          position: 'relative'
+                        }}
+                      >
+                        <span style={{ color: tab.isComplete ? colours.green : 'inherit', display: 'flex', alignItems: 'center' }}>
+                          {tab.icon}
+                        </span>
+                        <span style={{ color: tab.isComplete ? colours.green : 'inherit' }}>
+                          {tab.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tab Content Area */}
+                  <div style={{
+                    padding: '12px',
+                    minHeight: '150px',
+                    maxHeight: '35vh',
+                    overflowY: 'auto',
+                    background: 'transparent'
+                  }}>
+                    {activeWorkbenchTab === 'identity' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 12px 0', 
+                          fontSize: '13px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          <FaIdCard size={12} color={verifyIdStatus === 'complete' ? colours.green : colours.blue} />
+                          Identity Data Inspector
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: verifyIdStatus === 'complete' ? colours.green : colours.orange,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: verifyIdStatus === 'complete' ? `${colours.green}15` : `${colours.orange}15`
+                          }}>
+                            {verifyIdStatus}
+                          </span>
+                        </h3>
+                        
+                        {/* Identity Data Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                          {/* Personal Information */}
+                          <div style={{
+                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                          }}>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: isDarkMode ? colours.dark.text : '#374151',
+                              marginBottom: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingBottom: '8px'
+                            }}>
+                              Personal Information
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {[
+                                { label: 'Name', value: `${selectedInstruction.Title || ''} ${selectedInstruction.ClientName || selectedInstruction.FirstName || ''} ${selectedInstruction.LastName || ''}`.trim() },
+                                { label: 'Email', value: selectedInstruction.ClientEmail || selectedInstruction.Email },
+                                { label: 'Phone', value: selectedInstruction.PhoneNumber || selectedInstruction.MobileNumber },
+                                { label: 'DOB', value: selectedInstruction.DateOfBirth },
+                                { label: 'Gender', value: selectedInstruction.Gender },
+                                { label: 'Nationality', value: selectedInstruction.Nationality || selectedInstruction.Country },
+                                { label: 'Client Type', value: selectedInstruction.ClientType || selectedInstruction.EntityType || 'Individual' }
+                              ].map((field) => (
+                                <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{
+                                    fontSize: '10px',
+                                    color: colours.greyText,
+                                    fontWeight: 500,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.025em',
+                                    minWidth: '80px'
+                                  }}>
+                                    {field.label}:
+                                  </span>
+                                  <span style={{
+                                    fontSize: '11px',
+                                    color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                    fontWeight: field.value ? 500 : 400,
+                                    textAlign: 'right',
+                                    fontStyle: field.value ? 'normal' : 'italic'
+                                  }}>
+                                    {field.value || 'Not provided'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Identification */}
+                          <div style={{
+                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                          }}>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: isDarkMode ? colours.dark.text : '#374151',
+                              marginBottom: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingBottom: '8px'
+                            }}>
+                              Identification
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {[
+                                { label: 'ID Type', value: selectedInstruction.PassportNumber ? 'passport' : selectedInstruction.DriversLicenseNumber ? 'driving license' : selectedInstruction.NationalIdNumber ? 'national id' : 'Not specified' },
+                                { label: 'Passport', value: selectedInstruction.PassportNumber },
+                                { label: 'Driving License', value: selectedInstruction.DriversLicenseNumber },
+                                { label: 'Client ID', value: selectedInstruction.ClientId || 'Not assigned' },
+                                { label: 'Related Client', value: selectedInstruction.RelatedClientId || 'None' },
+                                { label: 'Matter ID', value: selectedInstruction.MatterId }
+                              ].map((field) => (
+                                <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{
+                                    fontSize: '10px',
+                                    color: colours.greyText,
+                                    fontWeight: 500,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.025em',
+                                    minWidth: '100px'
+                                  }}>
+                                    {field.label}:
+                                  </span>
+                                  <span style={{
+                                    fontSize: '11px',
+                                    color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                    fontWeight: field.value ? 500 : 400,
+                                    textAlign: 'right',
+                                    fontStyle: field.value ? 'normal' : 'italic'
+                                  }}>
+                                    {field.value || 'Not provided'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Residential Address */}
+                          <div style={{
+                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                          }}>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: isDarkMode ? colours.dark.text : '#374151',
+                              marginBottom: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingBottom: '8px'
+                            }}>
+                              Residential Address
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {[
+                                { label: 'Address', value: `${selectedInstruction.AddressLine1 || ''} ${selectedInstruction.AddressLine2 || ''}`.trim() },
+                                { label: 'City', value: selectedInstruction.City },
+                                { label: 'County', value: selectedInstruction.County || selectedInstruction.State },
+                                { label: 'Postcode', value: selectedInstruction.Postcode || selectedInstruction.PostalCode },
+                                { label: 'Country', value: selectedInstruction.Country }
+                              ].map((field) => (
+                                <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{
+                                    fontSize: '10px',
+                                    color: colours.greyText,
+                                    fontWeight: 500,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.025em',
+                                    minWidth: '80px'
+                                  }}>
+                                    {field.label}:
+                                  </span>
+                                  <span style={{
+                                    fontSize: '11px',
+                                    color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                    fontWeight: field.value ? 500 : 400,
+                                    textAlign: 'right',
+                                    fontStyle: field.value ? 'normal' : 'italic'
+                                  }}>
+                                    {field.value || 'Not provided'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Company Information */}
+                          <div style={{
+                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                          }}>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: isDarkMode ? colours.dark.text : '#374151',
+                              marginBottom: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingBottom: '8px'
+                            }}>
+                              Company Information
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {[
+                                { label: 'Company', value: selectedInstruction.CompanyName || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                { label: 'Company Number', value: selectedInstruction.CompanyNumber || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                { label: 'House Number', value: selectedInstruction.CompanyAddressLine1 || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                { label: 'Address', value: selectedInstruction.CompanyAddressLine2 || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                { label: 'Postcode', value: selectedInstruction.CompanyPostcode || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                { label: 'Country', value: selectedInstruction.CompanyCountry || (selectedInstruction.ClientType === 'Individual' ? selectedInstruction.Country : 'Not provided') }
+                              ].map((field) => (
+                                <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{
+                                    fontSize: '10px',
+                                    color: colours.greyText,
+                                    fontWeight: 500,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.025em',
+                                    minWidth: '100px'
+                                  }}>
+                                    {field.label}:
+                                  </span>
+                                  <span style={{
+                                    fontSize: '11px',
+                                    color: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                    fontWeight: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 500 : 400,
+                                    textAlign: 'right',
+                                    fontStyle: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 'normal' : 'italic'
+                                  }}>
+                                    {field.value}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Verification Status & Actions */}
+                          <div style={{
+                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            gridColumn: '1 / -1'
+                          }}>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: isDarkMode ? colours.dark.text : '#374151',
+                              marginBottom: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingBottom: '8px'
+                            }}>
+                              Verification Status & Actions
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '16px', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {[
+                                  { label: 'EID Status', value: selectedOverviewItem?.eid?.EIDStatus || 'Not started' },
+                                  { label: 'POID Result', value: selectedOverviewItem?.eid?.EIDOverallResult || 'Pending' },
+                                  { label: 'Consent Given', value: selectedInstruction.ConsentGiven ? 'Yes' : 'No' }
+                                ].map((field) => (
+                                  <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{
+                                      fontSize: '10px',
+                                      color: colours.greyText,
+                                      fontWeight: 500,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.025em'
+                                    }}>
+                                      {field.label}:
+                                    </span>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      color: (() => {
+                                        if (field.label === 'POID Result' && field.value === 'review') return colours.red;
+                                        if (field.label === 'EID Status' && field.value === 'completed') return colours.green;
+                                        return isDarkMode ? colours.dark.text : '#111827';
+                                      })(),
+                                      fontWeight: 500,
+                                      textAlign: 'right'
+                                    }}>
+                                      {field.value}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                {selectedOverviewItem?.eid?.EIDOverallResult === 'review' && (
+                                  <button
+                                    onClick={handleGlobalEIDCheck}
+                                    style={{ 
+                                      fontSize: '10px', 
+                                      padding: '6px 12px',
+                                      border: `1px solid ${colours.blue}`,
+                                      borderRadius: '4px',
+                                      background: 'transparent',
+                                      color: colours.blue,
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Review ID
+                                  </button>
+                                )}
+                              </div>
+                              
+                              <div style={{
+                                fontSize: '11px',
+                                color: colours.greyText,
+                                fontStyle: 'italic',
+                                textAlign: 'center'
+                              }}>
+                                Technical Details &<br />Raw Database Record
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Technical Details - Expandable */}
+                        <div style={{
+                          padding: '12px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '6px',
+                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          marginTop: '16px'
+                        }}>
+                          <button
+                            className="expand-button"
+                            onClick={() => toggleSection('identity-raw')}
+                            style={{
+                              width: '100%',
+                              background: 'none',
+                              border: 'none',
+                              color: colours.greyText,
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '4px 0'
+                            }}
+                          >
+                            <span>Technical Details & Raw Database Record</span>
+                            <div className="expand-arrow" style={{ 
+                              transform: expandedSections['identity-raw'] ? 'rotate(180deg)' : 'rotate(0deg)',
+                              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}>
+                              ⌄
+                            </div>
+                          </button>
+                          
+                          {expandedSections['identity-raw'] && (
+                            <div className="expandable-content" style={{ 
+                              marginTop: '12px',
+                              background: isDarkMode ? '#1a1a1a' : '#ffffff', 
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                              borderRadius: '6px', 
+                              padding: '12px', 
+                              fontSize: '10px', 
+                              fontFamily: 'Monaco, Consolas, monospace',
+                              maxHeight: '250px',
+                              overflowY: 'auto',
+                              color: isDarkMode ? '#e5e5e5' : '#374151',
+                              animation: 'slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }}>
+                              {selectedInstruction ? (
+                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {JSON.stringify(selectedInstruction, null, 2)}
+                                </pre>
+                              ) : (
+                                <div style={{ color: colours.greyText, fontStyle: 'italic' }}>
+                                  No instruction data available
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeWorkbenchTab === 'risk' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 16px 0', 
+                          fontSize: '14px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <FaShieldAlt size={14} color={riskStatus === 'complete' ? colours.green : 
+                                        riskStatus === 'flagged' ? colours.red : colours.blue} />
+                          Risk Assessment Data Inspector
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: riskStatus === 'complete' ? colours.green : 
+                                  riskStatus === 'flagged' ? colours.red : colours.orange,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: riskStatus === 'complete' ? `${colours.green}15` : 
+                                       riskStatus === 'flagged' ? `${colours.red}15` : `${colours.orange}15`
+                          }}>
+                            {riskStatus}
+                          </span>
+                        </h3>
+                        
+                        {/* Comprehensive Risk Assessment Data */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                          {/* Risk Summary */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.red }}>Risk Assessment Summary</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Result:</strong> <span style={{ color: selectedOverviewItem?.risk?.RiskAssessmentResult === 'High Risk' ? colours.red : selectedOverviewItem?.risk?.RiskAssessmentResult === 'Medium Risk' ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.RiskAssessmentResult || 'Pending Assessment'}</span></div>
+                              <div><strong>Risk Score:</strong> <span style={{ color: (selectedOverviewItem?.risk?.RiskScore > 15) ? colours.red : (selectedOverviewItem?.risk?.RiskScore > 10) ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.RiskScore || 'Not scored'}</span></div>
+                              <div><strong>Transaction Level:</strong> <span style={{ color: selectedOverviewItem?.risk?.TransactionRiskLevel === 'High Risk' ? colours.red : selectedOverviewItem?.risk?.TransactionRiskLevel === 'Medium Risk' ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.TransactionRiskLevel || 'Not assessed'}</span></div>
+                              <div><strong>Assessor:</strong> {selectedOverviewItem?.risk?.RiskAssessor || 'Not assigned'}</div>
+                              <div><strong>Compliance Date:</strong> {selectedOverviewItem?.risk?.ComplianceDate ? new Date(selectedOverviewItem.risk.ComplianceDate).toLocaleDateString() : 'Not completed'}</div>
+                              <div><strong>Expiry Date:</strong> {selectedOverviewItem?.risk?.ComplianceExpiry ? new Date(selectedOverviewItem.risk.ComplianceExpiry).toLocaleDateString() : 'Not set'}</div>
+                            </div>
+                          </div>
+
+                          {/* Client Risk Factors */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Client Risk Analysis</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Client Type:</strong> {selectedOverviewItem?.risk?.ClientType || 'Not specified'}</div>
+                              <div><strong>Client Type Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.ClientType_Value > 2) ? colours.red : (selectedOverviewItem?.risk?.ClientType_Value > 1) ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.ClientType_Value || 'Not rated'}</span></div>
+                              <div><strong>How Introduced:</strong> {selectedOverviewItem?.risk?.HowWasClientIntroduced || 'Not recorded'}</div>
+                              <div><strong>Introduction Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.HowWasClientIntroduced_Value > 2) ? colours.red : colours.green }}>{selectedOverviewItem?.risk?.HowWasClientIntroduced_Value || 'Not rated'}</span></div>
+                            </div>
+                          </div>
+
+                          {/* Funds Analysis */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.orange }}>Funds Analysis</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Source of Funds:</strong> {selectedOverviewItem?.risk?.SourceOfFunds || 'Not specified'}</div>
+                              <div><strong>Source Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.SourceOfFunds_Value > 2) ? colours.red : colours.green }}>{selectedOverviewItem?.risk?.SourceOfFunds_Value || 'Not rated'}</span></div>
+                              <div><strong>Destination:</strong> {selectedOverviewItem?.risk?.DestinationOfFunds || 'Not specified'}</div>
+                              <div><strong>Funds Type:</strong> {selectedOverviewItem?.risk?.FundsType || 'Not specified'}</div>
+                              <div><strong>Value of Instruction:</strong> <span style={{ color: selectedOverviewItem?.risk?.ValueOfInstruction === 'Above £500,000' ? colours.red : selectedOverviewItem?.risk?.ValueOfInstruction === 'Less than £10,000' ? colours.green : colours.orange }}>{selectedOverviewItem?.risk?.ValueOfInstruction || 'Not specified'}</span></div>
+                            </div>
+                          </div>
+
+                          {/* Compliance Checks */}
+                          <div style={{
+                            padding: '16px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.green }}>Compliance Factors</h4>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
+                              <div><strong>Client Risk Factors:</strong> <span style={{ color: selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
+                              <div><strong>Transaction Risk Factors:</strong> <span style={{ color: selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
+                              <div><strong>AML Policy:</strong> <span style={{ color: selectedOverviewItem?.risk?.FirmWideAMLPolicyConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.FirmWideAMLPolicyConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
+                              <div><strong>Sanctions Risk:</strong> <span style={{ color: selectedOverviewItem?.risk?.FirmWideSanctionsRiskConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.FirmWideSanctionsRiskConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
+                              <div><strong>Limitation:</strong> {selectedOverviewItem?.risk?.Limitation || 'Not specified'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Risk Actions Panel */}
+                        <div style={{
+                          padding: '16px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '8px',
+                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          marginBottom: '20px'
+                        }}>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Risk Assessment Actions</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
+                              <div>Assessment Status: <strong style={{ color: selectedOverviewItem?.risk ? colours.green : colours.orange }}>{selectedOverviewItem?.risk ? 'Completed' : 'Pending'}</strong></div>
+                              <div>Risk Score Increment: <strong>{selectedOverviewItem?.risk?.RiskScoreIncrementBy || 'Not calculated'}</strong></div>
+                              <div>Reference: <strong>{selectedOverviewItem?.risk?.InstructionRef || selectedInstruction?.InstructionRef}</strong></div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {!selectedOverviewItem?.risk && (
+                                <button
+                                  onClick={() => {
+                                    const targetItem = overviewItems.find((item: any) => 
+                                      item.instruction?.InstructionRef === selectedInstruction?.InstructionRef
+                                    );
+                                    if (targetItem) handleRiskAssessment(targetItem);
+                                  }}
+                                  style={{
+                                    padding: '8px 12px',
+                                    fontSize: '11px',
+                                    border: `1px solid ${colours.blue}`,
+                                    borderRadius: '4px',
+                                    background: 'transparent',
+                                    color: colours.blue,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Create Assessment
+                                </button>
+                              )}
+                              {selectedOverviewItem?.risk && (
+                                <button
+                                  onClick={() => setShowRiskDetails(true)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    fontSize: '11px',
+                                    border: `1px solid ${colours.green}`,
+                                    borderRadius: '4px',
+                                    background: 'transparent',
+                                    color: colours.green,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  View Details
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Technical Details - Expandable */}
+                        <div style={{
+                          padding: '12px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '6px',
+                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                        }}>
+                          <button
+                            onClick={() => toggleSection('risk-raw')}
+                            style={{
+                              width: '100%',
+                              background: 'none',
+                              border: 'none',
+                              color: colours.greyText,
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '4px 0'
+                            }}
+                          >
+                            <span>Technical Details & Raw Risk Assessment Record</span>
+                            <div style={{ 
+                              transform: expandedSections['risk-raw'] ? 'rotate(180deg)' : 'rotate(0deg)', 
+                              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}>
+                              <MdExpandMore size={14} />
+                            </div>
+                          </button>
+                          
+                          {expandedSections['risk-raw'] && (
+                            <div style={{ 
+                              marginTop: '12px',
+                              background: isDarkMode ? '#1a1a1a' : '#ffffff', 
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                              borderRadius: '6px', 
+                              padding: '12px', 
+                              fontSize: '10px', 
+                              fontFamily: 'Monaco, Consolas, monospace',
+                              maxHeight: '250px',
+                              overflowY: 'auto',
+                              color: isDarkMode ? '#e5e5e5' : '#374151'
+                            }}>
+                              {selectedOverviewItem?.risk ? (
+                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {JSON.stringify(selectedOverviewItem.risk, null, 2)}
+                                </pre>
+                              ) : (
+                                <div style={{ color: colours.greyText, fontStyle: 'italic' }}>No risk assessment data available</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeWorkbenchTab === 'payment' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 16px 0', 
+                          fontSize: '14px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <FaCreditCard size={14} color={paymentCompleted ? colours.green : colours.blue} />
+                          Payment Data Inspector
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: paymentCompleted ? colours.green : colours.orange,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: paymentCompleted ? `${colours.green}15` : `${colours.orange}15`
+                          }}>
+                            {paymentCompleted ? 'completed' : 'pending'}
+                          </span>
+                        </h3>
+                        
+                        {/* Payment Transaction Details */}
+                        <div style={{ marginBottom: '20px' }}>
+                          {selectedOverviewItem?.instruction?.payments?.length > 0 ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                              {selectedOverviewItem?.instruction?.payments?.map((payment: any, index: number) => (
+                                <div key={payment.id || index} style={{
+                                  padding: '16px',
+                                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                                  borderRadius: '8px',
+                                  background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                                }}>
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                                    {/* Payment Core Details */}
+                                    <div>
+                                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Payment #{index + 1}</h4>
+                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '3px' }}>
+                                        <div><strong>Payment ID:</strong> {payment.id}</div>
+                                        <div><strong>Stripe Intent:</strong> {payment.payment_intent_id}</div>
+                                        <div><strong>Amount:</strong> <span style={{ color: colours.green, fontWeight: 600 }}>£{payment.amount} {payment.currency}</span></div>
+                                        <div><strong>Amount Minor:</strong> {payment.amount_minor} pence</div>
+                                        <div><strong>Status:</strong> <span style={{ color: payment.payment_status === 'succeeded' ? colours.green : payment.payment_status === 'processing' ? colours.orange : colours.red }}>{payment.payment_status}</span></div>
+                                        <div><strong>Internal Status:</strong> <span style={{ color: payment.internal_status === 'completed' ? colours.green : colours.orange }}>{payment.internal_status}</span></div>
+                                      </div>
+                                    </div>
+
+                                    {/* Service Details */}
+                                    <div>
+                                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: colours.orange }}>Service Information</h4>
+                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '3px' }}>
+                                        <div><strong>Instruction Ref:</strong> {payment.instruction_ref}</div>
+                                        <div><strong>Service Desc:</strong> {payment.service_description || 'Not specified'}</div>
+                                        <div><strong>Area of Work:</strong> {payment.area_of_work || 'Not specified'}</div>
+                                        <div><strong>Receipt URL:</strong> {payment.receipt_url ? 
+                                          <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" style={{ color: colours.blue, textDecoration: 'none', fontSize: '10px' }}>
+                                            View Receipt ↗
+                                          </a> : 'Not available'
+                                        }</div>
+                                      </div>
+                                    </div>
+
+                                    {/* Timestamps & Security */}
+                                    <div>
+                                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 600, color: colours.green }}>Timestamps & Security</h4>
+                                      <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '3px' }}>
+                                        <div><strong>Created:</strong> {new Date(payment.created_at).toLocaleString()}</div>
+                                        <div><strong>Updated:</strong> {new Date(payment.updated_at).toLocaleString()}</div>
+                                        <div><strong>Client Secret:</strong> <span style={{ fontFamily: 'monospace', fontSize: '9px', color: colours.greyText }}>
+                                          {payment.client_secret ? `${payment.client_secret.substring(0, 20)}...` : 'Not available'}
+                                        </span></div>
+                                        <div><strong>Webhook Events:</strong> {payment.webhook_events || 'None recorded'}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Metadata Section - Expandable */}
+                                  {payment.metadata && (
+                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}` }}>
+                                      <button
+                                        onClick={() => toggleSection(`payment-metadata-${index}`)}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          color: colours.greyText,
+                                          fontSize: '11px',
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          padding: '2px 0'
+                                        }}
+                                      >
+                                        <span style={{ transform: expandedSections[`payment-metadata-${index}`] ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▶</span>
+                                        <span>Transaction Metadata</span>
+                                      </button>
+                                      
+                                      {expandedSections[`payment-metadata-${index}`] && (
+                                        <div style={{ 
+                                          marginTop: '6px',
+                                          background: isDarkMode ? '#1a1a1a' : '#ffffff', 
+                                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                                          borderRadius: '4px', 
+                                          padding: '8px', 
+                                          fontSize: '9px', 
+                                          fontFamily: 'Monaco, Consolas, monospace',
+                                          color: isDarkMode ? '#e5e5e5' : '#374151',
+                                          maxHeight: '100px',
+                                          overflowY: 'auto'
+                                        }}>
+                                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                                            {typeof payment.metadata === 'string' ? payment.metadata : JSON.stringify(payment.metadata, null, 2)}
+                                          </pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{
+                              padding: '40px',
+                              textAlign: 'center',
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              borderRadius: '8px',
+                              background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                              color: colours.greyText
+                            }}>
+                              <FaCreditCard size={32} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                              <h4 style={{ margin: '0 0 8px 0', fontWeight: 500 }}>No Payment Transactions</h4>
+                              <p style={{ margin: 0, fontSize: '12px' }}>This instruction has no recorded payment transactions.</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Payment Summary */}
+                        <div style={{
+                          padding: '16px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                          borderRadius: '8px',
+                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          marginBottom: '20px'
+                        }}>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Payment Summary & Actions</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                            <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
+                              <div>Total Transactions: <strong>{selectedOverviewItem?.instruction?.payments?.length || 0}</strong></div>
+                              <div>Total Amount: <strong style={{ color: colours.green }}>
+                                £{selectedOverviewItem?.instruction?.payments?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0).toFixed(2) || '0.00'}
+                              </strong></div>
+                              <div>Successful Payments: <strong style={{ color: colours.green }}>
+                                {selectedOverviewItem?.instruction?.payments?.filter((p: any) => p.payment_status === 'succeeded').length || 0}
+                              </strong></div>
+                              <div>Deal Value: <strong>{selectedOverviewItem?.deal?.Amount ? `£${selectedOverviewItem.deal.Amount}` : 'Not specified'}</strong></div>
+                            </div>
+                            <button
+                              onClick={() => setShowPaymentDetails(true)}
+                              style={{
+                                padding: '8px 12px',
+                                fontSize: '11px',
+                                border: `1px solid ${colours.blue}`,
+                                borderRadius: '4px',
+                                background: 'transparent',
+                                color: colours.blue,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Technical Details - Expandable */}
+                        {selectedOverviewItem?.instruction?.payments?.length > 0 && (
+                          <div style={{
+                            padding: '12px',
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '6px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          }}>
+                            <button
+                              onClick={() => toggleSection('payment-raw')}
+                              style={{
+                                width: '100%',
+                                background: 'none',
+                                border: 'none',
+                                color: colours.greyText,
+                                fontSize: '11px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '4px 0'
+                              }}
+                            >
+                              <span>Technical Details & Raw Payment Records ({selectedOverviewItem?.instruction?.payments?.length || 0} Transactions)</span>
+                              <div style={{ 
+                                transform: expandedSections['payment-raw'] ? 'rotate(180deg)' : 'rotate(0deg)', 
+                                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}>
+                                <MdExpandMore size={14} />
+                              </div>
+                            </button>
+                            
+                            {expandedSections['payment-raw'] && (
+                              <div style={{ 
+                                marginTop: '12px',
+                                background: isDarkMode ? '#1a1a1a' : '#ffffff', 
+                                border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                                borderRadius: '6px', 
+                                padding: '12px', 
+                                fontSize: '10px', 
+                                fontFamily: 'Monaco, Consolas, monospace',
+                                maxHeight: '300px',
+                                overflowY: 'auto',
+                                color: isDarkMode ? '#e5e5e5' : '#374151'
+                              }}>
+                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {JSON.stringify(selectedOverviewItem?.instruction?.payments || [], null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {activeWorkbenchTab === 'documents' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 16px 0', 
+                          fontSize: '14px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <FaFileAlt size={14} color={selectedOverviewItem?.documents?.length > 0 ? colours.green : colours.blue} />
+                          Document Management Operations
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: selectedOverviewItem?.documents?.length > 0 ? colours.green : colours.orange,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: selectedOverviewItem?.documents?.length > 0 ? `${colours.green}15` : `${colours.orange}15`
+                          }}>
+                            {selectedOverviewItem?.documents?.length || 0} documents
+                          </span>
+                        </h3>
+                        
+                        <div>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600 }}>Document Library</h4>
+                          {selectedOverviewItem?.documents && selectedOverviewItem.documents.length > 0 ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                              {selectedOverviewItem.documents.map((doc: any, index: number) => (
+                                <div
+                                  key={index}
+                                  style={{
+                                    padding: '12px',
+                                    border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                                    borderRadius: '6px',
+                                    background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => {
+                                    // Handle document click - could open viewer or show details
+                                    console.log('Document clicked:', doc);
+                                  }}
+                                >
+                                  <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px' }}>
+                                    {doc.filename || doc.DocumentName || `Document ${index + 1}`}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: colours.greyText }}>
+                                    Size: {doc.filesize ? formatBytes(doc.filesize) : 'Unknown'}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{
+                              padding: '20px',
+                              textAlign: 'center',
+                              color: colours.greyText,
+                              fontSize: '12px',
+                              fontStyle: 'italic'
+                            }}>
+                              No documents uploaded yet
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeWorkbenchTab === 'matter' && (
+                      <MatterOperations
+                        selectedInstruction={selectedInstruction}
+                        selectedOverviewItem={selectedOverviewItem}
+                        isDarkMode={isDarkMode}
+                        onStatusUpdate={handleStatusUpdate}
+                      />
+                    )}
+
+                    {activeWorkbenchTab === 'override' && (
+                      <div>
+                        <h3 style={{ 
+                          margin: '0 0 16px 0', 
+                          fontSize: '14px', 
+                          fontWeight: 600,
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <FaCogs size={14} color={colours.orange} />
+                          Override Controls
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 500,
+                            color: colours.orange,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: `${colours.orange}15`,
+                            border: `1px solid ${colours.orange}30`
+                          }}>
+                            caution required
+                          </span>
+                        </h3>
+                        
+                        <OverridePills 
+                          instruction={selectedInstruction}
+                          isDarkMode={isDarkMode}
+                          onStatusUpdate={() => {
+                            // Force a refresh of the instruction data
+                            // This will trigger a re-render and update the workflow states
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                      </div>
+                    )}
+                  </div>
               </div>
             </div>
           </>

@@ -199,9 +199,12 @@ const FormsModal: React.FC<FormsModalProps> = ({
                         borderRadius: 0,
                         backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
                     },
+                    // Keep the modal container fixed-height but avoid trapping scroll here
                     scrollableContent: {
                         height: '100vh',
                         overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
                     }
                 }}
             >
@@ -252,9 +255,11 @@ const FormsModal: React.FC<FormsModalProps> = ({
                         />
                     </div>
                     <div style={{ 
-                        flex: 1, 
-                        overflow: 'hidden',
+                        flex: 1,
+                        // Single scroll owner: avoid nested scroll traps in modal
+                        overflowY: 'auto',
                         padding: '0 64px 32px 64px',
+                        minHeight: 0,
                     }}>
                         <div style={{
                             maxWidth: '1400px',

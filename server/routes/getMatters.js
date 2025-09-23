@@ -1,18 +1,64 @@
 const express = require('express');
 const sql = require('mssql');
+const { DefaultAzureCredential } = require('@azure/identity');
+const { SecretClient } = require('@azure/keyvault-secrets');
+
+// Cache resolved SQL connection string to avoid repeated KV calls
+let cachedSqlConn = null;
+let cachedSqlConnError = null;
+
+// Resolve SQL connection string with fallbacks:
+// 1) process.env.SQL_CONNECTION_STRING
+// 2) Azure Key Vault: try common secret names in order
+async function resolveSqlConnectionString() {
+    if (cachedSqlConn) return cachedSqlConn;
+    if (cachedSqlConnError) throw cachedSqlConnError;
+
+    // Env first
+    const envConn = process.env.SQL_CONNECTION_STRING;
+    if (envConn && envConn.trim()) {
+        cachedSqlConn = envConn.trim();
+        return cachedSqlConn;
+    }
+
+    // Try Key Vault
+    try {
+        const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
+        const credential = new DefaultAzureCredential();
+        const client = new SecretClient(vaultUrl, credential);
+
+        const candidateNames = [
+            'SQL_CONNECTION_STRING',
+            'sql-connection-string',
+            'helix-core-data-connection-string'
+        ];
+
+        for (const name of candidateNames) {
+            try {
+                const secret = await client.getSecret(name);
+                if (secret?.value) {
+                    cachedSqlConn = secret.value;
+                    return cachedSqlConn;
+                }
+            } catch (innerErr) {
+                // try next
+            }
+        }
+
+        throw new Error('No SQL connection string found in env or Key Vault');
+    } catch (err) {
+        cachedSqlConnError = err;
+        throw err;
+    }
+}
 
 const router = express.Router();
 
 // Helper function to fetch matters from database
 async function fetchMattersFromDb() {
-    const conn = process.env.SQL_CONNECTION_STRING;
-    
-    if (!conn) {
-        throw new Error('No SQL connection string found in SQL_CONNECTION_STRING');
-    }
-    
-    console.log('� Fetching matters directly from helix-core-data database');
-    
+    const conn = await resolveSqlConnectionString();
+    console.log('🔗 Using SQL connection for getMatters (length hidden)');
+
     let pool;
     try {
         // Use a dedicated connection pool for this request to ensure correct DB context

@@ -62,10 +62,12 @@ router.get('/', async (req, res) => {
             legacyEnquiries = legacyData.enquiries;
           }
           
-          // Tag legacy enquiries with source
+          // Tag legacy enquiries with source and map Ultimate_Source to source field for enquiry cards
           legacyEnquiries = legacyEnquiries.map(enq => ({
             ...enq,
-            _source: 'legacy-getEnquiries'
+            _source: 'legacy-getEnquiries',
+            // Map Ultimate_Source to source field that enquiry cards expect
+            source: enq.Ultimate_Source || enq.source || 'originalForward'
           }));
           
           allEnquiries.push(...legacyEnquiries);
