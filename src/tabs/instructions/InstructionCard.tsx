@@ -781,11 +781,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   // Visual styling – simplified, gradient background for legibility
   const bgGradientLight = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
   const bgGradientDark = 'linear-gradient(135deg, #151a22 0%, #11161d 100%)';
+  const bgGradientSelected = `linear-gradient(135deg, rgba(6, 23, 51, 0.04) 0%, rgba(54, 144, 206, 0.08) 100%)`;
   const cardClass = mergeStyles({
     position: 'relative',
     borderRadius: 5,
     padding: '10px 16px',
-    background: isDarkMode ? bgGradientDark : bgGradientLight,
+    background: selected 
+      ? bgGradientSelected
+      : (isDarkMode ? bgGradientDark : bgGradientLight),
     opacity: 1,
     // Responsive padding
     '@media (max-width: 768px)': {
@@ -795,26 +798,30 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       padding: '6px 10px',
       borderRadius: 4,
     },
-    border: `1px solid ${selected || clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
-    boxShadow: isDarkMode
-      ? '0 4px 6px rgba(0, 0, 0, 0.3)'
-      : '0 4px 6px rgba(0, 0, 0, 0.07)',
+    border: selected
+      ? `2px solid ${colours.blue}`
+      : `1px solid ${clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
+    boxShadow: selected
+      ? `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`
+      : (isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)'),
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
     fontFamily: 'Raleway, sans-serif',
     cursor: 'pointer',
-    transition: 'border-color .2s, transform .15s, box-shadow .3s',
+    transition: 'border-color .2s, transform .15s, box-shadow .3s, background .25s ease',
     marginBottom: 4,
     overflow: 'hidden',
-    borderLeftWidth: 2,
+    borderLeftWidth: selected ? 3 : 2,
     borderLeftStyle: 'solid',
-    borderLeftColor: areaColor,
+    borderLeftColor: selected ? colours.blue : areaColor,
     selectors: {
       ':hover': {
         transform: 'translateY(-1px)', 
         borderColor: selected ? colours.blue : colours.highlight,
-        boxShadow: isDarkMode ? '0 6px 10px rgba(0,0,0,0.45)' : '0 8px 16px rgba(33,56,82,0.12)'
+        boxShadow: selected
+          ? `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`
+          : (isDarkMode ? '0 6px 10px rgba(0,0,0,0.45)' : '0 8px 16px rgba(33,56,82,0.12)')
       },
       ':active': { transform: 'translateY(0)' },
       ':focus-within': { outline: '2px solid ' + colours.blue, outlineOffset: '2px' },
@@ -1002,6 +1009,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           const phone = instruction?.Phone || instruction?.phone || (deal as any)?.Phone || (instruction as any)?.PhoneNumber || (instruction as any)?.ContactNumber;
           const instructionRefVal = instruction?.InstructionRef || instruction?.instructionRef || instruction?.ref || instruction?.Ref;
           const prospectVal = prospectId;
+          const solicitorContact = instruction?.HelixContact || instruction?.Solicitor || instruction?.AssignedTo || instruction?.Handler || instruction?.PointOfContact || instructionData?.HelixContact;
 
           const chipBase = {
             color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
@@ -1060,6 +1068,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   onMouseLeave={(e) => onLeave(e.currentTarget)}
                   title={`Instruction Ref: ${instructionRefVal}`}
                 >
+                  <FaFileAlt style={{ fontSize: '10px' }} />
                   <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{instructionRefVal}</span>
                 </div>
               )}
@@ -1071,7 +1080,30 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   onMouseLeave={(e) => onLeave(e.currentTarget)}
                   title={`Prospect ID: ${prospectVal}`}
                 >
+                  <svg 
+                    width="10" 
+                    height="10" 
+                    viewBox="0 0 66.45 100" 
+                    style={{ 
+                      fill: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'
+                    }}
+                  >
+                    <path d="m.33,100c0-3.95-.23-7.57.13-11.14.12-1.21,1.53-2.55,2.68-3.37,6.52-4.62,13.15-9.1,19.73-13.64,10.22-7.05,20.43-14.12,30.64-21.18.21-.14.39-.32.69-.57-5.82-4.03-11.55-8-17.27-11.98C25.76,30.37,14.64,22.57,3.44,14.88.97,13.19-.08,11.07.02,8.16.1,5.57.04,2.97.04,0c.72.41,1.16.62,1.56.9,10.33,7.17,20.66,14.35,30.99,21.52,9.89,6.87,19.75,13.79,29.68,20.59,3.26,2.23,4.78,5.03,3.97,8.97-.42,2.05-1.54,3.59-3.24,4.77-8.94,6.18-17.88,12.36-26.82,18.55-10.91,7.55-21.82,15.1-32.73,22.65-.98.68-2,1.32-3.12,2.05Z"/>
+                    <path d="m36.11,48.93c-2.74,1.6-5.04,3.21-7.56,4.35-2.25,1.03-4.37-.1-6.27-1.4-5.1-3.49-10.17-7.01-15.25-10.53-2.01-1.39-4.05-2.76-5.99-4.25-.5-.38-.91-1.17-.96-1.8-.13-1.59-.06-3.19-.03-4.79.02-1.32.25-2.57,1.57-3.27,1.4-.74,2.72-.36,3.91.46,3.44,2.33,6.85,4.7,10.26,7.06,6.22,4.3,12.43,8.6,18.65,12.91.39.27.76.57,1.67,1.25Z"/>
+                  </svg>
                   <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{prospectVal}</span>
+                </div>
+              )}
+              {solicitorContact && (
+                <div
+                  style={chipBase}
+                  onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(String(solicitorContact)); }}
+                  onMouseEnter={(e) => onHover(e.currentTarget)}
+                  onMouseLeave={(e) => onLeave(e.currentTarget)}
+                  title={`Solicitor/Contact: ${solicitorContact}`}
+                >
+                  <FaUser style={{ fontSize: '10px' }} />
+                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{solicitorContact}</span>
                 </div>
               )}
             </>
@@ -1212,292 +1244,240 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         </div>
       )}
 
-      {/* Progress rail: compact, minimal labels */}
+      {/* Professional Status Overview */}
       <div style={{ 
         display: 'flex', 
         flexDirection: 'column', 
-        marginTop: 6
+        marginTop: 6,
+        padding: '8px 12px',
+        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(248,250,252,0.6)',
+        borderRadius: '6px',
+        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`
       }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8 
+        {/* Header */}
+        <div style={{
+          fontSize: '10px',
+          fontWeight: 600,
+          color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
+          marginBottom: '6px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.4px'
         }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-            {(isPitchedDeal ? 
-              // Pitch-specific workflow
-              [
-                { key: 'pitched', label: 'Pitched', icon: <FaEnvelope />, colour: colours.green },
-                { key: 'follow-up', label: 'Follow Up', icon: <FaPhone />, colour: colours.greyText, disabled: true } // Mark as disabled
-              ] : 
-              // Standard instruction workflow
-              [
-                pitchStage,
-                { 
-                  key:'payment', 
-                  label: paymentStatus === 'complete' ? 
-                    (payments && payments.length > 0 ? 
-                      `Paid £${payments.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(0)}` : 'Paid'
-                    ) : 
-                    (paymentStatus === 'processing' ? 'Processing' : 'Pay'), 
-                  icon:<FaPoundSign />, 
-                  colour: fastTrackedPayment ? colours.yellow : (paymentStatus === 'complete' ? colours.green : (paymentStatus === 'processing' ? colours.yellow : (nextActionStep === 'payment' ? colours.blue : colours.greyText))),
-                  complete: paymentStatus === 'complete' || fastTrackedPayment
-                },
-                { 
-                  key:'documents', 
-                  label: documentsToUse && documentsToUse.length > 0 ? 
-                    `Docs (${documentsToUse.length})` : 'Docs', 
-                  icon:<FaFileAlt />, 
-                  colour: documentStatus === 'complete' ? colours.green : documentStatus === 'neutral' ? colours.greyText : (nextActionStep === 'documents' ? colours.blue : colours.greyText) 
-                },
-                { 
-                  key:'id', 
-                  label: idVerificationLoading ? 'Verifying...' : 
-                    (verifyIdStatus === 'complete' ? 
-                      (eidResult ? `ID: ${capitaliseFirst(eidResult) === 'Verified' ? 'Verified' : capitaliseFirst(eidResult)}` : 'ID') : 
-                     verifyIdStatus === 'review' ? 'ID: Review' : 'ID'), 
-                  icon: idVerificationLoading ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> : <FaIdCard />, 
-                  colour: idVerificationLoading ? colours.orange : (fastTrackedId ? colours.yellow : (verifyIdStatus === 'complete' ? colours.green : verifyIdStatus === 'review' ? colours.red : (nextActionStep === 'id' ? colours.blue : colours.greyText))),
-                  complete: verifyIdStatus === 'complete' || fastTrackedId
-                },
-                { 
-                  key:'risk', 
-                  label: (() => { 
-                    if (riskStatus === 'complete') {
-                      if (risk?.RiskAssessmentResult) {
-                        const raw = String(risk.RiskAssessmentResult);
-                        const trimmed = raw.trim();
-                        const lower = trimmed.toLowerCase();
-                        // Remove trailing ' risk'
-                        const normalised = lower.endsWith(' risk') ? trimmed.slice(0, -5) : trimmed;
-                        const clean = normalised.charAt(0).toUpperCase() + normalised.slice(1);
-                        return `Risk: ${clean}`;
-                      }
-                      return 'Risk';
-                    }
-                    return riskStatus === 'review' ? 'Risk: Review' : 'Risk';
-                  })(), 
-                  icon:<FaShieldAlt />, 
-                  colour: riskStatus === 'complete' ? colours.green : (nextActionStep === 'risk' ? colours.blue : (riskStatus === 'review' ? colours.red : colours.greyText)) 
-                },
-                { 
-                  key:'matter', 
-                  label: matterStatus === 'complete' ? 'Matter: Open' : 'Matter', 
-                  icon:<FaFolder />, 
-                  colour: matterStatus === 'complete' ? colours.green : (nextActionStep === 'matter' ? colours.blue : colours.greyText) 
-                },
-                // CCL - only show in development environment
-                ...(process.env.NODE_ENV === 'development' ? [
-                  { 
-                    key:'ccl', 
-                    label: 'CCL', 
-                    icon:<FaClipboardCheck />, 
-                    colour: cclStatus === 'complete' ? colours.green : (nextActionStep === 'ccl' ? colours.blue : colours.greyText) 
-                  }
-                ] : [])
-              ]
-            ).map((step, idx) => {
-              const isComplete = (step as any).complete === true || step.colour === colours.green;
-              const isFastTrackedVisual = (step.key === 'payment' && fastTrackedPayment) || (step.key === 'id' && fastTrackedId);
-              const isDisabled = (step as any).disabled; // Check if step is disabled
-              const delay = idx * 30;
-              return (
-                <button
-                  key={step.key}
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    // For pitched deals, make actions clickable; for instruction cards, only nextActionStep is clickable
-                    // Exception: ID verification and Risk Assessment are always clickable to view details
-                    // Don't allow clicks on disabled steps
-                    if(!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed' || step.key === 'processing')) {
-                      if (step.key === 'id' && onEIDClick) {
-                        onEIDClick();
-                      } else if (step.key === 'risk') {
-                        if (hasRiskAssessment) {
-                          setShowRiskDetails(prev => !prev);
-                        } else if (onRiskClick) {
-                          onRiskClick();
-                        } else {
-                          setShowRiskDetails(true);
-                        }
-                      } else if (step.key === 'payment') {
-                        setShowPaymentDetails(prev => !prev);
-                      } else if (step.key === 'instructed' || step.key === 'processing') {
-                        setShowInstructionDetails(prev => !prev);
-                      } else if (step.key === 'documents') {
-                        setShowDocumentDetails(prev => !prev);
-                      } else if (step.key === 'matter') {
-                        // Matter details are now handled in the workbench
-                        if (matterStatus !== 'complete' && onOpenMatter && instruction) {
-                          // Only open new matter if no matter exists
-                          onOpenMatter(instruction);
-                        }
-                        // No longer show matter details here - use workbench instead
-                      } else if (step.key === nextActionStep) {
-                        // Generic next action (non-specific)
-                        setActiveStep(prev => prev === step.key ? '' : step.key);
-                      } else {
-                        // Other pills - if it's for a pitched deal, make it clickable
-                        if (isPitchedDeal) {
-                          setActiveStep(prev => prev === step.key ? '' : step.key);
-                        }
-                      }
-                    }
-                  }}
-                  className={mergeStyles({
-                    background: step.key === nextActionStep ? step.colour : (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
-                    color: step.key === nextActionStep ? '#fff' : step.colour,
-                    border: `1px solid ${step.colour}`,
-                    padding: '5px 10px',
-                    borderRadius: 16,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    cursor: (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed' || step.key === 'processing')) ? 'pointer' : 'default',
-                    opacity: isDisabled ? 0.35 : 1,
-                    transform: 'translateY(0) scale(1)',
-                    transition: 'opacity .2s ease-out, transform .2s ease-out, background .2s, color .2s, border .2s',
-                    transitionDelay: `${delay}ms`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    selectors: {
-                      ':hover': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed' || step.key === 'processing')) ? {
-                        background: colours.blue,
-                        borderColor: colours.blue,
-                        color: '#fff'
-                      } : {},
-                      ':active': (!isDisabled && (isPitchedDeal || step.key === nextActionStep || step.key === 'id' || step.key === 'risk' || step.key === 'payment' || step.key === 'documents' || step.key === 'matter' || step.key === 'instructed' || step.key === 'processing')) ? {
-                        background: colours.blue,
-                        color: '#fff',
-                        transform: 'scale(0.96)'
-                      } : {},
-                  },
-                })}
-              >
-                <span style={{ fontSize: 12 }}>{step.icon}</span>
-                {step.label}
-                {isComplete && (
-                  isFastTrackedVisual ? (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 14,
-                      height: 14,
-                      marginLeft: 2,
-                      borderRadius: '50%',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
-                    }} title="Fast-tracked">
-                      <svg width="14" height="14" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="8" cy="8" r="7" fill="#FFFFFF" />
-                        <text x="8" y="11" textAnchor="middle" fontSize="10" fontWeight="900" fill="#f59e0b">!</text>
-                      </svg>
-                    </span>
-                  ) : (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 14,
-                      height: 14,
-                      marginLeft: 2,
-                      borderRadius: '50%',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
-                    }}>
-                      <svg width="14" height="14" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                        <circle cx="8" cy="8" r="7" fill="#FFFFFF" />
-                        <path d="M5 8.3 L7.2 10.2 L11.2 5.8" stroke="#22c55e" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                  )
-                )}
-              </button>
-            );
-          })}
-          
-          {/* Status Override Button removed - now handled in WorkbenchPanel */}
-          
-          {/* Edit moved into deal summary to avoid looking like an action */}
-          
-          </div>
-          
-          {/* Next Action CTA */}
-          {(nextActionDetails || isPitchedDeal) && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              opacity: isPitchedDeal ? 0.4 : 1,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              cursor: isPitchedDeal ? 'not-allowed' : 'pointer',
-              flexShrink: 0,
-              pointerEvents: isPitchedDeal ? 'none' : 'auto' // Disable click for pitched deals
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (isPitchedDeal) {
-                // Disabled - no action for follow up yet
-                console.log('Follow Up action disabled - coming soon');
-                return;
-              } else if (nextActionDetails && onClick) {
-                onClick();
+          Workflow
+        </div>
+        
+        {/* Key Status Indicators */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(6, 1fr)', // Fixed 6 columns for consistent spacing
+          gap: '6px'
+        }}>
+          {(() => {
+            const keySteps = [];
+            
+            // ID Verification
+            keySteps.push({
+              key: 'id',
+              label: 'ID',
+              status: verifyIdStatus === 'complete' ? 'Verified' : 
+                     verifyIdStatus === 'review' ? 'Review Required' : 
+                     verifyIdStatus === 'received' ? 'Under Review' : 'Pending',
+              icon: <FaIdCard />,
+              clickable: true,
+              onClick: onEIDClick
+            });
+            
+            // Payment
+            keySteps.push({
+              key: 'payment', 
+              label: 'Pay',
+              status: paymentStatus === 'complete' ? 'Paid' : 
+                     paymentStatus === 'processing' ? 'Processing' : 'Required',
+              icon: <FaPoundSign />,
+              clickable: true,
+              onClick: () => setShowPaymentDetails(prev => !prev)
+            });
+            
+            // Documents
+            keySteps.push({
+              key: 'documents',
+              label: 'Docs',
+              status: documentsToUse && documentsToUse.length > 0 ? `${documentsToUse.length} Uploaded` : 'Pending',
+              icon: <FaFileAlt />,
+              clickable: true,
+              onClick: () => setShowDocumentDetails(prev => !prev)
+            });
+            
+            // Risk Assessment
+            keySteps.push({
+              key: 'risk',
+              label: 'Risk',
+              status: riskStatus === 'complete' ? 'Assessed' : 
+                     riskStatus === 'review' ? 'High Risk' : 'Pending',
+              icon: <FaShieldAlt />,
+              clickable: true,
+              onClick: () => {
+                if (hasRiskAssessment) {
+                  setShowRiskDetails(prev => !prev);
+                } else if (onRiskClick) {
+                  onRiskClick();
+                } else {
+                  setShowRiskDetails(true);
+                }
               }
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: 2
-                }}>
-                  <span style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: colours.blue,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    lineHeight: 1
-                  }}>
-                    Next Action
-                  </span>
-                  <span style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
-                    lineHeight: 1,
-                    textAlign: 'right'
-                  }}>
-                    {isPitchedDeal ? 'Follow Up' : nextActionDetails?.label}
-                  </span>
+            });
+            
+            // Matter Opening
+            keySteps.push({
+              key: 'matter',
+              label: 'Matter',
+              status: matterStatus === 'complete' ? 'Opened' : 'Ready to Open',
+              icon: <FaFolder />,
+              clickable: matterStatus !== 'complete',
+              onClick: () => {
+                if (matterStatus !== 'complete' && onOpenMatter && instruction) {
+                  onOpenMatter(instruction);
+                }
+              }
+            });
+            
+            // CCL (Client Care Letter)
+            keySteps.push({
+              key: 'ccl',
+              label: 'CCL',
+              status: cclStatus === 'complete' ? 'Generated' : 'Pending',
+              icon: <FaClipboardCheck />,
+              clickable: matterStatus === 'complete',
+              onClick: null // CCL functionality would be added here
+            });
+            
+            return keySteps.map((step, index) => {
+              const isComplete = (() => {
+                const statusText = step.status.toLowerCase();
+                return statusText.includes('complete') || statusText.includes('paid') || statusText.includes('assessed') || statusText.includes('opened') || statusText.includes('verified') || statusText.includes('uploaded') || statusText.includes('generated');
+              })();
+
+              return (
+                <div key={step.key} style={{ display: 'flex', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      cursor: step.clickable ? 'pointer' : 'default',
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      backgroundColor: step.clickable ? (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.3)') : 'transparent',
+                      border: step.clickable ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}` : '1px solid transparent',
+                      transition: 'all 0.2s ease',
+                      minHeight: '24px'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (step.clickable && step.onClick) {
+                        step.onClick();
+                      }
+                    }}
+                    onMouseEnter={(e) => {
+                      if (step.clickable) {
+                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(54,144,206,0.08)' : 'rgba(54,144,206,0.04)';
+                        e.currentTarget.style.borderColor = colours.blue + '40';
+                      }
+                      // Show status text on pill hover
+                      const statusEl = e.currentTarget.querySelector('.status-text') as HTMLElement;
+                      if (statusEl) {
+                        statusEl.style.display = 'block';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (step.clickable) {
+                        e.currentTarget.style.backgroundColor = step.clickable ? (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.3)') : 'transparent';
+                        e.currentTarget.style.borderColor = step.clickable ? (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)') : 'transparent';
+                      }
+                      // Hide status text when not hovering
+                      const statusEl = e.currentTarget.querySelector('.status-text') as HTMLElement;
+                      if (statusEl) {
+                        statusEl.style.display = 'none';
+                      }
+                    }}
+                  >
+                    {/* Icon with status color */}
+                    <div style={{
+                      fontSize: '11px',
+                      color: (() => {
+                        const statusText = step.status.toLowerCase();
+                        if (statusText.includes('complete') || statusText.includes('paid') || statusText.includes('assessed') || statusText.includes('opened') || statusText.includes('verified') || statusText.includes('uploaded') || statusText.includes('generated')) {
+                          return colours.green; // Use Helix green for complete
+                        } else if (statusText.includes('review') || statusText.includes('high risk')) {
+                          return '#ef4444'; // Red for review/issues
+                        } else if (statusText.includes('processing') || statusText.includes('under review')) {
+                          return '#f59e0b'; // Amber for in progress
+                        } else {
+                          return isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'; // Grey for pending/not ready
+                        }
+                      })()
+                    }}>
+                      {step.icon}
+                    </div>
+                    
+                    {/* Label - always visible */}
+                    <div style={{
+                      fontSize: '9px',
+                      fontWeight: 600,
+                      color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.2px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {step.label}
+                    </div>
+                    
+                    {/* Status text - only show on pill hover */}
+                    <div 
+                      className="status-text"
+                      style={{
+                        display: 'none',
+                        fontSize: '9px',
+                        fontWeight: 500,
+                        color: (() => {
+                          const statusText = step.status.toLowerCase();
+                          if (statusText.includes('complete') || statusText.includes('paid') || statusText.includes('assessed') || statusText.includes('opened') || statusText.includes('verified') || statusText.includes('uploaded') || statusText.includes('generated')) {
+                            return colours.green; // Use Helix green for complete
+                          } else if (statusText.includes('review') || statusText.includes('high risk')) {
+                            return '#ef4444'; // Red for review/issues
+                          } else if (statusText.includes('processing') || statusText.includes('under review')) {
+                            return '#f59e0b'; // Amber for in progress
+                          } else {
+                            return isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'; // Grey for pending/not ready
+                          }
+                        })(),
+                        lineHeight: 1.1,
+                        marginLeft: '4px',
+                        animation: 'fadeIn 0.2s ease-out',
+                        whiteSpace: 'nowrap'
+                      }}>
+                      {step.status}
+                    </div>
+                  </div>
+
+                  {/* Connecting line to next pill */}
+                  {index < keySteps.length - 1 && (
+                    <div style={{
+                      flex: 1,
+                      height: '2px',
+                      margin: '0 8px',
+                      backgroundColor: isComplete ? colours.green : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'),
+                      borderRadius: '1px',
+                      transition: 'background-color 0.3s ease'
+                    }} />
+                  )}
                 </div>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  background: isPitchedDeal ? '#999' : colours.blue, // Grey background for pitched deals
-                  color: isPitchedDeal ? '#666' : 'white', // Muted text color for pitched deals
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  boxShadow: isPitchedDeal ? 'none' : '0 2px 6px rgba(52, 152, 219, 0.3)', // Remove shadow for pitched deals
-                  transition: 'all 0.2s ease',
-                  opacity: isPitchedDeal ? 0.5 : 1 // Additional opacity reduction for pitched deals
-                }}>
-                  →
-                </div>
-              </div>
-            </div>
-          )}
+              );
+            });
+          })()}
         </div>
       </div>
-
       {/* Contact banner removed per request; details now inline in header */}
       
       {/* Risk Details Section - shown when risk pill is clicked */}

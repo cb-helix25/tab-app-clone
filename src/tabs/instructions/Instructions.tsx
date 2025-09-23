@@ -3337,11 +3337,13 @@ const Instructions: React.FC<InstructionsProps> = ({
                 opacity: 0;
                 transform: translateY(-12px) scale(0.95);
                 max-height: 0 !important;
+                height: 0 !important;
+                min-height: 0 !important;
                 margin-top: 0 !important;
                 margin-bottom: 0 !important;
-                padding-top: 0 !important;
-                padding-bottom: 0 !important;
+                padding: 0 !important;
                 pointer-events: none;
+                overflow: hidden;
               }
             `}</style>
             <div
@@ -3358,275 +3360,310 @@ const Instructions: React.FC<InstructionsProps> = ({
               }}
             >
               {/* Unified bottom panel with animated swap */}
-              <div style={{ padding: '12px 16px' }}>
-                {/* Global Actions (pre-selection) */}
+          <div style={{ padding: '6px 12px' }}>
+                {/* Global Actions Header (pre-selection) */}
                 <div
                   className={`swap-section ${selectedInstruction ? 'swap-hidden' : ''}`}
                   style={{
                     display: 'flex',
-                    justifyContent: 'center',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '12px',
-                    maxWidth: '800px',
-                    margin: '0 auto',
+                    padding: '6px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRadius: '0',
+                    cursor: 'default',
+                    transition: 'all 0.2s ease',
+                    minHeight: '32px'
                   }}
                 >
-                  <button
-                    onClick={handleGlobalEIDCheck}
-                    disabled={verifyButtonDisabled}
-                    onMouseEnter={(e) => {
-                      if (!verifyButtonDisabled) {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        setHoveredButton('verify');
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      setHoveredButton(null);
-                    }}
-                    style={{
-                      padding: '12px 20px',
-                      borderRadius: '8px',
-                      border: `2px solid ${verifyButtonDisabled ? colours.green : verifyButtonReview ? colours.yellow : colours.blue}`,
-                      background: verifyButtonDisabled ? '#f0f9ff' : 'transparent',
-                      color: verifyButtonDisabled ? colours.green : verifyButtonReview ? colours.yellow : colours.blue,
-                      cursor: verifyButtonDisabled ? 'default' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      opacity: verifyButtonDisabled ? 0.8 : 1,
-                      animation: nextReadyAction === 'verify' ? 'pulse 2s infinite' : 'none',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '120px',
-                      position: 'relative',
-                    }}
-                  >
+                  {/* Left side - Status indicator */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ 
+                      width: 3, 
+                      height: 3, 
+                      borderRadius: '50%', 
+                      background: colours.blue,
+                      animation: 'pulse 2s infinite'
+                    }} />
                     <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'verify' ? 0 : 1
+                      fontSize: '11px', 
+                      fontWeight: 600, 
+                      color: isDarkMode ? colours.dark.text : '#1f2937',
+                      letterSpacing: '0.02em',
+                      fontFamily: 'monospace'
                     }}>
-                      <FaIdCard size={20} />
+                      Global Actions
                     </span>
-                    <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'verify' ? 1 : 0,
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      whiteSpace: 'nowrap'
+                    <span style={{
+                      fontSize: '9px',
+                      fontWeight: 500,
+                      color: isDarkMode ? colours.dark.subText : '#6b7280',
+                      letterSpacing: '0.03em',
+                      textTransform: 'uppercase'
                     }}>
-                      {verifyButtonLabel}
+                      Select Instruction
                     </span>
-                  </button>
+                  </div>
+                  {/* Right side - Compact action buttons */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={handleGlobalEIDCheck}
+                      disabled={verifyButtonDisabled}
+                      onMouseEnter={(e) => {
+                        if (!verifyButtonDisabled) {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          setHoveredButton('verify');
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        setHoveredButton(null);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${verifyButtonDisabled ? colours.green : verifyButtonReview ? colours.yellow : colours.blue}`,
+                        background: verifyButtonDisabled ? '#f0f9ff' : 'transparent',
+                        color: verifyButtonDisabled ? colours.green : verifyButtonReview ? colours.yellow : colours.blue,
+                        cursor: verifyButtonDisabled ? 'default' : 'pointer',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        opacity: verifyButtonDisabled ? 0.8 : 1,
+                        animation: nextReadyAction === 'verify' ? 'pulse 2s infinite' : 'none',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '80px',
+                        position: 'relative',
+                      }}
+                    >
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'verify' ? 0 : 1
+                      }}>
+                        <FaIdCard size={14} />
+                      </span>
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'verify' ? 1 : 0,
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {verifyButtonLabel}
+                      </span>
+                    </button>
 
-                  <button
-                    onClick={handleGlobalRiskAssessment}
-                    disabled={riskButtonDisabled}
-                    onMouseEnter={(e) => {
-                      if (!riskButtonDisabled) {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        setHoveredButton('risk');
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      setHoveredButton(null);
-                    }}
-                    style={{
-                      padding: '12px 20px',
-                      borderRadius: '8px',
-                      border: `2px solid ${riskButtonDisabled ? colours.green : colours.blue}`,
-                      background: riskButtonDisabled ? '#f0f9ff' : 'transparent',
-                      color: riskButtonDisabled ? colours.green : colours.blue,
-                      cursor: riskButtonDisabled ? 'default' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      opacity: riskButtonDisabled ? 0.8 : 1,
-                      animation: nextReadyAction === 'risk' ? 'pulse 2s infinite' : 'none',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '120px',
-                      position: 'relative',
-                    }}
-                  >
-                    <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'risk' ? 0 : 1
-                    }}>
-                      <FaShieldAlt size={20} />
-                    </span>
-                    <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'risk' ? 1 : 0,
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      Assess Risk
-                    </span>
-                  </button>
+                    <button
+                      onClick={handleGlobalRiskAssessment}
+                      disabled={riskButtonDisabled}
+                      onMouseEnter={(e) => {
+                        if (!riskButtonDisabled) {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          setHoveredButton('risk');
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        setHoveredButton(null);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${riskButtonDisabled ? colours.green : colours.blue}`,
+                        background: riskButtonDisabled ? '#f0f9ff' : 'transparent',
+                        color: riskButtonDisabled ? colours.green : colours.blue,
+                        cursor: riskButtonDisabled ? 'default' : 'pointer',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        opacity: riskButtonDisabled ? 0.8 : 1,
+                        animation: nextReadyAction === 'risk' ? 'pulse 2s infinite' : 'none',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '80px',
+                        position: 'relative',
+                      }}
+                    >
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'risk' ? 0 : 1
+                      }}>
+                        <FaShieldAlt size={14} />
+                      </span>
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'risk' ? 1 : 0,
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Assess Risk
+                      </span>
+                    </button>
 
-                  <button
-                    onClick={handleGlobalOpenMatter}
-                    onMouseEnter={(e) => {
-                      if (!matterLinked) {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        setHoveredButton('matter');
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      setHoveredButton(null);
-                    }}
-                    style={{
-                      padding: '12px 20px',
-                      borderRadius: '8px',
-                      border: `2px solid ${matterLinked ? colours.green : colours.blue}`,
-                      background: matterLinked ? '#f0f9ff' : 'transparent',
-                      color: matterLinked ? colours.green : colours.blue,
-                      cursor: matterLinked ? 'default' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      animation: nextReadyAction === 'matter' ? 'pulse 2s infinite' : 'none',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '120px',
-                      position: 'relative',
-                    }}
-                  >
-                    <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'matter' ? 0 : 1
-                    }}>
-                      <FaFolder size={20} />
-                    </span>
-                    <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'matter' ? 1 : 0,
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      Open Matter
-                    </span>
-                  </button>
+                    <button
+                      onClick={handleGlobalOpenMatter}
+                      onMouseEnter={(e) => {
+                        if (!matterLinked) {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          setHoveredButton('matter');
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        setHoveredButton(null);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${matterLinked ? colours.green : colours.blue}`,
+                        background: matterLinked ? '#f0f9ff' : 'transparent',
+                        color: matterLinked ? colours.green : colours.blue,
+                        cursor: matterLinked ? 'default' : 'pointer',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        animation: nextReadyAction === 'matter' ? 'pulse 2s infinite' : 'none',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '80px',
+                        position: 'relative',
+                      }}
+                    >
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'matter' ? 0 : 1
+                      }}>
+                        <FaFolder size={14} />
+                      </span>
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'matter' ? 1 : 0,
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Open Matter
+                      </span>
+                    </button>
 
-                  {/* Doc Sync - Only available after matter opening */}
-                  <button
-                    onClick={() => console.log('Document sync')}
-                    onMouseEnter={(e) => {
-                      if (selectedOverviewItem?.instruction?.MatterRef) {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        setHoveredButton('sync');
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      setHoveredButton(null);
-                    }}
-                    style={{
-                      padding: '12px 20px',
-                      borderRadius: '8px',
-                      border: `2px solid ${colours.green}`,
-                      background: '#f0f9ff',
-                      color: colours.green,
-                      cursor: selectedOverviewItem?.instruction?.MatterRef ? 'pointer' : 'default',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s ease',
-                      opacity: selectedOverviewItem?.instruction?.MatterRef ? 1 : 0.5,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '120px',
-                      position: 'relative',
-                    }}
-                    title={selectedOverviewItem?.instruction?.MatterRef ? 'Sync documents to matter' : 'Matter must be opened first'}
-                  >
-                    <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'sync' ? 0 : 1
-                    }}>
-                      <MdSync size={20} />
-                    </span>
-                    <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'sync' ? 1 : 0,
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      Sync Docs
-                    </span>
-                  </button>
+                    <button
+                      onClick={() => console.log('Document sync')}
+                      onMouseEnter={(e) => {
+                        if (selectedOverviewItem?.instruction?.MatterRef) {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          setHoveredButton('sync');
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        setHoveredButton(null);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${colours.green}`,
+                        background: '#f0f9ff',
+                        color: colours.green,
+                        cursor: selectedOverviewItem?.instruction?.MatterRef ? 'pointer' : 'default',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        transition: 'all 0.2s ease',
+                        opacity: selectedOverviewItem?.instruction?.MatterRef ? 1 : 0.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '80px',
+                        position: 'relative',
+                      }}
+                      title={selectedOverviewItem?.instruction?.MatterRef ? 'Sync documents to matter' : 'Matter must be opened first'}
+                    >
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'sync' ? 0 : 1
+                      }}>
+                        <MdSync size={14} />
+                      </span>
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'sync' ? 1 : 0,
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Sync Docs
+                      </span>
+                    </button>
 
-                  <button
-                    onClick={() => setShowCclDraftPage(true)}
-                    onMouseEnter={(e) => {
-                      if (!cclCompleted) {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        setHoveredButton('ccl');
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      setHoveredButton(null);
-                    }}
-                    style={{
-                      padding: '12px 20px',
-                      borderRadius: '8px',
-                      border: `2px solid ${cclCompleted ? colours.green : colours.blue}`,
-                      background: cclCompleted ? '#f0f9ff' : 'transparent',
-                      color: cclCompleted ? colours.green : colours.blue,
-                      cursor: cclCompleted ? 'default' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      animation: nextReadyAction === 'ccl' ? 'pulse 2s infinite' : 'none',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '120px',
-                      position: 'relative',
-                    }}
-                  >
-                    <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'ccl' ? 0 : 1
-                    }}>
-                      <FaFileAlt size={20} />
-                    </span>
-                    <span style={{ 
-                      transition: 'opacity 160ms ease',
-                      opacity: hoveredButton === 'ccl' ? 1 : 0,
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      Draft CCL
-                    </span>
-                  </button>
+                    <button
+                      onClick={() => setShowCclDraftPage(true)}
+                      onMouseEnter={(e) => {
+                        if (!cclCompleted) {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          setHoveredButton('ccl');
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        setHoveredButton(null);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${cclCompleted ? colours.green : colours.blue}`,
+                        background: cclCompleted ? '#f0f9ff' : 'transparent',
+                        color: cclCompleted ? colours.green : colours.blue,
+                        cursor: cclCompleted ? 'default' : 'pointer',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        animation: nextReadyAction === 'ccl' ? 'pulse 2s infinite' : 'none',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '80px',
+                        position: 'relative',
+                      }}
+                    >
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'ccl' ? 0 : 1
+                      }}>
+                        <FaFileAlt size={14} />
+                      </span>
+                      <span style={{ 
+                        transition: 'opacity 160ms ease',
+                        opacity: hoveredButton === 'ccl' ? 1 : 0,
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Draft CCL
+                      </span>
+                    </button>
+                  </div>
                 </div>
-
-                {/* Workbench header + content (post-selection) */}
                 <div
-                  className={`swap-section ${selectedInstruction ? '' : 'swap-hidden'}`}
-                  style={{ marginTop: '0' }}
+                  className={`swap-section ${!selectedInstruction ? 'swap-hidden' : ''}`}
+                  style={{
+                    padding: '8px 14px',
+                    minHeight: '36px',
+                  }}
                 >
                   {/* Header with expand indicator */}
                   {selectedInstruction && (
@@ -3636,13 +3673,13 @@ const Instructions: React.FC<InstructionsProps> = ({
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        padding: '8px 12px',
+                        padding: '6px 12px',
                         background: 'transparent',
                         border: 'none',
                         borderRadius: '0',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
-                        marginBottom: isWorkbenchVisible ? '12px' : '0'
+                        minHeight: '32px'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.background = 'transparent';
