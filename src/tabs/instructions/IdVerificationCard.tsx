@@ -150,7 +150,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                     </div>
                     
                     {compact && (
-                        <div style={{ fontSize: '12px', color: '#666' }}>
+                        <div style={{ fontSize: '12px', color: isDarkMode ? '#94a3b8' : '#666' }}>
                             {expanded ? <FaChevronUp /> : <FaChevronDown />}
                         </div>
                     )}
@@ -223,7 +223,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                                 borderRadius: 0,
                                 fontSize: '11px'
                             }}>
-                                <div style={{ fontWeight: 600, color: '#666', marginBottom: '2px' }}>ID Type</div>
+                                <div style={{ fontWeight: 600, color: isDarkMode ? '#94a3b8' : '#666', marginBottom: '2px' }}>ID Type</div>
                                 <div style={{ fontWeight: 500 }}>{idType}</div>
                             </div>
                         )}
@@ -235,7 +235,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                                 borderRadius: 0,
                                 fontSize: '11px'
                             }}>
-                                <div style={{ fontWeight: 600, color: '#666', marginBottom: '2px' }}>ID</div>
+                                <div style={{ fontWeight: 600, color: isDarkMode ? '#94a3b8' : '#666', marginBottom: '2px' }}>ID</div>
                                 <div style={{ fontWeight: 500, fontFamily: 'Consolas, monospace' }}>
                                     {verificationId.length > 8 ? `${verificationId.slice(0, 8)}...` : verificationId}
                                 </div>
@@ -270,7 +270,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                         
                         <Text variant="small" styles={{
                             root: {
-                                color: '#666',
+                                color: isDarkMode ? '#94a3b8' : '#666',
                                 fontSize: '10px',
                                 fontFamily: 'Consolas, monospace'
                             }

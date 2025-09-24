@@ -46,15 +46,7 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
   const [clientData, setClientData] = useState<ClientData>({
     isLoading: false
   });
-  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
-  const [showMatterForm, setShowMatterForm] = useState(false);
-  const [matterFormData, setMatterFormData] = useState({
-    description: '',
-    practiceArea: '',
-    responsibleSolicitor: '',
-    clientId: '',
-    clientName: ''
-  });
+  // Matter opening is handled by a dedicated workflow; creation UI removed here
 
   // Load matter data when instruction changes
   useEffect(() => {
@@ -138,65 +130,14 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
 
   // Matter status logic
   const matterStatus = useMemo(() => {
+    const neutral = isDarkMode ? colours.dark.text : '#374151';
     if (matterData.isLoading) return { label: 'Loading...', color: colours.greyText };
-    if (matterData.matterId) return { label: 'Active Matter', color: colours.green };
-    if (selectedInstruction?.ClientId) return { label: 'Ready to Create', color: colours.orange };
-    return { label: 'Client Required', color: colours.red };
-  }, [matterData, selectedInstruction]);
+    if (matterData.matterId) return { label: 'Active Matter', color: neutral };
+    if (selectedInstruction?.ClientId) return { label: 'Ready to Create', color: neutral };
+    return { label: 'Client Required', color: neutral };
+  }, [matterData, selectedInstruction, isDarkMode]);
 
-  const handleCreateMatter = async () => {
-    if (!selectedInstruction?.InstructionRef || !selectedInstruction?.ClientId) {
-      alert('Instruction reference and client ID are required');
-      return;
-    }
-    
-    setActionInProgress('create-matter');
-    
-    try {
-      const timestamp = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-      const displayNumber = `ITEM${timestamp}-${String(Math.floor(Math.random() * 10000)).padStart(5, '0')}`;
-      
-      const payload = {
-        instructionRef: selectedInstruction.InstructionRef,
-        clientId: selectedInstruction.ClientId,
-        displayNumber,
-        description: matterFormData.description || `Legal matter for ${selectedInstruction.ClientName || 'client'}`,
-        practiceArea: matterFormData.practiceArea || selectedInstruction.AreaOfWork || 'General Legal Services',
-        responsibleSolicitor: matterFormData.responsibleSolicitor || selectedInstruction.ResponsibleSolicitor || 'Unassigned'
-      };
-      
-      const response = await fetch('/api/matter-operations/create-clio-matter', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Matter created:', result);
-        await loadMatterData(); // Reload data
-        setShowMatterForm(false);
-        if (onStatusUpdate) onStatusUpdate();
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create matter');
-      }
-    } catch (error) {
-      console.error('Error creating matter:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Failed to create matter: ${errorMessage}`);
-    } finally {
-      setActionInProgress(null);
-    }
-  };
-
-  const handleLinkClient = async () => {
-    setActionInProgress('link-client');
-    // Implementation for client linking
-    setTimeout(() => setActionInProgress(null), 2000);
-  };
+  // Creation and client-linking are handled elsewhere
 
   const handleOpenMatterDashboard = () => {
     if (matterData.matterId) {
@@ -268,7 +209,7 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
       width: size,
       height: size,
       borderRadius: '50%',
-      background: status ? colours.green : colours.red,
+      background: status ? (isDarkMode ? colours.dark.text : '#6b7280') : colours.greyText,
       display: 'inline-block'
     }} />
   );
@@ -298,7 +239,7 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {statusIndicator(!!clientData.id)}
             <span style={{ 
-              color: clientData.id ? colours.green : colours.orange, 
+              color: isDarkMode ? colours.dark.text : '#374151', 
               fontSize: 10, 
               fontWeight: 600,
               textTransform: 'uppercase'
@@ -472,7 +413,7 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
               <div style={{ 
                 fontSize: 11, 
                 fontWeight: 500, 
-                color: matterData.status === 'Open' ? colours.green : colours.orange 
+                color: isDarkMode ? colours.dark.text : '#111827' 
               }}>
                 {matterData.status}
               </div>
@@ -490,24 +431,16 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {/* Primary Actions */}
           {!matterData.matterId ? (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                className={buttonStyle('primary')}
-                onClick={() => setShowMatterForm(!showMatterForm)}
-                disabled={!selectedInstruction?.ClientId || actionInProgress !== null}
-              >
-                🚀 {showMatterForm ? 'Cancel' : 'Create Matter'}
-              </button>
-              
-              {!selectedInstruction.ClientId && (
-                <button
-                  className={buttonStyle('secondary')}
-                  onClick={handleLinkClient}
-                  disabled={actionInProgress !== null}
-                >
-                  🔗 Link Client
-                </button>
-              )}
+            <div style={{
+              padding: '8px',
+              color: colours.greyText,
+              fontSize: 11,
+              fontStyle: 'italic',
+              background: isDarkMode ? colours.dark.background : '#f8fafc',
+              borderRadius: 4,
+              border: `1px dashed ${isDarkMode ? colours.dark.border : '#d1d5db'}`
+            }}>
+              Use the Matter Opening workflow to create and configure the matter.
             </div>
           ) : (
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -537,123 +470,9 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
               </button>
             </div>
           )}
-          
-          {actionInProgress && (
-            <div style={{ 
-              fontSize: 10, 
-              color: colours.blue, 
-              fontStyle: 'italic',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}>
-              <div style={{ 
-                width: 12, 
-                height: 12, 
-                border: `2px solid ${colours.blue}30`,
-                borderTop: `2px solid ${colours.blue}`,
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
-              {actionInProgress === 'create-matter' ? 'Creating matter in Clio...' : 'Processing...'}
-            </div>
-          )}
         </div>
       </div>
-
-      {/* Matter Creation Form */}
-      {showMatterForm && (
-        <div className={cardStyle}>
-          <div className={headerStyle}>
-            <span>Create Matter</span>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: 10, color: colours.greyText, display: 'block', marginBottom: 4 }}>
-                DESCRIPTION
-              </label>
-              <textarea
-                value={matterFormData.description}
-                onChange={(e) => setMatterFormData({ ...matterFormData, description: e.target.value })}
-                placeholder={`Legal matter for ${selectedInstruction.ClientName || 'client'}`}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
-                  borderRadius: 4,
-                  fontSize: 11,
-                  background: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-                  color: isDarkMode ? colours.dark.text : '#111827',
-                  resize: 'vertical',
-                  minHeight: '60px'
-                }}
-              />
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: 10, color: colours.greyText, display: 'block', marginBottom: 4 }}>
-                  PRACTICE AREA
-                </label>
-                <input
-                  type="text"
-                  value={matterFormData.practiceArea}
-                  onChange={(e) => setMatterFormData({ ...matterFormData, practiceArea: e.target.value })}
-                  placeholder={selectedInstruction.AreaOfWork || 'General Legal Services'}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
-                    borderRadius: 4,
-                    fontSize: 11,
-                    background: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-                    color: isDarkMode ? colours.dark.text : '#111827'
-                  }}
-                />
-              </div>
-              
-              <div>
-                <label style={{ fontSize: 10, color: colours.greyText, display: 'block', marginBottom: 4 }}>
-                  RESPONSIBLE SOLICITOR
-                </label>
-                <input
-                  type="text"
-                  value={matterFormData.responsibleSolicitor}
-                  onChange={(e) => setMatterFormData({ ...matterFormData, responsibleSolicitor: e.target.value })}
-                  placeholder={selectedInstruction.ResponsibleSolicitor || 'Unassigned'}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
-                    borderRadius: 4,
-                    fontSize: 11,
-                    background: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-                    color: isDarkMode ? colours.dark.text : '#111827'
-                  }}
-                />
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button
-                className={buttonStyle('secondary')}
-                onClick={() => setShowMatterForm(false)}
-                disabled={actionInProgress !== null}
-              >
-                Cancel
-              </button>
-              <button
-                className={buttonStyle('primary')}
-                onClick={handleCreateMatter}
-                disabled={actionInProgress !== null}
-              >
-                {actionInProgress === 'create-matter' ? 'Creating...' : 'Create Matter'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      
       
       <style>
         {`

@@ -61,12 +61,12 @@ body {
 }
 
 .page-section {
-  padding: 16px;
+  padding: 0px;
 }
 
 @media (max-width: 600px) {
   .page-section {
-    padding: 8px;
+    padding: 0px;
   }
 }
 
@@ -85,4 +85,28 @@ body {
 
 .simple-table th {
   background-color: #f3f3f3;
+}
+
+/* =======================================================
+    DARK MODE OVERRIDES FOR GLOBAL ELEMENTS
+   ======================================================= */
+
+[data-theme="dark"] .simple-table {
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+[data-theme="dark"] .simple-table th,
+[data-theme="dark"] .simple-table td {
+  border-color: #4b5563;
+}
+
+[data-theme="dark"] .simple-table th {
+  background-color: #374151;
+  color: #f3f4f6;
+}
+
+[data-theme="dark"] body {
+  background-color: #1a1a1a;
+  color: #f3f4f6;
 }

@@ -19,20 +19,20 @@ export const colours = {
   highlightNeutral: '#e1e1e1',
 
   dark: {
-    background: '#1e1e1e',
-    sectionBackground: '#2d2d2d',
-    text: '#ffffff',
+    background: '#1a1a1a',
+    sectionBackground: '#1f2937', // Better contrast than #2d2d2d
+    text: '#f3f4f6',
     subText: '#3690CE',
-    border: '#F4F4F6',
-    footerBackground: '#2b2b2b', // Added
-    cardBackground: '#2e2e2e',
-    cardHover: '#3a3a3a',
-    iconColor: '#ffffff',
-    inputBackground: '#3a3a3a',
-    previewBackground: '#333333',
+    border: '#374151',
+    footerBackground: '#1f2937',
+    cardBackground: '#1f2937',
+    cardHover: '#374151',
+    iconColor: '#f3f4f6',
+    inputBackground: '#374151',
+    previewBackground: '#374151',
     highlight: '#3690CE',
     cta: '#0078d4',
-    grey: '#3a3a3a', // Added grey for dark mode
+    grey: '#374151',
 
     // **Added Properties:**
     buttonBackground: '#0078d4', // Using 'cta' color for buttons in dark mode
@@ -40,8 +40,8 @@ export const colours = {
     hoverBackground: '#005a9e',    // Darker shade for hover in dark mode
 
     // **Newly Added Properties:**
-    disabledBackground: '#3a3a3a', // Using existing 'grey' for disabled background in dark mode
-    borderColor: '#6B6B6B',        // Using existing 'greyText' for border in dark mode
+    disabledBackground: '#374151', // Better contrast
+    borderColor: '#4b5563',        // Better border visibility
   },
 
   light: {

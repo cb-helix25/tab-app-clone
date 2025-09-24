@@ -3,6 +3,7 @@ import '../../app/styles/InstructionCard.premium.css';
 import { format, formatDistanceToNow } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
+import { useTheme } from '../../app/functionality/ThemeContext';
 import { 
   FaUser, 
   FaUsers, 
@@ -128,6 +129,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   animationDelay = 0
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const { isDarkMode } = useTheme();
 
   // Status logic - match the logic used in global actions
   // ID Verification status based on EID data
@@ -206,24 +208,32 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   }, [instruction.InstructionRef, selected, expanded, isCompleted]);
 
   const cardClass = mergeStyles({
-    background: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
-    border: selected ? `2px solid ${colours.blue}` : `1px solid ${colours.light.border}`,
+    background: isDarkMode 
+      ? `linear-gradient(135deg, #1a2332 0%, #151d28 100%)` 
+      : `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
+    border: selected 
+      ? `2px solid ${colours.blue}` 
+      : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : colours.light.border}`,
     borderRadius: '12px',
     padding: '20px',
     cursor: 'pointer',
     position: 'relative',
     overflow: 'hidden',
     boxShadow: selected
-      ? `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`
-      : '0 2px 8px rgba(0,0,0,0.08)',
+      ? (isDarkMode 
+          ? `0 0 0 1px ${colours.blue}30, 0 4px 16px rgba(54, 144, 206, 0.3)`
+          : `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`)
+      : (isDarkMode ? '0 4px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.08)'),
     opacity: isCompleted ? 0.6 : 1,
     transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
     flex: '1' as const,
     selectors: {
       ':hover': {
         boxShadow: selected
-          ? `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`
-          : '0 4px 16px rgba(0,0,0,0.12)',
+          ? (isDarkMode 
+              ? `0 0 0 1px ${colours.blue}40, 0 6px 20px rgba(54, 144, 206, 0.4)`
+              : `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`)
+          : (isDarkMode ? '0 6px 12px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.12)'),
         transform: 'translateY(-1px) scale(1.01)',
       },
     },
@@ -238,16 +248,20 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     position: 'relative',
     overflow: 'hidden',
     boxShadow: selected
-      ? `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`
-      : '0 2px 8px rgba(0,0,0,0.08)',
+      ? (isDarkMode 
+          ? `0 0 0 1px ${colours.blue}30, 0 4px 16px rgba(54, 144, 206, 0.3)`
+          : `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`)
+      : (isDarkMode ? '0 4px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.08)'),
     opacity: isCompleted ? 0.6 : 1,
     transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
     flex: '1' as const,
     selectors: {
       ':hover': {
         boxShadow: selected
-          ? `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`
-          : '0 4px 16px rgba(0,0,0,0.12)',
+          ? (isDarkMode 
+              ? `0 0 0 1px ${colours.blue}40, 0 6px 20px rgba(54, 144, 206, 0.4)`
+              : `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`)
+          : (isDarkMode ? '0 6px 12px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.12)'),
         transform: 'translateY(-1px) scale(1.01)',
       },
     },

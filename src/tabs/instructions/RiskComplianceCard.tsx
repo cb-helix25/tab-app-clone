@@ -1,6 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
+import { useTheme } from '../../app/functionality/ThemeContext';
 import { 
   FaShieldAlt, 
   FaUser, 
@@ -192,6 +193,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
     onSelect,
     expanded = false,
 }) => {
+    const { isDarkMode } = useTheme();
     const primaryRisk = data.riskAssessments[0];
     const leadClient = data.clients?.find(c => c.Lead) || data.clients?.[0];
     const jointClients = data.clients?.filter(c => !c.Lead) || [];
@@ -237,22 +239,22 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
         : isMultiClient ? 'Joint Clients' : 'Client';
 
     const cardClass = mergeStyles('riskComplianceCard', {
-        backgroundColor: colours.light.sectionBackground,
+        backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
         borderRadius: '0px',
         padding: expanded ? '24px' : '16px',
-        color: colours.light.text,
+        color: isDarkMode ? colours.dark.text : colours.light.text,
         cursor: 'pointer',
         position: 'relative',
         border: selected 
             ? '2px solid #3690CE' 
             : expanded 
                 ? '2px solid #3690CE'
-                : '1px solid #e1e4e8',
+                : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : '#e1e4e8'}`,
         boxShadow: selected
             ? '0 0 0 1px #3690CE20, 0 4px 16px rgba(54, 144, 206, 0.15)'
             : expanded
                 ? '0 0 0 1px #3690CE10, 0 8px 32px rgba(54, 144, 206, 0.12)'
-                : '0 2px 8px rgba(0,0,0,0.08)',
+                : (isDarkMode ? '0 4px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.08)'),
         opacity: 1,
         transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease, padding 0.3s ease',
         width: expanded ? '100%' : 'auto',

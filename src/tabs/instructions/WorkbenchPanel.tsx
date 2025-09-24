@@ -324,7 +324,6 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
     cursor: 'pointer',
     fontSize: 11,
     fontWeight: 500,
-    textTransform: 'uppercase',
     letterSpacing: '0.025em',
     transition: 'all 0.2s ease',
     ':hover': {
@@ -476,10 +475,10 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', gap: 6 }}>
               {[
-                { key: 'identity', label: 'Identity' },
+                { key: 'identity', label: 'ID' },
                 { key: 'risk', label: 'Risk' },
-                { key: 'payment', label: 'Payment' },
-                { key: 'documents', label: 'Documents' },
+                { key: 'payment', label: 'Pay' },
+                { key: 'documents', label: 'Docs' },
                 { key: 'matter', label: 'Matter' },
                 { key: 'override', label: 'Override' },
                 { key: 'operations', label: 'Operations' },
@@ -633,37 +632,172 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
                     {/* Verification Status & Actions */}
                     <div style={{ paddingTop: 4 }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '12px', alignItems: 'start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <div style={{ fontSize: '10px', fontWeight: 600, color: colours.greyText, textTransform: 'uppercase', marginBottom: '4px' }}>Identity Verification</div>
-                          {[
-                            { label: 'EID Status', value: selectedOverviewItem?.eid?.EIDStatus || 'Not started' },
-                            { label: 'POID Result', value: selectedOverviewItem?.eid?.EIDOverallResult || 'Pending' },
-                            { label: 'Consent Given', value: selectedInstruction.ConsentGiven ? 'Yes' : 'No' }
-                          ].map((field) => (
-                            <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{
-                                fontSize: '10px',
-                                color: colours.greyText,
-                                fontWeight: 500,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.025em'
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 600, color: colours.greyText, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>Electronic ID Verification</span>
+                            {selectedOverviewItem?.eid?.EIDOverallResult === 'review' && (
+                              <span style={{ 
+                                fontSize: '9px', 
+                                color: colours.red, 
+                                background: `${colours.red}15`, 
+                                padding: '2px 6px', 
+                                borderRadius: '3px',
+                                fontWeight: 600,
+                                textTransform: 'uppercase'
                               }}>
-                                {field.label}:
+                                Requires Review
                               </span>
-                              <span style={{
-                                fontSize: '11px',
-                                color: (() => {
-                                  if (field.label === 'POID Result' && field.value === 'review') return colours.red;
-                                  if (field.label === 'EID Status' && field.value === 'completed') return colours.green;
-                                  return isDarkMode ? colours.dark.text : '#111827';
-                                })(),
-                                fontWeight: 500,
-                                textAlign: 'right'
-                              }}>
-                                {field.value}
-                              </span>
+                            )}
+                          </div>
+
+                          {/* Core EID Status */}
+                          <div style={{ 
+                            background: isDarkMode ? colours.dark.cardBackground : '#ffffff', 
+                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            borderRadius: '6px', 
+                            padding: '12px'
+                          }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                              {[
+                                { label: 'Overall Status', value: selectedOverviewItem?.eid?.EIDStatus || 'Not started' },
+                                { label: 'POID Result', value: selectedOverviewItem?.eid?.EIDOverallResult || 'Pending' },
+                                { label: 'Consent Given', value: selectedInstruction.ConsentGiven ? 'Yes' : 'No' },
+                                { label: 'Document Type', value: selectedOverviewItem?.eid?.DocumentType || selectedInstruction.PassportNumber ? 'Passport' : selectedInstruction.DriversLicenseNumber ? 'Driving License' : 'Not provided' }
+                              ].map((field) => (
+                                <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{
+                                    fontSize: '10px',
+                                    color: colours.greyText,
+                                    fontWeight: 500,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.025em'
+                                  }}>
+                                    {field.label}:
+                                  </span>
+                                  <span style={{
+                                    fontSize: '11px',
+                                    color: (() => {
+                                      if (field.label === 'POID Result' && field.value === 'review') return colours.red;
+                                      if (field.label === 'Overall Status' && field.value === 'completed') return colours.green;
+                                      if (field.label === 'Consent Given' && field.value === 'Yes') return colours.green;
+                                      if (field.label === 'Document Type' && field.value !== 'Not provided') return colours.green;
+                                      return isDarkMode ? colours.dark.text : '#111827';
+                                    })(),
+                                    fontWeight: 500,
+                                    textAlign: 'right'
+                                  }}>
+                                    {field.value}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+
+                            {/* Detailed EID Information */}
+                            {selectedOverviewItem?.eid && (
+                              <div style={{ 
+                                borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                                paddingTop: '12px'
+                              }}>
+                                <div style={{ fontSize: '10px', fontWeight: 600, color: colours.greyText, textTransform: 'uppercase', marginBottom: '8px' }}>
+                                  Verification Details
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '10px' }}>
+                                  {[
+                                    { label: 'Document Check', value: selectedOverviewItem.eid.DocumentCheck || 'N/A' },
+                                    { label: 'Face Match', value: selectedOverviewItem.eid.FaceMatch || 'N/A' },
+                                    { label: 'Liveness Check', value: selectedOverviewItem.eid.LivenessCheck || 'N/A' },
+                                    { label: 'Data Extraction', value: selectedOverviewItem.eid.DataExtraction || 'N/A' },
+                                    { label: 'Risk Score', value: selectedOverviewItem.eid.RiskScore ? `${selectedOverviewItem.eid.RiskScore}/100` : 'N/A' },
+                                    { label: 'Processing Time', value: selectedOverviewItem.eid.ProcessingTime || 'N/A' }
+                                  ].map((detail) => (
+                                    <div key={detail.label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                      <span style={{ color: colours.greyText }}>{detail.label}:</span>
+                                      <span style={{ 
+                                        color: (() => {
+                                          const val = detail.value.toLowerCase();
+                                          if (val.includes('pass') || val.includes('success')) return colours.green;
+                                          if (val.includes('fail') || val.includes('review')) return colours.red;
+                                          if (val.includes('warning')) return colours.orange;
+                                          return isDarkMode ? colours.dark.text : '#374151';
+                                        })(),
+                                        fontWeight: 500
+                                      }}>
+                                        {detail.value}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div style={{ 
+                              borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`, 
+                              paddingTop: '12px',
+                              display: 'flex',
+                              gap: '8px',
+                              flexWrap: 'wrap'
+                            }}>
+                              <button
+                                style={{
+                                  fontSize: '10px',
+                                  padding: '6px 12px',
+                                  border: `1px solid ${colours.blue}`,
+                                  borderRadius: '4px',
+                                  background: 'transparent',
+                                  color: colours.blue,
+                                  cursor: 'pointer',
+                                  fontWeight: 500
+                                }}
+                                onClick={() => {
+                                  const status = getActionStatus('verify-id');
+                                  handleSystemOperation(status === 'failed' ? 'review-id' : 'verify-id');
+                                }}
+                              >
+                                {selectedOverviewItem?.eid?.EIDOverallResult === 'review' ? 'Review ID Details' : 'Verify Identity'}
+                              </button>
+                              {selectedOverviewItem?.eid?.EIDStatus === 'completed' && (
+                                <button
+                                  style={{
+                                    fontSize: '10px',
+                                    padding: '6px 12px',
+                                    border: `1px solid ${colours.green}`,
+                                    borderRadius: '4px',
+                                    background: 'transparent',
+                                    color: colours.green,
+                                    cursor: 'pointer',
+                                    fontWeight: 500
+                                  }}
+                                  onClick={() => {
+                                    // Add functionality to view full EID report
+                                    console.log('View full EID report');
+                                  }}
+                                >
+                                  View Full Report
+                                </button>
+                              )}
+                              {!selectedInstruction.ConsentGiven && (
+                                <button
+                                  style={{
+                                    fontSize: '10px',
+                                    padding: '6px 12px',
+                                    border: `1px solid ${colours.orange}`,
+                                    borderRadius: '4px',
+                                    background: 'transparent',
+                                    color: colours.orange,
+                                    cursor: 'pointer',
+                                    fontWeight: 500
+                                  }}
+                                  onClick={() => {
+                                    // Add functionality to request consent
+                                    console.log('Request consent');
+                                  }}
+                                >
+                                  Request Consent
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

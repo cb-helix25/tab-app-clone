@@ -114,6 +114,8 @@ export interface InstructionCardProps {
   /** Invoked to delete an existing Risk Assessment */
   onDeleteRisk?: (instructionRef: string) => void;
   onOpenMatter?: (instruction: any) => void;
+  /** Workbench control functions */
+  onOpenWorkbench?: (tab: 'identity' | 'risk' | 'payments' | 'documents' | 'matter' | 'ccl') => void;
   idVerificationLoading?: boolean;
   animationDelay?: number;
   getClientNameByProspectId?: (prospectId: string | number | undefined) => { firstName: string; lastName: string };
@@ -216,6 +218,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   onEditRisk,
   onDeleteRisk,
   onOpenMatter,
+  onOpenWorkbench,
   idVerificationLoading = false,
   animationDelay = 0,
   getClientNameByProspectId,
@@ -884,7 +887,28 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       
       {/* Header: Primary identifier + area chip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, paddingLeft: 0, justifyContent: 'space-between' }}>
-        <span style={{ fontWeight: 700, color: isDarkMode ? '#fff' : '#0d2538', lineHeight: 1.2, fontSize: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Client Type Icon */}
+          {instruction?.ClientType === 'Company' ? (
+            <FaBuilding style={{ 
+              color: selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)'), 
+              fontSize: '12px',
+              transition: 'color 0.2s ease'
+            }} />
+          ) : (
+            <FaUser style={{ 
+              color: selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)'), 
+              fontSize: '12px',
+              transition: 'color 0.2s ease'
+            }} />
+          )}
+          <span style={{ 
+            fontWeight: 700, 
+            color: selected ? colours.blue : (isDarkMode ? '#fff' : '#0d2538'), 
+            lineHeight: 1.2, 
+            fontSize: '15px',
+            transition: 'color 0.2s ease'
+          }}>
           {(() => {
             // Helpers to source person name from various places
             const getEnquiryPersonName = (): string | undefined => {
@@ -972,7 +996,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             // Fallback to prospect ID only if no name found
             return `Client ${prospectId}`;
           })()}
-        </span>
+          </span>
+        </div>
         {areaOfWork && (
           <span
             style={{
@@ -1012,7 +1037,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           const solicitorContact = instruction?.HelixContact || instruction?.Solicitor || instruction?.AssignedTo || instruction?.Handler || instruction?.PointOfContact || instructionData?.HelixContact;
 
           const chipBase = {
-            color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+            color: selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'),
             fontSize: '11px',
             cursor: 'pointer' as const,
             padding: '3px 8px',
@@ -1021,17 +1046,21 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
-            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
+            border: `1px solid ${selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)')}`,
+            backgroundColor: selected ? 'rgba(54, 144, 206, 0.1)' : (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)')
           };
 
           const onHover = (el: HTMLElement) => {
-            el.style.borderColor = colours.blue;
-            el.style.color = colours.blue;
+            if (!selected) {
+              el.style.borderColor = colours.blue;
+              el.style.color = colours.blue;
+            }
           };
           const onLeave = (el: HTMLElement) => {
-            el.style.color = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
-            el.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+            if (!selected) {
+              el.style.color = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+              el.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+            }
           };
 
           return (
@@ -1044,7 +1073,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   onMouseLeave={(e) => onLeave(e.currentTarget)}
                   title={`Click to copy email: ${email}`}
                 >
-                  <FaEnvelope style={{ fontSize: '10px' }} />
+                  <FaEnvelope style={{ 
+                    fontSize: '10px', 
+                    color: selected ? colours.blue : 'inherit',
+                    transition: 'color 0.2s ease' 
+                  }} />
                   <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{email}</span>
                 </div>
               )}
@@ -1056,7 +1089,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   onMouseLeave={(e) => onLeave(e.currentTarget)}
                   title={`Click to copy phone: ${phone}`}
                 >
-                  <FaPhone style={{ fontSize: '10px' }} />
+                  <FaPhone style={{ 
+                    fontSize: '10px', 
+                    color: selected ? colours.blue : 'inherit',
+                    transition: 'color 0.2s ease' 
+                  }} />
                   <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{phone}</span>
                 </div>
               )}
@@ -1259,11 +1296,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           fontSize: '10px',
           fontWeight: 600,
           color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
-          marginBottom: '6px',
+          marginBottom: '0px',
           textTransform: 'uppercase',
           letterSpacing: '0.4px'
         }}>
-          Workflow
         </div>
         
         {/* Key Status Indicators */}
@@ -1295,7 +1331,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                      paymentStatus === 'processing' ? 'Processing' : 'Required',
               icon: <FaPoundSign />,
               clickable: true,
-              onClick: () => setShowPaymentDetails(prev => !prev)
+              onClick: () => onOpenWorkbench?.('payments')
             });
             
             // Documents
@@ -1305,7 +1341,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               status: documentsToUse && documentsToUse.length > 0 ? `${documentsToUse.length} Uploaded` : 'Pending',
               icon: <FaFileAlt />,
               clickable: true,
-              onClick: () => setShowDocumentDetails(prev => !prev)
+              onClick: () => onOpenWorkbench?.('documents')
             });
             
             // Risk Assessment
@@ -1316,15 +1352,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                      riskStatus === 'review' ? 'High Risk' : 'Pending',
               icon: <FaShieldAlt />,
               clickable: true,
-              onClick: () => {
-                if (hasRiskAssessment) {
-                  setShowRiskDetails(prev => !prev);
-                } else if (onRiskClick) {
-                  onRiskClick();
-                } else {
-                  setShowRiskDetails(true);
-                }
-              }
+              onClick: () => onOpenWorkbench?.('risk')
             });
             
             // Matter Opening
@@ -1426,7 +1454,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                       fontSize: '9px',
                       fontWeight: 600,
                       color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
-                      textTransform: 'uppercase',
                       letterSpacing: '0.2px',
                       whiteSpace: 'nowrap'
                     }}>

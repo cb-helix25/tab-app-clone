@@ -127,9 +127,16 @@ const baseCardStyle = mergeStyles({
 });
 
 const darkCardStyle = mergeStyles({
-    background: 'linear-gradient(135deg, #333, #444)',
-    border: '1px solid #555',
+    background: 'linear-gradient(135deg, #1a2332 0%, #151d28 100%)',
+    border: '1px solid rgba(255,255,255,0.08)',
     fontFamily: 'Raleway, sans-serif',
+    color: '#e2e8f0',
+    boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+    selectors: {
+        ':hover': {
+            boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+        },
+    },
 });
 
 const selectedCardStyle = mergeStyles({
@@ -139,6 +146,18 @@ const selectedCardStyle = mergeStyles({
     fontFamily: 'Raleway, sans-serif',
     selectors: {
         // Keep icon at full opacity when selected
+        '.inlinePersonCompanyIcon': {
+            opacity: '1 !important',
+        }
+    }
+});
+
+const selectedDarkCardStyle = mergeStyles({
+    border: `2px solid ${colours.highlight}`,
+    background: `linear-gradient(135deg, rgba(54,144,206,0.15) 0%, rgba(54,144,206,0.08) 100%)`,
+    color: '#e2e8f0',
+    fontFamily: 'Raleway, sans-serif',
+    selectors: {
         '.inlinePersonCompanyIcon': {
             opacity: '1 !important',
         }
@@ -297,7 +316,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
     const cardStyle = mergeStyles(
         baseCardStyle,
         isDarkMode && darkCardStyle,
-        selected && selectedCardStyle,
+        selected && (isDarkMode ? selectedDarkCardStyle : selectedCardStyle),
         cardWithLinksHover,
         'poid-card'
     );
@@ -484,7 +503,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                                     gap: 4
                                 }}>
                                     <Icon iconName="POI" styles={{ root: { fontSize: 10 } }} />
-                                    Address: {addressVerificationResult}
+                                    Addr: {addressVerificationResult}
                                 </div>
                             )}
                             {paymentResult && (

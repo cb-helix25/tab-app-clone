@@ -174,3 +174,58 @@
   .instruction-card-container.premium:hover { transform:none; }
   .instruction-card-container.premium .premium-timeline .step-dot.active { animation:none; }
 }
+
+/* =======================================================
+    DARK MODE OVERRIDES FOR PREMIUM INSTRUCTION CARDS
+   ======================================================= */
+
+[data-theme="dark"] .instruction-card-container.premium {
+  --premium-navy: #e2e8f0;
+  --premium-blue: #60a5fa;
+  --premium-blue-dark: #3b82f6;
+  --premium-bg-soft: linear-gradient(135deg, #1a2332 0%, #151d28 100%);
+  --premium-border: rgba(255,255,255,0.12);
+  --premium-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  --premium-shadow-hover: 0 8px 16px rgba(0,0,0,0.4);
+  --premium-success-grad: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  --premium-warning-bg: rgba(251,191,36,0.2);
+  --premium-warning-border: #fbbf24;
+  
+  background: var(--premium-bg-soft);
+  border-color: var(--premium-border);
+  color: #e2e8f0;
+  box-shadow: var(--premium-shadow);
+}
+
+[data-theme="dark"] .instruction-card-container.premium:hover {
+  box-shadow: var(--premium-shadow-hover);
+}
+
+[data-theme="dark"] .instruction-card-container.premium .premium-header-name {
+  color: var(--premium-navy);
+}
+
+[data-theme="dark"] .instruction-card-container.premium .mute {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .instruction-card-container.premium .small-label {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .instruction-card-container.premium .premium-timeline .step-dot {
+  background: #374151;
+  box-shadow: 0 0 0 1px #1f2937;
+}
+
+[data-theme="dark"] .instruction-card-container.premium .premium-timeline .step-dot.complete {
+  background: #22c55e;
+}
+
+[data-theme="dark"] .instruction-card-container.premium .premium-timeline .step-dot.active {
+  background: var(--premium-blue);
+}
+
+[data-theme="dark"] .instruction-card-container.premium .premium-timeline .connector {
+  background: #374151;
+}

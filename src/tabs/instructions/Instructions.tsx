@@ -23,6 +23,8 @@ import {
   FaRegFolder,
   FaCheckCircle,
   FaExclamationTriangle,
+  FaUser,
+  FaBuilding,
 } from 'react-icons/fa';
 import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment, MdSync, MdExpandMore, MdChevronRight } from 'react-icons/md';
 import { FaShieldAlt, FaIdCard, FaCreditCard, FaCogs } from 'react-icons/fa';
@@ -104,6 +106,12 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [forceNewMatter, setForceNewMatter] = useState(false);
   const [showCclDraftPage, setShowCclDraftPage] = useState(false);
   const [isWorkbenchVisible, setIsWorkbenchVisible] = useState(false);
+  // On-brand toast feedback
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 3500);
+  }, []);
 
   // Flat tab navigation: default to Clients
   const [activeTab, setActiveTab] = useState<'pitches' | 'clients' | 'risk'>('clients');
@@ -1388,21 +1396,19 @@ const Instructions: React.FC<InstructionsProps> = ({
       backgroundColor: dark
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
-      padding: "16px",
-      paddingBottom: activeTab === "clients" && !selectedInstruction ? "120px" : "16px", // No extra padding when workbench replaces global actions
+      padding: "0px",
+      paddingBottom: activeTab === "clients" && !selectedInstruction ? "104px" : "0px", // No extra padding when workbench replaces global actions
       borderRadius: 0,
-      boxShadow: dark
-        ? `0 4px 12px ${colours.dark.border}`
-        : `0 4px 12px ${colours.light.border}`,
+      boxShadow: "none",
       width: "100%",
       // Responsive padding
       '@media (max-width: 768px)': {
-        padding: "12px",
-        paddingBottom: activeTab === "clients" && !selectedInstruction ? "100px" : "12px",
+        padding: "0px",
+        paddingBottom: activeTab === "clients" && !selectedInstruction ? "76px" : "0px",
       },
       '@media (max-width: 480px)': {
-        padding: "8px",
-        paddingBottom: activeTab === "clients" && !selectedInstruction ? "80px" : "8px",
+        padding: "0px",
+        paddingBottom: activeTab === "clients" && !selectedInstruction ? "72px" : "0px",
       },
     });
 
@@ -1777,6 +1783,19 @@ const Instructions: React.FC<InstructionsProps> = ({
     return '';
   }, [selectedInstruction, matters, effectiveInstructionData]);
   
+  // Helper function to get area of work color
+  const getAreaColor = (area?: string): string => {
+    if (!area) return colours.blue;
+    const normalizedArea = area.toLowerCase();
+    switch (normalizedArea) {
+      case 'commercial': return colours.blue;
+      case 'property': return colours.green;
+      case 'construction': return colours.orange;
+      case 'employment': return colours.yellow;
+      default: return colours.blue;
+    }
+  };
+
   // Determine which button should pulse to indicate next ready action
   const getNextReadyAction = (): 'verify' | 'risk' | 'matter' | 'ccl' | null => {
     if (!selectedInstruction) return null;
@@ -2749,6 +2768,41 @@ const Instructions: React.FC<InstructionsProps> = ({
     }, 100);
   };
 
+  // Inline EID review: auto-load details for the selected instruction when available
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (selectedInstruction?.InstructionRef) {
+          const details = await fetchVerificationDetails(selectedInstruction.InstructionRef);
+          setReviewModalDetails(details);
+        }
+      } catch (e) {
+        console.error('Failed to load EID details inline:', e);
+      }
+    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedInstruction?.InstructionRef]);
+
+  // Inline EID review: request additional documents via server route (same as modal)
+  const requestEidDocumentsInline = async (instructionRef: string) => {
+    try {
+      const response = await fetch(`/api/verify-id/${instructionRef}/request-documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send email');
+      }
+      const result = await response.json();
+      showToast(`Document request email sent to ${result.recipient}`, 'success');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      showToast(`Failed to send document request: ${msg}`, 'error');
+    }
+  };
+
 
   // Always open CCL template for global Draft CCL action
   const handleOpenDraftCcl = (ref: string) => {
@@ -2777,15 +2831,19 @@ const Instructions: React.FC<InstructionsProps> = ({
     gap: '8px',
     width: '100%',
     margin: '0 auto',
+    padding: '16px',
     boxSizing: 'border-box',
     transition: 'grid-template-columns .25s ease',
+    background: 'transparent', // Let parent handle background
     // Responsive adjustments
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
       gap: '12px',
+      padding: '12px',
     },
     '@media (max-width: 480px)': {
       gap: '8px',
+      padding: '8px',
     },
   });
 
@@ -3013,6 +3071,37 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   return (
     <>
+      {/* On-brand toast */}
+      {toast && (
+        <div
+          className={"toast-enter-active"}
+          style={{
+            position: 'fixed',
+            top: 16,
+            right: 16,
+            zIndex: 2000,
+            minWidth: 280,
+            maxWidth: 420,
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: isDarkMode ? '#0B1222' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+            color: isDarkMode ? colours.dark.text : '#061733',
+            border: `1px solid ${toast.type === 'success' ? '#34D399' : '#F87171'}`,
+            boxShadow: isDarkMode ? '0 4px 6px rgba(0,0,0,0.3)' : '0 4px 6px rgba(0,0,0,0.07)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10
+          }}
+        >
+          <div style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: toast.type === 'success' ? '#10B981' : '#EF4444'
+          }} />
+          <div style={{ fontSize: 12, fontWeight: 600 }}>{toast.message}</div>
+        </div>
+      )}
     <section key="instructions-section" className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className={sectionContainerStyle(isDarkMode)}>
@@ -3175,6 +3264,13 @@ const Instructions: React.FC<InstructionsProps> = ({
                           }}
                           onDeleteRisk={handleRiskAssessmentDelete}
                         onOpenMatter={handleOpenMatter}
+                        onOpenWorkbench={(tab) => {
+                          // Select the instruction first
+                          setSelectedInstruction(item.instruction);
+                          // Open workbench with specific tab
+                          setIsWorkbenchVisible(true);
+                          setActiveWorkbenchTab(tab);
+                        }}
                         onSelect={() => {
                           // Toggle selection: if already selected, unselect; otherwise select
                           flushSync(() => {
@@ -3251,14 +3347,14 @@ const Instructions: React.FC<InstructionsProps> = ({
               
               @keyframes workbenchSlideIn {
                 from { 
-                  transform: translateY(-20px); 
+                  max-height: 0;
                   opacity: 0; 
-                  scale: 0.98;
+                  overflow: hidden;
                 }
                 to { 
-                  transform: translateY(0); 
+                  max-height: 400px;
                   opacity: 1; 
-                  scale: 1;
+                  overflow: visible;
                 }
               }
               
@@ -3360,53 +3456,128 @@ const Instructions: React.FC<InstructionsProps> = ({
               }}
             >
               {/* Unified bottom panel with animated swap */}
-          <div style={{ padding: '6px 12px' }}>
-                {/* Global Actions Header (pre-selection) */}
+          <div style={{ padding: '0' }}>
+                {/* Unified Header that changes content based on state */}
                 <div
-                  className={`swap-section ${selectedInstruction ? 'swap-hidden' : ''}`}
+                  onClick={selectedInstruction ? () => setIsWorkbenchVisible(!isWorkbenchVisible) : undefined}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '6px 12px',
-                    background: 'transparent',
+                    padding: '12px 26px',
+                    background: selectedInstruction ? colours.darkBlue : 'transparent',
                     border: 'none',
                     borderRadius: '0',
-                    cursor: 'default',
+                    cursor: selectedInstruction ? 'pointer' : 'default',
                     transition: 'all 0.2s ease',
-                    minHeight: '32px'
+                    height: '48px',
+                    boxSizing: 'border-box'
                   }}
                 >
-                  {/* Left side - Status indicator */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ 
-                      width: 3, 
-                      height: 3, 
-                      borderRadius: '50%', 
-                      background: colours.blue,
-                      animation: 'pulse 2s infinite'
-                    }} />
-                    <span style={{ 
-                      fontSize: '11px', 
-                      fontWeight: 600, 
-                      color: isDarkMode ? colours.dark.text : '#1f2937',
-                      letterSpacing: '0.02em',
-                      fontFamily: 'monospace'
-                    }}>
-                      Global Actions
-                    </span>
-                    <span style={{
-                      fontSize: '9px',
-                      fontWeight: 500,
-                      color: isDarkMode ? colours.dark.subText : '#6b7280',
-                      letterSpacing: '0.03em',
-                      textTransform: 'uppercase'
-                    }}>
-                      Select Instruction
-                    </span>
+                  {/* Left side - Dynamic content based on state */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {/* Pulsing dot + Instruction ref */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ 
+                        width: 3, 
+                        height: 3, 
+                        borderRadius: '50%', 
+                        background: selectedInstruction ? getAreaColor(selectedInstruction.AreaOfWork || selectedInstruction.Area_of_Work || selectedInstruction.areaOfWork) : colours.blue,
+                        animation: 'pulse 2s infinite'
+                      }} />
+                      <span style={{ 
+                        fontSize: '11px', 
+                        fontWeight: 600, 
+                        color: selectedInstruction ? '#ffffff' : (isDarkMode ? colours.dark.text : '#1f2937'),
+                        letterSpacing: '0.02em',
+                        fontFamily: 'monospace'
+                      }}>
+                        {selectedInstruction ? selectedInstruction.InstructionRef : 'One Off Actions'}
+                      </span>
+                    </div>
+
+                    {/* Area of Work Tag (separated) */}
+                    {selectedInstruction && (areaOfWorkInfo.label || 'Commercial') && (
+                      <span style={{
+                        fontSize: '8px',
+                        fontWeight: 600,
+                        color: getAreaColor(selectedInstruction.AreaOfWork || selectedInstruction.Area_of_Work || selectedInstruction.areaOfWork),
+                        letterSpacing: '0.03em',
+                        textTransform: 'uppercase',
+                        background: `${getAreaColor(selectedInstruction.AreaOfWork || selectedInstruction.Area_of_Work || selectedInstruction.areaOfWork)}20`,
+                        padding: '2px 6px',
+                        borderRadius: '3px',
+                        border: `1px solid ${getAreaColor(selectedInstruction.AreaOfWork || selectedInstruction.Area_of_Work || selectedInstruction.areaOfWork)}40`
+                      }}>
+                        {areaOfWorkInfo.label || 'Commercial'}
+                      </span>
+                    )}
+
+                    {/* Client Information */}
+                    {selectedInstruction && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {/* Client Type Icon */}
+                        {selectedInstruction.ClientType === 'Company' ? (
+                          <FaBuilding style={{ 
+                            color: '#ffffff', 
+                            fontSize: '10px',
+                            opacity: 0.8
+                          }} />
+                        ) : (
+                          <FaUser style={{ 
+                            color: '#ffffff', 
+                            fontSize: '10px',
+                            opacity: 0.8
+                          }} />
+                        )}
+                        
+                        {/* Client Name */}
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 500,
+                          color: '#ffffff',
+                          opacity: 0.9,
+                          maxWidth: '200px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {selectedInstruction.ClientType === 'Company' 
+                            ? (selectedInstruction.CompanyName || `${selectedInstruction.FirstName || ''} ${selectedInstruction.LastName || ''}`.trim() || 'Company Client')
+                            : (`${selectedInstruction.FirstName || ''} ${selectedInstruction.LastName || ''}`.trim() || selectedInstruction.CompanyName || 'Individual Client')
+                          }
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  {/* Right side - Compact action buttons */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  
+                  {/* Right side - Dynamic content based on state */}
+                  {selectedInstruction ? (
+                    /* Workbench collapse/expand indicator */
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{
+                        fontSize: '9px',
+                        color: '#ffffff',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        opacity: 0.8
+                      }}>
+                        {isWorkbenchVisible ? 'Collapse' : 'Expand'}
+                      </span>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: '#ffffff',
+                        transform: isWorkbenchVisible ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        padding: '1px'
+                      }}>
+                        <MdExpandMore size={14} />
+                      </div>
+                    </div>
+                  ) : (
+                    /* Global action buttons */
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       onClick={handleGlobalEIDCheck}
                       disabled={verifyButtonDisabled}
@@ -3657,94 +3828,11 @@ const Instructions: React.FC<InstructionsProps> = ({
                       </span>
                     </button>
                   </div>
-                </div>
-                <div
-                  className={`swap-section ${!selectedInstruction ? 'swap-hidden' : ''}`}
-                  style={{
-                    padding: '8px 14px',
-                    minHeight: '36px',
-                  }}
-                >
-                  {/* Header with expand indicator */}
-                  {selectedInstruction && (
-                    <div 
-                      onClick={() => setIsWorkbenchVisible(!isWorkbenchVisible)}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '6px 12px',
-                        background: 'transparent',
-                        border: 'none',
-                        borderRadius: '0',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        minHeight: '32px'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ 
-                          width: 3, 
-                          height: 3, 
-                          borderRadius: '50%', 
-                          background: areaOfWorkInfo.color,
-                          animation: 'pulse 2s infinite'
-                        }} />
-                        <span style={{ 
-                          fontSize: '11px', 
-                          fontWeight: 600, 
-                          color: isDarkMode ? colours.dark.text : '#1f2937',
-                          letterSpacing: '0.02em',
-                          fontFamily: 'monospace'
-                        }}>
-                          {selectedInstruction.InstructionRef}
-                        </span>
-                        {areaOfWorkInfo.label && (
-                          <span style={{
-                            fontSize: '9px',
-                            fontWeight: 500,
-                            color: isDarkMode ? colours.dark.subText : '#6b7280',
-                            letterSpacing: '0.03em',
-                            textTransform: 'uppercase'
-                          }}>
-                            {areaOfWorkInfo.label}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ 
-                          fontSize: '9px', 
-                          color: isDarkMode ? colours.dark.subText : '#6b7280',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em'
-                        }}>
-                          {isWorkbenchVisible ? 'Collapse' : 'Expand'}
-                        </span>
-                        <div style={{ 
-                          display: 'flex',
-                          alignItems: 'center',
-                          color: isDarkMode ? colours.dark.subText : '#6b7280',
-                          transform: isWorkbenchVisible ? 'rotate(180deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          padding: '1px'
-                        }}>
-                          <MdExpandMore size={14} />
-                        </div>
-                      </div>
-                    </div>
                   )}
-
-                  {/* Expandable Workbench Content */}
-                  {selectedInstruction && isWorkbenchVisible && (
+                </div>
+                
+                {/* Workbench Content */}
+                {selectedInstruction && isWorkbenchVisible && (
                     <div 
                       className="comprehensive-workbench"
                       style={{
@@ -3762,9 +3850,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                   {/* Tab Navigation */}
                   <div style={{
                     display: 'flex',
+                    width: '100%',
                     background: 'transparent',
                     borderBottom: 'none',
-                    padding: '0 12px'
+                    padding: '0'
                   }}>
                     {[
                       { 
@@ -3815,6 +3904,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                         className="workbench-tab-button"
                         onClick={() => setActiveWorkbenchTab(tab.key)}
                         style={{
+                          flex: 1,
                           padding: '12px 16px',
                           border: 'none',
                           background: activeWorkbenchTab === tab.key 
@@ -3823,25 +3913,25 @@ const Instructions: React.FC<InstructionsProps> = ({
                           borderBottom: activeWorkbenchTab === tab.key 
                             ? `2px solid ${tab.isComplete ? colours.green : colours.blue}` 
                             : '2px solid transparent',
-                          color: tab.isComplete ? colours.green : (activeWorkbenchTab === tab.key 
+                          color: tab.isComplete ? (activeWorkbenchTab === tab.key ? colours.green : (isDarkMode ? '#4a7c59' : '#90c695')) : (activeWorkbenchTab === tab.key 
                             ? (isDarkMode ? colours.dark.text : colours.light.text)
-                            : colours.greyText),
+                            : (isDarkMode ? '#888' : '#bbb')),
                           cursor: 'pointer',
                           fontSize: '11px',
                           fontWeight: activeWorkbenchTab === tab.key ? 600 : 500,
-                          textTransform: 'uppercase',
                           letterSpacing: '0.5px',
                           display: 'flex',
                           alignItems: 'center',
+                          justifyContent: 'center',
                           gap: '6px',
                           transition: 'all 0.2s ease',
                           position: 'relative'
                         }}
                       >
-                        <span style={{ color: tab.isComplete ? colours.green : 'inherit', display: 'flex', alignItems: 'center' }}>
+                        <span style={{ color: tab.isComplete ? (activeWorkbenchTab === tab.key ? colours.green : (isDarkMode ? '#4a7c59' : '#90c695')) : 'inherit', display: 'flex', alignItems: 'center' }}>
                           {tab.icon}
                         </span>
-                        <span style={{ color: tab.isComplete ? colours.green : 'inherit' }}>
+                        <span style={{ color: tab.isComplete ? (activeWorkbenchTab === tab.key ? colours.green : (isDarkMode ? '#4a7c59' : '#90c695')) : 'inherit' }}>
                           {tab.label}
                         </span>
                       </button>
@@ -3854,269 +3944,265 @@ const Instructions: React.FC<InstructionsProps> = ({
                     minHeight: '150px',
                     maxHeight: '35vh',
                     overflowY: 'auto',
-                    background: 'transparent'
+                    background: 'transparent',
+                    borderTopLeftRadius: '12px',
+                    borderTopRightRadius: '12px'
                   }}>
                     {activeWorkbenchTab === 'identity' && (
                       <div>
-                        <h3 style={{ 
-                          margin: '0 0 12px 0', 
-                          fontSize: '13px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}>
-                          <FaIdCard size={12} color={verifyIdStatus === 'complete' ? colours.green : colours.blue} />
-                          Identity Data Inspector
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: verifyIdStatus === 'complete' ? colours.green : colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: verifyIdStatus === 'complete' ? `${colours.green}15` : `${colours.orange}15`
+                        {/* Identity & Instruction Details Section */}
+                        <div style={{ marginBottom: '24px' }}>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: isDarkMode ? colours.dark.text : '#1f2937',
+                            marginBottom: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
                           }}>
-                            {verifyIdStatus}
-                          </span>
-                        </h3>
-                        
-                        {/* Identity Data Grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                          {/* Personal Information */}
+                            <FaUser style={{ fontSize: '12px', color: colours.blue }} />
+                            Identity & Instruction Details
+                          </div>
+                          
+                          {/* Identity Data Grid */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                            {/* Personal Information */}
+                            <div style={{
+                              background: isDarkMode ? colours.dark.cardHover : '#ffffff',
+                              borderRadius: '8px',
+                              padding: '16px',
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                            }}>
+                              <div style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: isDarkMode ? colours.dark.text : '#374151',
+                                marginBottom: '12px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.025em',
+                                borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                                paddingBottom: '8px'
+                              }}>
+                                Personal Information
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {[
+                                  { label: 'Name', value: `${selectedInstruction.Title || ''} ${selectedInstruction.ClientName || selectedInstruction.FirstName || ''} ${selectedInstruction.LastName || ''}`.trim() },
+                                  { label: 'Email', value: selectedInstruction.ClientEmail || selectedInstruction.Email },
+                                  { label: 'Phone', value: selectedInstruction.PhoneNumber || selectedInstruction.MobileNumber },
+                                  { label: 'DOB', value: selectedInstruction.DateOfBirth },
+                                  { label: 'Gender', value: selectedInstruction.Gender },
+                                  { label: 'Nationality', value: selectedInstruction.Nationality || selectedInstruction.Country },
+                                  { label: 'Client Type', value: selectedInstruction.ClientType || selectedInstruction.EntityType || 'Individual' }
+                                ].map((field) => (
+                                  <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{
+                                      fontSize: '10px',
+                                      color: colours.greyText,
+                                      fontWeight: 500,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.025em',
+                                      minWidth: '80px'
+                                    }}>
+                                      {field.label}:
+                                    </span>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                      fontWeight: field.value ? 500 : 400,
+                                      textAlign: 'right',
+                                      fontStyle: field.value ? 'normal' : 'italic'
+                                    }}>
+                                      {field.value || 'Not provided'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Identification */}
+                            <div style={{
+                              background: isDarkMode ? colours.dark.cardHover : '#ffffff',
+                              borderRadius: '8px',
+                              padding: '16px',
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                            }}>
+                              <div style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: isDarkMode ? colours.dark.text : '#374151',
+                                marginBottom: '12px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.025em',
+                                borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                                paddingBottom: '8px'
+                              }}>
+                                Identification
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {[
+                                  { label: 'ID Type', value: selectedInstruction.PassportNumber ? 'passport' : selectedInstruction.DriversLicenseNumber ? 'driving license' : selectedInstruction.NationalIdNumber ? 'national id' : 'Not specified' },
+                                  { label: 'Passport', value: selectedInstruction.PassportNumber },
+                                  { label: 'Driving License', value: selectedInstruction.DriversLicenseNumber },
+                                  { label: 'Client ID', value: selectedInstruction.ClientId || 'Not assigned' },
+                                  { label: 'Related Client', value: selectedInstruction.RelatedClientId || 'None' },
+                                  { label: 'Matter ID', value: selectedInstruction.MatterId }
+                                ].map((field) => (
+                                  <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{
+                                      fontSize: '10px',
+                                      color: colours.greyText,
+                                      fontWeight: 500,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.025em',
+                                      minWidth: '100px'
+                                    }}>
+                                      {field.label}:
+                                    </span>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                      fontWeight: field.value ? 500 : 400,
+                                      textAlign: 'right',
+                                      fontStyle: field.value ? 'normal' : 'italic'
+                                    }}>
+                                      {field.value || 'Not provided'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Residential Address */}
+                            <div style={{
+                              background: isDarkMode ? colours.dark.cardHover : '#ffffff',
+                              borderRadius: '8px',
+                              padding: '16px',
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                            }}>
+                              <div style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: isDarkMode ? colours.dark.text : '#374151',
+                                marginBottom: '12px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.025em',
+                                borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                                paddingBottom: '8px'
+                              }}>
+                                Residential Address
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {[
+                                  { label: 'Address', value: `${selectedInstruction.AddressLine1 || ''} ${selectedInstruction.AddressLine2 || ''}`.trim() },
+                                  { label: 'City', value: selectedInstruction.City },
+                                  { label: 'County', value: selectedInstruction.County || selectedInstruction.State },
+                                  { label: 'Postcode', value: selectedInstruction.Postcode || selectedInstruction.PostalCode },
+                                  { label: 'Country', value: selectedInstruction.Country }
+                                ].map((field) => (
+                                  <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{
+                                      fontSize: '10px',
+                                      color: colours.greyText,
+                                      fontWeight: 500,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.025em',
+                                      minWidth: '80px'
+                                    }}>
+                                      {field.label}:
+                                    </span>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                      fontWeight: field.value ? 500 : 400,
+                                      textAlign: 'right',
+                                      fontStyle: field.value ? 'normal' : 'italic'
+                                    }}>
+                                      {field.value || 'Not provided'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Company Information */}
+                            <div style={{
+                              background: isDarkMode ? colours.dark.cardHover : '#ffffff',
+                              borderRadius: '8px',
+                              padding: '16px',
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                            }}>
+                              <div style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: isDarkMode ? colours.dark.text : '#374151',
+                                marginBottom: '12px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.025em',
+                                borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                                paddingBottom: '8px'
+                              }}>
+                                Company Information
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {[
+                                  { label: 'Company', value: selectedInstruction.CompanyName || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                  { label: 'Company Number', value: selectedInstruction.CompanyNumber || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                  { label: 'House Number', value: selectedInstruction.CompanyAddressLine1 || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                  { label: 'Address', value: selectedInstruction.CompanyAddressLine2 || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                  { label: 'Postcode', value: selectedInstruction.CompanyPostcode || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                  { label: 'Country', value: selectedInstruction.CompanyCountry || (selectedInstruction.ClientType === 'Individual' ? selectedInstruction.Country : 'Not provided') }
+                                ].map((field) => (
+                                  <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{
+                                      fontSize: '10px',
+                                      color: colours.greyText,
+                                      fontWeight: 500,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.025em',
+                                      minWidth: '100px'
+                                    }}>
+                                      {field.label}:
+                                    </span>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      color: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                      fontWeight: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 500 : 400,
+                                      textAlign: 'right',
+                                      fontStyle: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 'normal' : 'italic'
+                                    }}>
+                                      {field.value}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Electronic ID Verification Section */}
+                        <div style={{ marginBottom: '24px' }}>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: isDarkMode ? colours.dark.text : '#1f2937',
+                            marginBottom: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            <FaShieldAlt style={{ fontSize: '12px', color: colours.green }} />
+                            Electronic ID Verification
+                          </div>
+
                           <div style={{
                             background: isDarkMode ? colours.dark.cardHover : '#ffffff',
                             borderRadius: '8px',
                             padding: '16px',
                             border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
                           }}>
-                            <div style={{
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              color: isDarkMode ? colours.dark.text : '#374151',
-                              marginBottom: '12px',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.025em',
-                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                              paddingBottom: '8px'
-                            }}>
-                              Personal Information
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {[
-                                { label: 'Name', value: `${selectedInstruction.Title || ''} ${selectedInstruction.ClientName || selectedInstruction.FirstName || ''} ${selectedInstruction.LastName || ''}`.trim() },
-                                { label: 'Email', value: selectedInstruction.ClientEmail || selectedInstruction.Email },
-                                { label: 'Phone', value: selectedInstruction.PhoneNumber || selectedInstruction.MobileNumber },
-                                { label: 'DOB', value: selectedInstruction.DateOfBirth },
-                                { label: 'Gender', value: selectedInstruction.Gender },
-                                { label: 'Nationality', value: selectedInstruction.Nationality || selectedInstruction.Country },
-                                { label: 'Client Type', value: selectedInstruction.ClientType || selectedInstruction.EntityType || 'Individual' }
-                              ].map((field) => (
-                                <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span style={{
-                                    fontSize: '10px',
-                                    color: colours.greyText,
-                                    fontWeight: 500,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.025em',
-                                    minWidth: '80px'
-                                  }}>
-                                    {field.label}:
-                                  </span>
-                                  <span style={{
-                                    fontSize: '11px',
-                                    color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
-                                    fontWeight: field.value ? 500 : 400,
-                                    textAlign: 'right',
-                                    fontStyle: field.value ? 'normal' : 'italic'
-                                  }}>
-                                    {field.value || 'Not provided'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Identification */}
-                          <div style={{
-                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-                            borderRadius: '8px',
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
-                          }}>
-                            <div style={{
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              color: isDarkMode ? colours.dark.text : '#374151',
-                              marginBottom: '12px',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.025em',
-                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                              paddingBottom: '8px'
-                            }}>
-                              Identification
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {[
-                                { label: 'ID Type', value: selectedInstruction.PassportNumber ? 'passport' : selectedInstruction.DriversLicenseNumber ? 'driving license' : selectedInstruction.NationalIdNumber ? 'national id' : 'Not specified' },
-                                { label: 'Passport', value: selectedInstruction.PassportNumber },
-                                { label: 'Driving License', value: selectedInstruction.DriversLicenseNumber },
-                                { label: 'Client ID', value: selectedInstruction.ClientId || 'Not assigned' },
-                                { label: 'Related Client', value: selectedInstruction.RelatedClientId || 'None' },
-                                { label: 'Matter ID', value: selectedInstruction.MatterId }
-                              ].map((field) => (
-                                <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span style={{
-                                    fontSize: '10px',
-                                    color: colours.greyText,
-                                    fontWeight: 500,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.025em',
-                                    minWidth: '100px'
-                                  }}>
-                                    {field.label}:
-                                  </span>
-                                  <span style={{
-                                    fontSize: '11px',
-                                    color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
-                                    fontWeight: field.value ? 500 : 400,
-                                    textAlign: 'right',
-                                    fontStyle: field.value ? 'normal' : 'italic'
-                                  }}>
-                                    {field.value || 'Not provided'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Residential Address */}
-                          <div style={{
-                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-                            borderRadius: '8px',
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
-                          }}>
-                            <div style={{
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              color: isDarkMode ? colours.dark.text : '#374151',
-                              marginBottom: '12px',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.025em',
-                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                              paddingBottom: '8px'
-                            }}>
-                              Residential Address
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {[
-                                { label: 'Address', value: `${selectedInstruction.AddressLine1 || ''} ${selectedInstruction.AddressLine2 || ''}`.trim() },
-                                { label: 'City', value: selectedInstruction.City },
-                                { label: 'County', value: selectedInstruction.County || selectedInstruction.State },
-                                { label: 'Postcode', value: selectedInstruction.Postcode || selectedInstruction.PostalCode },
-                                { label: 'Country', value: selectedInstruction.Country }
-                              ].map((field) => (
-                                <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span style={{
-                                    fontSize: '10px',
-                                    color: colours.greyText,
-                                    fontWeight: 500,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.025em',
-                                    minWidth: '80px'
-                                  }}>
-                                    {field.label}:
-                                  </span>
-                                  <span style={{
-                                    fontSize: '11px',
-                                    color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
-                                    fontWeight: field.value ? 500 : 400,
-                                    textAlign: 'right',
-                                    fontStyle: field.value ? 'normal' : 'italic'
-                                  }}>
-                                    {field.value || 'Not provided'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Company Information */}
-                          <div style={{
-                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-                            borderRadius: '8px',
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
-                          }}>
-                            <div style={{
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              color: isDarkMode ? colours.dark.text : '#374151',
-                              marginBottom: '12px',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.025em',
-                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                              paddingBottom: '8px'
-                            }}>
-                              Company Information
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {[
-                                { label: 'Company', value: selectedInstruction.CompanyName || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
-                                { label: 'Company Number', value: selectedInstruction.CompanyNumber || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
-                                { label: 'House Number', value: selectedInstruction.CompanyAddressLine1 || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
-                                { label: 'Address', value: selectedInstruction.CompanyAddressLine2 || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
-                                { label: 'Postcode', value: selectedInstruction.CompanyPostcode || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
-                                { label: 'Country', value: selectedInstruction.CompanyCountry || (selectedInstruction.ClientType === 'Individual' ? selectedInstruction.Country : 'Not provided') }
-                              ].map((field) => (
-                                <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span style={{
-                                    fontSize: '10px',
-                                    color: colours.greyText,
-                                    fontWeight: 500,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.025em',
-                                    minWidth: '100px'
-                                  }}>
-                                    {field.label}:
-                                  </span>
-                                  <span style={{
-                                    fontSize: '11px',
-                                    color: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
-                                    fontWeight: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 500 : 400,
-                                    textAlign: 'right',
-                                    fontStyle: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 'normal' : 'italic'
-                                  }}>
-                                    {field.value}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Verification Status & Actions */}
-                          <div style={{
-                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-                            borderRadius: '8px',
-                            padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            gridColumn: '1 / -1'
-                          }}>
-                            <div style={{
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              color: isDarkMode ? colours.dark.text : '#374151',
-                              marginBottom: '12px',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.025em',
-                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                              paddingBottom: '8px'
-                            }}>
-                              Verification Status & Actions
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '16px', alignItems: 'center' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', alignItems: 'stretch' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 {[
                                   { label: 'EID Status', value: selectedOverviewItem?.eid?.EIDStatus || 'Not started' },
@@ -4150,32 +4236,91 @@ const Instructions: React.FC<InstructionsProps> = ({
                               </div>
                               
                               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                {selectedOverviewItem?.eid?.EIDOverallResult === 'review' && (
-                                  <button
-                                    onClick={handleGlobalEIDCheck}
-                                    style={{ 
-                                      fontSize: '10px', 
-                                      padding: '6px 12px',
-                                      border: `1px solid ${colours.blue}`,
-                                      borderRadius: '4px',
-                                      background: 'transparent',
-                                      color: colours.blue,
-                                      cursor: 'pointer'
+                                {selectedOverviewItem?.eid?.EIDOverallResult === 'review' ? (
+                                  <div
+                                    style={{
+                                      width: '100%',
+                                      border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
+                                      borderRadius: 6,
+                                      background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#FFFFFF',
+                                      padding: 12,
+                                      boxShadow: isDarkMode ? 'none' : '0 4px 10px rgba(0,0,0,0.04)'
                                     }}
                                   >
-                                    Review ID
-                                  </button>
-                                )}
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                      <div style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>
+                                        Verification details
+                                      </div>
+                                      {selectedInstruction?.InstructionRef && (
+                                        <div style={{ fontSize: 10, color: isDarkMode ? colours.dark.subText : '#6B7280' }}>
+                                          {selectedInstruction.InstructionRef}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {reviewModalDetails ? (
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                          <span style={{ fontSize: 10, color: colours.greyText, fontWeight: 500 }}>Overall Result:</span>
+                                          <span style={{ fontSize: 11, fontWeight: 600, color: (reviewModalDetails.overallResult || '').toLowerCase() === 'verified' || (reviewModalDetails.overallResult || '').toLowerCase() === 'passed' ? colours.green : (reviewModalDetails.overallResult || '').toLowerCase() === 'review' ? '#ef4444' : (isDarkMode ? colours.dark.text : '#374151') }}>
+                                            {reviewModalDetails.overallResult ?? 'Unknown'}
+                                          </span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                          <span style={{ fontSize: 10, color: colours.greyText, fontWeight: 500 }}>Checked Date:</span>
+                                          <span style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#374151' }}>
+                                            {reviewModalDetails.checkedDate || reviewModalDetails.EIDCheckedDate || '—'}
+                                          </span>
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1', fontSize: 10, color: colours.greyText }}>
+                                          {reviewModalDetails.summary || 'Electronic ID verification summary'}
+                                        </div>
+
+                                        <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, marginTop: 4 }}>
+                                          {selectedInstruction?.InstructionRef && (
+                                            <button
+                                              onClick={() => handleVerificationApproval(selectedInstruction.InstructionRef)}
+                                              style={{
+                                                fontSize: 10,
+                                                padding: '6px 10px',
+                                                borderRadius: 4,
+                                                border: `1px solid ${colours.green}`,
+                                                background: isDarkMode ? 'transparent' : 'rgba(34,197,94,0.08)',
+                                                color: colours.green,
+                                                cursor: 'pointer'
+                                              }}
+                                            >
+                                              Approve verification
+                                            </button>
+                                          )}
+                                          {selectedInstruction?.InstructionRef && (
+                                            <button
+                                              onClick={() => requestEidDocumentsInline(selectedInstruction.InstructionRef!)}
+                                              style={{
+                                                fontSize: 10,
+                                                padding: '6px 10px',
+                                                borderRadius: 4,
+                                                border: `1px solid ${colours.blue}`,
+                                                background: 'transparent',
+                                                color: colours.blue,
+                                                cursor: 'pointer'
+                                              }}
+                                            >
+                                              Request documents
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div style={{ fontSize: 11, color: colours.greyText }}>
+                                        Loading verification details…
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : null}
                               </div>
                               
-                              <div style={{
-                                fontSize: '11px',
-                                color: colours.greyText,
-                                fontStyle: 'italic',
-                                textAlign: 'center'
-                              }}>
-                                Technical Details &<br />Raw Database Record
-                              </div>
+                              {/* Removed footer text to free space for additional status items */}
                             </div>
                           </div>
                         </div>
@@ -4246,32 +4391,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
                     {activeWorkbenchTab === 'risk' && (
                       <div>
-                        <h3 style={{ 
-                          margin: '0 0 16px 0', 
-                          fontSize: '14px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <FaShieldAlt size={14} color={riskStatus === 'complete' ? colours.green : 
-                                        riskStatus === 'flagged' ? colours.red : colours.blue} />
-                          Risk Assessment Data Inspector
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: riskStatus === 'complete' ? colours.green : 
-                                  riskStatus === 'flagged' ? colours.red : colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: riskStatus === 'complete' ? `${colours.green}15` : 
-                                       riskStatus === 'flagged' ? `${colours.red}15` : `${colours.orange}15`
-                          }}>
-                            {riskStatus}
-                          </span>
-                        </h3>
                         
                         {/* Comprehensive Risk Assessment Data */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
@@ -4282,11 +4401,11 @@ const Instructions: React.FC<InstructionsProps> = ({
                             borderRadius: '8px',
                             background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
                           }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.red }}>Risk Assessment Summary</h4>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Risk Assessment Summary</h4>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>Result:</strong> <span style={{ color: selectedOverviewItem?.risk?.RiskAssessmentResult === 'High Risk' ? colours.red : selectedOverviewItem?.risk?.RiskAssessmentResult === 'Medium Risk' ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.RiskAssessmentResult || 'Pending Assessment'}</span></div>
-                              <div><strong>Risk Score:</strong> <span style={{ color: (selectedOverviewItem?.risk?.RiskScore > 15) ? colours.red : (selectedOverviewItem?.risk?.RiskScore > 10) ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.RiskScore || 'Not scored'}</span></div>
-                              <div><strong>Transaction Level:</strong> <span style={{ color: selectedOverviewItem?.risk?.TransactionRiskLevel === 'High Risk' ? colours.red : selectedOverviewItem?.risk?.TransactionRiskLevel === 'Medium Risk' ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.TransactionRiskLevel || 'Not assessed'}</span></div>
+                              <div><strong>Result:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.RiskAssessmentResult || 'Pending Assessment'}</span></div>
+                              <div><strong>Risk Score:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.RiskScore ?? 'Not scored'}</span></div>
+                              <div><strong>Transaction Level:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.TransactionRiskLevel || 'Not assessed'}</span></div>
                               <div><strong>Assessor:</strong> {selectedOverviewItem?.risk?.RiskAssessor || 'Not assigned'}</div>
                               <div><strong>Compliance Date:</strong> {selectedOverviewItem?.risk?.ComplianceDate ? new Date(selectedOverviewItem.risk.ComplianceDate).toLocaleDateString() : 'Not completed'}</div>
                               <div><strong>Expiry Date:</strong> {selectedOverviewItem?.risk?.ComplianceExpiry ? new Date(selectedOverviewItem.risk.ComplianceExpiry).toLocaleDateString() : 'Not set'}</div>
@@ -4300,12 +4419,12 @@ const Instructions: React.FC<InstructionsProps> = ({
                             borderRadius: '8px',
                             background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
                           }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Client Risk Analysis</h4>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Client Risk Analysis</h4>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
                               <div><strong>Client Type:</strong> {selectedOverviewItem?.risk?.ClientType || 'Not specified'}</div>
-                              <div><strong>Client Type Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.ClientType_Value > 2) ? colours.red : (selectedOverviewItem?.risk?.ClientType_Value > 1) ? colours.orange : colours.green }}>{selectedOverviewItem?.risk?.ClientType_Value || 'Not rated'}</span></div>
+                              <div><strong>Client Type Value:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.ClientType_Value ?? 'Not rated'}</span></div>
                               <div><strong>How Introduced:</strong> {selectedOverviewItem?.risk?.HowWasClientIntroduced || 'Not recorded'}</div>
-                              <div><strong>Introduction Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.HowWasClientIntroduced_Value > 2) ? colours.red : colours.green }}>{selectedOverviewItem?.risk?.HowWasClientIntroduced_Value || 'Not rated'}</span></div>
+                              <div><strong>Introduction Value:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.HowWasClientIntroduced_Value ?? 'Not rated'}</span></div>
                             </div>
                           </div>
 
@@ -4316,13 +4435,13 @@ const Instructions: React.FC<InstructionsProps> = ({
                             borderRadius: '8px',
                             background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
                           }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.orange }}>Funds Analysis</h4>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Funds Analysis</h4>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
                               <div><strong>Source of Funds:</strong> {selectedOverviewItem?.risk?.SourceOfFunds || 'Not specified'}</div>
-                              <div><strong>Source Value:</strong> <span style={{ color: (selectedOverviewItem?.risk?.SourceOfFunds_Value > 2) ? colours.red : colours.green }}>{selectedOverviewItem?.risk?.SourceOfFunds_Value || 'Not rated'}</span></div>
+                              <div><strong>Source Value:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.SourceOfFunds_Value ?? 'Not rated'}</span></div>
                               <div><strong>Destination:</strong> {selectedOverviewItem?.risk?.DestinationOfFunds || 'Not specified'}</div>
                               <div><strong>Funds Type:</strong> {selectedOverviewItem?.risk?.FundsType || 'Not specified'}</div>
-                              <div><strong>Value of Instruction:</strong> <span style={{ color: selectedOverviewItem?.risk?.ValueOfInstruction === 'Above £500,000' ? colours.red : selectedOverviewItem?.risk?.ValueOfInstruction === 'Less than £10,000' ? colours.green : colours.orange }}>{selectedOverviewItem?.risk?.ValueOfInstruction || 'Not specified'}</span></div>
+                              <div><strong>Value of Instruction:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.ValueOfInstruction || 'Not specified'}</span></div>
                             </div>
                           </div>
 
@@ -4333,12 +4452,12 @@ const Instructions: React.FC<InstructionsProps> = ({
                             borderRadius: '8px',
                             background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
                           }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.green }}>Compliance Factors</h4>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Compliance Factors</h4>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
-                              <div><strong>Client Risk Factors:</strong> <span style={{ color: selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
-                              <div><strong>Transaction Risk Factors:</strong> <span style={{ color: selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
-                              <div><strong>AML Policy:</strong> <span style={{ color: selectedOverviewItem?.risk?.FirmWideAMLPolicyConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.FirmWideAMLPolicyConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
-                              <div><strong>Sanctions Risk:</strong> <span style={{ color: selectedOverviewItem?.risk?.FirmWideSanctionsRiskConsidered ? colours.green : colours.red }}>{selectedOverviewItem?.risk?.FirmWideSanctionsRiskConsidered ? '✓ Considered' : '○ Not considered'}</span></div>
+                              <div><strong>Client Risk Factors:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827' }}>{selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? 'Considered' : 'Not considered'}</span></div>
+                              <div><strong>Transaction Risk Factors:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827' }}>{selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? 'Considered' : 'Not considered'}</span></div>
+                              <div><strong>AML Policy:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827' }}>{selectedOverviewItem?.risk?.FirmWideAMLPolicyConsidered ? 'Considered' : 'Not considered'}</span></div>
+                              <div><strong>Sanctions Risk:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827' }}>{selectedOverviewItem?.risk?.FirmWideSanctionsRiskConsidered ? 'Considered' : 'Not considered'}</span></div>
                               <div><strong>Limitation:</strong> {selectedOverviewItem?.risk?.Limitation || 'Not specified'}</div>
                             </div>
                           </div>
@@ -4352,7 +4471,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                           background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
                           marginBottom: '20px'
                         }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Risk Assessment Actions</h4>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Risk Assessment Actions</h4>
                           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
                               <div>Assessment Status: <strong style={{ color: selectedOverviewItem?.risk ? colours.green : colours.orange }}>{selectedOverviewItem?.risk ? 'Completed' : 'Pending'}</strong></div>
@@ -4462,29 +4581,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
                     {activeWorkbenchTab === 'payment' && (
                       <div>
-                        <h3 style={{ 
-                          margin: '0 0 16px 0', 
-                          fontSize: '14px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <FaCreditCard size={14} color={paymentCompleted ? colours.green : colours.blue} />
-                          Payment Data Inspector
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: paymentCompleted ? colours.green : colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: paymentCompleted ? `${colours.green}15` : `${colours.orange}15`
-                          }}>
-                            {paymentCompleted ? 'completed' : 'pending'}
-                          </span>
-                        </h3>
                         
                         {/* Payment Transaction Details */}
                         <div style={{ marginBottom: '20px' }}>
@@ -4696,29 +4792,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
                     {activeWorkbenchTab === 'documents' && (
                       <div>
-                        <h3 style={{ 
-                          margin: '0 0 16px 0', 
-                          fontSize: '14px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <FaFileAlt size={14} color={selectedOverviewItem?.documents?.length > 0 ? colours.green : colours.blue} />
-                          Document Management Operations
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: selectedOverviewItem?.documents?.length > 0 ? colours.green : colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: selectedOverviewItem?.documents?.length > 0 ? `${colours.green}15` : `${colours.orange}15`
-                          }}>
-                            {selectedOverviewItem?.documents?.length || 0} documents
-                          </span>
-                        </h3>
                         
                         <div>
                           <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600 }}>Document Library</h4>
@@ -4774,30 +4847,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
                     {activeWorkbenchTab === 'override' && (
                       <div>
-                        <h3 style={{ 
-                          margin: '0 0 16px 0', 
-                          fontSize: '14px', 
-                          fontWeight: 600,
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <FaCogs size={14} color={colours.orange} />
-                          Override Controls
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 500,
-                            color: colours.orange,
-                            textTransform: 'uppercase',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            background: `${colours.orange}15`,
-                            border: `1px solid ${colours.orange}30`
-                          }}>
-                            caution required
-                          </span>
-                        </h3>
                         
                         <OverridePills 
                           instruction={selectedInstruction}
@@ -4810,9 +4859,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                       </div>
                     )}
                   </div>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                )}
               </div>
             </div>
           </>
