@@ -17,24 +17,29 @@ interface QuickActionsBarProps {
     highlighted?: boolean;
     resetSelectionRef?: React.MutableRefObject<(() => void) | null>;
     panelActive?: boolean;
+    seamless?: boolean;
 }
 
 const ACTION_BAR_HEIGHT = 44; // Compact bar height to match tab icon scale
 
-const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
+const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean, seamless: boolean) =>
     mergeStyles({
-        // Professional gradient background
-        background: isDarkMode
-            ? 'linear-gradient(135deg, rgba(45, 45, 45, 0.95) 0%, rgba(58, 58, 58, 0.9) 100%)'
-            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)',
+        // Professional gradient background (removed when seamless)
+        background: seamless
+            ? 'transparent'
+            : (isDarkMode
+                ? 'linear-gradient(135deg, rgba(45, 45, 45, 0.95) 0%, rgba(58, 58, 58, 0.9) 100%)'
+                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)'),
         
-        // Modern backdrop blur
-        backdropFilter: 'blur(12px)',
+        // Modern backdrop blur (disabled when seamless)
+        backdropFilter: seamless ? 'none' : 'blur(12px)',
         
-        // Professional shadows
-        boxShadow: isDarkMode
-            ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2)'
-            : '0 8px 32px rgba(6, 23, 51, 0.12), 0 4px 16px rgba(6, 23, 51, 0.08)',
+        // Professional shadows (removed when seamless)
+        boxShadow: seamless
+            ? 'none'
+            : (isDarkMode
+                ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2)'
+                : '0 8px 32px rgba(6, 23, 51, 0.12), 0 4px 16px rgba(6, 23, 51, 0.08)'),
         
         // Layout stability - compact padding and height
         // Align content to left (remove excessive left padding)
@@ -63,13 +68,13 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
         zIndex: 999,
         
         // More compact rounding
-        borderRadius: '10px 10px 0 0',
+    borderRadius: seamless ? 0 : '10px 10px 0 0',
         
         // Layout containment for performance
         contain: 'layout style',
         
         // Highlighted state with smooth scaling
-        ...(highlighted && {
+        ...(highlighted && !seamless && {
             transform: 'scale(1.01)',
             filter: 'brightness(1.04)',
             boxShadow: isDarkMode
@@ -103,6 +108,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     highlighted = false,
     resetSelectionRef,
     panelActive = false,
+    seamless = false,
 }) => {
     const [selected, setSelected] = React.useState<string | null>(null);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -159,7 +165,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
 
     return (
         <div
-            className={quickLinksStyle(isDarkMode, highlighted)}
+            className={quickLinksStyle(isDarkMode, highlighted, seamless)}
             role="toolbar"
             aria-label="Quick Actions"
         >

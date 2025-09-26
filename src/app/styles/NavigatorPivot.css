@@ -2,27 +2,20 @@
 /* Styles for pivot menus shown inside the Navigator component */
 .navigatorPivot .ms-Pivot-link {
     position: relative;
-    padding: 0 12px;
+    padding: 4px 10px; /* compact */
     border-bottom: none;
-        transition: background-color 0.2s, color 0.2s, transform 0.1s, box-shadow 0.2s;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    border-radius: 6px;
 }
 
 .navigatorPivot .ms-Pivot-link:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .navigatorPivot .ms-Pivot-link:active {
-        background-color: rgba(0, 0, 0, 0.2) !important;
-        box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
-        transform: scale(0.97);
-        color: var(--helix-highlight) !important;
-    }
-    
-    .navigatorPivot .ms-Pivot-link:active,
-    .navigatorPivot .ms-Pivot-link:focus {
-        border: none !important;
-        outline: none !important;
+    background-color: rgba(54, 144, 206, 0.08); /* subtle brand hover */
+}
+
+.navigatorPivot .ms-Pivot-link:active,
+.navigatorPivot .ms-Pivot-link:focus {
+    border: none !important;
+    outline: none !important;
 }
 
 .navigatorPivot .ms-Pivot-link::before {
@@ -39,7 +32,7 @@
     background-color: var(--helix-highlight, #3690CE);
     transform: translateX(-50%) scaleX(0);
     transform-origin: center;
-    transition: transform 0.3s ease;
+    transition: transform 0.2s ease;
 }
 
 .navigatorPivot .ms-Pivot-link:hover::after,
@@ -49,4 +42,5 @@
 
 .navigatorPivot .ms-Pivot-link[aria-selected='true'] {
     color: var(--helix-highlight, #3690CE);
-    background-color: rgba(255, 255, 255, 0.1); }
+    background-color: rgba(54, 144, 206, 0.08);
+}

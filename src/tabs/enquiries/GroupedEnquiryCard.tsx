@@ -31,6 +31,7 @@ interface GroupedEnquiryCardProps {
   teamData?: TeamData[] | null;
   isLast?: boolean;
   userAOW?: string[]; // List of user's areas of work (lowercase)
+  getPromotionStatus?: (enquiry: Enquiry) => 'pitch' | 'instruction' | null;
 }
 
 const formatCurrency = (value: string): string => {
@@ -94,7 +95,7 @@ const iconButtonStyles = (iconColor: string): IButtonStyles => ({
   },
 });
 
-const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry, onSelect, onRate, onPitch, teamData, isLast, userAOW }) => {
+const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry, onSelect, onRate, onPitch, teamData, isLast, userAOW, getPromotionStatus }) => {
   const { isDarkMode } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const { clientName, clientEmail, enquiries, latestDate, areas } = groupedEnquiry;
@@ -162,6 +163,7 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry,
       filter: 'blur(.2px)',
       zIndex: 0,
     },
+    opacity: getPromotionStatus && groupedEnquiry.enquiries.some(eq => getPromotionStatus(eq)) ? 0.6 : 1,
     selectors: {
       ':hover': { transform: 'translateY(-2px)', borderColor: colours.highlight },
       ':active': { transform: 'translateY(-1px)' },
@@ -265,6 +267,27 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry,
           <div className={nameStyle}>
             {clientName}
             <span className={countBadgeStyle}>{enquiryCount}</span>
+            {getPromotionStatus && (() => {
+              // Check if any enquiry in the group has been promoted
+              const promotedEnquiry = groupedEnquiry.enquiries.find(eq => getPromotionStatus(eq));
+              const status = promotedEnquiry ? getPromotionStatus(promotedEnquiry) : null;
+              return status && (
+                <span style={{
+                  fontSize: 9,
+                  fontWeight: 500,
+                  padding: '2px 5px',
+                  borderRadius: 3,
+                  backgroundColor: status === 'instruction' ? (isDarkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(232, 245, 232, 0.6)') : (isDarkMode ? 'rgba(33, 150, 243, 0.15)' : 'rgba(227, 242, 253, 0.6)'),
+                  color: status === 'instruction' ? (isDarkMode ? 'rgba(76, 175, 80, 0.8)' : 'rgba(46, 125, 50, 0.7)') : (isDarkMode ? 'rgba(33, 150, 243, 0.8)' : 'rgba(21, 101, 192, 0.7)'),
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  marginLeft: 6,
+                  opacity: 0.85
+                }}>
+                  {status === 'instruction' ? 'Instructed' : 'Pitched'}
+                </span>
+              );
+            })()}
           </div>
           <div className={emailStyle}>{clientEmail}</div>
           <div className={areaTagsStyle}>

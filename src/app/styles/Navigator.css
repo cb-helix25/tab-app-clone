@@ -6,5 +6,12 @@
     min-height: 48px;
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 6px; /* compact spacing */
+}
+
+/* Ensure inner controls align compactly inside the premium card */
+.navigator-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }

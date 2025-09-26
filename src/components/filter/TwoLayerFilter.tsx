@@ -1,4 +1,4 @@
-import React, { useRef, useLayoutEffect, useState } from 'react';
+import React, { useRef, useLayoutEffect, useState, useCallback } from 'react';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { SegmentedOption } from './SegmentedControl';
@@ -37,9 +37,9 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
   hideSecondaryInProduction = false
 }) => {
   const { isDarkMode } = useTheme();
-  const height = 32;
-  const fontSize = 11;
-  const paddingX = 12;
+  const height = 28; // align with SegmentedControl sm height
+  const fontSize = 12;
+  const paddingX = 14;
 
   // Production detection
   const isProduction = typeof window !== 'undefined' && 
@@ -69,7 +69,8 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
     if (container && activeBtn) {
       const c = container.getBoundingClientRect();
       const b = activeBtn.getBoundingClientRect();
-      setPrimaryThumbRect({ left: b.left - c.left + 2, width: b.width - 4 });
+      // Snap to integers and keep 4px top/bottom margin like SegmentedControl
+      setPrimaryThumbRect({ left: Math.round(b.left - c.left), width: Math.round(b.width) });
     }
   };
 
@@ -79,7 +80,7 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
     if (container && activeBtn) {
       const c = container.getBoundingClientRect();
       const b = activeBtn.getBoundingClientRect();
-      setSecondaryThumbRect({ left: b.left - c.left + 2, width: b.width - 4 });
+      setSecondaryThumbRect({ left: Math.round(b.left - c.left), width: Math.round(b.width) });
     }
   };
 
@@ -116,14 +117,52 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
   const segmentStyle = {
     display: 'flex',
     position: 'relative' as const,
-    background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-    borderRadius: height,
-    padding: 2,
-    height,
+    background: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+    borderRadius: height / 2,
+    padding: 4,
+    height, // visual height; thumb will be height-8
     fontFamily: 'Raleway, sans-serif',
     userSelect: 'none' as const,
     overflow: 'hidden' as const,
   };
+
+  // Keyboard navigation for accessibility
+  const onPrimaryKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const idx = options.findIndex(o => o.key === primaryValue);
+    if (idx < 0) return;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const next = Math.min(options.length - 1, idx + 1);
+      if (next !== idx) onPrimaryChange(options[next].key);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prev = Math.max(0, idx - 1);
+      if (prev !== idx) onPrimaryChange(options[prev].key);
+    }
+  }, [options, primaryValue, onPrimaryChange]);
+
+  const onSecondaryKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!currentOption) return;
+    const idx = currentOption.subOptions.findIndex(o => o.key === secondaryValue);
+    if (idx < 0) return;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      for (let i = idx + 1; i < currentOption.subOptions.length; i++) {
+        if (!currentOption.subOptions[i].disabled) {
+          onSecondaryChange(currentOption.subOptions[i].key);
+          break;
+        }
+      }
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      for (let i = idx - 1; i >= 0; i--) {
+        if (!currentOption.subOptions[i].disabled) {
+          onSecondaryChange(currentOption.subOptions[i].key);
+          break;
+        }
+      }
+    }
+  }, [currentOption, secondaryValue, onSecondaryChange]);
 
   return (
     <div
@@ -138,6 +177,8 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
         aria-label="Primary filter"
         style={segmentStyle}
         ref={primaryContainerRef}
+        tabIndex={0}
+        onKeyDown={onPrimaryKeyDown}
       >
         {primaryActiveIndex >= 0 && (
           <span
@@ -145,14 +186,16 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
             style={{
               pointerEvents: 'none',
               position: 'absolute',
-              top: 2,
-              height: height - 4,
+              top: 4,
+              height: Math.max(0, height - 8),
               left: primaryThumbRect.left,
               width: primaryThumbRect.width,
-              background: colours.highlight,
-              borderRadius: height,
-              transition: 'left 240ms cubic-bezier(.4,.2,.2,1), width 240ms cubic-bezier(.4,.2,.2,1)',
-              boxShadow: isDarkMode ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.18)',
+              background: '#FFFFFF',
+              borderRadius: height / 2 - 4,
+              transition: 'left 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94), width 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+              boxShadow: isDarkMode
+                ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
+                : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
             }}
           />
         )}
@@ -175,9 +218,9 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
                 cursor: 'pointer',
                 padding: `0 ${paddingX}px`,
                 fontSize,
-                fontWeight: 600,
-                color: isActive ? '#fff' : (isDarkMode ? 'rgba(255,255,255,0.65)' : '#546178'),
-                transition: 'color 160ms',
+                fontWeight: 500,
+                color: isActive ? '#1f2937' : (isDarkMode ? 'rgba(255,255,255,0.70)' : 'rgba(0,0,0,0.55)'),
+                transition: 'color 200ms ease',
                 minWidth: 0,
                 whiteSpace: 'nowrap'
               }}
@@ -217,6 +260,8 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
             aria-label="Secondary filter"
             style={segmentStyle}
             ref={secondaryContainerRef}
+            tabIndex={0}
+            onKeyDown={onSecondaryKeyDown}
           >
             {/* Show only active option when collapsed */}
             {isSecondaryExpanded ? (
@@ -227,14 +272,16 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
                     style={{
                       pointerEvents: 'none',
                       position: 'absolute',
-                      top: 2,
-                      height: height - 4,
+                      top: 4,
+                      height: Math.max(0, height - 8),
                       left: secondaryThumbRect.left,
                       width: secondaryThumbRect.width,
-                      background: colours.highlight,
-                      borderRadius: height,
-                      transition: 'left 240ms cubic-bezier(.4,.2,.2,1), width 240ms cubic-bezier(.4,.2,.2,1)',
-                      boxShadow: isDarkMode ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.18)',
+                      background: '#FFFFFF',
+                      borderRadius: height / 2 - 4,
+                      transition: 'left 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94), width 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                      boxShadow: isDarkMode
+                        ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
+                        : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
                     }}
                   />
                 )}
@@ -259,8 +306,8 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
                         cursor: subOpt.disabled ? 'not-allowed' : 'pointer',
                         padding: `0 ${paddingX}px`,
                         fontSize,
-                        fontWeight: 600,
-                        color: isActive ? '#fff' : (isDarkMode ? 'rgba(255,255,255,0.65)' : '#546178'),
+                        fontWeight: 500,
+                        color: isActive ? '#1f2937' : (isDarkMode ? 'rgba(255,255,255,0.70)' : 'rgba(0,0,0,0.55)'),
                         transition: `color 160ms, opacity 240ms ease-out ${idx * 40}ms, transform 240ms ease-out ${idx * 40}ms`,
                         minWidth: 0,
                         whiteSpace: 'nowrap',
@@ -273,13 +320,17 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
                       <span>{subOpt.label}</span>
                       {typeof subOpt.badge !== 'undefined' && (
                         <span style={{
-                          background: isActive ? (isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.35)') : (isDarkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.12)'),
-                          color: isActive ? (isDarkMode ? '#fff' : '#132343') : (isDarkMode ? '#d8dfeb' : '#3d506a'),
-                          borderRadius: 12,
+                          background: isActive
+                            ? (isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)')
+                            : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.06)'),
+                          color: isActive
+                            ? (isDarkMode ? '#1f2937' : '#1f2937')
+                            : (isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.65)'),
+                          borderRadius: 8,
                           padding: '2px 6px',
                           fontSize: fontSize - 2,
                           fontWeight: 600,
-                          lineHeight: 1,
+                          lineHeight: 1.2,
                         }}>{subOpt.badge}</span>
                       )}
                     </button>
@@ -294,13 +345,15 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
                   style={{
                     pointerEvents: 'none',
                     position: 'absolute',
-                    top: 2,
-                    height: height - 4,
-                    left: 2,
-                    right: 2,
-                    background: colours.highlight,
-                    borderRadius: height,
-                    boxShadow: isDarkMode ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.18)',
+                    top: 4,
+                    height: Math.max(0, height - 8),
+                    left: 4,
+                    right: 4,
+                    background: '#FFFFFF',
+                    borderRadius: height / 2 - 4,
+                    boxShadow: isDarkMode
+                      ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
+                      : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
                   }}
                 />
                 {(() => {
@@ -323,8 +376,8 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
                         cursor: 'pointer',
                         padding: `0 ${paddingX}px`,
                         fontSize,
-                        fontWeight: 600,
-                        color: '#fff',
+                        fontWeight: 500,
+                        color: '#1f2937',
                         minWidth: 0,
                         whiteSpace: 'nowrap',
                       }}
@@ -332,13 +385,13 @@ const TwoLayerFilter: React.FC<TwoLayerFilterProps> = ({
                       <span>{activeSubOpt.label}</span>
                       {typeof activeSubOpt.badge !== 'undefined' && (
                         <span style={{
-                          background: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.35)',
-                          color: isDarkMode ? '#fff' : '#132343',
-                          borderRadius: 12,
+                          background: isDarkMode ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)',
+                          color: '#1f2937',
+                          borderRadius: 8,
                           padding: '2px 6px',
                           fontSize: fontSize - 2,
                           fontWeight: 600,
-                          lineHeight: 1,
+                          lineHeight: 1.2,
                         }}>{activeSubOpt.badge}</span>
                       )}
                     </button>

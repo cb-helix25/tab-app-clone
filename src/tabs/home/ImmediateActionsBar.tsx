@@ -19,6 +19,7 @@ interface ImmediateActionsBarProps {
     highlighted?: boolean;
     showDismiss?: boolean;
     onDismiss?: () => void;
+    seamless?: boolean;
 }
 
 const ACTION_BAR_HEIGHT = 48;
@@ -27,18 +28,19 @@ const HIDE_DELAY_MS = 3000; // Auto-hide delay when there is nothing to action
 const barStyle = (
     isDarkMode: boolean,
     hasImmediateActions: boolean,
-    highlighted: boolean
+    highlighted: boolean,
+    seamless: boolean
 ) =>
     mergeStyles({
-        backgroundColor: isDarkMode
-            ? colours.dark.sectionBackground
-            : colours.light.sectionBackground,
-        boxShadow: isDarkMode
-            ? '0 2px 4px rgba(0,0,0,0.4)'
-            : '0 2px 4px rgba(0,0,0,0.1)',
-        borderTop: isDarkMode
-            ? '1px solid rgba(255,255,255,0.1)'
-            : '1px solid rgba(0,0,0,0.05)',
+        backgroundColor: seamless
+            ? 'transparent'
+            : (isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground),
+        boxShadow: seamless
+            ? 'none'
+            : (isDarkMode ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)'),
+        borderTop: seamless
+            ? 'none'
+            : (isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)'),
         padding: '0 24px',
         transition: 'background-color 0.3s',
         display: 'flex',
@@ -50,12 +52,12 @@ const barStyle = (
         alignItems: 'center',
         height: ACTION_BAR_HEIGHT,
         paddingBottom: 0,
-        position: hasImmediateActions ? 'sticky' : 'relative',
-        top: hasImmediateActions ? ACTION_BAR_HEIGHT * 2 : 'auto',
-        zIndex: hasImmediateActions ? 998 : 'auto',
+    position: hasImmediateActions ? 'sticky' : 'relative',
+    top: hasImmediateActions ? ACTION_BAR_HEIGHT * 2 : 'auto',
+    zIndex: hasImmediateActions ? 998 : 'auto',
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
-        ...(highlighted && {
+        ...(highlighted && !seamless && {
             transform: 'scale(1.02)',
             filter: 'brightness(1.05)',
             boxShadow: '0 0 10px rgba(0,0,0,0.3)',
@@ -114,6 +116,7 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
     highlighted = false,
     showDismiss = false,
     onDismiss,
+    seamless = false,
 }) => {
     const [visible, setVisible] = useState(true);
     const [autoHidden, setAutoHidden] = useState(false);
@@ -167,7 +170,8 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
             className={barStyle(
                 isDarkMode,
                 immediateActionsList.length > 0,
-                highlighted
+                highlighted,
+                seamless
             )}
             style={{
                 display: 'flex',

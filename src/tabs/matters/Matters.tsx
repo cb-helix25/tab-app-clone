@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Stack, Text, Spinner, SpinnerSize, MessageBar, MessageBarType, IconButton, mergeStyles, Icon } from '@fluentui/react';
 import ToggleSwitch from '../../components/ToggleSwitch';
 import SegmentedControl from '../../components/filter/SegmentedControl';
+import FilterBanner from '../../components/filter/FilterBanner';
 import { NormalizedMatter, UserData } from '../../app/functionality/types';
 import {
   filterMattersByStatus,
@@ -168,38 +169,29 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   // Set up navigation content with filter bar
   useEffect(() => {
     if (!selected) {
+      console.log('🔄 Setting new FilterBanner content for Matters');
       const filterOptions = isAdmin ? ['All', 'Active', 'Closed', 'Matter Requests'] : ['All', 'Active', 'Closed'];
       setContent(
-        <div style={{
-          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-          padding: '10px 24px 12px 24px',
-          boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.12)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          fontSize: '14px',
-          fontFamily: 'Raleway, sans-serif',
-          flexWrap: 'wrap',
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000,
-        }}>
-          {/* Status filter navigation buttons */}
-          <SegmentedControl
-            id="matters-status-seg"
-            ariaLabel="Filter matters by status"
-            value={activeFilter}
-            onChange={setActiveFilter}
-            options={filterOptions.map(o => ({ key: o, label: o }))}
-          />
-          {/* Role filter buttons */}
-          <SegmentedControl
-            id="matters-role-seg"
-            ariaLabel="Filter matters by role"
-            value={activeRoleFilter}
-            onChange={setActiveRoleFilter}
-            options={['All','Responsible','Originating'].map(o => ({ key: o, label: o }))}
-          />
+        <FilterBanner
+          seamless
+          primaryFilter={{
+            value: activeFilter,
+            onChange: setActiveFilter,
+            options: filterOptions.map(o => ({ key: o, label: o })),
+            ariaLabel: "Filter matters by status"
+          }}
+          secondaryFilter={{
+            value: activeRoleFilter,
+            onChange: setActiveRoleFilter,
+            options: ['All','Responsible','Originating'].map(o => ({ key: o, label: o })),
+            ariaLabel: "Filter matters by role"
+          }}
+          search={{
+            value: searchTerm,
+            onChange: setSearchTerm,
+            placeholder: "Search matters..."
+          }}
+        >
           {/* Area dropdown - scalable for many areas */}
           {availableAreas.length > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -225,39 +217,36 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
               </select>
             </div>
           )}
-          {/* Search input */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <input
-              type="text"
-              placeholder="Search matters..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '16px',
-                border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-                color: isDarkMode ? colours.dark.text : colours.light.text,
-                fontSize: '12px',
-                fontFamily: 'Raleway, sans-serif',
-                outline: 'none',
-                width: '160px',
-              }}
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: isDarkMode ? colours.dark.text : colours.light.text,
-                  cursor: 'pointer',
-                  padding: '4px',
-                }}
-              >
-                <Icon iconName="Clear" style={{ fontSize: '12px' }} />
-              </button>
-            )}
+
+          {/* Scope + Layout (moved out of admin panel) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : colours.light.text }}>Scope:</span>
+              <SegmentedControl
+                id="matters-scope-seg"
+                ariaLabel="Scope mine or all"
+                value={scope}
+                onChange={(k) => setScope(k as 'mine' | 'all')}
+                options={[
+                  { key: 'mine', label: 'Mine' },
+                  { key: 'all', label: 'All', disabled: !isAdmin }
+                ]}
+              />
+            </div>
+            <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.1)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : colours.light.text }}>Layout:</span>
+              <SegmentedControl
+                id="matters-layout-seg"
+                ariaLabel="Toggle layout one or two columns"
+                value={twoColumn ? 'two' : 'one'}
+                onChange={(k) => setTwoColumn(k === 'two')}
+                options={[
+                  { key: 'one', label: '1 col' },
+                  { key: 'two', label: '2 col' }
+                ]}
+              />
+            </div>
           </div>
           {/* Admin controls (debug + data toggle) for admin or localhost */}
           {(isAdmin || isLocalhost) && (
@@ -282,14 +271,6 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                 <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700', marginRight: 4 }}>
                   Admin Only
                 </span>
-                {/* Scope toggle moved into debug pill */}
-                <SegmentedControl
-                  id="matters-scope-seg"
-                  ariaLabel="Scope mine or all"
-                  value={scope}
-                  onChange={(k) => setScope(k as 'mine' | 'all')}
-                  options={[{ key: 'mine', label: 'Mine' }, ...(isAdmin ? [{ key: 'all', label: 'All' }] : [])]}
-                />
                 <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>Showing {filtered.length}/{datasetCount}</span>
                 <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.15)' }} />
                 <IconButton
@@ -309,19 +290,10 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                   offText="Legacy"
                   ariaLabel="Toggle dataset between legacy and new"
                 />
-                <ToggleSwitch
-                  id="matters-two-column-toggle"
-                  checked={twoColumn}
-                  onChange={setTwoColumn}
-                  size="sm"
-                  onText="2-col"
-                  offText="1-col"
-                  ariaLabel="Toggle two column layout"
-                />
               </div>
             </div>
           )}
-        </div>
+        </FilterBanner>
       );
     } else {
       setContent(

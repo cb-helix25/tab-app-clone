@@ -32,7 +32,7 @@ import {
 import { SearchBox } from '@fluentui/react';
 import { sharedSearchBoxContainerStyle, sharedSearchBoxStyle } from '../../app/styles/FilterStyles';
 import { parseISO, startOfMonth, format, isValid } from 'date-fns';
-import { Enquiry, POID, UserData } from '../../app/functionality/types';
+import { Enquiry, POID, UserData, TeamData } from '../../app/functionality/types';
 import EnquiryLineItem from './EnquiryLineItem';
 import NewUnclaimedEnquiryCard from './NewUnclaimedEnquiryCard';
 import ClaimedEnquiryCard from './ClaimedEnquiryCard';
@@ -43,35 +43,18 @@ import EnquiryCalls from './EnquiryCalls';
 import EnquiryEmails from './EnquiryEmails';
 import { colours } from '../../app/styles/colours';
 import ToggleSwitch from '../../components/ToggleSwitch';
+import SegmentedControl from '../../components/filter/SegmentedControl';
 import { isAdminUser, hasInstructionsAccess } from '../../app/admin';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import UnclaimedEnquiries from './UnclaimedEnquiries';
 import { Pivot, PivotItem } from '@fluentui/react';
-import SegmentedControl from '../../components/filter/SegmentedControl';
+import FilterBanner from '../../components/filter/FilterBanner';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import AreaCountCard from './AreaCountCard';
 import 'rc-slider/assets/index.css';
 import Slider from 'rc-slider';
-
-// Icons initialized in index.tsx
-
-interface TeamData {
-  'Created Date'?: string;
-  'Created Time'?: string;
-  'Full Name'?: string;
-  'Last'?: string;
-  'First'?: string;
-  'Nickname'?: string;
-  'Initials'?: string;
-  'Email'?: string;
-  'Entra ID'?: string;
-  'Clio ID'?: string;
-  'Rate'?: number;
-  'Role'?: string;
-  'AOW'?: string;
-}
-
+// Local types
 interface MonthlyCount {
   month: string;
   commercial: number;
@@ -81,75 +64,15 @@ interface MonthlyCount {
   otherUnsure: number;
 }
 
-interface CustomLabelProps {
-  x?: number | string;
-  y?: number | string;
-  width?: number | string;
-  height?: number | string;
-  value?: number;
-  dataKey: string;
-  isDarkMode: boolean;
-}
-
-const CustomLabel: React.FC<CustomLabelProps> = ({
-  x,
-  y,
-  width,
-  height,
-  value,
-  dataKey,
-  isDarkMode,
-}) => {
-  if (
-    typeof x !== 'number' ||
-    typeof y !== 'number' ||
-    typeof width !== 'number' ||
-    typeof height !== 'number' ||
-    typeof value !== 'number'
-  ) {
-    return null;
-  }
-
-  const textFill = isDarkMode ? '#fff' : '#333';
-
-  return (
-    <text
-      x={x + width / 2}
-      y={y + height / 2 + 5}
-      textAnchor="middle"
-      fill={textFill}
-      fontSize="12"
-      fontFamily="Raleway, sans-serif"
-    >
-      {value}
-    </text>
-  );
-};
-
-const CustomBarShape: React.FC<any> = (props) => {
-  const { x, y, width, height } = props;
-  const { isDarkMode } = useTheme();
-  const fillColor = isDarkMode ? colours.dark.border : '#d0d0d0';
-  return (
-    <rect
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      rx={2}
-      fill={fillColor}
-    />
-  );
-};
-
 interface EnquiriesProps {
-  context: TeamsContextType | null;
+  context?: TeamsContextType | null;
   enquiries: Enquiry[] | null;
   userData: UserData[] | null;
   poidData: POID[];
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
   teamData?: TeamData[] | null;
   onRefreshEnquiries?: () => Promise<void>;
+  instructionData?: any[]; // For detecting promoted enquiries
 }
 
 const Enquiries: React.FC<EnquiriesProps> = ({
@@ -160,7 +83,68 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   setPoidData,
   teamData,
   onRefreshEnquiries,
+  instructionData,
 }) => {
+
+  // Function to check if an enquiry has been promoted to pitch/instruction
+  const getPromotionStatus = useCallback((enquiry: Enquiry): { promoted: boolean; type: 'pitch' | 'instruction' | null; count: number } => {
+    if (!instructionData || !enquiry.ID) {
+      return { promoted: false, type: null, count: 0 };
+    }
+
+    let promotedCount = 0;
+    let hasInstruction = false;
+    let hasPitch = false;
+
+    // Check if this enquiry ID matches any prospect IDs in instruction data
+    instructionData.forEach((item: any) => {
+      // Check if the enquiry ID matches prospect ID in deals or instructions
+      const matchesProspectId = item.prospectId?.toString() === enquiry.ID?.toString();
+      
+      if (matchesProspectId) {
+        promotedCount++;
+        
+        // Check if it has actual instructions (not just deals/pitches)
+        if (item.instructions && item.instructions.length > 0) {
+          hasInstruction = true;
+        } else if (item.deals && item.deals.length > 0) {
+          hasPitch = true;
+        }
+      }
+      
+      // Also check deals array for prospect ID matches
+      if (item.deals) {
+        item.deals.forEach((deal: any) => {
+          if (deal.ProspectId?.toString() === enquiry.ID?.toString() || deal.prospectId?.toString() === enquiry.ID?.toString()) {
+            promotedCount++;
+            hasPitch = true;
+          }
+        });
+      }
+      
+      // Check instructions array for prospect ID matches
+      if (item.instructions) {
+        item.instructions.forEach((instruction: any) => {
+          if (instruction.ProspectId?.toString() === enquiry.ID?.toString() || instruction.prospectId?.toString() === enquiry.ID?.toString()) {
+            promotedCount++;
+            hasInstruction = true;
+          }
+        });
+      }
+    });
+
+    return {
+      promoted: promotedCount > 0,
+      type: hasInstruction ? 'instruction' : (hasPitch ? 'pitch' : null),
+      count: promotedCount
+    };
+  }, [instructionData]);
+
+  // Simple version for card components
+  const getPromotionStatusSimple = useCallback((enquiry: Enquiry): 'pitch' | 'instruction' | null => {
+    const result = getPromotionStatus(enquiry);
+    return result.type;
+  }, [getPromotionStatus]);
 
   // Use only real enquiries data
   // All normalized enquiries (union of legacy + new) retained irrespective of toggle
@@ -587,6 +571,18 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       }),
     [displayEnquiries]
   );
+
+  // Count of today's unclaimed enquiries
+  const todaysUnclaimedCount = useMemo(() => {
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    return unclaimedEnquiries.filter((e) => {
+      if (!e.Touchpoint_Date) return false;
+      const enquiryDate = e.Touchpoint_Date.split('T')[0]; // Extract date part
+      return enquiryDate === todayString;
+    }).length;
+  }, [unclaimedEnquiries]);
 
   const sortedValidEnquiries = useMemo(() => {
     return sortedEnquiries.filter(
@@ -1489,52 +1485,32 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
     // List mode: filter/search bar in Navigator (like Matters list state)
     if (!selectedEnquiry) {
+      console.log('🔄 Setting new FilterBanner content for Enquiries');
       setContent(
-        <div style={{
-          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-          padding: '10px 24px 12px 24px',
-          boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.12)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          fontSize: 14,
-          fontFamily: 'Raleway, sans-serif',
-          flexWrap: 'wrap',
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000,
-          borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)'
-        }}>
-          <SegmentedControl
-            id="enquiries-status-seg"
-            ariaLabel="Filter enquiries by status"
-            value={activeState === 'Claimable' ? 'Unclaimed' : activeState}
-            onChange={(k) => handleSetActiveState(k === 'Unclaimed' ? 'Claimable' : k)}
-            options={['Claimed','Unclaimed'].map(k => ({ key: k, label: k }))}
-          />
-          {userData && userData[0]?.AOW && userData[0].AOW.split(',').length > 1 && (
-            <SegmentedControl
-              id="enquiries-area-seg"
-              ariaLabel="Filter enquiries by area of work"
-              value={activeAreaFilter}
-              onChange={setActiveAreaFilter}
-              options={[{ key: 'All', label: 'All' }, ...userData[0].AOW.split(',').map(a => a.trim()).map(a => ({ key: a, label: a }))]}
-            />
-          )}
-          {/* Search box */}
-          <div className={sharedSearchBoxContainerStyle(isDarkMode)}>
-            <SearchBox
-              key="enquiries-search-box"
-              placeholder="Search (name, email, company, type, ID)"
-              value={searchTerm}
-              onChange={(_, v) => setSearchTerm(v || '')}
-              onSearch={(v) => setSearchTerm(v || '')}
-              onClear={() => setSearchTerm('')}
-              styles={sharedSearchBoxStyle(isDarkMode)}
-              aria-label="Search enquiries"
-            />
-          </div>
-          <div style={{ flex: 1 }} />
+        <FilterBanner
+          seamless
+          primaryFilter={{
+            value: activeState === 'Claimable' ? 'Unclaimed' : activeState,
+            onChange: (k) => handleSetActiveState(k === 'Unclaimed' ? 'Claimable' : k),
+            options: ['Claimed','Unclaimed'].map(k => ({ 
+              key: k, 
+              label: k === 'Unclaimed' ? `Unclaimed (${todaysUnclaimedCount})` : k 
+            })),
+            ariaLabel: "Filter enquiries by status"
+          }}
+          secondaryFilter={userData && userData[0]?.AOW && userData[0].AOW.split(',').length > 1 ? {
+            value: activeAreaFilter,
+            onChange: setActiveAreaFilter,
+            options: [{ key: 'All', label: 'All' }, ...userData[0].AOW.split(',').map(a => a.trim()).map(a => ({ key: a, label: a }))],
+            ariaLabel: "Filter enquiries by area of work"
+          } : undefined}
+          search={{
+            value: searchTerm,
+            onChange: setSearchTerm,
+            placeholder: "Search (name, email, company, type, ID)"
+          }}
+        >
+
           
           {/* Refresh indicator and manual refresh button */}
           <div style={{
@@ -1632,7 +1608,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               <ToggleSwitch id="enquiries-scope-toggle" checked={showMineOnly} onChange={setShowMineOnly} size="sm" onText="Mine" offText="All" ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries" />
             </div>
           )}
-        </div>
+        </FilterBanner>
       );
     } else {
       // Detail mode: 48px navigator with Back + tabs (and optional small admin pill at right)
@@ -1868,6 +1844,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                                   teamData={teamData}
                                   isLast={isLast}
                                   userAOW={userAOW}
+                                  getPromotionStatus={getPromotionStatusSimple}
                                 />
                               );
                             } else {
@@ -1884,6 +1861,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                                     isLast={isLast}
                                     userEmail={currentUserEmail}
                                     onClaimSuccess={onRefreshEnquiries}
+                                    promotionStatus={getPromotionStatusSimple(item)}
                                   />
                                 );
                               }
@@ -1899,6 +1877,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                                   onAreaChange={handleAreaChange}
                                   userData={userData}
                                   isLast={isLast}
+                                  promotionStatus={getPromotionStatusSimple(item)}
                                 />
                               );
                             }

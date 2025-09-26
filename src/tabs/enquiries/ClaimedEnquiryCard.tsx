@@ -27,6 +27,7 @@ interface Props {
   selected?: boolean;
   onToggleSelect?: (enquiry: Enquiry) => void;
   userData?: any; // For pitch builder
+  promotionStatus?: 'pitch' | 'instruction' | null;
 }
 
 /**
@@ -46,6 +47,7 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
   isPrimarySelected = false,
   onToggleSelect,
   userData,
+  promotionStatus,
 }) => {
   const { isDarkMode } = useTheme();
   const [showActions, setShowActions] = useState(false);
@@ -234,6 +236,7 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
     overflow: 'hidden', // ensure left accent clips to rounded corners
     borderLeftWidth: 2,
     borderLeftStyle: 'solid',
+    opacity: promotionStatus ? 0.6 : 1,
     selectors: {
       ':hover': isCardClickable ? { transform: 'translateY(-2px)', borderColor: selected || clickedForActions ? colours.blue : colours.highlight } : { borderColor: selected || clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)') },
       ':active': isCardClickable ? { transform: 'translateY(-1px)' } : {},
@@ -442,6 +445,21 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             opacity: isEnteringEdit ? 0.7 : 1
           }}>ID {enquiry.ID}</span>
+        )}
+        {promotionStatus && (
+          <span style={{
+            fontSize: 10,
+            fontWeight: 500,
+            padding: '2px 6px',
+            borderRadius: 4,
+            backgroundColor: promotionStatus === 'instruction' ? (isDarkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(232, 245, 232, 0.6)') : (isDarkMode ? 'rgba(33, 150, 243, 0.15)' : 'rgba(227, 242, 253, 0.6)'),
+            color: promotionStatus === 'instruction' ? (isDarkMode ? 'rgba(76, 175, 80, 0.8)' : 'rgba(46, 125, 50, 0.7)') : (isDarkMode ? 'rgba(33, 150, 243, 0.8)' : 'rgba(21, 101, 192, 0.7)'),
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+            opacity: 0.85
+          }}>
+            {promotionStatus === 'instruction' ? 'Instructed' : 'Pitched'}
+          </span>
         )}
       </div>
 

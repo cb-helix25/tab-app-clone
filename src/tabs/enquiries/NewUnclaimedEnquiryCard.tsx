@@ -15,6 +15,7 @@ interface Props {
   isLast: boolean;
   userEmail?: string;
   onClaimSuccess?: () => void;
+  promotionStatus?: 'pitch' | 'instruction' | null;
 }
 
 /**
@@ -101,7 +102,7 @@ const getAreaColour = (area?: string) => {
   }
 };
 
-const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaChange, userEmail, onClaimSuccess }) => {
+const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaChange, userEmail, onClaimSuccess, promotionStatus }) => {
   const { isDarkMode } = useTheme();
   const [selected, setSelected] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -124,6 +125,7 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
     transition: 'box-shadow .2s, transform .2s',
     boxShadow: isDarkMode ? '0 2px 10px rgba(0,0,0,0.25)' : '0 2px 10px rgba(0,0,0,0.08)',
     overflow: 'hidden',
+    opacity: promotionStatus ? 0.6 : 1,
     selectors: {
       ':hover': { boxShadow: isDarkMode ? '0 6px 20px rgba(0,0,0,0.35)' : '0 6px 20px rgba(0,0,0,0.12)', transform: 'translateY(-1px)' }
     }
@@ -203,6 +205,21 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
         {enquiry.ID && (
           <span style={{ fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.55)' : '#8aa0b3', fontWeight: 500, letterSpacing: 0.4 }}>
             ID {enquiry.ID}
+          </span>
+        )}
+        {promotionStatus && (
+          <span style={{
+            fontSize: 10,
+            fontWeight: 500,
+            padding: '2px 6px',
+            borderRadius: 4,
+            backgroundColor: promotionStatus === 'instruction' ? (isDarkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(232, 245, 232, 0.6)') : (isDarkMode ? 'rgba(33, 150, 243, 0.15)' : 'rgba(227, 242, 253, 0.6)'),
+            color: promotionStatus === 'instruction' ? (isDarkMode ? 'rgba(76, 175, 80, 0.8)' : 'rgba(46, 125, 50, 0.7)') : (isDarkMode ? 'rgba(33, 150, 243, 0.8)' : 'rgba(21, 101, 192, 0.7)'),
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+            opacity: 0.85
+          }}>
+            {promotionStatus === 'instruction' ? 'Instructed' : 'Pitched'}
           </span>
         )}
       </div>

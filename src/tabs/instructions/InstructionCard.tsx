@@ -5,6 +5,7 @@ import { TextField, DefaultButton, PrimaryButton, Dropdown, IDropdownOption } fr
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import OperationStatusToast from '../enquiries/pitch-builder/OperationStatusToast';
+import { TeamData } from '../../app/functionality/types';
 import {
   FaUser, 
   FaUsers, 
@@ -92,6 +93,7 @@ export interface InstructionCardProps {
     AreaOfWork?: string;
     firstName?: string;
     lastName?: string;
+    PitchedBy?: string;
   };
   onDealEdit?: (dealId: number, updates: { ServiceDescription?: string; Amount?: number }) => Promise<void>;
   prospectId?: number;
@@ -119,6 +121,7 @@ export interface InstructionCardProps {
   idVerificationLoading?: boolean;
   animationDelay?: number;
   getClientNameByProspectId?: (prospectId: string | number | undefined) => { firstName: string; lastName: string };
+  teamData?: TeamData[] | null;
 }
 
 // Component definition with CopyableText
@@ -222,7 +225,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   idVerificationLoading = false,
   animationDelay = 0,
   getClientNameByProspectId,
-  onDealEdit
+  onDealEdit,
+  teamData
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -261,6 +265,37 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   // Use fetched documents if available, otherwise fall back to props
   const documentsToUse = fetchedDocuments.length > 0 ? fetchedDocuments : (documents || []);
   const { isDarkMode } = useTheme();
+
+  // Helper to get initials from team data by full name (kept for potential future use)
+  const getInitialsFromTeamData = (fullName: string): string | null => {
+    if (!teamData || !fullName) return null;
+    
+    // First try exact full name match
+    let teamMember = teamData.find(member => 
+      member['Full Name']?.toLowerCase().trim() === fullName.toLowerCase().trim()
+    );
+    
+    // If no exact match, try initials match
+    if (!teamMember) {
+      teamMember = teamData.find(member => 
+        member.Initials?.toLowerCase() === fullName.toLowerCase()
+      );
+    }
+    
+    // If still no match, try first name + last name match
+    if (!teamMember) {
+      teamMember = teamData.find(member => {
+        const first = member.First?.toLowerCase().trim();
+        const last = member.Last?.toLowerCase().trim();
+        const inputLower = fullName.toLowerCase().trim();
+        return first && last && (
+          inputLower.includes(first) && inputLower.includes(last)
+        );
+      });
+    }
+    
+    return teamMember?.Initials || null;
+  };
 
   // Deal edit handlers
   const handleEditDealClick = () => {
@@ -1002,14 +1037,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           <span
             style={{
               marginLeft: 'auto',
-              padding: '4px 8px',
-              borderRadius: 12,
-              fontSize: 10,
+              padding: '5px 10px',
+              borderRadius: 14,
+              fontSize: 11,
               fontWeight: 700,
               color: areaColor,
               border: `1px solid ${areaColor}`,
               textTransform: 'uppercase',
-              letterSpacing: 0.5,
+              letterSpacing: 0.6,
               whiteSpace: 'nowrap'
             }}
           >
@@ -1034,20 +1069,20 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           const phone = instruction?.Phone || instruction?.phone || (deal as any)?.Phone || (instruction as any)?.PhoneNumber || (instruction as any)?.ContactNumber;
           const instructionRefVal = instruction?.InstructionRef || instruction?.instructionRef || instruction?.ref || instruction?.Ref;
           const prospectVal = prospectId;
-          const solicitorContact = instruction?.HelixContact || instruction?.Solicitor || instruction?.AssignedTo || instruction?.Handler || instruction?.PointOfContact || instructionData?.HelixContact;
+          const solicitorContact = instruction?.HelixContact || instruction?.Solicitor || instruction?.AssignedTo || instruction?.Handler || instruction?.PointOfContact || instructionData?.HelixContact || deal?.PitchedBy;
 
           const chipBase = {
-            color: selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'),
-            fontSize: '11px',
+            color: selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'),
+            fontSize: '12px',
             cursor: 'pointer' as const,
-            padding: '3px 8px',
-            borderRadius: '12px',
+            padding: '5px 10px',
+            borderRadius: '14px',
             transition: 'all 0.2s ease',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            border: `1px solid ${selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)')}`,
-            backgroundColor: selected ? 'rgba(54, 144, 206, 0.1)' : (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)')
+            gap: '8px',
+            border: `1px solid ${selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)')}`,
+            backgroundColor: selected ? 'rgba(54, 144, 206, 0.12)' : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)')
           };
 
           const onHover = (el: HTMLElement) => {
@@ -1074,11 +1109,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   title={`Click to copy email: ${email}`}
                 >
                   <FaEnvelope style={{ 
-                    fontSize: '10px', 
+                    fontSize: '12px', 
                     color: selected ? colours.blue : 'inherit',
                     transition: 'color 0.2s ease' 
                   }} />
-                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{email}</span>
+                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>{email}</span>
                 </div>
               )}
               {phone && (
@@ -1090,11 +1125,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   title={`Click to copy phone: ${phone}`}
                 >
                   <FaPhone style={{ 
-                    fontSize: '10px', 
+                    fontSize: '12px', 
                     color: selected ? colours.blue : 'inherit',
                     transition: 'color 0.2s ease' 
                   }} />
-                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{phone}</span>
+                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>{phone}</span>
                 </div>
               )}
               {instructionRefVal && (
@@ -1105,8 +1140,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   onMouseLeave={(e) => onLeave(e.currentTarget)}
                   title={`Instruction Ref: ${instructionRefVal}`}
                 >
-                  <FaFileAlt style={{ fontSize: '10px' }} />
-                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{instructionRefVal}</span>
+                  <FaFileAlt style={{ fontSize: '12px' }} />
+                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>{instructionRefVal}</span>
                 </div>
               )}
               {prospectVal && (
@@ -1118,17 +1153,17 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   title={`Prospect ID: ${prospectVal}`}
                 >
                   <svg 
-                    width="10" 
-                    height="10" 
+                    width="12" 
+                    height="12" 
                     viewBox="0 0 66.45 100" 
                     style={{ 
-                      fill: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'
+                      fill: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'
                     }}
                   >
                     <path d="m.33,100c0-3.95-.23-7.57.13-11.14.12-1.21,1.53-2.55,2.68-3.37,6.52-4.62,13.15-9.1,19.73-13.64,10.22-7.05,20.43-14.12,30.64-21.18.21-.14.39-.32.69-.57-5.82-4.03-11.55-8-17.27-11.98C25.76,30.37,14.64,22.57,3.44,14.88.97,13.19-.08,11.07.02,8.16.1,5.57.04,2.97.04,0c.72.41,1.16.62,1.56.9,10.33,7.17,20.66,14.35,30.99,21.52,9.89,6.87,19.75,13.79,29.68,20.59,3.26,2.23,4.78,5.03,3.97,8.97-.42,2.05-1.54,3.59-3.24,4.77-8.94,6.18-17.88,12.36-26.82,18.55-10.91,7.55-21.82,15.1-32.73,22.65-.98.68-2,1.32-3.12,2.05Z"/>
                     <path d="m36.11,48.93c-2.74,1.6-5.04,3.21-7.56,4.35-2.25,1.03-4.37-.1-6.27-1.4-5.1-3.49-10.17-7.01-15.25-10.53-2.01-1.39-4.05-2.76-5.99-4.25-.5-.38-.91-1.17-.96-1.8-.13-1.59-.06-3.19-.03-4.79.02-1.32.25-2.57,1.57-3.27,1.4-.74,2.72-.36,3.91.46,3.44,2.33,6.85,4.7,10.26,7.06,6.22,4.3,12.43,8.6,18.65,12.91.39.27.76.57,1.67,1.25Z"/>
                   </svg>
-                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{prospectVal}</span>
+                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>{prospectVal}</span>
                 </div>
               )}
               {solicitorContact && (
@@ -1139,8 +1174,39 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   onMouseLeave={(e) => onLeave(e.currentTarget)}
                   title={`Solicitor/Contact: ${solicitorContact}`}
                 >
-                  <FaUser style={{ fontSize: '10px' }} />
-                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '10px' }}>{solicitorContact}</span>
+                  <FaUser style={{ fontSize: '12px' }} />
+                  <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>
+                    {(() => {
+                      if (!teamData) return solicitorContact;
+                      
+                      // Try multiple lookup strategies to find the correct team member
+                      let teamMember = null;
+                      
+                      // 1. Exact full name match
+                      teamMember = teamData.find(member => 
+                        member['Full Name']?.toLowerCase().trim() === solicitorContact.toLowerCase().trim()
+                      );
+                      
+                      // 2. Exact initials match
+                      if (!teamMember) {
+                        teamMember = teamData.find(member => 
+                          member.Initials?.toLowerCase() === solicitorContact.toLowerCase()
+                        );
+                      }
+                      
+                      // 3. Partial name match (for cases where solicitorContact is part of full name)
+                      if (!teamMember) {
+                        teamMember = teamData.find(member => {
+                          const fullName = member['Full Name']?.toLowerCase();
+                          const contact = solicitorContact.toLowerCase();
+                          return fullName && (fullName.includes(contact) || contact.includes(fullName));
+                        });
+                      }
+                      
+                      // Return proper initials from team data, or fallback to original
+                      return teamMember?.Initials || solicitorContact;
+                    })()}
+                  </span>
                 </div>
               )}
             </>
@@ -1281,35 +1347,38 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         </div>
       )}
 
-      {/* Professional Status Overview */}
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        marginTop: 6,
-        padding: '8px 12px',
-        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(248,250,252,0.6)',
-        borderRadius: '6px',
-        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`
-      }}>
-        {/* Header */}
-        <div style={{
-          fontSize: '10px',
-          fontWeight: 600,
-          color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
-          marginBottom: '0px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.4px'
-        }}>
-        </div>
-        
-        {/* Key Status Indicators */}
+      {/* Professional Status Overview - Hidden for pitched deals */}
+      {!isPitchedDeal && (
         <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(6, 1fr)', // Fixed 6 columns for consistent spacing
-          gap: '6px'
+          display: 'flex', 
+          flexDirection: 'column', 
+          marginTop: 6,
+          padding: '8px 12px',
+          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(248,250,252,0.6)',
+          borderRadius: '6px',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`
         }}>
+          {/* Header */}
+          <div style={{
+            fontSize: '10px',
+            fontWeight: 600,
+            color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
+            marginBottom: '0px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.4px'
+          }}>
+          </div>
+          
+          {/* Key Status Indicators */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '8px'
+          }}>
           {(() => {
-            const keySteps = [];
+            const keySteps = [] as Array<{ key: string; label: string; status: string; icon: React.ReactNode; clickable: boolean; onClick: (() => void) | null }>;
+            // Use compile-time replacement from CRA; do not reference `process` directly in the browser
+            const isProd = process.env.NODE_ENV === 'production';
             
             // ID Verification
             keySteps.push({
@@ -1320,7 +1389,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                      verifyIdStatus === 'received' ? 'Under Review' : 'Pending',
               icon: <FaIdCard />,
               clickable: true,
-              onClick: onEIDClick
+              onClick: onEIDClick ?? null
             });
             
             // Payment
@@ -1331,7 +1400,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                      paymentStatus === 'processing' ? 'Processing' : 'Required',
               icon: <FaPoundSign />,
               clickable: true,
-              onClick: () => onOpenWorkbench?.('payments')
+              onClick: (() => onOpenWorkbench?.('payments')) as any
             });
             
             // Documents
@@ -1341,7 +1410,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               status: documentsToUse && documentsToUse.length > 0 ? `${documentsToUse.length} Uploaded` : 'Pending',
               icon: <FaFileAlt />,
               clickable: true,
-              onClick: () => onOpenWorkbench?.('documents')
+              onClick: (() => onOpenWorkbench?.('documents')) as any
             });
             
             // Risk Assessment
@@ -1352,7 +1421,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                      riskStatus === 'review' ? 'High Risk' : 'Pending',
               icon: <FaShieldAlt />,
               clickable: true,
-              onClick: () => onOpenWorkbench?.('risk')
+              onClick: (() => onOpenWorkbench?.('risk')) as any
             });
             
             // Matter Opening
@@ -1369,37 +1438,55 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               }
             });
             
-            // CCL (Client Care Letter)
-            keySteps.push({
-              key: 'ccl',
-              label: 'CCL',
-              status: cclStatus === 'complete' ? 'Generated' : 'Pending',
-              icon: <FaClipboardCheck />,
-              clickable: matterStatus === 'complete',
-              onClick: null // CCL functionality would be added here
-            });
+            // CCL (Client Care Letter) - hidden for production, sequence ends on Matter
+            if (!isProd) {
+              keySteps.push({
+                key: 'ccl',
+                label: 'CCL',
+                status: cclStatus === 'complete' ? 'Generated' : 'Pending',
+                icon: <FaClipboardCheck />,
+                clickable: matterStatus === 'complete',
+                onClick: null // CCL functionality would be added here
+              });
+            }
             
+            const stepsLen = keySteps.length;
             return keySteps.map((step, index) => {
               const isComplete = (() => {
                 const statusText = step.status.toLowerCase();
                 return statusText.includes('complete') || statusText.includes('paid') || statusText.includes('assessed') || statusText.includes('opened') || statusText.includes('verified') || statusText.includes('uploaded') || statusText.includes('generated');
               })();
+              const statusColour = (() => {
+                const statusText = step.status.toLowerCase();
+                if (statusText.includes('complete') || statusText.includes('paid') || statusText.includes('assessed') || statusText.includes('opened') || statusText.includes('verified') || statusText.includes('uploaded') || statusText.includes('generated')) {
+                  return colours.green;
+                } else if (statusText.includes('review') || statusText.includes('high risk')) {
+                  return '#ef4444';
+                } else if (statusText.includes('processing') || statusText.includes('under review')) {
+                  return '#f59e0b';
+                } else {
+                  return isDarkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.25)';
+                }
+              })();
 
               return (
-                <div key={step.key} style={{ display: 'flex', alignItems: 'center' }}>
+                <div key={step.key}>
                   <div
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '4px',
+                      gap: '6px',
                       cursor: step.clickable ? 'pointer' : 'default',
-                      padding: '4px 8px',
-                      borderRadius: '12px',
-                      backgroundColor: step.clickable ? (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.3)') : 'transparent',
-                      border: step.clickable ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}` : '1px solid transparent',
+                      padding: '6px 10px',
+                      borderRadius: '16px',
+                      backgroundColor: step.clickable ? (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.45)') : 'transparent',
+                      border: step.clickable ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` : '1px solid transparent',
                       transition: 'all 0.2s ease',
-                      minHeight: '24px'
+                      minHeight: '28px',
+                      minWidth: 140,
+                      position: 'relative',
+                      overflow: 'visible'
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1432,7 +1519,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   >
                     {/* Icon with status color */}
                     <div style={{
-                      fontSize: '11px',
+                      fontSize: '12px',
                       color: (() => {
                         const statusText = step.status.toLowerCase();
                         if (statusText.includes('complete') || statusText.includes('paid') || statusText.includes('assessed') || statusText.includes('opened') || statusText.includes('verified') || statusText.includes('uploaded') || statusText.includes('generated')) {
@@ -1451,7 +1538,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     
                     {/* Label - always visible */}
                     <div style={{
-                      fontSize: '9px',
+                      fontSize: '11px',
                       fontWeight: 600,
                       color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
                       letterSpacing: '0.2px',
@@ -1465,7 +1552,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                       className="status-text"
                       style={{
                         display: 'none',
-                        fontSize: '9px',
+                        fontSize: '10px',
                         fontWeight: 500,
                         color: (() => {
                           const statusText = step.status.toLowerCase();
@@ -1488,23 +1575,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     </div>
                   </div>
 
-                  {/* Connecting line to next pill */}
-                  {index < keySteps.length - 1 && (
-                    <div style={{
-                      flex: 1,
-                      height: '2px',
-                      margin: '0 8px',
-                      backgroundColor: isComplete ? colours.green : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'),
-                      borderRadius: '1px',
-                      transition: 'background-color 0.3s ease'
-                    }} />
-                  )}
                 </div>
               );
             });
           })()}
+          </div>
         </div>
-      </div>
+      )}
       {/* Contact banner removed per request; details now inline in header */}
       
       {/* Risk Details Section - shown when risk pill is clicked */}

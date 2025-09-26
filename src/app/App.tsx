@@ -537,6 +537,7 @@ const App: React.FC<AppProps> = ({
             poidData={poidData}
             setPoidData={setPoidData}
             onRefreshEnquiries={onRefreshEnquiries}
+            instructionData={allInstructionData}
           />
         );
       case 'instructions':

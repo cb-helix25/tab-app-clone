@@ -54,7 +54,8 @@ import DocumentsV3 from "./DocumentsV3";
 import localUserData from "../../localData/localUserData.json";
 import SegmentedControl from '../../components/filter/SegmentedControl';
 import TwoLayerFilter, { TwoLayerFilterOption } from '../../components/filter/TwoLayerFilter';
-import ToggleSwitch from '../../components/ToggleSwitch';
+import FilterBanner from '../../components/filter/FilterBanner';
+// ToggleSwitch removed in favor of premium SegmentedControl for scope/layout
 import IDVerificationReviewModal from '../../components/modals/IDVerificationReviewModal';
 import { fetchVerificationDetails, approveVerification } from '../../services/verificationAPI';
 
@@ -277,6 +278,25 @@ const Instructions: React.FC<InstructionsProps> = ({
    * @param prospectId The ProspectId value to search for
    * @returns Object with firstName and lastName, or empty strings if not found
    */
+  // Create indexed lookup for O(1) performance
+  const enquiryLookupMap = useMemo(() => {
+    if (!unifiedEnquiries || unifiedEnquiries.length === 0) return new Map();
+    
+    const map = new Map<string, { firstName: string; lastName: string }>();
+    unifiedEnquiries.forEach((enq: any) => {
+      const enqId = String(enq.ID || enq.id || enq.acid || enq.ACID || enq.Acid);
+      if (enqId && enqId !== 'undefined') {
+        map.set(enqId, {
+          firstName: enq.First_Name || enq.first || enq.First || enq.firstName || enq.FirstName || '',
+          lastName: enq.Last_Name || enq.last || enq.Last || enq.lastName || enq.LastName || ''
+        });
+      }
+    });
+    
+    console.log(`📇 Built enquiry lookup index with ${map.size} entries`);
+    return map;
+  }, [unifiedEnquiries]);
+
   const getClientNameByProspectId = useCallback((prospectId: string | number | undefined): { firstName: string; lastName: string } => {
     if (!prospectId) {
       return { firstName: '', lastName: '' };
@@ -323,25 +343,15 @@ const Instructions: React.FC<InstructionsProps> = ({
       return { firstName: '', lastName: '' };
     }
 
-    const enquiry = unifiedEnquiries.find((enq: any) => {
-      const enqId = enq.ID || enq.id || enq.acid || enq.ACID || enq.Acid;
-      const match = String(enqId) === prospectIdStr;
-      
-      if (match && prospectIdStr === '27671') {
-        console.log('🎯 Found match for 27671:', enq);
-      }
-      return match;
-    });
-
+    // O(1) lookup instead of O(n) search
+    const enquiryResult = enquiryLookupMap.get(prospectIdStr);
+    
     if (prospectIdStr === '27671') {
-      console.log('🔍 Searching for 27671 in', unifiedEnquiries.length, 'enquiries');
-      console.log('🔍 Found enquiry for 27671:', enquiry);
+      console.log('🔍 Fast lookup for 27671 in index:', enquiryLookupMap.has(prospectIdStr));
+      console.log('🔍 Found enquiry for 27671:', enquiryResult);
     }
 
-    let result = enquiry ? {
-      firstName: enquiry.First_Name || enquiry.first || enquiry.First || enquiry.firstName || enquiry.FirstName || '',
-      lastName: enquiry.Last_Name || enquiry.last || enquiry.Last || enquiry.lastName || enquiry.LastName || ''
-    } : (cached || { firstName: '', lastName: '' }); // Fallback to cached if available
+    let result = enquiryResult || (cached || { firstName: '', lastName: '' }); // Fallback to cached if available
     
     // If still no name found, derive from instruction email as a last resort (common in "initialised" stage)
     if (!(result.firstName?.trim() || result.lastName?.trim())) {
@@ -382,7 +392,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
     
     return result;
-  }, [unifiedEnquiries, clientNameCache, saveClientNameCache, instructionData, allInstructionData]);
+  }, [enquiryLookupMap, clientNameCache, saveClientNameCache, instructionData, allInstructionData]);
 
   const handleRiskAssessmentSave = (risk: any) => {
     setInstructionData(prev =>
@@ -601,15 +611,17 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Unified secondary filter state - tracks the secondary filter value for each tab
   const [secondaryFilter, setSecondaryFilter] = useState<string>(() => {
     switch (activeTab) {
-      case 'clients': return clientsActionFilter;
+      case 'clients': return '';
       case 'pitches': return pitchesStatusFilter;
       case 'risk': return riskStatusFilter;
-      default: return 'All';
+      default: return '';
     }
   });
   
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
   const [showAllInstructions, setShowAllInstructions] = useState<boolean>(false); // User toggle for mine vs all instructions - defaults to false (show user's own data first)
+  // Layout: 1 or 2 columns for overview grid
+  const [twoColumn, setTwoColumn] = useState<boolean>(false);
   
   const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
   // Admin detection using proper utility
@@ -880,16 +892,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     {
       key: 'clients',
       label: 'Clients',
-      subOptions: [
-        { key: 'All', label: 'All' },
-        { key: 'Initialised', label: 'Initialised' },
-        { key: 'Instructed', label: 'Instructed' },
-        { key: 'Pending ID', label: 'Pending ID' },
-        { key: 'Pending Payment', label: 'Pending Payment' },
-        { key: 'Pending Documents', label: 'Pending Documents' },
-        { key: 'Paid', label: 'Paid' },
-        { key: 'Complete', label: 'Complete' }
-      ]
+      subOptions: [] // Remove status filter for Instructions
     },
     {
       key: 'risk',
@@ -913,7 +916,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     // Reset secondary filter to the default for the new tab
     switch (key) {
       case 'clients':
-        setSecondaryFilter(clientsActionFilter);
+        setSecondaryFilter('');
         break;
       case 'pitches':
         setSecondaryFilter(pitchesStatusFilter);
@@ -929,7 +932,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     // Update the appropriate individual filter state
     switch (activeTab) {
       case 'clients':
-        setClientsActionFilter(key as any);
+        // Status filter removed for clients
         break;
       case 'pitches':
         setPitchesStatusFilter(key as any);
@@ -944,7 +947,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   React.useEffect(() => {
     switch (activeTab) {
       case 'clients':
-        setSecondaryFilter(clientsActionFilter);
+        setSecondaryFilter('');
         break;
       case 'pitches':
         setSecondaryFilter(pitchesStatusFilter);
@@ -953,7 +956,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         setSecondaryFilter(riskStatusFilter);
         break;
     }
-  }, [activeTab, clientsActionFilter, pitchesStatusFilter, riskStatusFilter, isAdmin, secondaryFilter]);
+  }, [activeTab, pitchesStatusFilter, riskStatusFilter, isAdmin]);
 
   // Clear selection when leaving overview tab
   // Clear selection when leaving clients tab
@@ -1051,10 +1054,10 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
 
   const useLocalData =
-    process.env.REACT_APP_USE_LOCAL_DATA === "true" ||
+    (typeof process !== 'undefined' && process.env && process.env.REACT_APP_USE_LOCAL_DATA === "true") ||
     window.location.hostname === "localhost";
 
-  const isProduction = process.env.NODE_ENV === "production" && !useLocalData;
+  const isProduction = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === "production") && !useLocalData;
 
   const handleBack = () => {
     if (showNewMatterPage) {
@@ -1274,89 +1277,76 @@ const Instructions: React.FC<InstructionsProps> = ({
           </div>
         ) : (
           <>
-            {/* Quick Actions Bar with Unified Two-Layer Filter */}
-            <div className={quickLinksStyle(isDarkMode)}>
-              <div style={{ 
-                display:'flex', 
-                alignItems:'center', 
-                gap: windowWidth < 768 ? 12 : 24, 
-                width:'100%',
-                flexWrap: 'wrap',
-                minWidth: 0, // Allow shrinking
-                justifyContent: windowWidth < 768 ? 'center' : 'flex-start'
-              }}>
-                <div style={{
-                  minWidth: windowWidth < 768 ? '100%' : 'auto',
-                  maxWidth: '100%',
-                  overflow: 'hidden'
-                }}>
-                  <TwoLayerFilter
-                    id="instructions-unified-filter"
-                    ariaLabel="Instructions navigation and filtering"
-                    primaryValue={activeTab}
-                    secondaryValue={secondaryFilter}
-                    onPrimaryChange={handlePrimaryFilterChange}
-                    onSecondaryChange={handleSecondaryFilterChange}
-                    options={filterOptions}
-                    hideSecondaryInProduction={true}
-                    style={{
-                      fontSize: windowWidth < 768 ? '10px' : '11px',
-                      transform: windowWidth < 768 ? 'scale(0.9)' : 'none',
-                      transformOrigin: 'left center'
-                    }}
+            <FilterBanner
+              seamless
+              primaryFilter={
+                <TwoLayerFilter
+                  id="instructions-unified-filter"
+                  ariaLabel="Instructions navigation and filtering"
+                  primaryValue={activeTab}
+                  secondaryValue={secondaryFilter}
+                  onPrimaryChange={handlePrimaryFilterChange}
+                  onSecondaryChange={handleSecondaryFilterChange}
+                  options={filterOptions}
+                  hideSecondaryInProduction={true}
+                  style={{
+                    fontSize: windowWidth < 768 ? '10px' : '11px',
+                    transform: windowWidth < 768 ? 'scale(0.9)' : 'none',
+                    transformOrigin: 'left center'
+                  }}
+                />
+              }
+              secondaryFilter={
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <SegmentedControl
+                    id="instructions-scope-seg"
+                    ariaLabel={`Scope: toggle between my ${toggleCounts.label} and all ${toggleCounts.label}`}
+                    value={showAllInstructions ? 'all' : 'mine'}
+                    onChange={(v) => setShowAllInstructions(v === 'all')}
+                    options={[
+                      { key: 'mine', label: `Mine (${toggleCounts.mine})` },
+                      { key: 'all', label: `All (${toggleCounts.all})`, disabled: !isAdmin && !isLocalhost }
+                    ]}
+                  />
+                  <SegmentedControl
+                    id="instructions-layout-seg"
+                    ariaLabel="Layout: choose 1 or 2 columns"
+                    value={twoColumn ? 'two' : 'one'}
+                    onChange={(v) => setTwoColumn(v === 'two')}
+                    options={[
+                      { key: 'one', label: '1 Col' },
+                      { key: 'two', label: '2 Col' }
+                    ]}
                   />
                 </div>
-                
-                {/* Mine/All Toggle - Available to all users */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  marginLeft: windowWidth < 768 ? '0' : '12px',
-                  marginTop: windowWidth < 768 ? '8px' : '0'
-                }}>
-                  <ToggleSwitch
-                    id="instructions-all-users-toggle"
-                    checked={showAllInstructions}
-                    onChange={setShowAllInstructions}
-                    size="sm"
-                    onText={`All (${toggleCounts.all})`}
-                    offText={`Mine (${toggleCounts.mine})`}
-                    ariaLabel={`Toggle between my ${toggleCounts.label} and all ${toggleCounts.label}`}
-                  />
+              }
+            >
+              {/* Admin controls (debug) for admin or localhost */}
+              {isAdmin && isLocalhost && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '2px 10px 2px 6px',
+                    height: 40,
+                    borderRadius: 12,
+                    background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
+                    border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: isDarkMode ? '#ffe9a3' : '#5d4700',
+                    flexShrink: 0,
+                    minWidth: 'max-content',
+                    visibility: 'hidden' // Hide empty admin controls but maintain layout
+                  }}
+                  title="Admin controls"
+                >
+                  {/* Admin debug controls - toggle removed and moved to main filter bar */}
                 </div>
-
-                {/* Spacer - only on larger screens */}
-                <div style={{ 
-                  flex: 1,
-                  minWidth: '20px' // Ensure minimum spacing
-                }} />
-                {/* Admin controls (debug) for admin or localhost - Mine/All toggle moved to main filter bar */}
-                {isAdmin && isLocalhost && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '2px 10px 2px 6px',
-                      height: 40,
-                      borderRadius: 12,
-                      background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
-                      border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: isDarkMode ? '#ffe9a3' : '#5d4700',
-                      flexShrink: 0,
-                      minWidth: 'max-content', // Prevent admin controls from shrinking too much
-                      visibility: 'hidden' // Hide empty admin controls but maintain layout
-                    }}
-                    title="Admin controls"
-                  >
-                    {/* Admin debug controls - toggle removed and moved to main filter bar */}
-                  </div>
-                )}
-              </div>
-            </div>
+              )}
+            </FilterBanner>
           </>
         )}
       </>,
@@ -2825,9 +2815,9 @@ const Instructions: React.FC<InstructionsProps> = ({
     boxSizing: "border-box",
   });
 
-  const overviewGridStyle = mergeStyles({
+  const overviewGridStyle = React.useMemo(() => mergeStyles({
     display: 'grid',
-    gridTemplateColumns: '1fr',
+    gridTemplateColumns: (windowWidth < 768) ? '1fr' : (twoColumn ? '1fr 1fr' : '1fr'),
     gap: '8px',
     width: '100%',
     margin: '0 auto',
@@ -2845,7 +2835,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       gap: '8px',
       padding: '8px',
     },
-  });
+  }), [twoColumn, windowWidth]);
 
   const overviewItemStyle = mergeStyles({
     minWidth: '280px',
@@ -3033,23 +3023,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     );
   }
 
-  if (showRiskPage) {
-    return (
-      <Stack tokens={dashboardTokens} className={containerStyle}>
-        <RiskAssessmentPage
-          onBack={() => {
-            setShowRiskPage(false);
-            setSelectedRisk(null);
-          }}
-          onSave={handleRiskAssessmentSave}
-          instructionRef={selectedInstruction?.InstructionRef}
-          riskAssessor={userInitials}
-          existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}
-        />
-      </Stack>
-    );
-  }
-
   if (showEIDPage) {
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
@@ -3206,6 +3179,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                           selected={false} // Simple selection for pitches
                           getClientNameByProspectId={getClientNameByProspectId}
                           onDealEdit={handleDealEdit}
+                          teamData={teamData}
                           onRiskClick={() => handleRiskAssessment(item)}
                           onSelect={() => {
                             // TODO: Implement pitch selection logic
@@ -3257,6 +3231,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                         selected={selectedInstruction?.InstructionRef === item.instruction?.InstructionRef}
                         getClientNameByProspectId={getClientNameByProspectId}
                         onDealEdit={handleDealEdit}
+                        teamData={teamData}
                         onRiskClick={() => handleRiskAssessment(item)}
                           onEditRisk={(ref) => {
                             const found = overviewItems.find(o => o.instruction?.InstructionRef === ref);

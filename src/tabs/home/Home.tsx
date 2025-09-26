@@ -3441,6 +3441,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           highlighted={false}
           resetSelectionRef={resetQuickActionsSelectionRef}
           panelActive={isBespokePanelOpen || isContextPanelOpen || isOutstandingPanelOpen || isTransactionPopupOpen}
+          seamless
         />
         {!immediateActionsDismissedThisSession && (
           <ImmediateActionsBar
@@ -3456,6 +3457,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
               setImmediateActionsDismissedThisSession(true);
               sessionStorage.setItem('immediateActionsBarDismissed', 'true');
             }}
+            seamless
           />
         )}
       </>
