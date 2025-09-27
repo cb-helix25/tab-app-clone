@@ -3,45 +3,38 @@ const sql = require('mssql');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 
-// Cache resolved SQL connection string to avoid repeated KV calls
+const router = express.Router();
+
+// In-memory cache for the SQL connection string
 let cachedSqlConn = null;
 let cachedSqlConnError = null;
 
-// Resolve SQL connection string with fallbacks:
-// 1) process.env.SQL_CONNECTION_STRING
-// 2) Azure Key Vault: try common secret names in order
+// In-memory cache for Matters
+const MATTERS_CACHE_TTL_MS = parseInt(process.env.MATTERS_CACHE_TTL_MS || '60000', 10);
+let mattersCache = { data: null, ts: 0 };
+
 async function resolveSqlConnectionString() {
     if (cachedSqlConn) return cachedSqlConn;
     if (cachedSqlConnError) throw cachedSqlConnError;
 
-    // Env first
-    const envConn = process.env.SQL_CONNECTION_STRING;
-    if (envConn && envConn.trim()) {
-        cachedSqlConn = envConn.trim();
-        return cachedSqlConn;
-    }
-
-    // Try Key Vault
     try {
-        const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
-        const credential = new DefaultAzureCredential();
-        const client = new SecretClient(vaultUrl, credential);
+        // 1) Direct env var
+        const direct = process.env.SQL_CONNECTION_STRING;
+        if (direct && typeof direct === 'string' && direct.trim()) {
+            cachedSqlConn = direct.trim();
+            return cachedSqlConn;
+        }
 
-        const candidateNames = [
-            'SQL_CONNECTION_STRING',
-            'sql-connection-string',
-            'helix-core-data-connection-string'
-        ];
-
-        for (const name of candidateNames) {
-            try {
-                const secret = await client.getSecret(name);
-                if (secret?.value) {
-                    cachedSqlConn = secret.value;
-                    return cachedSqlConn;
-                }
-            } catch (innerErr) {
-                // try next
+        // 2) Azure Key Vault (optional)
+        const vaultUri = process.env.KEY_VAULT_URI;
+        const secretName = process.env.SQL_CONNECTION_SECRET_NAME || 'SqlConnectionString';
+        if (vaultUri) {
+            const credential = new DefaultAzureCredential();
+            const client = new SecretClient(vaultUri, credential);
+            const secret = await client.getSecret(secretName);
+            if (secret && secret.value) {
+                cachedSqlConn = secret.value;
+                return cachedSqlConn;
             }
         }
 
@@ -52,81 +45,91 @@ async function resolveSqlConnectionString() {
     }
 }
 
-const router = express.Router();
+function normalizeName(name) {
+    if (!name) return '';
+    const n = String(name).trim().toLowerCase();
+    if (n.includes(',')) {
+        const [last, first] = n.split(',').map(p => p.trim());
+        if (first && last) return `${first} ${last}`;
+    }
+    return n.replace(/\s+/g, ' ');
+}
 
-// Helper function to fetch matters from database
+function filterByFullName(matters, fullName) {
+    const target = normalizeName(fullName);
+    if (!target) return matters;
+    return matters.filter(m => {
+        const resp = normalizeName(m.ResponsibleSolicitor || m['Responsible Solicitor'] || m.responsible_solicitor || m.responsibleSolicitor);
+        const orig = normalizeName(m.OriginatingSolicitor || m['Originating Solicitor'] || m.originating_solicitor || m.originatingSolicitor);
+        return resp === target || orig === target || resp.includes(target) || orig.includes(target);
+    });
+}
+
 async function fetchMattersFromDb() {
-    const conn = await resolveSqlConnectionString();
-    console.log('🔗 Using SQL connection for getMatters (length hidden)');
+    // Serve from cache when fresh
+    const now = Date.now();
+    if (mattersCache.data && (now - mattersCache.ts) < MATTERS_CACHE_TTL_MS) {
+        return mattersCache.data;
+    }
 
+    const conn = await resolveSqlConnectionString();
     let pool;
     try {
-        // Use a dedicated connection pool for this request to ensure correct DB context
         pool = await new sql.ConnectionPool(conn).connect();
         const result = await pool.request().query('SELECT * FROM [dbo].[Matters]');
-        
         if (!result.recordset || !Array.isArray(result.recordset)) {
             throw new Error('Query returned no valid recordset');
         }
-        
-        console.log(`✅ Successfully fetched ${result.recordset.length} matters from database`);
+        mattersCache = { data: result.recordset, ts: now };
         return result.recordset;
     } catch (error) {
-        console.error('❌ Database query failed:', error.message);
         throw new Error(`Database query failed: ${error.message}`);
     } finally {
         if (pool) {
             try {
                 await pool.close();
-            } catch (closeError) {
-                console.warn('⚠️ Error closing database pool:', closeError.message);
+            } catch {
+                // ignore close errors
             }
         }
     }
 }
 
-// Route: GET /api/getMatters
+// GET /api/getMatters?fullName=...&limit=...
 router.get('/', async (req, res) => {
     try {
-        console.log('🔍 GET /api/getMatters called');
         const matters = await fetchMattersFromDb();
-        res.json({ matters, count: matters.length });
+        const { fullName, limit } = req.query || {};
+        let result = Array.isArray(matters) ? matters : [];
+        if (fullName) {
+            result = filterByFullName(result, String(fullName));
+        }
+        if (limit && Number(limit) > 0) {
+            result = result.slice(0, Number(limit));
+        }
+        const cached = Boolean(mattersCache.data && (Date.now() - mattersCache.ts) < MATTERS_CACHE_TTL_MS);
+        res.json({ matters: result, count: result.length, cached });
     } catch (err) {
-        console.error('❌ Error fetching matters:', err.message);
-        res.status(500).json({ 
-            error: 'Failed to fetch matters from database', 
-            details: err.message 
-        });
+        res.status(500).json({ error: 'Failed to fetch matters from database', details: String(err.message || err) });
     }
 });
 
-// Route: POST /api/getMatters
+// POST /api/getMatters with optional { fullName, limit }
 router.post('/', async (req, res) => {
     const { fullName, limit } = req.body || {};
-    
     try {
-        console.log('🔍 POST /api/getMatters called for:', fullName);
         const matters = await fetchMattersFromDb();
-        
-        // Filter by fullName if provided (optional filtering logic)
-        let filteredMatters = matters;
+        let result = Array.isArray(matters) ? matters : [];
         if (fullName) {
-            // You can add filtering logic here if needed
-            console.log(`📊 Retrieved ${matters.length} total matters (filtering not implemented)`);
+            result = filterByFullName(result, String(fullName));
         }
-        
-        // Apply limit if provided
-        if (limit && limit > 0) {
-            filteredMatters = filteredMatters.slice(0, limit);
+        if (limit && Number(limit) > 0) {
+            result = result.slice(0, Number(limit));
         }
-        
-        res.json({ matters: filteredMatters, count: filteredMatters.length });
+        const cached = Boolean(mattersCache.data && (Date.now() - mattersCache.ts) < MATTERS_CACHE_TTL_MS);
+        res.json({ matters: result, count: result.length, cached });
     } catch (err) {
-        console.error('❌ Error fetching matters:', err.message);
-        res.status(500).json({ 
-            error: 'Failed to fetch matters from database', 
-            details: err.message 
-        });
+        res.status(500).json({ error: 'Failed to fetch matters from database', details: String(err.message || err) });
     }
 });
 

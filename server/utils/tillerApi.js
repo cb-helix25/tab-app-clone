@@ -33,7 +33,7 @@ async function refreshToken() {
         client_secret: clientSecret,
     }).toString();
 
-    console.log('▶️ Requesting Tiller token for', clientId);
+    // Requesting Tiller token
 
     try {
         const res = await axios.post(
@@ -47,10 +47,8 @@ async function refreshToken() {
             }
         );
 
-        console.log('◀️ Token status:', res.status);
         cachedToken = res.data.access_token;
         tokenExpiry = Date.now() + (res.data.expires_in - 60) * 1000;
-        console.log('◀️ Token expires in:', res.data.expires_in);
         return cachedToken;
     } catch (err) {
         if (err.response) {
@@ -65,7 +63,6 @@ async function refreshToken() {
 
 async function getToken() {
     if (cachedToken && Date.now() < tokenExpiry) {
-        console.log('ℹ️ Using cached Tiller token');
         return cachedToken;
     }
     return refreshToken();
@@ -74,8 +71,7 @@ async function getToken() {
 async function submitVerification(instructionData) {
     const token = await getToken();
     const payload = buildTillerPayload(instructionData);
-    console.log('▶️ Tiller payload built for:', instructionData.InstructionRef);
-    console.log('▶️ Full payload being sent:', JSON.stringify(payload, null, 2));
+    // Tiller payload prepared
     
     try {
         const res = await axios.post(
@@ -88,8 +84,7 @@ async function submitVerification(instructionData) {
                 },
             }
         );
-        console.log('◀️ Tiller status:', res.status);
-        console.log('◀️ Tiller response:', JSON.stringify(res.data));
+    // Tiller response received
         return res.data;
     } catch (err) {
         if (err.response) {
@@ -220,7 +215,7 @@ function buildTillerPayload(data) {
         profile.cardTypes.push({ cardTypeId: 4, cardNumber: drivers });
     }
 
-    console.log('▶️ Built profile data:', JSON.stringify(profile, null, 2));
+    // Built profile data
 
     return {
         externalReferenceId: '18207',

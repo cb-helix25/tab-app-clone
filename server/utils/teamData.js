@@ -33,8 +33,7 @@ async function fetchFromDb() {
     throw new Error('No SQL connection string found in TEAM_SQL_CONNECTION_STRING or SQL_CONNECTION_STRING');
   }
   
-  // eslint-disable-next-line no-console
-  console.log('[teamData] Fetching team data directly from SQL database');
+    // Fetching team data from SQL
   
   let pool;
   try {
@@ -46,7 +45,7 @@ async function fetchFromDb() {
     }
     
     // eslint-disable-next-line no-console
-    console.log(`[teamData] Successfully fetched ${result.recordset.length} team records from database`);
+      // teamData fetched successfully
     return result.recordset;
     
   } catch (error) {

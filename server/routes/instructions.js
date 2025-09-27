@@ -46,16 +46,10 @@ function generateRequestId() {
 // Test direct database connection
 router.get('/test-db', async (req, res) => {
   const requestId = generateRequestId();
-  console.log(`[${requestId}] Testing direct database connection`);
+  // Testing direct database connection
 
   try {
     const config = await getDbConfig();
-    console.log(`[${requestId}] Connecting to database:`, {
-      server: config.server,
-      database: config.database,
-      user: config.user
-    });
-
     const pool = new sql.ConnectionPool(config);
     await pool.connect();
     
@@ -64,11 +58,6 @@ router.get('/test-db', async (req, res) => {
       .query('SELECT TOP 3 DealId, ProspectId, ServiceDescription, InstructionRef FROM Deals ORDER BY DealId DESC');
     
     await pool.close();
-    
-    console.log(`[${requestId}] Database test successful:`, {
-      rowCount: result.recordset.length,
-      sampleData: result.recordset
-    });
 
     res.json({
       status: 'success',
@@ -86,7 +75,7 @@ router.get('/test-db', async (req, res) => {
     });
 
   } catch (error) {
-    console.log(`[${requestId}] Database test failed:`, error.message);
+    console.error(`[${requestId}] Database test failed`, error);
     res.status(500).json({
       status: 'error',
       message: 'Direct database connection failed',
@@ -100,7 +89,7 @@ router.get('/test-db', async (req, res) => {
 // Test endpoint
 router.get('/test', (req, res) => {
   const requestId = generateRequestId();
-  console.log(`[${requestId}] Testing instructions route`);
+  // Instructions route
   
   res.json({
     status: 'success',
@@ -113,14 +102,11 @@ router.get('/test', (req, res) => {
 // Main instructions endpoint - direct database access
 router.get('/', async (req, res) => {
   const requestId = generateRequestId();
-  console.log(`[${requestId}] Instructions request (direct DB):`, {
-    query: req.query,
-    ip: req.ip
-  });
+  // Instructions request (direct DB)
 
   // Handle deal update via query parameters (workaround for route issues)
   if (req.query.updateDeal && req.query.dealId) {
-    console.log(`[${requestId}] 🎯 DEAL UPDATE VIA QUERY - Deal ID: ${req.query.dealId}`);
+    // Deal update via query
     try {
       const dealId = parseInt(req.query.dealId);
       const updates = JSON.parse(req.query.updates || '{}');
@@ -143,10 +129,10 @@ router.get('/', async (req, res) => {
         request.input('amount', sql.Decimal(18, 2), updates.Amount);
       }
       
-  // Do not assume UpdatedAt column exists
+      // Do not assume UpdatedAt column exists
       
       const updateQuery = `UPDATE Deals SET ${updateParts.join(', ')} WHERE DealId = @dealId`;
-      console.log(`[${requestId}] Executing update:`, updateQuery);
+      // Executing update
       
       const result = await request.query(updateQuery);
       
@@ -154,11 +140,11 @@ router.get('/', async (req, res) => {
         return res.status(404).json({ error: 'Deal not found', requestId });
       }
       
-      console.log(`[${requestId}] ✅ Deal ${dealId} updated successfully`);
+      // Deal updated successfully
       return res.json({ success: true, updated: true, dealId, requestId });
       
     } catch (error) {
-      console.error(`[${requestId}] ❌ Update error:`, error);
+      console.error(`[${requestId}] ❌ Update error`, error);
       return res.status(500).json({ error: 'Update failed', details: error.message, requestId });
     }
   }
@@ -173,7 +159,7 @@ router.get('/', async (req, res) => {
     const instructionRef = req.query.instructionRef;
     const dealId = req.query.dealId && Number(req.query.dealId);
 
-    console.log(`[${requestId}] Query params:`, { initials, prospectId, instructionRef, dealId });
+    // Query params processed
 
     // ─── Deals pitched by this user with related data ────────────────────
     let deals = [];
@@ -188,7 +174,7 @@ router.get('/', async (req, res) => {
       deals = dealsResult.recordset || [];
     }
 
-    console.log(`[${requestId}] Found ${deals.length} deals`);
+    // Deals count
 
     for (const d of deals) {
       const jointRes = await pool.request()
@@ -274,7 +260,7 @@ router.get('/', async (req, res) => {
       instructions = instrResult.recordset || [];
     }
 
-    console.log(`[${requestId}] Found ${instructions.length} instructions`);
+    // Instructions count
 
     for (const inst of instructions) {
       const docRes = await pool.request()
@@ -408,7 +394,7 @@ router.get('/', async (req, res) => {
 
     await pool.close();
 
-    console.log(`[${requestId}] Successfully fetched all instruction data directly from database`);
+    // Instruction data fetched
 
     // Transform the data to match frontend expectations
     // The frontend expects all items in a single 'instructions' array
@@ -446,7 +432,7 @@ router.get('/', async (req, res) => {
       });
     });
 
-    console.log(`[${requestId}] Transformed data: ${instructions.length} instructions + ${standaloneDeals.length} standalone deals = ${transformedInstructions.length} total items`);
+    // Transformed data prepared
 
     const transformedData = {
       instructions: transformedInstructions, // All items in single array as expected by frontend
@@ -465,7 +451,7 @@ router.get('/', async (req, res) => {
     res.json(transformedData);
 
   } catch (error) {
-    console.error(`[${requestId}] Direct database instruction fetch failed:`, error);
+    console.error(`[${requestId}] Direct database instruction fetch failed`, error);
     res.status(500).json({
       error: 'Failed to fetch instruction data from database',
       detail: error.message,
@@ -481,7 +467,7 @@ router.get('/', async (req, res) => {
 // Test endpoint to verify routes are working
 router.get('/test-route', async (req, res) => {
   const requestId = generateRequestId();
-  console.log(`[${requestId}] 🧪 TEST ROUTE HIT`);
+  // Test route hit
   res.json({ message: 'Route is working', requestId, timestamp: new Date().toISOString() });
 });
 
@@ -491,10 +477,9 @@ router.put('/deals/:dealId', async (req, res) => {
   const dealId = parseInt(req.params.dealId);
   const { ServiceDescription, Amount } = req.body;
   
-  console.log(`[${requestId}] 🎯 DEAL UPDATE REQUEST - Deal ID: ${dealId}`, { ServiceDescription, Amount });
+  // Deal update request
   
   if (!dealId || (!ServiceDescription && Amount === undefined)) {
-    console.log(`[${requestId}] ❌ Bad request - missing required fields`);
     return res.status(400).json({ error: 'Deal ID and at least one field to update are required', requestId });
   }
 
@@ -525,12 +510,11 @@ router.put('/deals/:dealId', async (req, res) => {
       WHERE DealId = @dealId
     `;
     
-    console.log(`[${requestId}] Executing update query:`, updateQuery);
+    // Executing update query
     
     const result = await request.query(updateQuery);
     
     if (result.rowsAffected[0] === 0) {
-      console.log(`[${requestId}] ❌ Deal not found: ${dealId}`);
       return res.status(404).json({ error: 'Deal not found', requestId });
     }
     
@@ -545,7 +529,6 @@ router.put('/deals/:dealId', async (req, res) => {
       .input('dealId', sql.Int, dealId)
       .query(updatedDealQuery);
     
-    console.log(`[${requestId}] ✅ Deal ${dealId} updated successfully`);
     
     res.json({
       success: true,
@@ -554,7 +537,7 @@ router.put('/deals/:dealId', async (req, res) => {
     });
     
   } catch (error) {
-    console.error(`[${requestId}] ❌ Error updating deal:`, error);
+    console.error(`[${requestId}] ❌ Error updating deal`, error);
     res.status(500).json({ error: 'Failed to update deal', details: error.message, requestId });
   }
 });

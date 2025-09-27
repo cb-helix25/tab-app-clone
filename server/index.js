@@ -28,7 +28,6 @@ const clioClientQueryRouter = require('./routes/clio-client-query');
 const matterOperationsRouter = require('./routes/matter-operations');
 const mattersRouter = require('./routes/matters');
 const getMattersRouter = require('./routes/getMatters');
-const getAllMattersRouter = require('./routes/getAllMatters');
 const riskAssessmentsRouter = require('./routes/riskAssessments');
 const bundleRouter = require('./routes/bundle');
 const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
@@ -40,6 +39,7 @@ const instructionDetailsRouter = require('./routes/instruction-details');
 const instructionsRouter = require('./routes/instructions');
 const documentsRouter = require('./routes/documents');
 const enquiriesUnifiedRouter = require('./routes/enquiries-unified');
+const mattersUnifiedRouter = require('./routes/mattersUnified');
 const verifyIdRouter = require('./routes/verify-id');
 const testDbRouter = require('./routes/test-db');
 const teamLookupRouter = require('./routes/team-lookup');
@@ -50,7 +50,6 @@ const fileMapRouter = require('./routes/fileMap');
 const opsRouter = require('./routes/ops');
 const sendEmailRouter = require('./routes/sendEmail');
 const attendanceRouter = require('./routes/attendance');
-console.log('📋 Attendance router imported');
 
 const app = express();
 // Enable gzip compression if available
@@ -106,10 +105,18 @@ app.use('/api/clio-client-query', clioClientQueryRouter);
 app.use('/api/matter-operations', matterOperationsRouter);
 app.use('/api/matters', mattersRouter);
 app.use('/api/getMatters', getMattersRouter);
-app.use('/api/getAllMatters', getAllMattersRouter);
+// Deprecated: getAllMatters has been removed in favor of unified matters endpoint
+app.use('/api/getAllMatters', (req, res) => {
+    res.status(410).json({
+        error: 'Deprecated endpoint',
+        message: 'Use /api/matters-unified instead of /api/getAllMatters',
+        replacement: '/api/matters-unified'
+    });
+});
 app.use('/api/ccl', cclRouter);
 app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
+app.use('/api/matters-unified', mattersUnifiedRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 app.use('/api/ops', opsRouter);
 // Email route (server-based). Expose under both /api and / to match existing callers.
@@ -117,7 +124,6 @@ app.use('/api', sendEmailRouter);
 app.use('/', sendEmailRouter);
 // app.post('/api/update-enquiry', require('../api/update-enquiry')); // Moved to enquiries-unified/update
 // Register deal update endpoints (used by instruction cards editing)
-console.log('🔧 REGISTERING UPDATE DEAL ROUTES');
 app.post('/api/update-deal', require('./routes/updateDeal'));
 app.use('/api/deals', require('./routes/dealUpdate'));
 app.use('/api/pitches', pitchesRouter);
@@ -134,7 +140,6 @@ app.use('/api/file-map', fileMapRouter);
 
 // IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
 app.use('/api/attendance', attendanceRouter);
-console.log('📋 Attendance routes registered at /api/attendance');
 
 app.use('/ccls', express.static(CCL_DIR));
 
@@ -155,36 +160,7 @@ app.get('/api/update-deal', async (req, res) => {
     }
 });
 
-console.log('📋 Server routes registered:');
-console.log('  ✅ /api/keys');
-console.log('  ✅ /api/refresh'); 
-console.log('  ✅ /api/matter-requests');
-console.log('  ✅ /api/opponents');
-console.log('  ✅ /api/risk-assessments');
-console.log('  ✅ /api/bundle');
-console.log('  ✅ /api/clio-contacts');
-console.log('  ✅ /api/clio-matters');
-console.log('  🆕 /api/clio-client-query (CLIENT QUERY)');
-console.log('  🆕 /api/matter-operations (MATTER OPERATIONS)');
-console.log('  ✅ /api/matters');
-console.log('  ✅ /api/getMatters');
-console.log('  ✅ /api/getAllMatters');
-console.log('  ✅ /api/ccl');
-console.log('  ✅ /api/enquiries');
-console.log('  ✅ /api/enquiries-unified');
-console.log('  ✅ /api/enquiry-emails');
-console.log('  🆕 /api/ops (OPERATIONS LOG)');
-// console.log('  ✅ /api/update-enquiry'); // Moved to enquiries-unified/update
-console.log('  ✅ /api/pitches');
-console.log('  🆕 /api/payments (PAYMENT DETAILS)');
-console.log('  🆕 /api/instruction-details (INSTRUCTION DETAILS)');
-console.log('  🆕 /api/instructions (UNIFIED ENDPOINT)');
-console.log('  🆕 /api/documents (DOCUMENT PROXY)');
-console.log('  🆕 /api/verify-id (ID VERIFICATION)');
-console.log('  🆕 /api/team-lookup (TEAM EMAIL LOOKUP)');
-console.log('  🆕 /api/team-data (TEAM DATA)');
-console.log('  🆕 /api/pitch-team (PITCH TEAM DATA)');
-console.log('  🆕 /api/file-map (REPO FILE MAP)');
+// Route registration logs removed to reduce startup noise
 
 // Proxy routes to Azure Functions - these handle requests without /api/ prefix
 app.use('/', proxyToAzureFunctionsRouter);
@@ -216,7 +192,7 @@ if (fs.existsSync(buildPath)) {
         res.sendFile(path.join(buildPath, 'index.html'));
     });
 } else {
-    console.log('Static build directory not found, serving API only');
+    // Static build directory not found, serving API only
     // For non-API routes when no static files exist
     app.get('*', (req, res) => {
         if (req.path.startsWith('/api/')) {
@@ -227,6 +203,5 @@ if (fs.existsSync(buildPath)) {
 }
 
 app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-    console.log(`Ops session: ${opSessionId}`);
+    // Server started
 });

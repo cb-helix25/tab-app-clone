@@ -5,15 +5,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 44px;
+  flex: 0 0 auto; /* prevent stretch/grow on small screens */
+  height: 38px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease 0.6s, width 0.4s ease 0.6s, gap 0.4s ease 0.6s;
   background: transparent;
   border: 1px solid transparent;
-  padding: 0 12px;
-  width: 44px;
-  min-width: 44px;
+  padding: 0 10px;
+  width: 40px;
+  min-width: 40px;
   gap: 0;
   overflow: hidden;
 }
@@ -181,7 +182,7 @@
   }
   
   .quick-action-label {
-    color: #333;
+    color: #e5e7eb; /* improve dark-mode readability */
   }
   
   .quickActionCard:hover .quick-action-label,
@@ -218,8 +219,8 @@
 /* Responsive */
 @media (max-width: 900px) {
   .quickActionCard {
-    min-width: 100px;
-    padding: 0 10px;
+    min-width: 40px; /* keep compact; do not expand */
+    padding: 0 8px;
   }
   
   .quick-action-label {
@@ -229,9 +230,9 @@
 
 @media (max-width: 600px) {
   .quickActionCard {
-    min-width: 90px;
+    min-width: 40px; /* keep compact; do not expand */
     padding: 0 8px;
-    height: 40px;
+    height: 36px;
     gap: 6px;
   }
   

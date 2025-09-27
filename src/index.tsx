@@ -488,45 +488,49 @@ async function fetchVNetMatters(fullName?: string): Promise<any[]> {
   return vnetData;
 }
 
-async function fetchAllMatterSources(fullName: string): Promise<NormalizedMatter[]> {
-  // v3 cache key: separation of legacy vs new endpoints & corrected VNet fetch
-  const cacheKey = `normalizedMatters-v3-${fullName}`;
-  const cached = getCachedData<NormalizedMatter[]>(cacheKey);
-  if (cached) return cached;
+// (removed) legacy v4 fetchAllMatterSources in favor of unified v5
+  async function fetchAllMatterSources(fullName: string): Promise<NormalizedMatter[]> {
+    // v5 cache key: unified server endpoint
+    const cacheKey = `normalizedMatters-v5-${fullName}`;
+    const cached = getCachedData<NormalizedMatter[]>(cacheKey);
+    if (cached) return cached;
 
-  try {
-    // Fetch from all sources in parallel (legacy all, legacy user, vnet user, vnet all)
-    const [allMatters, userMatters, vnetUserMatters, vnetAllMatters] = await Promise.all([
-      fetchAllMatters(),
-      fetchMatters(fullName),
-      fetchVNetMatters(fullName),
-      fetchVNetMatters(),
-    ]);
+    try {
+      const query = fullName ? `?fullName=${encodeURIComponent(fullName)}` : '';
+      const res = await fetch(`/api/matters-unified${query}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const legacyAll = Array.isArray(data.legacyAll) ? data.legacyAll : [];
+      const vnetAll = Array.isArray(data.vnetAll) ? data.vnetAll : [];
 
-    // Merge and normalize all sources
-    const normalizedMatters = mergeMattersFromSources(
-      allMatters,
-      userMatters,
-      // prefer user-specific vnet set, but include all for admins in UI via source filter
-      // We merge both here; duplicates are de-duped by matterId in merge
-      [...vnetAllMatters, ...vnetUserMatters],
-      fullName
-    );
-
-    setCachedData(cacheKey, normalizedMatters);
-    return normalizedMatters;
-  } catch (err) {
-    // Fallback to legacy data only
-    const fallbackMatters = await fetchMatters(fullName);
-    const fallbackNormalized = mergeMattersFromSources(
-      [],
-      fallbackMatters,
-      [],
-      fullName
-    );
-    return fallbackNormalized;
+      const normalizedMatters = mergeMattersFromSources(
+        legacyAll,
+        [],
+        vnetAll,
+        fullName,
+      );
+      setCachedData(cacheKey, normalizedMatters);
+      return normalizedMatters;
+    } catch (err) {
+      // Fallback: call previous two-source path
+      try {
+        const [allMatters, vnetAllMatters] = await Promise.all([
+          fetchAllMatters(),
+          fetchVNetMatters(),
+        ]);
+        const normalizedMatters = mergeMattersFromSources(
+          allMatters,
+          [],
+          vnetAllMatters,
+          fullName,
+        );
+        setCachedData(cacheKey, normalizedMatters);
+        return normalizedMatters;
+      } catch {
+        return [];
+      }
+    }
   }
-}
 
 async function fetchTeamData(): Promise<TeamData[] | null> {
   console.log('🚀 fetchTeamData called...');
@@ -629,9 +633,18 @@ const AppWithContext: React.FC = () => {
 
     
     // Clear localStorage cache when switching users to force fresh data
-    const keysToRemove = Object.keys(localStorage).filter(key => 
-      key.includes('enquiries-') || key.includes('userData-') || key.includes('matters-')
-    );
+    // Include normalized matters v5 cache keys and other matter-related caches
+    const keysToRemove = Object.keys(localStorage).filter(key => {
+      const k = key.toLowerCase();
+      return (
+        k.includes('enquiries-') ||
+        k.includes('userdata-') ||
+        k.includes('matters-') ||
+        k.startsWith('normalizedmatters-v5-') ||
+        k.startsWith('vnetmatters-') ||
+        k === 'allmatters'
+      );
+    });
     keysToRemove.forEach(key => localStorage.removeItem(key));
 
     
@@ -766,9 +779,7 @@ const AppWithContext: React.FC = () => {
             normalizedMatters = fallbackMatters;
           }
 
-          // ALSO TEST fetchAllMatters for local development
-          
-          const allMattersRes = await fetchAllMatters();
+          // Removed extra local-dev fetchAllMatters test call to avoid duplicate requests
 
           setEnquiries(enquiriesRes);
           setMatters(normalizedMatters);

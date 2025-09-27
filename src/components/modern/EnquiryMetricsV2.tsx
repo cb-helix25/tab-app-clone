@@ -15,9 +15,63 @@ interface EnquiryMetric {
 interface EnquiryMetricsV2Props {
   metrics: EnquiryMetric[];
   isDarkMode: boolean;
+  /** Optional header actions rendered on the right side of the header (e.g., a toggle) */
+  headerActions?: React.ReactNode;
+  /** Optional title override; defaults to 'Enquiry & Conversion Metrics' */
+  title?: string;
 }
 
-const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode }) => {
+const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode, headerActions, title }) => {
+  const [mounted, setMounted] = React.useState(false);
+  // One-time animation per browser session
+  const [enableAnimationThisMount] = React.useState<boolean>(() => {
+    try { return sessionStorage.getItem('emv2_animated') !== 'true'; } catch { return true; }
+  });
+  React.useEffect(() => {
+    if (enableAnimationThisMount) {
+      setMounted(false);
+      const t = setTimeout(() => {
+        setMounted(true);
+        try { sessionStorage.setItem('emv2_animated', 'true'); } catch {}
+      }, 0);
+      return () => clearTimeout(t);
+    }
+    setMounted(true);
+  }, [enableAnimationThisMount]);
+
+  // Count-up animation for primary numbers
+  const useCountUp = (target: number, durationMs: number = 700): number => {
+    const [value, setValue] = React.useState(0);
+    React.useEffect(() => {
+      if (!Number.isFinite(target)) { setValue(0); return; }
+      const start = performance.now();
+      let raf = 0;
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / durationMs);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setValue(target * eased);
+        if (t < 1) raf = requestAnimationFrame(tick);
+      };
+      setValue(0);
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, [target, durationMs]);
+    return value;
+  };
+
+  const AnimatedValueWithEnabled: React.FC<{ value: number; formatter: (n: number) => string; enabled: boolean; style?: React.CSSProperties }>
+    = ({ value, formatter, enabled, style }) => {
+      const animated = useCountUp(enabled ? value : 0);
+      const toRender = enabled ? animated : value;
+      return <span style={style}>{formatter(toRender)}</span>;
+    };
+
+  const staggerStyle = (index: number): React.CSSProperties => ({
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? 'translateY(0)' : 'translateY(6px)',
+    transition: 'opacity 300ms ease, transform 300ms ease',
+    transitionDelay: `${index * 80}ms`,
+  });
   
   const getTrendDirection = (current: number, previous: number): 'up' | 'down' | 'neutral' => {
     if (current > previous) return 'up';
@@ -68,10 +122,12 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
 
   return (
     <div style={{
-      padding: '20px',
+      padding: '0 16px',
       margin: '0',
       position: 'relative',
       background: 'transparent',
+      width: '100%',
+      boxSizing: 'border-box',
     }}>
       {/* Unified Enquiry Metrics Container */}
       <div style={{
@@ -86,16 +142,19 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
           ? '0 4px 6px rgba(0, 0, 0, 0.3)'
           : '0 1px 3px rgba(0, 0, 0, 0.1)',
         marginBottom: '20px',
+        width: '100%',
+        boxSizing: 'border-box',
       }}>
         {/* Header */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '16px 20px',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
           borderBottom: isDarkMode 
             ? `1px solid ${colours.dark.border}` 
             : `1px solid ${colours.light.border}`,
-          marginBottom: '20px',
+          marginBottom: '12px',
         }}>
           <h2 style={{
             margin: 0,
@@ -104,13 +163,18 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
             color: isDarkMode ? colours.dark.text : colours.light.text,
             letterSpacing: '-0.025em',
           }}>
-            Enquiry & Conversion Metrics
+            {title || 'Enquiry & Conversion Metrics'}
           </h2>
+          {headerActions && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {headerActions}
+            </div>
+          )}
         </div>
         
         {/* Metrics Content */}
         <div style={{
-          padding: '0 20px 20px 20px',
+          padding: '0 16px 16px 16px',
         }}>
           {/* First row - first 3 metrics */}
           <div style={{
@@ -143,6 +207,7 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
                       : '0 1px 3px rgba(0, 0, 0, 0.1)',
                     transition: 'all 0.2s ease',
                     cursor: 'default',
+                    ...staggerStyle(index),
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
@@ -152,7 +217,9 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.boxShadow = isDarkMode
+                      ? '0 2px 4px rgba(0, 0, 0, 0.3)'
+                      : '0 1px 3px rgba(0, 0, 0, 0.1)';
                   }}
                 >
                   {/* Header with icon and trend */}
@@ -210,9 +277,14 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
                     fontWeight: 700,
                     color: isDarkMode ? '#F9FAFB' : '#111827',
                     letterSpacing: '-0.025em',
+                    fontVariantNumeric: 'tabular-nums',
                     marginBottom: '8px',
                   }}>
-                    {formatValue(metric)}
+                    <AnimatedValueWithEnabled
+                      value={getCurrentValue(metric)}
+                      formatter={(n) => metric.isPercentage ? `${n.toFixed(1)}%` : Math.round(n).toLocaleString()}
+                      enabled={enableAnimationThisMount}
+                    />
                   </div>
 
                   {/* Progress indicator for percentages */}
@@ -234,7 +306,7 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
                             ? `linear-gradient(90deg, ${colours.green} 0%, rgba(32, 178, 108, 0.8) 100%)`
                             : `linear-gradient(90deg, ${colours.highlight} 0%, rgba(54, 144, 206, 0.8) 100%)`,
                           borderRadius: '3px',
-                          transition: 'width 0.3s ease',
+                          transition: enableAnimationThisMount ? 'width 0.3s ease' : 'none',
                         }} />
                       </div>
                     </div>
@@ -275,6 +347,7 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
                         : '0 1px 3px rgba(0, 0, 0, 0.1)',
                       transition: 'all 0.2s ease',
                       cursor: 'default',
+                      ...staggerStyle(index + 3),
                     }}
                   >
                     {/* Header with icon and trend */}
@@ -322,9 +395,14 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
                       fontSize: '24px',
                       fontWeight: 700,
                       color: isDarkMode ? colours.dark.text : colours.light.text,
+                      fontVariantNumeric: 'tabular-nums',
                       marginBottom: '8px',
                     }}>
-                      {formatValue(metric)}
+                      <AnimatedValueWithEnabled
+                        value={getCurrentValue(metric)}
+                        formatter={(n) => metric.isPercentage ? `${n.toFixed(1)}%` : Math.round(n).toLocaleString()}
+                        enabled={enableAnimationThisMount}
+                      />
                     </div>
 
                     {/* Progress indicator for percentages */}
@@ -346,7 +424,7 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
                               ? `linear-gradient(90deg, ${colours.green} 0%, rgba(32, 178, 108, 0.8) 100%)`
                               : `linear-gradient(90deg, ${colours.highlight} 0%, rgba(54, 144, 206, 0.8) 100%)`,
                             borderRadius: '3px',
-                            transition: 'width 0.3s ease',
+                            transition: enableAnimationThisMount ? 'width 0.3s ease' : 'none',
                           }} />
                         </div>
                       </div>

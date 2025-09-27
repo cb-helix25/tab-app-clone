@@ -24,7 +24,7 @@ async function getFunctionKey(functionName) {
 // Helper function to proxy requests to Azure Functions
 async function proxyToAzureFunction(req, res, functionName, port = 7072, method = 'POST') {
     try {
-        console.log(`Proxying ${method} request to ${functionName} on port ${port}`);
+    // proxying request
         const op = { type: 'function', action: functionName, method, port, status: 'started' };
         append(op);
         
@@ -75,7 +75,7 @@ async function proxyToAzureFunction(req, res, functionName, port = 7072, method 
             }
         }
 
-    console.log(`Making request to: ${urlWithQuery.replace(/code=[^&]+/, 'code=***')}`);
+    // making request to proxied function
     const startedAt = Date.now();
         
         const response = await fetch(urlWithQuery, requestOptions);

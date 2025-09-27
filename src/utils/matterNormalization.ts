@@ -5,9 +5,28 @@ export type MatterDataSource = 'legacy_all' | 'legacy_user' | 'vnet_direct';
 /**
  * Checks if two names match, accounting for common variations
  */
+function normalizePersonName(name: string): string {
+  if (!name) return '';
+  let n = String(name).toLowerCase().trim();
+  // Handle "Last, First" → "first last"
+  if (n.includes(',')) {
+    const [last, first] = n.split(',').map(p => p.trim());
+    if (first && last) n = `${first} ${last}`;
+  }
+  // Remove periods in initials (e.g., "r. chapman")
+  n = n.replace(/\./g, '');
+  // Strip parenthetical content (e.g., "richard chapman (rc)")
+  n = n.replace(/\s*\([^)]*\)\s*/g, ' ');
+  // Remove trailing decorations after separators like " - ", "/", or "|"
+  n = n.replace(/\s[-/|].*$/, '');
+  // Collapse whitespace
+  n = n.replace(/\s+/g, ' ').trim();
+  return n;
+}
+
 function namesMatch(name1: string, name2: string): boolean {
-  const n1 = name1.toLowerCase().trim();
-  const n2 = name2.toLowerCase().trim();
+  const n1 = normalizePersonName(name1);
+  const n2 = normalizePersonName(name2);
   
   // Exact match
   if (n1 === n2) return true;

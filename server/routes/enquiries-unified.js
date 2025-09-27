@@ -6,8 +6,7 @@ const router = express.Router();
 // Direct database connections to fetch enquiries from BOTH database sources
 router.get('/', async (req, res) => {
   try {
-    console.log('🔵 UNIFIED ENQUIRIES ROUTE CALLED - Direct DB Connections');
-    console.log('🔍 Query parameters:', req.query);
+  // Unified enquiries route called
 
     // Connection strings for both databases
     const mainConnectionString = process.env.SQL_CONNECTION_STRING; // helix-core-data
@@ -22,7 +21,7 @@ router.get('/', async (req, res) => {
       });
     }
 
-    console.log('🔗 Connecting to both databases...');
+  // Connecting to databases
     
     // Create connection pools for both databases
     const mainPool = new sql.ConnectionPool(mainConnectionString);
@@ -34,7 +33,7 @@ router.get('/', async (req, res) => {
       instructionsPool.connect()
     ]);
     
-    console.log('✅ Connected to both databases, querying enquiries tables');
+  // Connected to databases, querying tables
     
     // Query main enquiries table (helix-core-data)
     const mainEnquiriesQuery = `
@@ -92,8 +91,7 @@ router.get('/', async (req, res) => {
       // })
     ]);
     
-    console.log(`✅ Main DB: ${mainResult.recordset.length} enquiries`);
-    console.log(`✅ Instructions DB: ${instructionsResult.recordset.length} enquiries`);
+  // Enquiries counts fetched
     
     // Merge results from both databases
     const allEnquiries = [
@@ -116,7 +114,7 @@ router.get('/', async (req, res) => {
       }
     }
 
-    console.log(`✅ Unified result: ${uniqueEnquiries.length} unique enquiries from both databases`);
+  // Unified result prepared
     
     // Return data in expected format
     res.json({

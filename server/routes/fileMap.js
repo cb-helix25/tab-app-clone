@@ -80,8 +80,7 @@ function getRepoRoot() {
 
 async function buildFileMap(roots, depth) {
   const repoRoot = getRepoRoot();
-  console.log('🗂️ [buildFileMap] Repo root:', repoRoot);
-  console.log('🗂️ [buildFileMap] Processing roots:', roots);
+  // building file map
   
   const payload = [];
 
@@ -89,25 +88,25 @@ async function buildFileMap(roots, depth) {
   const usedSet = buildUsedFilesSet(repoRoot);
 
   for (const r of roots) {
-    console.log(`🗂️ [buildFileMap] Processing root: ${r}`);
+  // processing root
     if (!ALLOWED_ROOTS.includes(r)) {
       console.warn(`🗂️ [buildFileMap] REJECTED root ${r}`);
       continue;
     }
     const absRoot = path.join(repoRoot, r);
-    console.log(`🗂️ [buildFileMap] Absolute path: ${absRoot}`);
+  // absolute path log removed
     const st = await safeStat(absRoot);
     if (!st || !st.isDirectory()) {
       console.warn(`🗂️ [buildFileMap] Root not a dir: ${absRoot}`);
       continue;
     }
-    console.log(`🗂️ [buildFileMap] Scanning directory: ${absRoot}`);
+  // scanning directory
     const entries = await listDirRecursive(absRoot, r, depth, usedSet);
-    console.log(`🗂️ [buildFileMap] Found ${entries.length} entries for root ${r}`);
+  // entries found
     payload.push({ root: r, entries });
   }
 
-  console.log(`🗂️ [buildFileMap] Final payload: ${payload.length} roots`);
+  // final payload size
   return { ok: true, roots: payload };
 }
 
@@ -196,8 +195,7 @@ function buildUsedFilesSet(repoRoot) {
 
 // GET /api/getFileMap
 router.get('/', async (req, res) => {
-  console.log('🗂️ [fileMap] Route hit! Query params:', req.query);
-  console.log('🗂️ [fileMap] Request URL:', req.originalUrl);
+  // fileMap route hit
   
   try {
     // Query params: roots=csv, depth=number
@@ -210,12 +208,11 @@ router.get('/', async (req, res) => {
       Math.max(0, Math.min(5, Number(depthParam))) : 
       DEFAULT_MAX_DEPTH;
     
-    console.log('🗂️ [fileMap] Requested roots:', requestedRoots);
-    console.log('🗂️ [fileMap] Depth:', depth);
+  // requested roots/depth
 
     const result = await buildFileMap(requestedRoots, Number.isFinite(depth) ? depth : DEFAULT_MAX_DEPTH);
     
-    console.log('🗂️ [fileMap] Result:', JSON.stringify(result, null, 2));
+  // result prepared
     
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');

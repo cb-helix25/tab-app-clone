@@ -17,7 +17,7 @@ import MatterOverview from './MatterOverview';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
-import MatterApiDebugger from '../../components/MatterApiDebugger';
+// Debugger removed: MatterApiDebugger was deleted
 
 interface MattersProps {
   matters: NormalizedMatter[];
@@ -34,7 +34,7 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   const [activeFilter, setActiveFilter] = useState<string>('Active');
   const [activeAreaFilter, setActiveAreaFilter] = useState<string>('All');
   const [activeRoleFilter, setActiveRoleFilter] = useState<string>('All');
-  const [showDataInspector, setShowDataInspector] = useState<boolean>(false);
+  // Debug inspector removed with MatterApiDebugger
   // Scope & dataset selection
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [useNewData, setUseNewData] = useState<boolean>(false); // Admin-only toggle to view VNet (new) data
@@ -45,34 +45,21 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   const isAdmin = isAdminUser(userData?.[0] || null);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-  // Debug flag to control verbose logging
-  const DEBUG_MATTERS_FILTERING = false;
-
-  // Debug the incoming matters
-  if (DEBUG_MATTERS_FILTERING) {
-  }
 
   // Apply all filters in sequence
   const filtered = useMemo(() => {
     let result = matters;
-    if (DEBUG_MATTERS_FILTERING) {
-    }
 
     // Decide dataset and scope to construct allowed sources
     const effectiveUseNew = isAdmin ? useNewData : false;
     const allowedSources = new Set<string>([
-      ...(effectiveUseNew ? ['vnet_direct'] : ['legacy_all']),
+      ...(effectiveUseNew ? ['vnet_direct'] : ['legacy_all', 'legacy_user']),
     ]);
     if (allowedSources.size > 0) {
       result = result.filter((m) => allowedSources.has(m.dataSource));
-      if (DEBUG_MATTERS_FILTERING) {
-        //
-      }
     } else {
       // If no sources selected, show nothing
       result = [];
-      if (DEBUG_MATTERS_FILTERING) {
-      }
     }
 
     // Apply admin filter next
@@ -80,37 +67,23 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   // - Otherwise => show only user's matters
   const effectiveShowEveryone = scope === 'all' && isAdmin;
   result = applyAdminFilter(result, effectiveShowEveryone, userFullName || '', userRole || '');
-  if (DEBUG_MATTERS_FILTERING) {
-  }
 
     // For New data + Mine, restrict to Responsible solicitor only
     if (effectiveUseNew && scope === 'mine') {
-      const before = result.length;
       result = result.filter(m => m.role === 'responsible' || m.role === 'both');
-      if (DEBUG_MATTERS_FILTERING) {
-      }
     }
 
     // Apply status filter
     // Admin-only extra option: 'Matter Requests' filters by originalStatus === 'MatterRequest'
     if (activeFilter === 'Matter Requests') {
-      const before = result.length;
       result = result.filter(m => (m.originalStatus || '').toLowerCase() === 'matterrequest');
-      if (DEBUG_MATTERS_FILTERING) {
-      }
     } else if (activeFilter !== 'All') {
       result = filterMattersByStatus(result, activeFilter.toLowerCase() as any);
-      if (DEBUG_MATTERS_FILTERING) {
-      }
     } else {
-      if (DEBUG_MATTERS_FILTERING) {
-      }
     }
 
     // Apply area filter
     result = filterMattersByArea(result, activeAreaFilter);
-    if (DEBUG_MATTERS_FILTERING) {
-    }
 
     // Apply role filter
     if (activeRoleFilter !== 'All') {
@@ -118,8 +91,6 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                           activeRoleFilter === 'Originating' ? ['originating'] :
                           ['responsible', 'originating'];
       result = filterMattersByRole(result, allowedRoles as any);
-      if (DEBUG_MATTERS_FILTERING) {
-      }
     }
 
     // Apply search term filter
@@ -131,12 +102,8 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
         m.description?.toLowerCase().includes(term) ||
         m.practiceArea?.toLowerCase().includes(term)
       );
-      if (DEBUG_MATTERS_FILTERING) {
-      }
     }
 
-    if (DEBUG_MATTERS_FILTERING) {
-    }
     return result;
   }, [
     matters,
@@ -148,13 +115,14 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
     searchTerm,
     scope,
     useNewData,
+    isAdmin,
   ]);
 
   // Dataset count (post-source selection only, before other filters)
   const datasetCount = useMemo(() => {
     const effectiveUseNew = isAdmin ? useNewData : false;
     const allowedSources = new Set<string>([
-      ...(effectiveUseNew ? ['vnet_direct'] : ['legacy_all']),
+      ...(effectiveUseNew ? ['vnet_direct'] : ['legacy_all', 'legacy_user']),
     ]);
     return matters.filter(m => allowedSources.has(m.dataSource)).length;
   }, [matters, useNewData, isAdmin]);
@@ -273,14 +241,7 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                 </span>
                 <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>Showing {filtered.length}/{datasetCount}</span>
                 <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.15)' }} />
-                <IconButton
-                  iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                  title="Admin Debugger (alex, luke, cass only)"
-                  ariaLabel="Admin Debugger (alex, luke, cass only)"
-                  onClick={() => setShowDataInspector(v => !v)}
-                  styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
-                  data-tooltip="alex, luke, cass"
-                />
+                {/* Debugger button removed */}
                 <ToggleSwitch
                   id="matters-new-data-toggle"
                   checked={useNewData}
@@ -355,6 +316,10 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   useNewData,
     activeRoleFilter,
     filtered.length,
+    datasetCount,
+    isAdmin,
+    isLocalhost,
+    twoColumn,
   ]);
 
   if (selected) {
@@ -496,13 +461,7 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
         </Stack>
       </section>
 
-      {/* Matter API Debugger - Only in development */}
-      {showDataInspector && (
-        <MatterApiDebugger
-          currentMatters={filtered}
-          onClose={() => setShowDataInspector(false)}
-        />
-      )}
+      {/* Debugger removed */}
     </div>
   );
 

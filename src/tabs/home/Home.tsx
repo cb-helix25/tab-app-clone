@@ -212,6 +212,7 @@ interface HomeProps {
   context: TeamsContextType | null;
   userData: any;
   enquiries: any[] | null;
+  matters?: NormalizedMatter[]; // Prefer app-provided normalized matters
   instructionData?: InstructionData[];
   onAllMattersFetched?: (matters: Matter[]) => void;
   onOutstandingBalancesFetched?: (data: any) => void;
@@ -820,7 +821,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 // Home Component
 //////////////////////
 
-const Home: React.FC<HomeProps> = ({ context, userData, enquiries, instructionData: propInstructionData, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false, onImmediateActionsChange }) => {
+const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: providedMatters, instructionData: propInstructionData, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false, onImmediateActionsChange }) => {
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigatorActions();
   const inTeams = isInTeams();
@@ -1158,14 +1159,13 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, instructionDa
     setPrevRecoveredData(null);
   }, [userData]);
 
-  // Convert legacy matters to normalized format for FormDetails
+  // Use app-provided normalized matters when available; otherwise normalize local allMatters
   const normalizedMatters = useMemo<NormalizedMatter[]>(() => {
+    if (providedMatters && providedMatters.length > 0) return providedMatters;
     if (!allMatters) return [];
     const userFullName = userData?.[0]?.FullName || '';
-    return allMatters.map(matter => 
-      normalizeMatterData(matter, userFullName, 'legacy_all')
-    );
-  }, [allMatters, userData]);
+    return allMatters.map(matter => normalizeMatterData(matter, userFullName, 'legacy_all'));
+  }, [providedMatters, allMatters, userData]);
 
   const [reviewedInstructionIds, setReviewedInstructionIds] = useState<string>(() =>
     sessionStorage.getItem('reviewedInstructionIds') || ''
@@ -1709,7 +1709,8 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     }
   }, [userData]);  
 
-  // Reset cached matters when the selected user changes
+  // Home no longer fetches matters itself; it receives normalized matters from App.
+  // Keep the effect boundary to clear local cache if that logic remains elsewhere.
   useEffect(() => {
     const fullName = userData?.[0]?.FullName || '';
     const initials = userData?.[0]?.Initials || '';
@@ -1738,128 +1739,19 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       REACT_APP_USE_LOCAL_DATA: process.env.REACT_APP_USE_LOCAL_DATA
     });
     
+    // Respect cached values if present otherwise rely on top-level provider
     if (cachedAllMatters || cachedAllMattersError) {
       console.log('📦 Using cached matters:', cachedAllMatters?.length || 0);
       setAllMatters(cachedAllMatters || []);
       setAllMattersError(cachedAllMattersError);
-      setIsLoadingAllMatters(false);
     } else if (useLocalData) {
       console.log('🏠 Using local mock data');
       const mappedMatters: Matter[] = (localMatters as any) as Matter[];
       cachedAllMatters = mappedMatters;
       setAllMatters(mappedMatters);
-      if (onAllMattersFetched) {
-        onAllMattersFetched(mappedMatters);
-      }
-      setIsLoadingAllMatters(false);
-    } else {
-      const fetchAllMattersData = async () => {
-        try {
-          setIsLoadingAllMatters(true);
-          const isLocalDev = typeof window !== 'undefined' &&
-            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-          
-          // Use the working getMatters endpoint instead of getAllMatters
-          let allMattersUrl: string;
-          let requestOptions: RequestInit = {
-            headers: { 'Content-Type': 'application/json' }
-          };
-          
-          // Always use server route (no function codes in client)
-          allMattersUrl = '/api/getMatters';
-          requestOptions.method = 'POST';
-          requestOptions.body = JSON.stringify({ 
-            fullName: userData?.[0]?.FullName || 'Lukasz Zemanek' 
-          });
-          
-          console.log('🌐 Making API call to fetch matters:', {
-            url: allMattersUrl,
-            method: requestOptions.method,
-            fullName: userData?.[0]?.FullName || 'Lukasz Zemanek'
-          });
-          
-          const response = await fetch(allMattersUrl, requestOptions);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch all matters: ${response.status}`);
-          }
-          const rawData = await response.json();
-          const mapData = (items: any[]): Matter[] => {
-            return items.map((item) => ({
-              DisplayNumber:
-                item.display_number || item.DisplayNumber || item['Display Number'] || '',
-              OpenDate: item.open_date || item.OpenDate || item['Open Date'] || '',
-              MonthYear: item.month_year || item.MonthYear || item['MonthYear'] || '',
-              YearMonthNumeric:
-                item.year_month_numeric || item.YearMonthNumeric || item['YearMonthNumeric'] || 0,
-              ClientID: item.client_id || item.ClientID || item['Client ID'] || '',
-              ClientName: item.client_name || item.ClientName || item['Client Name'] || '',
-              ClientPhone: item.client_phone || item.ClientPhone || item['Client Phone'] || '',
-              ClientEmail: item.client_email || item.ClientEmail || item['Client Email'] || '',
-              Status: item.status || item.Status || '',
-              UniqueID:
-                item.matter_id || item.MatterID || item.id || item.UniqueID || item['Unique ID'] || '',
-              Description: item.description || item.Description || item['Description'] || '',
-              PracticeArea: item.practice_area || item.PracticeArea || item['Practice Area'] || '',
-              Source: item.source || item.Source || item['Source'] || '',
-              Referrer: item.referrer || item.Referrer || item['Referrer'] || '',
-              ResponsibleSolicitor:
-                item.responsible_solicitor ||
-                item.ResponsibleSolicitor ||
-                item['Responsible Solicitor'] ||
-                '',
-              OriginatingSolicitor:
-                item.originating_solicitor ||
-                item.OriginatingSolicitor ||
-                item['Originating Solicitor'] ||
-                '',
-              SupervisingPartner:
-                item.supervising_partner || item.SupervisingPartner || item['Supervising Partner'] || '',
-              Opponent: item.opponent || item.Opponent || item['Opponent'] || '',
-              OpponentSolicitor:
-                item.opponent_solicitor || item.OpponentSolicitor || item['Opponent Solicitor'] || '',
-              CloseDate: item.close_date || item.CloseDate || item['Close Date'] || '',
-              ApproxValue: item.approx_value || item.ApproxValue || item['Approx. Value'] || '',
-              mod_stamp: item.mod_stamp || item.modStamp || item['mod_stamp'] || '',
-              method_of_contact:
-                item.method_of_contact || item.methodOfContact || item['method_of_contact'] || '',
-              CCL_date: item.CCL_date || item.ccl_date || item['CCL_date'] || null,
-              Rating: (item.rating || item.Rating || item['Rating']) as
-                | 'Good'
-                | 'Neutral'
-                | 'Poor'
-                | undefined,
-            }));
-          };
-
-          let mappedMatters: Matter[] = [];
-          if (Array.isArray(rawData)) {
-            // Direct array response from getMatters API
-            mappedMatters = mapData(rawData);
-          } else if (rawData.matters && Array.isArray(rawData.matters)) {
-            // Nested format from getAllMatters API
-            mappedMatters = mapData(rawData.matters);
-          } else {
-            console.warn('Unexpected data format for getMatters:', rawData);
-          }
-
-          console.log('🔍 Final mappedMatters count:', mappedMatters.length);
-
-          cachedAllMatters = mappedMatters;
-          setAllMatters(mappedMatters);
-          if (onAllMattersFetched) {
-            onAllMattersFetched(mappedMatters);
-          }
-        } catch (error: any) {
-          console.error('Error fetching all matters:', error);
-          cachedAllMattersError = error.message;
-          setAllMattersError(error.message);
-          setAllMatters([]);
-        } finally {
-          setIsLoadingAllMatters(false);
-        }
-      };
-      fetchAllMattersData();
+      if (onAllMattersFetched) onAllMattersFetched(mappedMatters);
     }
+    setIsLoadingAllMatters(false);
   }, [userData?.[0]?.FullName, useLocalData]);
 
   // NEW: useEffect for fetching POID6Years data
@@ -2559,35 +2451,23 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
 
   const targetNamesSet = buildUserAliasSet();
 
-    const mattersOpenedCount = allMatters
-      ? allMatters.filter((m) => {
-          const openDate = parseOpenDate((m as any).OpenDate);
-          if (!openDate) return false; // skip invalid dates
-
-          const isCurrentMonth =
-            openDate.getMonth() === currentMonth && openDate.getFullYear() === currentYear;
-          if (!isCurrentMonth) return false;
-
-          // Primary metric: only count matters where the selected user is the Responsible Solicitor
-          const responsibleName = normalizeName((m as any).ResponsibleSolicitor || '');
-          if (!responsibleName) return false;
-
-          // Check if user matches
-          const initialsNormalized = normalizeName(targetInitials);
-          const isMatch = targetNamesSet.has(responsibleName) || responsibleName === initialsNormalized;
-
-          return isMatch;
-        }).length
-      : 0;
+    // Compute per-user matters opened from normalizedMatters using role-aware logic
+    const mattersOpenedCount = (normalizedMatters || []).filter((m) => {
+      const openDate = parseOpenDate((m as any).openDate);
+      if (!openDate) return false;
+      const isCurrentMonth = openDate.getMonth() === currentMonth && openDate.getFullYear() === currentYear;
+      if (!isCurrentMonth) return false;
+      // Count only where current user is responsible (or both)
+      const role = (m as any).role;
+      return role === 'responsible' || role === 'both';
+    }).length;
 
     // Firm-wide matters opened this month (secondary metric)
-    const firmMattersOpenedCount = allMatters
-      ? allMatters.filter((m) => {
-          const openDate = parseOpenDate((m as any).OpenDate);
-          if (!openDate) return false;
-          return openDate.getMonth() === currentMonth && openDate.getFullYear() === currentYear;
-        }).length
-      : 0;
+    const firmMattersOpenedCount = (normalizedMatters || []).filter((m) => {
+      const openDate = parseOpenDate((m as any).openDate);
+      if (!openDate) return false;
+      return openDate.getMonth() === currentMonth && openDate.getFullYear() === currentYear;
+    }).length;
 
     if (!wipClioData) {
         return [
@@ -2777,7 +2657,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     today,
     annualLeaveRecords,
     userData,
-    allMatters,
+    normalizedMatters,
     userInitials, // ADDED so we recalc if userInitials changes
     transformedTeamData,
     outstandingBalancesData, // ADDED
@@ -3593,8 +3473,11 @@ const noActionsClass = mergeStyles({
     animation: `${tickPopKeyframes} 0.3s ease`,
   });
 
-// Extract mattersOpenedCount and compute conversion rate with two decimals
-const mattersOpenedCount = enquiryMetrics[3]?.count ?? 0;
+// Extract matters opened dynamically from metricsData to avoid stale index assumptions
+const mattersOpenedCount = React.useMemo(() => {
+  const item = metricsData.find(m => (m as any).title?.toLowerCase().startsWith('matters opened')) as any;
+  return item && typeof item.count === 'number' ? item.count : 0;
+}, [metricsData]);
 const conversionRate = enquiriesMonthToDate
   ? Number(((mattersOpenedCount / enquiriesMonthToDate) * 100).toFixed(2))
   : 0;
@@ -3625,10 +3508,15 @@ const conversionRate = enquiriesMonthToDate
       <TimeMetricsV2 
         metrics={timeMetrics} 
         enquiryMetrics={[
-          { title: 'Enquiries Today', count: 5, prevCount: 3 },
-          { title: 'Enquiries This Week', count: 32, prevCount: 28 },
-          { title: 'Matters Opened This Month', count: 12, prevCount: 15 },
-          { title: 'Conversion Rate', percentage: 37.5, prevPercentage: 42.1, isPercentage: true }
+          { title: 'Enquiries Today', count: enquiriesToday, prevCount: prevEnquiriesToday },
+          { title: 'Enquiries This Week', count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
+          { title: 'Enquiries This Month', count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
+          { title: 'Matters Opened This Month', count: mattersOpenedCount },
+          { 
+            title: 'Conversion Rate', 
+            percentage: enquiriesMonthToDate ? Number(((mattersOpenedCount / enquiriesMonthToDate) * 100).toFixed(2)) : 0, 
+            isPercentage: true 
+          }
         ]}
         isDarkMode={isDarkMode} 
       />

@@ -20,43 +20,46 @@ interface QuickActionsBarProps {
     seamless?: boolean;
 }
 
-const ACTION_BAR_HEIGHT = 36; // Compact header height
+const ACTION_BAR_HEIGHT = 30; // More compact header height
 
 const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean, seamless: boolean) =>
     mergeStyles({
         // Subtle gradient background (always applied); seamless only disables extras like blur/shadow
         background: isDarkMode
-            ? 'linear-gradient(135deg, rgba(45, 45, 45, 0.95) 0%, rgba(58, 58, 58, 0.90) 100%)'
+            // Lightened dark gradient for better contrast and polish
+            ? 'linear-gradient(135deg, rgba(42, 47, 58, 0.95) 0%, rgba(52, 58, 70, 0.92) 100%)'
             : `linear-gradient(135deg, #FFFFFF 0%, ${colours.light.grey} 100%)`,
+
+        // Hairline borders top/bottom for structure (omit when seamless)
+        borderTop: seamless ? 'none' : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(6,23,51,0.06)'}`,
+        borderBottom: seamless ? 'none' : `1px solid ${isDarkMode ? 'rgba(0,0,0,0.35)' : 'rgba(6,23,51,0.08)'}`,
         
         // Modern backdrop blur (disabled when seamless)
-        backdropFilter: seamless ? 'none' : 'blur(12px)',
+        backdropFilter: seamless ? 'none' : 'blur(10px)',
         
         // Professional shadows (removed when seamless)
         boxShadow: seamless
             ? 'none'
             : (isDarkMode
-                ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2)'
-                : '0 8px 32px rgba(6, 23, 51, 0.12), 0 4px 16px rgba(6, 23, 51, 0.08)'),
+                ? '0 4px 6px rgba(0, 0, 0, 0.30)'
+                : '0 4px 6px rgba(6, 23, 51, 0.07)'),
         
-    // Layout stability - compact padding
-    // Align content to left (remove excessive left padding)
-    padding: '2px 12px',
-    minHeight: ACTION_BAR_HEIGHT,
-    height: 'auto',
+        // Layout stability - compact padding
+        // Align content to left (remove excessive left padding)
+        padding: '2px 10px',
+        minHeight: ACTION_BAR_HEIGHT,
+        height: ACTION_BAR_HEIGHT,        // Smooth professional transitions
+        transition: 'all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)',
         
-        // Smooth professional transitions
-        transition: 'all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)',
-        
-    // Flex layout: row so content reveals inline to the right of the label
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+        // Flex layout: row so content reveals inline to the right of the label
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
 
-    // Root should not scroll horizontally; the chip row will handle its own overflow
-    overflowX: 'hidden',
-    overflowY: 'hidden',
+        // Root should not scroll horizontally; the chip row will handle its own overflow
+        overflowX: 'hidden',
+        overflowY: 'hidden',
         
         // Position and layering
         // Render inline within Navigator without sticky offset so it touches CustomTabs
@@ -78,11 +81,11 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean, seamless: bo
         
         // Highlighted state with smooth scaling
         ...(highlighted && !seamless && {
-            transform: 'scale(1.003)',
+            transform: 'scale(1.0025)',
             filter: 'brightness(1.02)',
             boxShadow: isDarkMode
-                ? '0 8px 24px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.22)'
-                : '0 8px 24px rgba(6, 23, 51, 0.12), 0 4px 12px rgba(6, 23, 51, 0.08)',
+                ? '0 6px 14px rgba(0, 0, 0, 0.28)'
+                : '0 6px 14px rgba(6, 23, 51, 0.10)',
         }),
         
         // Hide scrollbars while maintaining functionality
@@ -94,11 +97,11 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean, seamless: bo
         
         // Responsive design
         '@media (max-width: 900px)': {
-            padding: '6px 24px',
+            padding: '4px 16px',
             gap: '4px',
         },
         '@media (max-width: 600px)': {
-            padding: '6px 20px',
+            padding: '4px 12px',
             gap: '2px',
         },
     });
@@ -184,7 +187,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                     gap: 6,
                     height: ACTION_BAR_HEIGHT,
                     width: 'auto',
-                    padding: '0 4px',
+                    padding: '0 2px',
                     background: 'transparent',
                     border: 'none',
                     color: isDarkMode ? '#E5E7EB' : '#0F172A',
@@ -192,7 +195,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                     cursor: 'pointer',
                     textAlign: 'left',
                     flex: '0 0 auto',
-                    minWidth: 120,
+                    minWidth: 110,
                 }}
             >
                 <span style={{ fontSize: 13 }}>Quick actions</span>
@@ -213,15 +216,15 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                 style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
-                    paddingBottom: 6,
+                    gap: 2,
+                    paddingBottom: 0,
                     flexWrap: 'nowrap',
                     overflowX: 'auto',
                     msOverflowStyle: 'none',
                     scrollbarWidth: 'none',
-                    flex: '1 1 auto',
+                    flex: '0 0 auto',
                     minWidth: 0,
-                    width: collapsed ? 0 : '100%',
+                    width: collapsed ? 0 : 'auto',
                     opacity: collapsed ? 0 : 1,
                     pointerEvents: collapsed ? 'none' : 'auto',
                     transition: 'width 200ms ease, opacity 180ms ease',
@@ -237,21 +240,21 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: 28,
-                            height: 28,
+                            width: 24,
+                            height: 24,
                             border: 'none',
                             borderRadius: 4,
                             background: 'transparent',
                             color: isDarkMode ? '#9CA3AF' : '#64748B',
                             cursor: 'pointer',
-                            marginRight: 4,
+                            marginRight: 2,
                         }}
                     >
                         <Icon iconName="ChevronLeft" styles={{ root: { fontSize: 14 } }} />
                     </button>
                 )}
 
-                {quickActions.map((action, index) => (
+                {!collapsed && quickActions.map((action, index) => (
                     <QuickActionsCard
                         key={action.title}
                         title={getShortTitle(action.title)}
@@ -274,7 +277,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                             '--card-selected': isDarkMode 
                                 ? colours.dark.cardHover 
                                 : colours.light.cardHover,
-                            height: '36px',
+                            height: '32px',
                             opacity: (isLoading && selected !== action.title) ? 0.6 : 1,
                             filter: (isLoading && selected === action.title) 
                                 ? 'brightness(1.06)'

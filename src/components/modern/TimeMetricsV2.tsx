@@ -35,6 +35,7 @@ interface TimeMetricsV2Props {
 
 const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, isDarkMode }) => {
   const [showEnquiryMetrics, setShowEnquiryMetrics] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-GB', {
       style: 'currency',
@@ -80,6 +81,49 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
     return FiTarget;
   };
 
+  // Count-up animation hook
+  const useCountUp = (target: number, durationMs: number = 700): number => {
+    const [value, setValue] = React.useState(0);
+    React.useEffect(() => {
+      if (!Number.isFinite(target)) { setValue(0); return; }
+      const start = performance.now();
+      let raf = 0;
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / durationMs);
+        // ease-out cubic
+        const eased = 1 - Math.pow(1 - t, 3);
+        setValue(target * eased);
+        if (t < 1) raf = requestAnimationFrame(tick);
+      };
+      setValue(0);
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, [target, durationMs]);
+    return value;
+  };
+
+  const AnimatedValue: React.FC<{ value: number; formatter: (n: number) => string; className?: string; style?: React.CSSProperties }>
+    = ({ value, formatter, className, style }) => {
+      const animated = useCountUp(value);
+      return <span className={className} style={style}>{formatter(animated)}</span>;
+    };
+    const AnimatedValueWithEnabled: React.FC<{ value: number; formatter: (n: number) => string; enabled: boolean; className?: string; style?: React.CSSProperties }>
+      = ({ value, formatter, enabled, className, style }) => {
+        const animated = useCountUp(enabled ? value : 0);
+        const toRender = enabled ? animated : value;
+        return <span className={className} style={style}>{formatter(toRender)}</span>;
+      };
+
+  const getDisplaySpec = (metric: TimeMetric): { value: number; formatter: (n: number) => string } => {
+    if (metric.isMoneyOnly) {
+      return { value: metric.money || 0, formatter: (n) => formatCurrency(Math.round(n)) };
+    }
+    if (metric.isTimeMoney) {
+      return { value: metric.hours || 0, formatter: (n) => formatHours(n) };
+    }
+    return { value: metric.count || 0, formatter: (n) => Math.round(n).toString() };
+  };
+
   // Type guards
   const isTimeMetric = (metric: TimeMetric | EnquiryMetric): metric is TimeMetric => {
     return 'isTimeMoney' in metric || 'isMoneyOnly' in metric || 'money' in metric || 'hours' in metric;
@@ -91,6 +135,28 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
 
   // Determine which metrics to display
   const currentMetrics = showEnquiryMetrics ? (enquiryMetrics || []) : metrics;
+  // Run entrance/count-up animations only once per session/tab refresh
+  const [enableAnimationThisMount] = React.useState<boolean>(() => {
+    try { return sessionStorage.getItem('tmv2_animated') !== 'true'; } catch { return true; }
+  });
+  React.useEffect(() => {
+    if (enableAnimationThisMount) {
+      setMounted(false);
+      const t = setTimeout(() => {
+        setMounted(true);
+        try { sessionStorage.setItem('tmv2_animated', 'true'); } catch {}
+      }, 0);
+      return () => clearTimeout(t);
+    }
+    setMounted(true);
+  }, [enableAnimationThisMount]);
+
+  const staggerStyle = (index: number): React.CSSProperties => ({
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? 'translateY(0)' : 'translateY(6px)',
+    transition: 'opacity 300ms ease, transform 300ms ease',
+    transitionDelay: `${index * 80}ms`,
+  });
   
 
   // Helper function to get current value
@@ -126,103 +192,70 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
 
   // If showing enquiry metrics, render the EnquiryMetricsV2 component instead
   if (showEnquiryMetrics && enquiryMetrics) {
-    return (
-      <div style={{
-        padding: '20px',
-        margin: '0',
-        position: 'relative',
-        background: 'transparent',
-      }}>
-        {/* Toggle Header */}
-        <div style={{
-          background: isDarkMode 
-            ? `linear-gradient(135deg, ${colours.dark.cardBackground} 0%, rgba(54, 144, 206, 0.1) 100%)`
-            : `linear-gradient(135deg, ${colours.light.cardBackground} 0%, rgba(54, 144, 206, 0.05) 100%)`,
-          borderRadius: '12px',
-          border: isDarkMode 
-            ? `1px solid ${colours.dark.border}` 
-            : `1px solid ${colours.light.border}`,
-          boxShadow: isDarkMode
-            ? '0 4px 6px rgba(0, 0, 0, 0.3)'
-            : '0 1px 3px rgba(0, 0, 0, 0.1)',
-          marginBottom: '20px',
-          padding: '16px 20px',
+    const headerActions = (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <span style={{
+          fontSize: '13px',
+          color: isDarkMode ? '#E5E7EB' : '#111827',
+          fontWeight: showEnquiryMetrics ? 400 : 700,
         }}>
+          Time
+        </span>
+        <button
+          onClick={() => setShowEnquiryMetrics(!showEnquiryMetrics)}
+          style={{
+            width: '50px',
+            height: '26px',
+            borderRadius: '13px',
+            border: `1px solid ${isDarkMode ? '#374151' : '#CBD5E1'}`,
+            background: showEnquiryMetrics 
+              ? (isDarkMode ? '#2563EB' : '#3690CE')
+              : (isDarkMode ? '#111827' : '#FFFFFF'),
+            position: 'relative',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: isDarkMode ? 'inset 0 0 0 1px rgba(255,255,255,0.04)' : 'inset 0 0 0 1px rgba(0,0,0,0.02)'
+          }}
+          aria-label="Toggle Time/Enquiries"
+        >
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-            <h2 style={{
-              margin: 0,
-              fontSize: '18px',
-              fontWeight: 600,
-              color: isDarkMode ? colours.dark.text : colours.light.text,
-              letterSpacing: '-0.025em',
-            }}>
-              Business Metrics
-            </h2>
-            
-            {/* Toggle Switch */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-            }}>
-              <span style={{
-                fontSize: '14px',
-                color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                fontWeight: showEnquiryMetrics ? 400 : 600,
-              }}>
-                Time
-              </span>
-              <button
-                onClick={() => setShowEnquiryMetrics(!showEnquiryMetrics)}
-                style={{
-                  width: '48px',
-                  height: '24px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: showEnquiryMetrics 
-                    ? colours.highlight 
-                    : isDarkMode ? colours.dark.border : colours.light.border,
-                  position: 'relative',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: '50%',
-                  background: 'white',
-                  position: 'absolute',
-                  top: '2px',
-                  left: showEnquiryMetrics ? '26px' : '2px',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-                }} />
-              </button>
-              <span style={{
-                fontSize: '14px',
-                color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                fontWeight: showEnquiryMetrics ? 600 : 400,
-              }}>
-                Enquiries
-              </span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Render EnquiryMetricsV2 */}
-        <EnquiryMetricsV2 metrics={enquiryMetrics} isDarkMode={isDarkMode} />
+            width: '22px',
+            height: '22px',
+            borderRadius: '50%',
+            background: isDarkMode ? '#E5E7EB' : '#FFFFFF',
+            border: `1px solid ${isDarkMode ? '#4B5563' : '#E5E7EB'}`,
+            position: 'absolute',
+            top: '1px',
+            left: showEnquiryMetrics ? '24px' : '2px',
+            transition: 'all 0.2s ease',
+            boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
+          }} />
+        </button>
+        <span style={{
+          fontSize: '13px',
+          color: isDarkMode ? '#E5E7EB' : '#111827',
+          fontWeight: showEnquiryMetrics ? 700 : 400,
+        }}>
+          Enquiries
+        </span>
+      </div>
+    );
+
+    return (
+      <div style={{ padding: '0', margin: '0', position: 'relative', background: 'transparent' }}>
+        <EnquiryMetricsV2 
+          metrics={enquiryMetrics} 
+          isDarkMode={isDarkMode} 
+          headerActions={headerActions}
+          title={'Business Metrics'}
+        />
       </div>
     );
   }
 
   return (
     <div style={{
-      padding: '20px',
+      padding: '0 16px',
       margin: '0',
       position: 'relative',
       background: 'transparent',
@@ -240,17 +273,19 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
           ? '0 4px 6px rgba(0, 0, 0, 0.3)'
           : '0 1px 3px rgba(0, 0, 0, 0.1)',
         marginBottom: '20px',
+        width: '100%',
+        boxSizing: 'border-box',
       }}>
         {/* Header inside the container */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '16px 20px',
+          padding: '12px 16px',
           borderBottom: isDarkMode 
             ? `1px solid ${colours.dark.border}` 
             : `1px solid ${colours.light.border}`,
-          marginBottom: '20px',
+          marginBottom: '12px',
         }}>
           <h2 style={{
             margin: 0,
@@ -268,53 +303,44 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
             alignItems: 'center',
             gap: '12px',
           }}>
-            <span style={{
-              fontSize: '14px',
-              color: isDarkMode ? colours.dark.subText : colours.light.subText,
-              fontWeight: showEnquiryMetrics ? 400 : 600,
-            }}>
-              Time
-            </span>
+            <span style={{ fontSize: '13px', color: isDarkMode ? '#E5E7EB' : '#111827', fontWeight: showEnquiryMetrics ? 400 : 700 }}>Time</span>
             <button
               onClick={() => setShowEnquiryMetrics(!showEnquiryMetrics)}
               style={{
-                width: '48px',
-                height: '24px',
-                borderRadius: '12px',
-                border: 'none',
+                width: '50px',
+                height: '26px',
+                borderRadius: '13px',
+                border: `1px solid ${isDarkMode ? '#374151' : '#CBD5E1'}`,
                 background: showEnquiryMetrics 
-                  ? colours.highlight 
-                  : isDarkMode ? colours.dark.border : colours.light.border,
+                  ? (isDarkMode ? '#2563EB' : '#3690CE')
+                  : (isDarkMode ? '#111827' : '#FFFFFF'),
                 position: 'relative',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                boxShadow: isDarkMode ? 'inset 0 0 0 1px rgba(255,255,255,0.04)' : 'inset 0 0 0 1px rgba(0,0,0,0.02)'
               }}
+              aria-label="Toggle Time/Enquiries"
             >
               <div style={{
-                width: '20px',
-                height: '20px',
+                width: '22px',
+                height: '22px',
                 borderRadius: '50%',
-                background: 'white',
+                background: isDarkMode ? '#E5E7EB' : '#FFFFFF',
+                border: `1px solid ${isDarkMode ? '#4B5563' : '#E5E7EB'}`,
                 position: 'absolute',
-                top: '2px',
-                left: showEnquiryMetrics ? '26px' : '2px',
+                top: '1px',
+                left: showEnquiryMetrics ? '24px' : '2px',
                 transition: 'all 0.2s ease',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
               }} />
             </button>
-            <span style={{
-              fontSize: '14px',
-              color: isDarkMode ? colours.dark.subText : colours.light.subText,
-              fontWeight: showEnquiryMetrics ? 600 : 400,
-            }}>
-              Enquiries
-            </span>
+            <span style={{ fontSize: '13px', color: isDarkMode ? '#E5E7EB' : '#111827', fontWeight: showEnquiryMetrics ? 700 : 400 }}>Enquiries</span>
           </div>
         </div>
         
         {/* Metrics content with padding */}
         <div style={{
-          padding: '0 20px 20px 20px',
+          padding: '0 16px 16px 16px',
         }}>
           {/* Match original metricsGridThree layout */}
           <div className="metricsGridThree" style={{
@@ -350,6 +376,7 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                 transition: 'all 0.2s ease',
                 cursor: 'default',
                 // Natural card styling that sits on the page background
+                ...staggerStyle(index),
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -417,22 +444,28 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                 gap: '8px',
                 marginBottom: (isTimeMetric(metric) && metric.showDial) ? '16px' : '0',
               }}>
-                <span style={{
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  color: isDarkMode ? '#F9FAFB' : '#111827',
-                  letterSpacing: '-0.025em',
-                }}>
-                  {formatValue(metric)}
-                </span>
+                <AnimatedValueWithEnabled
+                  value={getDisplaySpec(metric).value}
+                  formatter={getDisplaySpec(metric).formatter}
+                  enabled={enableAnimationThisMount}
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: 700,
+                    color: isDarkMode ? '#F9FAFB' : '#111827',
+                    letterSpacing: '-0.025em',
+                  }}
+                />
                 {isTimeMetric(metric) && metric.isTimeMoney && metric.money && (
-                  <span style={{
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: isDarkMode ? '#10B981' : '#059669',
-                  }}>
-                    {formatCurrency(metric.money)}
-                  </span>
+                  <AnimatedValueWithEnabled
+                    value={metric.money || 0}
+                    formatter={(n) => formatCurrency(Math.round(n))}
+                    enabled={enableAnimationThisMount}
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: isDarkMode ? '#10B981' : '#059669',
+                    }}
+                  />
                 )}
               </div>
 
@@ -527,6 +560,7 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                       : '0 1px 3px rgba(0, 0, 0, 0.1)',
                     transition: 'all 0.2s ease',
                     cursor: 'default',
+                    ...staggerStyle(index + 3),
                   }}
                 >
                   {/* Same card content structure */}
@@ -576,7 +610,11 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                     color: isDarkMode ? colours.dark.text : colours.light.text,
                     marginBottom: '8px',
                   }}>
-                    {formatValue(metric)}
+                    <AnimatedValueWithEnabled
+                      value={getDisplaySpec(metric as TimeMetric).value}
+                      formatter={getDisplaySpec(metric as TimeMetric).formatter}
+                      enabled={enableAnimationThisMount}
+                    />
                   </div>
 
                   {isTimeMetric(metric) && metric.isTimeMoney && metric.money && (
@@ -585,7 +623,11 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                       color: isDarkMode ? colours.dark.subText : colours.light.subText,
                       marginBottom: '12px',
                     }}>
-                      £{metric.money.toLocaleString()}
+                      <AnimatedValueWithEnabled
+                        value={metric.money || 0}
+                        formatter={(n) => `£${Math.round(n).toLocaleString()}`}
+                        enabled={enableAnimationThisMount}
+                      />
                     </div>
                   )}
 

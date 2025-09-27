@@ -3,9 +3,10 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 module.exports = function(app) {
   // Routes that go to the Express server (port 8080)
   const expressRoutes = [
-    '/api/getMatters',
     '/api/matters',
-    '/api/getAllMatters',
+    // unified endpoints
+    '/api/matters-unified',
+    '/api/enquiries-unified',
     '/api/enquiries',
     '/api/clio-contacts',
     '/api/clio-matters',
@@ -52,6 +53,16 @@ module.exports = function(app) {
     // Removed /sendEmail - now handled by Express server
   ];
 
+  // Pre-create fallback proxies to avoid adding new listeners per error
+  const fallbackToFunctions = createProxyMiddleware({
+    target: 'http://localhost:7072',
+    changeOrigin: true,
+  });
+  const fallbackToExpress = createProxyMiddleware({
+    target: 'http://localhost:8080',
+    changeOrigin: true,
+  });
+
   // Proxy Express server routes to port 8080
   app.use(
     expressRoutes,
@@ -62,11 +73,7 @@ module.exports = function(app) {
         console.error(`Proxy error for ${req.url} (Express server):`, err.message);
         // Fallback to Azure Functions if Express server fails
         console.log('Attempting fallback to Azure Functions...');
-        const fallbackProxy = createProxyMiddleware({
-          target: 'http://localhost:7072',
-          changeOrigin: true,
-        });
-        fallbackProxy(req, res);
+        fallbackToFunctions(req, res);
       }
     })
   );
@@ -84,11 +91,7 @@ module.exports = function(app) {
         console.error(`Proxy error for ${req.url} (Azure Functions):`, err.message);
         // Fallback to Express server if Azure Functions fails
         console.log('Attempting fallback to Express server...');
-        const fallbackProxy = createProxyMiddleware({
-          target: 'http://localhost:8080',
-          changeOrigin: true,
-        });
-        fallbackProxy(req, res);
+        fallbackToExpress(req, res);
       }
     })
   );
@@ -106,11 +109,7 @@ module.exports = function(app) {
         console.error(`Proxy error for ${req.url} (Decoupled Functions):`, err.message);
         // Fallback to Express server if Azure Functions fails
         console.log('Attempting fallback to Express server...');
-        const fallbackProxy = createProxyMiddleware({
-          target: 'http://localhost:8080',
-          changeOrigin: true,
-        });
-        fallbackProxy(req, res);
+        fallbackToExpress(req, res);
       }
     })
   );
@@ -124,11 +123,7 @@ module.exports = function(app) {
       onError: (err, req, res) => {
         console.error(`Proxy error for ${req.url} (Express server):`, err.message);
         console.log('Attempting fallback to Azure Functions...');
-        const fallbackProxy = createProxyMiddleware({
-          target: 'http://localhost:7072',
-          changeOrigin: true,
-        });
-        fallbackProxy(req, res);
+        fallbackToFunctions(req, res);
       }
     })
   );

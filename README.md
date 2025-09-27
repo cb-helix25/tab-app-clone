@@ -147,6 +147,36 @@ Migration plan (summary):
 1) Replace any frontend `fetch` that includes `?code=` with an equivalent `/api/...` route.
 2) If a route doesn’t exist, add a proxy in `server/routes` that reads the key from Key Vault (or env) and forwards the request.
 3) Remove `REACT_APP_*_CODE` from client env and rotate exposed keys.
+
+## Local development flow (concise)
+
+Topology
+- React dev server (http://localhost:3000) → Express API (http://localhost:8080) under `/api/*`.
+- Unified routes: `/api/matters-unified` (direct MSSQL with TTL cache), `/api/instructions` (unified instructions).
+- Fallbacks (only when Express is down or a route is missing):
+  - TypeScript Azure Functions at http://localhost:7072 (folder `api`)
+  - Decoupled Functions at http://localhost:7071 (folder `decoupled-functions`)
+
+Start locally
+- VS Code task: “Start Teams App Locally” (runs prerequisites → provision → deploy → start frontend/backend).
+- Or run tasks individually:
+  - “Start frontend” → `npm run dev-tab:teamsfx` (background)
+  - “Watch backend” → watches `api` functions (background)
+  - “Start backend” → `npm run dev:teamsfx` (Express) (background)
+
+Ports/CORS
+- Functions Core Tools: do not set `cors` in `api/host.json`.
+- Local CORS is configured via `api/local.settings.json` under `Host: { CORS, CORSCredentials }` to allow 3000/8080.
+
+Deprecations
+- `/api/getAllMatters` is removed (410 Gone). Use `/api/matters-unified`.
+- Frontend must not call Function URLs with `?code=`; always call Express `/api/...` routes.
+
+Troubleshooting
+- ECONNREFUSED to 8080: backend not running → start “Start backend”.
+- 410 Gone for `/api/getAllMatters`: update callers to `/api/matters-unified`.
+- CORS error from Functions: ensure `api/host.json` has no `cors` key and `api/local.settings.json` Host.CORS includes `http://localhost:3000` and `http://localhost:8080`.
+
 ## Deployment
 
 When deploying to Azure Web Apps on Windows, build the project first so that the root directory contains `index.js` and the compiled React files. The provided [build-and-deploy.ps1](build-and-deploy.ps1) script automates this by running the build, copying the server files and their dependencies along with `web.config`, and then zipping the result for deployment. Deploying the repository directly without building will result in a 500 error because IIS cannot locate `index.js` or the required Node modules.

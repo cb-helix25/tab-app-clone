@@ -6,14 +6,13 @@ const router = express.Router();
 // Calls the external fetchEnquiriesData function (decoupled function in private vnet)
 router.get('/', async (req, res) => {
   try {
-    console.log('🔵 NEW ENQUIRIES ROUTE CALLED for decoupled function');
-    console.log('🔍 Query parameters:', req.query);
+  // Enquiries route called
 
     // Try to get the function code
     let functionCode;
     try {
       functionCode = await getSecret('fetchEnquiriesData-code');
-      console.log('✅ Successfully retrieved function code');
+  // Function code retrieved
     } catch (kvError) {
       console.error('❌ Failed to get function code:', kvError.message);
       return res.status(500).json({
@@ -30,7 +29,7 @@ router.get('/', async (req, res) => {
     // Don't pass date parameters to avoid Touchpoint_Date column error
     const url = `${baseUrl}?${queryParams.toString()}`;
 
-    console.log('🌐 Calling external function URL (all data):', url.replace(functionCode, '[REDACTED]'));
+  // Calling external function URL (all data)
 
     // Call the external function
     const response = await fetch(url);
@@ -43,7 +42,7 @@ router.get('/', async (req, res) => {
     }
 
     const data = await response.json();
-    console.log('✅ Successfully fetched enquiries data, count:', data.enquiries ? data.enquiries.length : data.length || 'unknown');
+  // Enquiries data fetched
     res.json(data);
   } catch (err) {
     console.warn('❌ Error calling fetchEnquiriesData (non-blocking):', err.message);
