@@ -121,6 +121,7 @@ const App: React.FC<AppProps> = ({
   const [isResourcesModalOpen, setIsResourcesModalOpen] = useState(false);
   
   const [hasActiveMatter, setHasActiveMatter] = useState(false);
+  const [hasImmediateActions, setHasImmediateActions] = useState(false);
   const [isInMatterOpeningWorkflow, setIsInMatterOpeningWorkflow] = useState(false);
 
   // Check for active matter opening every 2 seconds
@@ -525,6 +526,7 @@ const App: React.FC<AppProps> = ({
             onSoundproofBookingsFetched={handleSoundproofBookingsFetched}
             teamData={teamData}
             isInMatterOpeningWorkflow={isInMatterOpeningWorkflow}
+            onImmediateActionsChange={setHasImmediateActions}
           />
         );
       case 'enquiries':
@@ -581,6 +583,7 @@ const App: React.FC<AppProps> = ({
             onBoardroomBookingsFetched={handleBoardroomBookingsFetched}
             onSoundproofBookingsFetched={handleSoundproofBookingsFetched}
             teamData={teamData}
+            onImmediateActionsChange={setHasImmediateActions}
           />
         );
     }
@@ -617,8 +620,14 @@ const App: React.FC<AppProps> = ({
             onUserChange={onUserChange}
             onReturnToAdmin={onReturnToAdmin}
             originalAdminUser={originalAdminUser}
+            hasImmediateActions={hasImmediateActions}
           />
           <Navigator />
+          
+          {/* App-level Immediate Actions Bar */}
+          {activeTab === 'home' && (
+            <div id="app-level-immediate-actions" />
+          )}
           
           {/* Full-width Modal Overlays */}
           <FormsModal

@@ -11,6 +11,7 @@ import React, {
   lazy,
   Suspense,
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
   mergeStyles,
   Text,
@@ -35,6 +36,7 @@ import { debugLog } from '../../utils/debug';
 import { FaCheck } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import MetricCard from './MetricCard';
+import TimeMetricsV2 from '../../components/modern/TimeMetricsV2';
 import GreyHelixMark from '../../assets/grey helix mark.png';
 import InAttendanceImg from '../../assets/in_attendance.png';
 import WfhImg from '../../assets/wfh.png';
@@ -219,6 +221,7 @@ interface HomeProps {
   onSoundproofBookingsFetched?: (data: SoundproofPodBooking[]) => void;
   teamData?: TeamData[] | null;
   isInMatterOpeningWorkflow?: boolean;
+  onImmediateActionsChange?: (hasActions: boolean) => void;
 }
 
 interface QuickLink {
@@ -817,7 +820,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 // Home Component
 //////////////////////
 
-const Home: React.FC<HomeProps> = ({ context, userData, enquiries, instructionData: propInstructionData, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false }) => {
+const Home: React.FC<HomeProps> = ({ context, userData, enquiries, instructionData: propInstructionData, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false, onImmediateActionsChange }) => {
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigatorActions();
   const inTeams = isInTeams();
@@ -3376,6 +3379,13 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     isLocalhost,
   ]);
 
+  // Notify parent component when immediate actions state changes
+  useEffect(() => {
+    if (onImmediateActionsChange) {
+      onImmediateActionsChange(immediateActionsList.length > 0);
+    }
+  }, [immediateActionsList.length, onImmediateActionsChange]);
+
   // Helper function to reset quick actions selection when panels close
   const resetQuickActionsSelection = useCallback(() => {
     if (resetQuickActionsSelectionRef.current) {
@@ -3384,32 +3394,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   }, []);
 
 
-  // Show overlay when immediate actions become available
-  // Check if overlay has been shown in this browser session
-  const [hasShownOverlayThisSession, setHasShownOverlayThisSession] = useState<boolean>(() => {
-    return sessionStorage.getItem('immediateActionsOverlayShown') === 'true';
-  });
-
-  // Track if immediate actions bar has been dismissed for this session
-  const [immediateActionsDismissedThisSession, setImmediateActionsDismissedThisSession] = useState<boolean>(() => {
-    return sessionStorage.getItem('immediateActionsBarDismissed') === 'true';
-  });
-
-  useEffect(() => {
-    // Show overlay if there are actions and user hasn't dismissed it in this browser session
-    if (
-      immediateActionsReady &&
-      immediateActionsList &&
-      immediateActionsList.length > 0 &&
-      !showFocusOverlay &&
-      !hasShownOverlayThisSession &&
-      !immediateActionsDismissedThisSession
-    ) {
-      setShowFocusOverlay(true);
-      setHasShownOverlayThisSession(true);
-      sessionStorage.setItem('immediateActionsOverlayShown', 'true');
-    }
-  }, [immediateActionsReady, immediateActionsList, showFocusOverlay, hasShownOverlayThisSession, immediateActionsDismissedThisSession]);
+  // Removed first-entry overlay logic and session flags
 
   const normalQuickActions = useMemo(() => {
     const actions = quickActions
@@ -3432,45 +3417,22 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   // Use useLayoutEffect to avoid infinite loops and set content once per dependency change
   React.useLayoutEffect(() => {
     const content = (
-      <>
-        <QuickActionsBar
-          isDarkMode={isDarkMode}
-          quickActions={normalQuickActions}
-          handleActionClick={handleActionClick}
-          currentUserConfirmed={currentUserConfirmed}
-          highlighted={false}
-          resetSelectionRef={resetQuickActionsSelectionRef}
-          panelActive={isBespokePanelOpen || isContextPanelOpen || isOutstandingPanelOpen || isTransactionPopupOpen}
-          seamless
-        />
-        {!immediateActionsDismissedThisSession && (
-          <ImmediateActionsBar
-            isDarkMode={isDarkMode}
-            immediateActionsReady={immediateActionsReady}
-            immediateActionsList={immediateActionsList}
-            highlighted={showFocusOverlay}
-            showDismiss={showFocusOverlay}
-            onDismiss={() => {
-              setShowFocusOverlay(false);
-              setHasShownOverlayThisSession(true);
-              sessionStorage.setItem('immediateActionsOverlayShown', 'true');
-              setImmediateActionsDismissedThisSession(true);
-              sessionStorage.setItem('immediateActionsBarDismissed', 'true');
-            }}
-            seamless
-          />
-        )}
-      </>
+      <QuickActionsBar
+        isDarkMode={isDarkMode}
+        quickActions={normalQuickActions}
+        handleActionClick={handleActionClick}
+        currentUserConfirmed={currentUserConfirmed}
+        highlighted={false}
+        resetSelectionRef={resetQuickActionsSelectionRef}
+        panelActive={isBespokePanelOpen || isContextPanelOpen || isOutstandingPanelOpen || isTransactionPopupOpen}
+        seamless
+      />
     );
     setContent(content);
   }, [
     isDarkMode,
     normalQuickActions,
     currentUserConfirmed,
-  showFocusOverlay,
-  immediateActionsDismissedThisSession,
-  immediateActionsReady,
-  immediateActionsList,
   ]);
 
   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)
@@ -3641,26 +3603,54 @@ const conversionRate = enquiriesMonthToDate
   const wfhHighlight = 'rgba(54,144,206,0.15)'; // subtle blue tint
   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
 
+  // Portal for app-level immediate actions
+  const appLevelImmediateActions = (
+    <ImmediateActionsBar
+      isDarkMode={isDarkMode}
+      immediateActionsReady={immediateActionsReady}
+      immediateActionsList={immediateActionsList}
+      highlighted={false}
+      seamless={false}
+    />
+  );
+
   return (
+    <>
+      {/* Portal immediate actions to app level */}
+      {typeof document !== 'undefined' && document.getElementById('app-level-immediate-actions') && 
+        createPortal(appLevelImmediateActions, document.getElementById('app-level-immediate-actions')!)
+      }
+
+      {/* Modern Time Metrics V2 - directly on page background */}
+      <TimeMetricsV2 
+        metrics={timeMetrics} 
+        enquiryMetrics={[
+          { title: 'Enquiries Today', count: 5, prevCount: 3 },
+          { title: 'Enquiries This Week', count: 32, prevCount: 28 },
+          { title: 'Matters Opened This Month', count: 12, prevCount: 15 },
+          { title: 'Conversion Rate', percentage: 37.5, prevPercentage: 42.1, isPercentage: true }
+        ]}
+        isDarkMode={isDarkMode} 
+      />
+
     <div className={`enhanced-dashboard ${isDarkMode ? 'dark-mode' : ''}`}>
+      
+      {/* Separator between header and dashboard content */}
+      <div 
+        style={{
+          height: '1px',
+          background: isDarkMode 
+            ? 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)'
+            : 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
+          margin: '12px 0',
+        }}
+      />
+      
       <div className="dashboard-container">
-        {showFocusOverlay && (
-          <div
-            className={mergeStyles({
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              backgroundColor: 'rgba(0,0,0,0.4)',
-              zIndex: 800,
-              pointerEvents: 'auto',
-              animation: `${fadeInKeyframes} 0.3s ease`,
-            })}
-          />
-        )}
+        {/* Entry overlay removed */}
         
         <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
+        
         <EnhancedCollapsibleSection 
           title="Time Metrics" 
           metrics={timeMetrics.map(m => ({ title: m.title, icon: 'Clock' }))}
@@ -3959,6 +3949,7 @@ const conversionRate = enquiriesMonthToDate
 
   {/* Removed floating action hint per request */}
     </div>
+    </>
   );
 };
 

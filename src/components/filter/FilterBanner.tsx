@@ -1,10 +1,26 @@
 import React from 'react';
-import { SearchBox } from '@fluentui/react';
+import { SearchBox, Icon } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import SegmentedControl from './SegmentedControl';
 import { sharedSearchBoxStyle } from '../../app/styles/FilterStyles';
+
+// Add spin animation CSS
+const spinAnimation = `
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
+// Inject CSS into head if not already present
+if (typeof document !== 'undefined' && !document.querySelector('#refresh-spin-animation')) {
+  const style = document.createElement('style');
+  style.id = 'refresh-spin-animation';
+  style.textContent = spinAnimation;
+  document.head.appendChild(style);
+}
 
 export interface FilterOption {
   key: string;
@@ -35,6 +51,14 @@ export interface FilterBannerProps {
     placeholder: string;
   };
   
+  // Refresh functionality
+  refresh?: {
+    onRefresh: () => void;
+    isLoading?: boolean;
+    nextUpdateTime?: string;
+    collapsible?: boolean;
+  };
+  
   // Additional actions/controls
   children?: React.ReactNode;
   
@@ -44,28 +68,39 @@ export interface FilterBannerProps {
   topOffset?: number;
   // Remove chrome (background/border/shadow) for embedding inside another banner
   seamless?: boolean;
+  // Denser spacing for compact navigators
+  dense?: boolean;
+  // When true, show a collapsed search icon that expands on click/focus
+  collapsibleSearch?: boolean;
 }
 
 /**
  * Shared filter banner component for consistent styling across all tabs
  */
-const FilterBanner: React.FC<FilterBannerProps> = ({
+const FilterBanner: React.FC<FilterBannerProps> = React.memo(({
   primaryFilter,
   secondaryFilter,
   search,
+  refresh,
   children,
   className,
   sticky = true,
   topOffset = 0,
-  seamless = false
+  seamless = false,
+  dense = false,
+  collapsibleSearch = false
 }) => {
   const { isDarkMode } = useTheme();
+  const [searchOpen, setSearchOpen] = React.useState<boolean>(!collapsibleSearch || !!search?.value);
+  const [refreshOpen, setRefreshOpen] = React.useState<boolean>(!refresh?.collapsible);
 
   const containerStyle = mergeStyles({
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
-    padding: seamless ? '8px 12px' : '12px 20px',
+    gap: dense ? 8 : 12,
+    padding: seamless
+      ? (dense ? '0' : '8px 12px')
+      : (dense ? '0' : '12px 20px'),
     background: seamless ? 'transparent' : (isDarkMode 
       ? 'linear-gradient(135deg, rgba(31, 39, 50, 0.95) 0%, rgba(25, 32, 41, 0.98) 100%)'
       : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.98) 100%)'),
@@ -79,7 +114,7 @@ const FilterBanner: React.FC<FilterBannerProps> = ({
       : '0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8)'),
     fontFamily: 'Raleway, sans-serif',
     flexWrap: 'wrap',
-    minHeight: 56,
+    minHeight: dense ? 44 : 56,
     ...(sticky && {
       position: 'sticky',
       top: topOffset,
@@ -113,7 +148,7 @@ const FilterBanner: React.FC<FilterBannerProps> = ({
     alignItems: 'center',
     marginLeft: 'auto',
     flex: '0 0 auto',
-    minWidth: 280,
+    minWidth: collapsibleSearch && !searchOpen ? 0 : 240,
     selectors: {
       '@media (max-width: 768px)': {
         marginLeft: 0,
@@ -176,17 +211,147 @@ const FilterBanner: React.FC<FilterBannerProps> = ({
       {/* Search Box */}
       {search && (
         <div className={searchContainerStyle}>
-          <SearchBox
-            placeholder={search.placeholder}
-            value={search.value}
-            onChange={(_, newValue) => search.onChange(newValue || '')}
-            styles={sharedSearchBoxStyle(isDarkMode)}
-            iconProps={{ iconName: 'Search' }}
-          />
+          {collapsibleSearch && !searchOpen && !search.value ? (
+            <button
+              type="button"
+              aria-label="Open search"
+              onClick={() => setSearchOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                border: isDarkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.12)',
+                background: 'transparent',
+                cursor: 'pointer',
+                color: isDarkMode ? '#E5E7EB' : '#0F172A'
+              }}
+            >
+              <span className="ms-Icon root" aria-hidden="true" style={{ fontFamily: 'FabricMDL2Icons', fontSize: 14 }}>
+                
+              </span>
+            </button>
+          ) : (
+            <SearchBox
+              placeholder={search.placeholder}
+              value={search.value}
+              onChange={(_, newValue) => search.onChange(newValue || '')}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => {
+                if (collapsibleSearch && !search.value) setSearchOpen(false);
+              }}
+              styles={sharedSearchBoxStyle(isDarkMode)}
+              iconProps={{ iconName: 'Search' }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Refresh Control */}
+      {refresh && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          marginLeft: search ? 8 : 'auto',
+          flex: '0 0 auto'
+        }}>
+          {refresh.collapsible && !refreshOpen ? (
+            <button
+              type="button"
+              aria-label="Show refresh options"
+              onClick={() => setRefreshOpen(true)}
+              disabled={refresh.isLoading}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                border: isDarkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.12)',
+                background: 'transparent',
+                cursor: refresh.isLoading ? 'not-allowed' : 'pointer',
+                color: isDarkMode ? '#E5E7EB' : '#0F172A',
+                opacity: refresh.isLoading ? 0.6 : 1
+              }}
+            >
+              <Icon
+                iconName={refresh.isLoading ? "Sync" : "Refresh"}
+                style={{ 
+                  fontSize: 14,
+                  animation: refresh.isLoading ? 'spin 1s linear infinite' : 'none'
+                }}
+              />
+            </button>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '4px 12px',
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                border: isDarkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
+                fontSize: 12,
+                color: isDarkMode ? colours.dark.highlight : colours.light.highlight,
+              }}
+              onBlur={() => {
+                if (refresh.collapsible) setRefreshOpen(false);
+              }}
+            >
+              <Icon
+                iconName={refresh.isLoading ? "Sync" : "Clock"}
+                style={{ 
+                  fontSize: 14, 
+                  color: isDarkMode ? colours.dark.highlight : colours.light.highlight,
+                  animation: refresh.isLoading ? 'spin 1s linear infinite' : 'none'
+                }}
+              />
+              {refresh.nextUpdateTime && (
+                <span style={{ fontSize: 11, fontWeight: 500 }}>
+                  Next: {refresh.nextUpdateTime}
+                </span>
+              )}
+              <button
+                onClick={refresh.onRefresh}
+                disabled={refresh.isLoading}
+                title="Refresh now"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 8px',
+                  border: isDarkMode ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(0,0,0,0.1)',
+                  borderRadius: 4,
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                  color: isDarkMode ? colours.dark.text : colours.light.text,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  fontFamily: 'Raleway, sans-serif',
+                  cursor: refresh.isLoading ? 'not-allowed' : 'pointer',
+                  transition: '0.15s',
+                  opacity: refresh.isLoading ? 0.6 : 0.8,
+                }}
+              >
+                <Icon
+                  iconName={refresh.isLoading ? "Sync" : "Refresh"}
+                  style={{ 
+                    fontSize: 12,
+                    animation: refresh.isLoading ? 'spin 1s linear infinite' : 'none'
+                  }}
+                />
+                <span>Update Now</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
-};
+});
 
 export default FilterBanner;

@@ -40,6 +40,7 @@ interface CustomTabsProps {
   onUserChange?: (user: UserData) => void;
   onReturnToAdmin?: () => void;
   originalAdminUser?: UserData | null;
+  hasImmediateActions?: boolean;
 }
 
 const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
@@ -84,6 +85,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   onUserChange,
   onReturnToAdmin,
   originalAdminUser,
+  hasImmediateActions = false,
 }) => {
   const { isDarkMode } = useTheme();
   const pivotWrapRef = React.useRef<HTMLDivElement | null>(null);
@@ -188,10 +190,25 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         role="button"
         tabIndex={0}
         aria-label="Home"
-        style={{ color: '#ffffff', marginRight: '16px' }}
+        style={{ color: '#ffffff', marginRight: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}
       >
-        <AiOutlineHome className="icon-outline" size={20} />
-        <AiFillHome className="icon-filled" size={20} />
+        <div style={{ position: 'relative' }}>
+          <AiOutlineHome className="icon-outline" size={20} />
+          <AiFillHome className="icon-filled" size={20} />
+        </div>
+        {hasImmediateActions && (
+          <div style={{ flexShrink: 0, width: 8, height: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div
+              style={{
+                width: '6px',
+                height: '6px',
+                backgroundColor: '#D65541',
+                borderRadius: '50%',
+                animation: 'pulse-red 2s infinite'
+              }}
+            />
+          </div>
+        )}
       </div>
       {/* Vertical separator */}
       <div

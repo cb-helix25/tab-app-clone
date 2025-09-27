@@ -1,5 +1,0 @@
-matter workflow container spacing around and header and date and user element margins
-risk and compliance icon design in poid cards
-risk and compliance cards each have a risk assessment. risk assessment is instruction level. the multiple ids inside is a good start.
-for Deals show where theres a deal but no instruction. create a deal card and ui.
-remove clients tab. show multiclient icon in instruction cards

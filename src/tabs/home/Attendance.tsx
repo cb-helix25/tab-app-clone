@@ -741,7 +741,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
             {isTableExpanded ? (
               <>
                 <div
-                  style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 99990 }}
+                  style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000 }}
                   onClick={() => { setIsTableExpanded(false); setMousePosition(null); }}
                 />
                 <div
@@ -750,7 +750,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    zIndex: 99999,
+                    zIndex: 1001,
                     width: 'min(1000px, 96%)',
                     maxHeight: '80vh',
                     overflow: 'auto',

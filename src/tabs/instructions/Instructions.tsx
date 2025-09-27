@@ -1279,6 +1279,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           <>
             <FilterBanner
               seamless
+              dense
               primaryFilter={
                 <TwoLayerFilter
                   id="instructions-unified-filter"

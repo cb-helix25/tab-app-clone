@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 // invisible change 2
-import { Spinner, SpinnerSize, mergeStyles, keyframes, DefaultButton } from '@fluentui/react';
+import { Spinner, SpinnerSize, mergeStyles, keyframes } from '@fluentui/react';
 import { FaCheck } from 'react-icons/fa';
-import QuickActionsCard from './QuickActionsCard';
+import ImmediateActionChip from './ImmediateActionChip';
 import { colours } from '../../app/styles/colours';
 
 interface Action {
@@ -17,13 +17,61 @@ interface ImmediateActionsBarProps {
     immediateActionsReady: boolean;
     immediateActionsList: Action[];
     highlighted?: boolean;
-    showDismiss?: boolean;
-    onDismiss?: () => void;
     seamless?: boolean;
 }
 
-const ACTION_BAR_HEIGHT = 48;
+const ACTION_BAR_HEIGHT = 36;
 const HIDE_DELAY_MS = 3000; // Auto-hide delay when there is nothing to action
+
+// Distinct container for immediate actions styled as an app-level tray
+const immediateActionsContainerStyle = (
+    isDarkMode: boolean,
+    highlighted: boolean
+) =>
+    mergeStyles({
+        // Position as app-level tray extending from Navigator
+        position: 'relative',
+        zIndex: 10, // Much lower z-index to avoid blocking navigation
+        
+        // Match Navigator/Quick gradient for seamless connection
+        background: isDarkMode
+            ? 'linear-gradient(135deg, #0F172A 0%, #111827 100%)'
+            : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+        
+        // Remove all borders to create seamless connection
+        border: 'none',
+        borderRadius: '0 0 10px 10px', // Only bottom corners rounded
+        
+        // Softer, professional shadow per style guide
+        boxShadow: isDarkMode
+            ? '0 4px 6px rgba(0, 0, 0, 0.3)'
+            : '0 4px 6px rgba(0, 0, 0, 0.07)',
+        
+    // Full width at app level
+    margin: '0',
+    // Attach to Quick Actions bar: negate only Navigator bottom padding (~8px)
+    // so there's no visible gap, but do not sit "behind" it.
+    marginTop: '-8px',
+
+    // Layout - compact top padding since we're not extending behind
+    padding: '6px 10px 10px 10px',
+        marginBottom: '12px', // Space before main content
+        transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+        
+        // Highlighted state for notifications
+        ...(highlighted && {
+            transform: 'translateY(-1px)',
+            boxShadow: isDarkMode
+                ? '0 4px 8px rgba(54, 144, 206, 0.25)'
+                : '0 4px 8px rgba(54, 144, 206, 0.20)',
+            borderColor: isDarkMode 
+                ? 'rgba(54, 144, 206, 0.2)' 
+                : 'rgba(54, 144, 206, 0.15)',
+            background: isDarkMode
+                ? 'linear-gradient(135deg, #1E293B 0%, #334155 100%)'
+                : 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
+        }),
+    });
 
 const barStyle = (
     isDarkMode: boolean,
@@ -32,37 +80,22 @@ const barStyle = (
     seamless: boolean
 ) =>
     mergeStyles({
-        backgroundColor: seamless
-            ? 'transparent'
-            : (isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground),
-        boxShadow: seamless
-            ? 'none'
-            : (isDarkMode ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)'),
-        borderTop: seamless
-            ? 'none'
-            : (isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)'),
-        padding: '0 24px',
-        transition: 'background-color 0.3s',
+        // Remove background since container handles it
+        backgroundColor: 'transparent',
+        boxShadow: 'none',
+        border: 'none',
+        
+        // Layout
+        padding: '0',
         display: 'flex',
         flexDirection: 'row',
-        gap: '8px',
+    gap: '8px',
         overflowX: 'auto',
         msOverflowStyle: 'none',
         scrollbarWidth: 'none',
         alignItems: 'center',
         height: ACTION_BAR_HEIGHT,
-        paddingBottom: 0,
-    position: hasImmediateActions ? 'sticky' : 'relative',
-    top: hasImmediateActions ? ACTION_BAR_HEIGHT * 2 : 'auto',
-    zIndex: hasImmediateActions ? 998 : 'auto',
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-        ...(highlighted && !seamless && {
-            transform: 'scale(1.02)',
-            filter: 'brightness(1.05)',
-            boxShadow: '0 0 10px rgba(0,0,0,0.3)',
-            transition: 'transform 0.3s, filter 0.3s, box-shadow 0.3s',
-        }),
+        
         selectors: {
             '::-webkit-scrollbar': {
                 display: 'none',
@@ -114,8 +147,6 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
     immediateActionsReady,
     immediateActionsList,
     highlighted = false,
-    showDismiss = false,
-    onDismiss,
     seamless = false,
 }) => {
     const [visible, setVisible] = useState(true);
@@ -167,23 +198,29 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
 
     return (
         <div
-            className={barStyle(
-                isDarkMode,
-                immediateActionsList.length > 0,
-                highlighted,
-                seamless
-            )}
+            className={immediateActionsContainerStyle(isDarkMode, highlighted)}
             style={{
-                display: 'flex',
-                gap: '10px',
-                height: computedVisible ? ACTION_BAR_HEIGHT : 0,
+                height: computedVisible ? 'auto' : 0,
                 overflow: 'hidden',
                 opacity: computedVisible ? 1 : 0,
                 transform: computedVisible ? 'translateY(0)' : 'translateY(-10px)',
                 transition: 'height 0.3s ease, opacity 0.3s ease, transform 0.3s ease',
-                pointerEvents: computedVisible ? 'auto' : 'none',
+                pointerEvents: (computedVisible && immediateActionsReady) ? 'auto' : 'none',
             }}
         >
+            {/* Removed animated accent; using a static label instead */}
+            <div
+                className={barStyle(
+                    isDarkMode,
+                    immediateActionsList.length > 0,
+                    highlighted,
+                    seamless
+                )}
+                style={{
+                    display: 'flex',
+                    gap: '8px',
+                }}
+            >
             {!immediateActionsReady ? (
                 <Spinner size={SpinnerSize.small} />
             ) : immediateActionsList.length === 0 ? (
@@ -195,110 +232,20 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
                 </div>
             ) : (
                 <>
-                    {immediateActionsList.map((action, index) => (
-                        <QuickActionsCard
+                    {immediateActionsList.map((action) => (
+                        <ImmediateActionChip
                             key={action.title}
                             title={action.title}
                             icon={action.icon}
                             isDarkMode={isDarkMode}
                             onClick={action.onClick}
-                            iconColor={action.disabled ? '#999' : colours.cta}
                             disabled={action.disabled}
-                            alwaysShowText={true}
-                            style={{
-                                '--card-index': index,
-                                fontSize: '16px',
-                                padding: '0 12px',
-                                height: '48px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            } as React.CSSProperties}
                         />
                     ))}
-                    {showDismiss && (
-                        <div
-                            className="nav-button dismiss-button"
-                            onClick={onDismiss}
-                            style={{
-                                background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-                                border: isDarkMode ? '1px solid #444' : '1px solid #e1dfdd',
-                                borderRadius: '0px',
-                                width: '48px',
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: isDarkMode ? '0 1px 2px rgba(6,23,51,0.10)' : '0 1px 2px rgba(6,23,51,0.04)',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                marginLeft: 8,
-                            }}
-                            onMouseEnter={e => {
-                                e.currentTarget.style.background = '#ffefed';
-                                e.currentTarget.style.border = '1px solid #D65541';
-                                e.currentTarget.style.width = '120px';
-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
-                            }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.background = isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground;
-                                e.currentTarget.style.border = isDarkMode ? '1px solid #444' : '1px solid #e1dfdd';
-                                e.currentTarget.style.width = '48px';
-                                e.currentTarget.style.boxShadow = isDarkMode ? '0 1px 2px rgba(6,23,51,0.10)' : '0 1px 2px rgba(6,23,51,0.04)';
-                            }}
-                            tabIndex={0}
-                        >
-                            {/* Dismiss Icon (X) */}
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                style={{
-                                    transition: 'color 0.3s, opacity 0.3s',
-                                    color: '#D65541',
-                                    position: 'absolute',
-                                    left: '50%',
-                                    top: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                }}
-                                className="dismiss-icon"
-                            >
-                                <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            {/* Expandable Text */}
-                            <span
-                                style={{
-                                    position: 'absolute',
-                                    left: '50%',
-                                    top: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    fontSize: '14px',
-                                    fontWeight: 600,
-                                    color: '#D65541',
-                                    opacity: 0,
-                                    transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    whiteSpace: 'nowrap',
-                                }}
-                                className="nav-text"
-                            >
-                                Dismiss
-                            </span>
-                            <style>{`
-                                .nav-button.dismiss-button:hover .nav-text {
-                                    opacity: 1 !important;
-                                }
-                                .nav-button.dismiss-button:hover .dismiss-icon {
-                                    opacity: 0 !important;
-                                }
-                            `}</style>
-                        </div>
-                    )}
+                    
                 </>
             )}
+            </div>
         </div>
     );
 };

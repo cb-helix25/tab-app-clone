@@ -16,6 +16,7 @@ import {
   Modal,
   initializeIcons,
 } from '@fluentui/react';
+import IconAreaFilter from '../../components/filter/IconAreaFilter';
 import {
   BarChart,
   Bar,
@@ -338,7 +339,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   // Navigation state variables  
   const [activeState, setActiveState] = useState<string>('Claimed');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [activeAreaFilter, setActiveAreaFilter] = useState<string>('All');
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
   // Detect source type heuristically (keep pure & easily testable)
   const detectSourceType = (enq: Record<string, unknown>): 'new' | 'legacy' => {
@@ -454,15 +455,16 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     }
   }, [allEnquiries, isLocalhost, userData, showMineOnly]);
 
-  // Reset area filter if current filter is no longer available
+  // Initialize selected areas with all available areas
   useEffect(() => {
     if (userData && userData.length > 0 && userData[0].AOW) {
       const userAOW = userData[0].AOW.split(',').map(a => a.trim());
-      if (activeAreaFilter !== 'All' && !userAOW.includes(activeAreaFilter)) {
-        setActiveAreaFilter('All');
+      // If no areas selected yet, select all available areas
+      if (selectedAreas.length === 0) {
+        setSelectedAreas(userAOW);
       }
     }
-  }, [userData, activeAreaFilter]);
+  }, [userData, selectedAreas]);
 
   // Fetch all enquiries when user switches to "All" mode and current dataset is too small
   useEffect(() => {
@@ -1082,21 +1084,34 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           );
           if (!inAllowed) return false;
 
-          if (activeAreaFilter !== 'All') {
-            return enquiryArea === activeAreaFilter.toLowerCase();
+          // Filter by selected areas (if any areas are selected, only show those)
+          if (selectedAreas.length > 0) {
+            return selectedAreas.some(area => 
+              enquiryArea === area.toLowerCase() || 
+              enquiryArea.includes(area.toLowerCase()) || 
+              area.toLowerCase().includes(enquiryArea)
+            );
           }
           return true;
         });
-      } else if (activeAreaFilter !== 'All') {
+      } else if (selectedAreas.length > 0) {
         filtered = filtered.filter(enquiry => {
           const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
-          return enquiryArea === activeAreaFilter.toLowerCase();
+          return selectedAreas.some(area => 
+            enquiryArea === area.toLowerCase() || 
+            enquiryArea.includes(area.toLowerCase()) || 
+            area.toLowerCase().includes(enquiryArea)
+          );
         });
       }
-    } else if (activeAreaFilter !== 'All') {
+    } else if (selectedAreas.length > 0) {
       filtered = filtered.filter(enquiry => {
         const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
-        return enquiryArea === activeAreaFilter.toLowerCase();
+        return selectedAreas.some(area => 
+          enquiryArea === area.toLowerCase() || 
+          enquiryArea.includes(area.toLowerCase()) || 
+          area.toLowerCase().includes(enquiryArea)
+        );
       });
     }
 
@@ -1121,7 +1136,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         activeState,
         showMineOnly,
         searchTerm: searchTerm.trim(),
-        activeAreaFilter
+        selectedAreas
       });
       if (filtered.length > 0) {
         console.log('📋 Sample enquiry POCs:', filtered.slice(0, 5).map(e => e.Point_of_Contact || (e as any).poc));
@@ -1133,7 +1148,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     displayEnquiries, // Use full dataset, not slider range
     userData,
     activeState,
-    activeAreaFilter,
+    selectedAreas,
     searchTerm,
     showMineOnly,
     unclaimedEmails,
@@ -1228,15 +1243,15 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       backgroundColor: dark ? colours.dark.sectionBackground : colours.light.sectionBackground,
       boxShadow: dark ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
       borderTop: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
-      padding: '0 24px',
+      padding: '0 12px',
       display: 'flex',
       flexDirection: 'row',
-      gap: '8px',
+      gap: '6px',
       alignItems: 'center',
-      height: '48px',
+      height: '44px',
       position: 'sticky',
       top: '48px',
-      zIndex: 999,
+      zIndex: 100,
     });
   }
 
@@ -1489,6 +1504,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       setContent(
         <FilterBanner
           seamless
+          dense
+          collapsibleSearch
+          sticky={false}
           primaryFilter={{
             value: activeState === 'Claimable' ? 'Unclaimed' : activeState,
             onChange: (k) => handleSetActiveState(k === 'Unclaimed' ? 'Claimable' : k),
@@ -1498,116 +1516,126 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             })),
             ariaLabel: "Filter enquiries by status"
           }}
-          secondaryFilter={userData && userData[0]?.AOW && userData[0].AOW.split(',').length > 1 ? {
-            value: activeAreaFilter,
-            onChange: setActiveAreaFilter,
-            options: [{ key: 'All', label: 'All' }, ...userData[0].AOW.split(',').map(a => a.trim()).map(a => ({ key: a, label: a }))],
-            ariaLabel: "Filter enquiries by area of work"
-          } : undefined}
+          secondaryFilter={userData && userData[0]?.AOW && userData[0].AOW.split(',').length > 1 ? (
+            <IconAreaFilter
+              selectedAreas={selectedAreas}
+              availableAreas={userData[0].AOW.split(',').map(a => a.trim())}
+              onAreaChange={setSelectedAreas}
+              ariaLabel="Filter enquiries by area of work"
+            />
+          ) : undefined}
           search={{
             value: searchTerm,
             onChange: setSearchTerm,
             placeholder: "Search (name, email, company, type, ID)"
           }}
+          refresh={{
+            onRefresh: handleManualRefresh,
+            isLoading: isRefreshing,
+            nextUpdateTime: formatTimeRemaining(nextRefreshIn),
+            collapsible: true
+          }}
         >
-
-          
-          {/* Refresh indicator and manual refresh button */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 14px',
-            borderRadius: 8,
-            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-            border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-            fontSize: 12,
-            color: isDarkMode ? colours.dark.subText : colours.light.subText
-          }}>
-            <Icon 
-              iconName={isRefreshing ? "Sync" : "Clock"} 
-              style={{ 
-                fontSize: 14, 
-                color: isRefreshing ? colours.blue : (isDarkMode ? colours.dark.subText : colours.light.subText),
-                animation: isRefreshing ? 'spin 1s linear infinite' : 'none'
-              }} 
-            />
-            <span style={{ fontSize: 11, fontWeight: 500 }}>
-              {isRefreshing ? 'Refreshing...' : `Next: ${formatTimeRemaining(nextRefreshIn)}`}
-            </span>
-            <button
-              onClick={handleManualRefresh}
-              disabled={isRefreshing}
-              title="Refresh now"
+          {/* Page-level controls after area of work filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div 
+              role="group" 
+              aria-label="Layout: choose 1 or 2 columns"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                padding: '4px 8px',
-                border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
-                borderRadius: 4,
-                backgroundColor: isRefreshing 
-                  ? (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)')
-                  : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
-                color: isRefreshing 
-                  ? (isDarkMode ? colours.dark.subText : colours.light.subText)
-                  : (isDarkMode ? colours.dark.text : colours.light.text),
-                fontSize: 11,
-                fontWeight: 500,
+                height: 28,
+                padding: '2px 4px',
+                background: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                borderRadius: 14,
                 fontFamily: 'Raleway, sans-serif',
-                cursor: isRefreshing ? 'not-allowed' : 'pointer',
-                transition: 'all 0.15s ease',
-                opacity: isRefreshing ? 0.5 : 0.8
-              }}
-              onMouseEnter={(e) => {
-                if (!isRefreshing) {
-                  e.currentTarget.style.opacity = '1';
-                  e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isRefreshing) {
-                  e.currentTarget.style.opacity = '0.8';
-                  e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-                }
               }}
             >
-              <Icon 
-                iconName={isRefreshing ? "Sync" : "Refresh"} 
-                style={{ 
-                  fontSize: 12,
-                  animation: isRefreshing ? 'spin 1s linear infinite' : 'none'
-                }} 
-              />
-              <span>{isRefreshing ? 'Updating...' : 'Update Now'}</span>
-            </button>
-          </div>
-          
-          {/* Column toggle for production */}
-          <ToggleSwitch 
-            id="enquiries-column-toggle" 
-            checked={twoColumn} 
-            onChange={setTwoColumn} 
-            size="sm" 
-            onText="2-col" 
-            offText="1-col" 
-            ariaLabel="Toggle two column layout" 
-          />
-          
-          {(isAdmin || isLocalhost) && (
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', height: 28, borderRadius: 8,
-                background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
-                border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 10, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
-              }}
-              title="Admin Controls"
-            >
-              <span style={{ fontSize: 9, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700' }}>Scope:</span>
-              <ToggleSwitch id="enquiries-scope-toggle" checked={showMineOnly} onChange={setShowMineOnly} size="sm" onText="Mine" offText="All" ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries" />
+              <button
+                type="button"
+                title="Single column layout"
+                aria-label="Single column layout"
+                aria-pressed={!twoColumn}
+                onClick={() => setTwoColumn(false)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 22,
+                  height: 22,
+                  background: !twoColumn ? '#FFFFFF' : 'transparent',
+                  border: 'none',
+                  borderRadius: 11,
+                  cursor: 'pointer',
+                  transition: 'all 200ms ease',
+                  opacity: !twoColumn ? 1 : 0.6,
+                  boxShadow: !twoColumn 
+                    ? (isDarkMode
+                        ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
+                        : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)')
+                    : 'none',
+                }}
+              >
+                <Icon
+                  iconName="SingleColumn"
+                  style={{
+                    fontSize: 10,
+                    color: !twoColumn 
+                      ? (isDarkMode ? '#1f2937' : '#1f2937')
+                      : (isDarkMode ? 'rgba(255,255,255,0.70)' : 'rgba(0,0,0,0.55)'),
+                  }}
+                />
+              </button>
+              <button
+                type="button"
+                title="Two column layout"
+                aria-label="Two column layout"
+                aria-pressed={twoColumn}
+                onClick={() => setTwoColumn(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 22,
+                  height: 22,
+                  background: twoColumn ? '#FFFFFF' : 'transparent',
+                  border: 'none',
+                  borderRadius: 11,
+                  cursor: 'pointer',
+                  transition: 'all 200ms ease',
+                  opacity: twoColumn ? 1 : 0.6,
+                  boxShadow: twoColumn 
+                    ? (isDarkMode
+                        ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
+                        : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)')
+                    : 'none',
+                }}
+              >
+                <Icon
+                  iconName="DoubleColumn"
+                  style={{
+                    fontSize: 10,
+                    color: twoColumn 
+                      ? (isDarkMode ? '#1f2937' : '#1f2937')
+                      : (isDarkMode ? 'rgba(255,255,255,0.70)' : 'rgba(0,0,0,0.55)'),
+                  }}
+                />
+              </button>
             </div>
-          )}
+            {(isAdmin || isLocalhost) && (
+              <SegmentedControl
+                id="enquiries-scope-seg"
+                ariaLabel="Scope: toggle between my enquiries and all enquiries"
+                value={showMineOnly ? 'mine' : 'all'}
+                onChange={(v) => setShowMineOnly(v === 'mine')}
+                options={[
+                  { key: 'mine', label: 'Mine' },
+                  { key: 'all', label: 'All' }
+                ]}
+              />
+            )}
+          </div>
         </FilterBanner>
       );
     } else {
@@ -1666,7 +1694,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     isDarkMode,
     selectedEnquiry,
     activeState,
-    activeAreaFilter,
+    selectedAreas,
     searchTerm,
     userData,
     isAdmin,
@@ -1707,6 +1735,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             },
           }}
         >
+
+
 
       {showUnclaimedBoard ? (
         <UnclaimedEnquiries

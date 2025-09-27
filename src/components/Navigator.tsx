@@ -15,7 +15,7 @@ const Navigator: React.FC = () => {
     }
 
     // Compact premium tokens (theme-aware)
-    const CARD_RADIUS = 10;
+    const BOTTOM_RADIUS = 10;
     const PADDING_Y = 8;
     const PADDING_X = 12;
     const SHADOW = isDarkMode
@@ -30,29 +30,20 @@ const Navigator: React.FC = () => {
 
     return (
         <div
-            className="app-navigator"
+            className="navigator-card"
+            role="region"
+            aria-label="Navigator"
             style={{
-                backgroundColor: isDarkMode
-                    ? colours.dark.sectionBackground
-                    : colours.light.sectionBackground,
+                background: GRADIENT_BG,
+                border: 'none',
+                borderRadius: '0',
+                boxShadow: SHADOW,
+                padding: `${PADDING_Y}px ${PADDING_X}px`,
+                margin: '0',
+                transition: 'box-shadow 0.2s ease',
             }}
         >
-            <div
-                className="navigator-card"
-                role="region"
-                aria-label="Navigator"
-                style={{
-                    background: GRADIENT_BG,
-                    border: BORDER,
-                    borderRadius: CARD_RADIUS,
-                    boxShadow: SHADOW,
-                    padding: `${PADDING_Y}px ${PADDING_X}px`,
-                    margin: '8px 12px 0 12px',
-                    transition: 'box-shadow 0.2s ease',
-                }}
-            >
-                {content}
-            </div>
+            {content}
         </div>
     );
 };
