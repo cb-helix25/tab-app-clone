@@ -372,9 +372,43 @@ const EnhancedAttendance = forwardRef<EnhancedAttendanceRef, EnhancedAttendanceP
   // Loading state
   if (isLoadingAttendance || isLoadingAnnualLeave) {
     return (
-      <div className={containerStyle(isDarkMode)} style={{ textAlign: 'center', padding: '40px' }}>
-        <Icon iconName="Sync" style={{ fontSize: '24px', color: colours.blue, animation: 'spin 1s linear infinite' }} />
-        <Text style={{ marginTop: '8px', color: isDarkMode ? colours.dark.subText : colours.light.subText }}>
+      <div
+        className={containerStyle(isDarkMode)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px',
+          padding: '36px 40px',
+          background: isDarkMode
+            ? 'linear-gradient(135deg, rgba(46, 60, 78, 0.75) 0%, rgba(31, 45, 65, 0.85) 100%)'
+            : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+          borderRadius: '12px',
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(6,23,51,0.06)'}`,
+          boxShadow: isDarkMode
+            ? '0 12px 30px rgba(0, 0, 0, 0.35)'
+            : '0 12px 30px rgba(6, 23, 51, 0.12)',
+        }}
+      >
+        <Icon
+          iconName="Sync"
+          style={{
+            fontSize: '24px',
+            color: colours.blue,
+            animation: 'spin 1s linear infinite',
+            lineHeight: 1,
+          }}
+        />
+        <Text
+          style={{
+            color: isDarkMode ? '#E5E7EB' : colours.light.subText,
+            fontWeight: 600,
+            letterSpacing: '0.3px',
+            lineHeight: 1.4,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
           Loading attendance data...
         </Text>
       </div>

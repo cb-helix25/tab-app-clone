@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Icon, Text, DefaultButton } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { colours } from '../../app/styles/colours';
-import helixLogo from '../../assets/dark blue mark.svg';
-import { PiTreePalmFill } from 'react-icons/pi';
+import { FaUmbrellaBeach } from 'react-icons/fa';
 
 interface AttendanceRecord {
   Attendance_ID: number;
@@ -46,26 +45,28 @@ const StatusIcon: React.FC<{
 }> = ({ status, size, color }) => {
   if (status === 'office') {
     return (
-      <img 
-        src={helixLogo} 
-        alt="Helix Office" 
-        style={{ 
-          width: size, 
-          height: size,
-          objectFit: 'contain',
-          filter: `brightness(0) saturate(100%) invert(17%) sepia(41%) saturate(1344%) hue-rotate(195deg) brightness(95%) contrast(91%)` // Convert to missed blue #0d2f60
-        }} 
-      />
+      <svg
+        viewBox="0 0 57.56 100"
+        aria-label="Helix Office"
+        role="img"
+        style={{ width: size, height: size, display: 'block', color }}
+      >
+        <g>
+          <path fill="currentColor" d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z" />
+          <path fill="currentColor" d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z" />
+          <path fill="currentColor" d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z" />
+        </g>
+      </svg>
     );
   }
   
   if (status === 'away') {
     return (
-      <PiTreePalmFill
-        style={{ 
-          color: color, 
-          fontSize: size 
-        }} 
+      <FaUmbrellaBeach
+        style={{
+          color,
+          fontSize: size
+        }}
       />
     );
   }
@@ -83,6 +84,40 @@ const StatusIcon: React.FC<{
       }} 
     />
   );
+};
+
+const WEEK_FILTER_OPTIONS = [
+  { key: 'current', label: 'This Week' },
+  { key: 'next', label: 'Next Week' }
+] as const;
+
+const DAY_FILTER_OPTIONS = [
+  { key: 'monday', label: 'Mon' },
+  { key: 'tuesday', label: 'Tue' },
+  { key: 'wednesday', label: 'Wed' },
+  { key: 'thursday', label: 'Thu' },
+  { key: 'friday', label: 'Fri' }
+] as const;
+
+const STATUS_FILTER_OPTIONS = [
+  { key: 'office', label: 'Office' },
+  { key: 'wfh', label: 'WFH' },
+  { key: 'away', label: 'Away' },
+  { key: 'off-sick', label: 'Sick' },
+  { key: 'out-of-office', label: 'OOO' }
+] as const;
+
+type WeekFilterKey = typeof WEEK_FILTER_OPTIONS[number]['key'];
+type DayFilterKey = typeof DAY_FILTER_OPTIONS[number]['key'];
+type StatusFilterKey = typeof STATUS_FILTER_OPTIONS[number]['key'];
+
+const DAY_ORDER: DayFilterKey[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+const DAY_INDEX_MAP: Record<DayFilterKey, number> = {
+  monday: 0,
+  tuesday: 1,
+  wednesday: 2,
+  thursday: 3,
+  friday: 4
 };
 
 const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
@@ -108,13 +143,18 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
   });
   
   // State for view mode
-  const [viewMode, setViewMode] = React.useState<'daily' | 'weekly'>('daily');
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
   
   // Filters state
-  const [selectedFilters, setSelectedFilters] = React.useState<string[]>([]);
+  const [selectedWeeks, setSelectedWeeks] = useState<WeekFilterKey[]>(['current']);
+  const [selectedDays, setSelectedDays] = useState<DayFilterKey[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<StatusFilterKey[]>([]);
 
   // Helper function to check if someone is on leave for a specific week
-  const isOnLeaveForWeek = (initials: string, weekOffset: 0 | 1 = 0): boolean => {
+  const getLeaveStatusForWeek = (
+    initials: string,
+    weekOffset: 0 | 1 = 0
+  ): 'away' | 'out-of-office' | null => {
     const today = new Date();
     const startOfWeek = new Date(today);
     const dayOfWeek = today.getDay();
@@ -141,17 +181,23 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
       return null;
     };
 
-    return leaveRecords.some((leave: any) => {
+    for (const leave of leaveRecords) {
       const leaveInitials = (leave.Initials || leave.person || leave.Person || leave.initials || '').toString().trim().toUpperCase();
-      if (leaveInitials !== initials.toString().trim().toUpperCase()) return false;
+      if (leaveInitials !== initials.toString().trim().toUpperCase()) {
+        continue;
+      }
       
       // Check status is booked
       const leaveStatus = (leave.status || '').toString().toLowerCase();
-      if (leaveStatus !== 'booked') return false;
+      if (leaveStatus !== 'booked') {
+        continue;
+      }
       
       const leaveStart = getDate(leave, ['start_date', 'Leave_Start', 'Start', 'From', 'StartDate', 'start', 'leaveStart']);
       const leaveEnd = getDate(leave, ['end_date', 'Leave_End', 'End', 'To', 'EndDate', 'end', 'leaveEnd']);
-      if (!leaveStart || !leaveEnd) return false;
+      if (!leaveStart || !leaveEnd) {
+        continue;
+      }
       
       // Check if leave period overlaps with the week
       const overlaps = leaveStart <= endOfWeek && leaveEnd >= startOfWeek;
@@ -166,9 +212,33 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
           status: leaveStatus
         });
       }
-      
-      return overlaps;
-    });
+
+      if (!overlaps) {
+        continue;
+      }
+
+      const leaveReasonTokens = [
+        leave.reason,
+        leave.Reason,
+        leave.leave_reason,
+        leave.leaveReason,
+        leave.type,
+        leave.Type,
+        leave.leave_type,
+        leave.category,
+        leave.Category
+      ]
+        .map((token) => (token ? token.toString().toLowerCase() : ''))
+        .filter(Boolean);
+
+      const reasonText = leaveReasonTokens.join(' ');
+      const normalizedReason = reasonText.replace(/\s+/g, ' ').trim();
+      const isExplicitOutOfOffice = /\b(out[-\s]?of[-\s]?office|ooo)\b/.test(normalizedReason);
+
+      return isExplicitOutOfOffice ? 'out-of-office' : 'away';
+    }
+
+    return null;
   };
 
   // Helper function to get daily attendance pattern for a specific week
@@ -176,14 +246,21 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     
     // Check if on leave for this specific week (from leave arrays)
-    if (isOnLeaveForWeek(member.Initials, weekOffset)) {
-      return ['out-of-office', 'out-of-office', 'out-of-office', 'out-of-office', 'out-of-office'];
+    const leaveStatusForWeek = getLeaveStatusForWeek(member.Initials, weekOffset);
+    if (leaveStatusForWeek) {
+      return [
+        leaveStatusForWeek,
+        leaveStatusForWeek,
+        leaveStatusForWeek,
+        leaveStatusForWeek,
+        leaveStatusForWeek
+      ];
     }
 
     // Fallback: trust member-level flags from attendance API
-    const memberAwayFlag = (weekOffset === 0) && (member.isOnLeave === true || member.IsOnLeave === true);
+    const memberAwayFlag = weekOffset === 0 && (member.isOnLeave === true || member.IsOnLeave === true);
     if (memberAwayFlag) {
-      return ['out-of-office', 'out-of-office', 'out-of-office', 'out-of-office', 'out-of-office'];
+      return ['away', 'away', 'away', 'away', 'away'];
     }
     
     // For next week (weekOffset = 1), we might have different data structure
@@ -217,7 +294,8 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
 
     // If attendance is just a status string (single token), apply to all days
     if (['wfh', 'office', 'away', 'off-sick', 'out-of-office'].includes(normalizedLower)) {
-      return Array(5).fill(attendanceDays as 'wfh' | 'office' | 'away' | 'off-sick' | 'out-of-office');
+      const statusValue = normalizedLower as 'wfh' | 'office' | 'away' | 'off-sick' | 'out-of-office';
+      return Array(5).fill(statusValue);
     }
     
     // If no attendance days specified, default to working from home
@@ -260,7 +338,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
 
   const getDayColor = (status: 'wfh' | 'office' | 'away' | 'off-sick' | 'out-of-office') => {
     switch (status) {
-      case 'office': return colours.missedBlue;  // In Office - Helix Dark Blue
+      case 'office': return isDarkMode ? colours.blue : colours.missedBlue;  // Accent in dark mode
       case 'wfh': return colours.green;       // WFH - Helix Green  
       case 'away': return colours.subtleGrey; // Away - Subtle Grey
       case 'off-sick': return colours.cta;  // Off Sick - CTA Red
@@ -300,13 +378,13 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
         console.log('FULL TEAM DATA:', teamData);
       }
       
-      const isOnLeaveCurrentWeek = isOnLeaveForWeek(member.Initials, 0);
-      const isOnLeaveNextWeek = isOnLeaveForWeek(member.Initials, 1);
+      const leaveStatusCurrentWeek = getLeaveStatusForWeek(member.Initials, 0);
+      const leaveStatusNextWeek = getLeaveStatusForWeek(member.Initials, 1);
 
       // Determine overall status for filtering purposes
       let status = 'unknown';
-      if (isOnLeaveCurrentWeek) {
-        status = 'out-of-office';
+      if (leaveStatusCurrentWeek) {
+        status = leaveStatusCurrentWeek;
       } else if (attendanceDays.includes('Monday') || attendanceDays.includes('Tuesday') || 
                  attendanceDays.includes('Wednesday') || attendanceDays.includes('Thursday') || 
                  attendanceDays.includes('Friday')) {
@@ -321,18 +399,20 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
         attendanceDays,
         isConfirmed: attendanceRecord?.Confirmed_At !== null,
         isUser: member.Initials === userInitials,
-        isOnLeaveCurrentWeek,
-        isOnLeaveNextWeek,
+        isOnLeaveCurrentWeek: Boolean(leaveStatusCurrentWeek),
+        isOnLeaveNextWeek: Boolean(leaveStatusNextWeek),
+        currentWeekLeaveStatus: leaveStatusCurrentWeek,
+        nextWeekLeaveStatus: leaveStatusNextWeek,
       };
     });
   }, [teamData, attendanceRecords, userData, annualLeaveRecords, futureLeaveRecords]);
 
   // Styles
   const containerStyle = (isDark: boolean) => mergeStyles({
-    padding: '16px',
-    background: isDark ? colours.dark.background : colours.light.background,
+    padding: 0,
+    background: 'transparent',
     color: isDark ? colours.dark.text : colours.light.text,
-    borderRadius: '8px',
+    borderRadius: 0,
   });
 
   const weeklyCardStyle = (isDark: boolean, isUser: boolean) => mergeStyles({
@@ -342,10 +422,10 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     padding: '12px 16px',
     margin: '1px 0',
     background: isUser 
-      ? (isDark ? `linear-gradient(135deg, ${colours.missedBlue}20 0%, ${colours.dark.cardBackground} 100%)` : `linear-gradient(135deg, ${colours.missedBlue}12 0%, ${colours.light.cardBackground} 100%)`)
+      ? (isDark ? `linear-gradient(135deg, ${colours.blue}20 0%, ${colours.dark.cardBackground} 100%)` : `linear-gradient(135deg, ${colours.missedBlue}12 0%, ${colours.light.cardBackground} 100%)`)
       : (isDark ? colours.dark.cardBackground : colours.light.cardBackground),
     border: isUser 
-      ? `3px solid ${colours.missedBlue}` 
+      ? `3px solid ${isDark ? colours.blue : colours.missedBlue}` 
       : `1px solid ${isDark ? colours.dark.border : colours.light.border}`,
     borderRadius: '8px',
     transition: 'all 0.2s ease',
@@ -353,16 +433,16 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     position: 'relative',
     gap: '12px',
     boxShadow: isUser 
-      ? (isDark ? `0 4px 16px rgba(13, 47, 96, 0.3)` : `0 4px 16px rgba(13, 47, 96, 0.2)`)
+      ? (isDark ? `0 4px 16px rgba(49, 130, 206, 0.35)` : `0 4px 16px rgba(13, 47, 96, 0.2)`)
       : 'none',
     
     '&:hover': {
       background: isUser
-        ? (isDark ? `linear-gradient(135deg, ${colours.missedBlue}35 0%, ${colours.dark.sectionBackground} 100%)` : `linear-gradient(135deg, ${colours.missedBlue}18 0%, ${colours.light.sectionBackground} 100%)`)
+        ? (isDark ? `linear-gradient(135deg, ${colours.blue}35 0%, ${colours.dark.sectionBackground} 100%)` : `linear-gradient(135deg, ${colours.missedBlue}18 0%, ${colours.light.sectionBackground} 100%)`)
         : (isDark ? colours.dark.sectionBackground : colours.light.sectionBackground),
       transform: isUser ? 'translateY(-2px)' : 'none',
       boxShadow: isUser 
-        ? (isDark ? `0 8px 24px rgba(13, 47, 96, 0.4)` : `0 8px 24px rgba(13, 47, 96, 0.25)`)
+        ? (isDark ? `0 8px 24px rgba(49, 130, 206, 0.45)` : `0 8px 24px rgba(13, 47, 96, 0.25)`)
         : (isDark ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)')
     },
     
@@ -374,7 +454,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
       right: '-3px',
       bottom: '-3px',
       borderRadius: '8px',
-      background: `linear-gradient(135deg, ${colours.missedBlue} 0%, ${colours.blue} 100%)`,
+      background: `linear-gradient(135deg, ${isDark ? colours.blue : colours.missedBlue} 0%, ${colours.blue} 100%)`,
       zIndex: -1,
       opacity: 0.6
     } : {}
@@ -384,7 +464,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     fontSize: '13px',
     fontWeight: isUser ? '700' : '500',
     color: isUser 
-      ? colours.missedBlue 
+      ? (isDark ? colours.blue : colours.missedBlue)
       : (isDark ? colours.dark.text : colours.light.text),
     minWidth: '90px',
     maxWidth: '90px',
@@ -395,7 +475,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-    textShadow: isUser ? '0 1px 2px rgba(13, 47, 96, 0.3)' : 'none'
+    textShadow: isUser ? (isDark ? '0 1px 2px rgba(49, 130, 206, 0.35)' : '0 1px 2px rgba(13, 47, 96, 0.3)') : 'none'
   });
 
   const weekIconsStyle = mergeStyles({
@@ -419,28 +499,162 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
   });
 
   const filterButtonStyle = (isActive: boolean) => mergeStyles({
-    minWidth: '70px',
-    height: '28px',
-    fontSize: '12px',
-    background: isActive ? colours.blue + '20' : 'transparent',
-    border: `1px solid ${isActive ? colours.blue : (isDarkMode ? colours.dark.border : colours.light.border)}`,
-    color: isActive ? colours.blue : (isDarkMode ? colours.dark.text : colours.light.text),
-    
+    minWidth: '54px',
+    height: '24px',
+    padding: '0 10px',
+    fontSize: '11px',
+    fontWeight: 500,
+    background: isActive
+      ? (isDarkMode
+        ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.35) 0%, rgba(27, 91, 136, 0.26) 100%)'
+        : 'linear-gradient(135deg, rgba(54, 144, 206, 0.20) 0%, rgba(118, 184, 228, 0.16) 100%)')
+      : 'transparent',
+    border: `1px solid ${isActive ? colours.highlight : (isDarkMode ? colours.dark.border : colours.light.border)}`,
+    color: isActive ? (isDarkMode ? '#E9F5FF' : colours.highlight) : (isDarkMode ? colours.dark.text : colours.light.text),
+    borderRadius: '6px',
+    lineHeight: 1.2,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: isActive
+      ? (isDarkMode
+        ? '0 4px 6px rgba(42, 116, 168, 0.38)'
+        : '0 4px 6px rgba(54, 144, 206, 0.22)')
+      : 'none',
     '&:hover': {
-      background: isActive ? colours.blue + '30' : (isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground)
+      background: isActive
+        ? (isDarkMode
+          ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.42) 0%, rgba(27, 91, 136, 0.32) 100%)'
+          : 'linear-gradient(135deg, rgba(54, 144, 206, 0.26) 0%, rgba(118, 184, 228, 0.22) 100%)')
+        : (isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.12)')
     }
   });
 
-  const toggleFilter = (filter: string) => {
-    if (filter === 'all') {
-      setSelectedFilters(['all']);
-    } else {
-      const newFilters = selectedFilters.includes(filter)
-        ? selectedFilters.filter(f => f !== filter && f !== 'all')
-        : [...selectedFilters.filter(f => f !== 'all'), filter];
-      
-      setSelectedFilters(newFilters.length === 0 ? ['all'] : newFilters);
+  const segmentedControlStyle = mergeStyles({
+    display: 'flex',
+    gap: '4px',
+    padding: '2px',
+    borderRadius: '8px',
+    background: isDarkMode ? 'rgba(54, 144, 206, 0.12)' : 'rgba(54, 144, 206, 0.08)',
+    border: `1px solid ${isDarkMode ? 'rgba(54, 144, 206, 0.26)' : 'rgba(54, 144, 206, 0.22)'}`
+  });
+
+  const viewToggleButtonStyle = (isActive: boolean) => mergeStyles({
+    minWidth: '70px',
+    padding: '2px 14px',
+    height: '26px',
+    fontSize: '11px',
+    fontWeight: 600,
+    background: isActive
+      ? (isDarkMode
+        ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.32) 0%, rgba(26, 100, 152, 0.24) 100%)'
+        : 'linear-gradient(135deg, rgba(54, 144, 206, 0.18) 0%, rgba(93, 170, 226, 0.14) 100%)')
+      : 'transparent',
+    color: isActive ? (isDarkMode ? '#E9F5FF' : colours.highlight) : (isDarkMode ? colours.dark.text : colours.light.text),
+    border: `1px solid ${isActive ? colours.highlight : (isDarkMode ? colours.dark.border : colours.light.border)}`,
+    borderRadius: '6px',
+    lineHeight: 1.2,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: isActive
+      ? (isDarkMode
+        ? '0 4px 7px rgba(37, 122, 184, 0.26)'
+        : '0 4px 7px rgba(54, 144, 206, 0.18)')
+      : 'none',
+    '&:hover': {
+      background: isActive
+        ? (isDarkMode
+          ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.42) 0%, rgba(26, 100, 152, 0.32) 100%)'
+          : 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(93, 170, 226, 0.2) 100%)')
+        : (isDarkMode ? 'rgba(54, 144, 206, 0.16)' : 'rgba(54, 144, 206, 0.1)')
     }
+  });
+
+  const filterBarStyle = mergeStyles({
+    marginBottom: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  });
+
+  const viewClusterStyle = mergeStyles({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: '6px',
+    flex: '0 1 auto'
+  });
+
+  const viewToggleRowStyle = mergeStyles({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexWrap: 'wrap'
+  });
+
+  const filtersClusterStyle = mergeStyles({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    width: '100%'
+  });
+
+  const combinedFilterStyle = mergeStyles({
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    rowGap: '6px',
+    alignItems: 'flex-start',
+    padding: '4px 0 0 0',
+    borderTop: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+  });
+
+  const filterSectionBaseStyle = mergeStyles({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    minWidth: '0'
+  });
+
+  const filterSectionAutoStyle = mergeStyles(filterSectionBaseStyle, {
+    flex: '0 0 auto'
+  });
+
+  const filterSectionGrowStyle = mergeStyles(filterSectionBaseStyle, {
+    flex: '1 1 280px'
+  });
+
+  const chipRowStyle = mergeStyles({
+    display: 'flex',
+    gap: '3px',
+    flexWrap: 'wrap'
+  });
+
+  const filterLabelStyle = mergeStyles({
+    fontSize: '10px',
+    fontWeight: 600,
+    color: isDarkMode ? '#E2E8F0' : '#1E3A8A',
+    opacity: 0.8,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em'
+  });
+
+  const toggleWeekSelection = (week: WeekFilterKey) => {
+    setSelectedWeeks(prev => {
+      if (prev.includes(week)) {
+        return prev.length === 1 ? prev : prev.filter(item => item !== week);
+      }
+      return [...prev, week];
+    });
+  };
+
+  const toggleDaySelection = (day: DayFilterKey) => {
+    setSelectedDays(prev => prev.includes(day) ? prev.filter(item => item !== day) : [...prev, day]);
+  };
+
+  const toggleStatusSelection = (status: StatusFilterKey) => {
+    setSelectedStatuses(prev => prev.includes(status) ? prev.filter(item => item !== status) : [...prev, status]);
   };
 
   // Get today's attendance status for a member
@@ -503,200 +717,170 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     return weekAttendance[adjustedIndex] || member.status || 'home';
   };
 
-  // Filter data based on selected filters
   const filteredData = useMemo(() => {
-    if (selectedFilters.includes('all') || selectedFilters.length === 0) {
-      return processedTeamData;
-    }
+    const weekSelections = selectedWeeks.length > 0 ? selectedWeeks : ['current'];
 
     return processedTeamData.filter(member => {
-      const dailyAttendance = getDailyAttendance(member);
-      
-      // Day filters - show people who work on the selected days (any status)
-      const dayFilters = selectedFilters.filter(f => ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(f));
-      if (dayFilters.length > 0) {
-        const dayMap = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4 };
-        const hasMatchingDay = dayFilters.some(day => {
-          const dayIndex = dayMap[day as keyof typeof dayMap];
-          // Show anyone who has any status on this day (not just office)
-          return dayIndex >= 0 && dayIndex < dailyAttendance.length;
-        });
-        if (!hasMatchingDay) return false;
+      let matchesCurrent = false;
+      let matchesNext = false;
+
+      if (weekSelections.includes('current')) {
+        const currentWeekAttendance = getDailyAttendance(member, 0);
+        const matchesDay = selectedDays.length === 0
+          ? currentWeekAttendance.some(Boolean)
+          : selectedDays.some(day => {
+              const index = DAY_INDEX_MAP[day];
+              return index >= 0 && currentWeekAttendance[index] !== undefined;
+            });
+
+        const matchesStatus = selectedStatuses.length === 0
+          ? true
+          : currentWeekAttendance.some((status, index) => {
+              if (!status) {
+                return false;
+              }
+              if (selectedDays.length === 0) {
+                return selectedStatuses.includes(status);
+              }
+              const dayKey = DAY_ORDER[index];
+              return selectedDays.includes(dayKey) && selectedStatuses.includes(status);
+            });
+
+        matchesCurrent = matchesDay && matchesStatus;
       }
 
-      // Status filters - show people who have the selected status on ANY day
-      const statusFilters = selectedFilters.filter(f => ['office-only', 'wfh-only', 'away-only', 'sick-only', 'ooo-only'].includes(f));
-      if (statusFilters.length > 0) {
-        const hasMatchingStatus = statusFilters.some(filter => {
-          switch (filter) {
-            case 'office-only':
-              return dailyAttendance.some(day => day === 'office');
-            case 'wfh-only':
-              return dailyAttendance.some(day => day === 'wfh');
-            case 'away-only':
-              return dailyAttendance.some(day => day === 'out-of-office');
-            case 'sick-only':
-              return dailyAttendance.some(day => day === 'off-sick');
-            case 'ooo-only':
-              return dailyAttendance.some(day => day === 'out-of-office');
-            default:
-              return false;
-          }
-        });
-        if (!hasMatchingStatus) return false;
+      if (weekSelections.includes('next')) {
+        const nextWeekAttendance = getDailyAttendance(member, 1);
+        const matchesDay = selectedDays.length === 0
+          ? nextWeekAttendance.some(Boolean)
+          : selectedDays.some(day => {
+              const index = DAY_INDEX_MAP[day];
+              return index >= 0 && nextWeekAttendance[index] !== undefined;
+            });
+
+        const matchesStatus = selectedStatuses.length === 0
+          ? true
+          : nextWeekAttendance.some((status, index) => {
+              if (!status) {
+                return false;
+              }
+              if (selectedDays.length === 0) {
+                return selectedStatuses.includes(status);
+              }
+              const dayKey = DAY_ORDER[index];
+              return selectedDays.includes(dayKey) && selectedStatuses.includes(status);
+            });
+
+        matchesNext = matchesDay && matchesStatus;
       }
 
-      return true;
+      return matchesCurrent || matchesNext;
     });
-  }, [processedTeamData, selectedFilters]);
+  }, [processedTeamData, selectedWeeks, selectedDays, selectedStatuses]);
+
+  const validStatuses: StatusFilterKey[] = ['office', 'wfh', 'away', 'off-sick', 'out-of-office'];
+
+  const getStatusForActiveFilters = (member: any): StatusFilterKey => {
+    const weekPreference: WeekFilterKey[] = selectedWeeks.length > 0 ? selectedWeeks : ['current'];
+    const dayPreference: DayFilterKey[] = selectedDays.length > 0 ? selectedDays : DAY_ORDER;
+
+    for (const week of weekPreference) {
+      const attendance = getDailyAttendance(member, week === 'current' ? 0 : 1);
+
+      for (const day of dayPreference) {
+        const index = DAY_INDEX_MAP[day];
+        if (index < 0) {
+          continue;
+        }
+        const status = attendance[index];
+        if (!status) {
+          continue;
+        }
+        if (selectedStatuses.length === 0 || selectedStatuses.includes(status)) {
+          return status;
+        }
+      }
+    }
+
+    if (weekPreference.includes('current')) {
+      const todayStatus = getTodayAttendance(member as AttendanceRecord);
+      if (validStatuses.includes(todayStatus as StatusFilterKey)) {
+        return todayStatus as StatusFilterKey;
+      }
+    }
+
+    const fallbackWeek = getDailyAttendance(member, 1);
+    const fallback = fallbackWeek.find(status => validStatuses.includes(status as StatusFilterKey));
+    return (fallback || 'wfh') as StatusFilterKey;
+  };
 
   return (
     <div className={containerStyle(isDarkMode)}>
       {/* Filter Controls */}
-      <div style={{ 
-        marginBottom: '16px', 
-        display: 'flex', 
-        gap: '8px', 
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        padding: '12px',
-        background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-        border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-        borderRadius: '8px'
-      }}>
-        {/* View Mode Toggle */}
-        <div style={{ 
-          marginRight: '16px',
-          paddingRight: '16px',
-          borderRight: `1px solid ${isDarkMode ? '#4A5568' : '#E2E8F0'}`
-        }}>
-          <DefaultButton 
-            text={viewMode === 'daily' ? 'Today' : 'Weekly'}
-            iconProps={{ iconName: viewMode === 'daily' ? 'CalendarDay' : 'CalendarWeek' }}
-            onClick={() => setViewMode(viewMode === 'daily' ? 'weekly' : 'daily')}
-            styles={{ 
-              root: {
-                background: isDarkMode ? '#4299E1' : '#3182CE',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '6px 12px',
-                fontSize: '12px',
-                fontWeight: '500',
-                ':hover': {
-                  background: isDarkMode ? '#3182CE' : '#2C5AA0'
-                }
-              }
-            }}
-          />
-        </div>
-        
-        <DefaultButton 
-          text="All"
-          onClick={() => toggleFilter('all')}
-          styles={{ root: filterButtonStyle(selectedFilters.includes('all')) }}
-        />
-
-        {/* Day Filters Section */}
-        <div style={{
-          display: 'flex',
-          gap: '2px',
-          padding: '2px 4px',
-          backgroundColor: isDarkMode ? 'rgba(74, 85, 104, 0.1)' : 'rgba(226, 232, 240, 0.15)',
-          borderRadius: '4px',
-          border: `1px solid ${isDarkMode ? 'rgba(74, 85, 104, 0.2)' : 'rgba(226, 232, 240, 0.3)'}`,
-          marginLeft: '6px',
-          marginRight: '6px'
-        }}>
-          <Text style={{ 
-            fontSize: '10px', 
-            fontWeight: '500',
-            color: isDarkMode ? colours.dark.subText : colours.light.subText,
-            alignSelf: 'center',
-            marginRight: '2px',
-            opacity: 0.7
-          }}>
-            Days:
-          </Text>
-          <DefaultButton 
-            text="Mon"
-            onClick={() => toggleFilter('monday')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('monday')) }}
-          />
-          
-          <DefaultButton 
-            text="Tue"
-            onClick={() => toggleFilter('tuesday')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('tuesday')) }}
-          />
-          
-          <DefaultButton 
-            text="Wed"
-            onClick={() => toggleFilter('wednesday')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('wednesday')) }}
-          />
-          
-          <DefaultButton 
-            text="Thu"
-            onClick={() => toggleFilter('thursday')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('thursday')) }}
-          />
-          
-          <DefaultButton 
-            text="Fri"
-            onClick={() => toggleFilter('friday')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('friday')) }}
-          />
+      <div className={filterBarStyle}>
+        <div className={viewClusterStyle}>
+          <div className={viewToggleRowStyle}>
+            <div className={segmentedControlStyle}>
+              <DefaultButton
+                text="Today"
+                iconProps={{ iconName: 'CalendarDay' }}
+                onClick={() => setViewMode('daily')}
+                styles={{ root: viewToggleButtonStyle(viewMode === 'daily') }}
+              />
+              <DefaultButton
+                text="Weekly"
+                iconProps={{ iconName: 'CalendarWeek' }}
+                onClick={() => setViewMode('weekly')}
+                styles={{ root: viewToggleButtonStyle(viewMode === 'weekly') }}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Status Filters Section */}
-        <div style={{
-          display: 'flex',
-          gap: '2px',
-          padding: '2px 4px',
-          backgroundColor: isDarkMode ? 'rgba(54, 144, 206, 0.05)' : 'rgba(54, 144, 206, 0.03)',
-          borderRadius: '4px',
-          border: `1px solid ${isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.1)'}`,
-        }}>
-          <Text style={{ 
-            fontSize: '10px', 
-            fontWeight: '500',
-            color: isDarkMode ? colours.dark.subText : colours.light.subText,
-            alignSelf: 'center',
-            marginRight: '2px',
-            opacity: 0.7
-          }}>
-            Status:
-          </Text>
-          <DefaultButton 
-            text="Office"
-            onClick={() => toggleFilter('office-only')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('office-only')) }}
-          />
-          
-          <DefaultButton 
-            text="WFH"
-            onClick={() => toggleFilter('wfh-only')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('wfh-only')) }}
-          />
-          
-          <DefaultButton 
-            text="Away"
-            onClick={() => toggleFilter('away-only')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('away-only')) }}
-          />
-          
-          <DefaultButton 
-            text="Sick"
-            onClick={() => toggleFilter('sick-only')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('sick-only')) }}
-          />
-          
-          <DefaultButton 
-            text="OOO"
-            onClick={() => toggleFilter('ooo-only')}
-            styles={{ root: filterButtonStyle(selectedFilters.includes('ooo-only')) }}
-          />
+        <div className={filtersClusterStyle}>
+          <div className={combinedFilterStyle}>
+            <div className={filterSectionAutoStyle}>
+              <Text className={filterLabelStyle}>Week</Text>
+              <div className={chipRowStyle}>
+                {WEEK_FILTER_OPTIONS.map(option => (
+                  <DefaultButton
+                    key={option.key}
+                    text={option.label}
+                    onClick={() => toggleWeekSelection(option.key)}
+                    styles={{ root: filterButtonStyle(selectedWeeks.includes(option.key)) }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className={filterSectionGrowStyle}>
+              <Text className={filterLabelStyle}>Days</Text>
+              <div className={chipRowStyle}>
+                {DAY_FILTER_OPTIONS.map(option => (
+                  <DefaultButton
+                    key={option.key}
+                    text={option.label}
+                    onClick={() => toggleDaySelection(option.key)}
+                    styles={{ root: filterButtonStyle(selectedDays.includes(option.key)) }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className={filterSectionGrowStyle}>
+              <Text className={filterLabelStyle}>Status</Text>
+              <div className={chipRowStyle}>
+                {STATUS_FILTER_OPTIONS.map(option => (
+                  <DefaultButton
+                    key={option.key}
+                    text={option.label}
+                    onClick={() => toggleStatusSelection(option.key)}
+                    styles={{ root: filterButtonStyle(selectedStatuses.includes(option.key)) }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -715,11 +899,11 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
               {(() => {
                 // Group people by today's status
                 const statusGroups = filteredData.reduce((groups, member) => {
-                  const todayStatus = getTodayAttendance(member);
-                  if (!groups[todayStatus]) {
-                    groups[todayStatus] = [];
+                  const representativeStatus = getStatusForActiveFilters(member);
+                  if (!groups[representativeStatus]) {
+                    groups[representativeStatus] = [];
                   }
-                  groups[todayStatus].push(member);
+                  groups[representativeStatus].push(member);
                   return groups;
                 }, {} as Record<string, typeof filteredData>);
 
@@ -739,12 +923,15 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                     <div 
                       key={status}
                       style={{
-                        background: isDarkMode ? '#2D3748' : '#FFFFFF',
-                        border: `1px solid ${getDayColor(status as 'office' | 'wfh' | 'away' | 'off-sick' | 'out-of-office')}`,
+                        background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+                        border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
                         borderRadius: '8px',
                         padding: '16px',
                         minWidth: '280px',
-                        flex: '1'
+                        flex: '1',
+                        boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
+                        transition: 'background 0.2s ease, box-shadow 0.2s ease',
+                        cursor: 'default'
                       }}
                     >
                       {/* Status Header */}
@@ -754,7 +941,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                         gap: '8px', 
                         marginBottom: '12px',
                         paddingBottom: '8px',
-                        borderBottom: `1px solid ${isDarkMode ? '#4A5568' : '#E2E8F0'}`
+                        borderBottom: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`
                       }}>
                         <div 
                           style={{
@@ -893,17 +1080,16 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                   <div 
                     key={member.Initials}
                     style={{
-                      background: isDarkMode ? '#2D3748' : '#FFFFFF',
-                      border: member.isUser 
-                        ? (isDarkMode ? '1px solid #4A9B4F' : '1px solid #4A9B4F')
-                        : (isDarkMode ? '1px solid #4A5568' : '1px solid #E2E8F0'),
-                      borderRadius: '6px',
+                      background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+                      border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                      borderRadius: '8px',
                       padding: '8px 12px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '13px',
-                      minHeight: '36px'
+                      minHeight: '36px',
+                      boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)'
                     }}
                   >
                     {/* Name - Fixed width for alignment */}

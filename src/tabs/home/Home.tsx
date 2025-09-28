@@ -35,7 +35,7 @@ import {
 import { debugLog } from '../../utils/debug';
 import { FaCheck } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
-import MetricCard from './MetricCard';
+// Removed legacy MetricCard usage
 import TimeMetricsV2 from '../../components/modern/TimeMetricsV2';
 import GreyHelixMark from '../../assets/grey helix mark.png';
 import InAttendanceImg from '../../assets/in_attendance.png';
@@ -44,7 +44,7 @@ import OutImg from '../../assets/outv2.png';
 import '../../app/styles/VerticalLabelPanel.css';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
-import '../../app/styles/MetricCard.css';
+// Removed legacy MetricCard styles import
 import './EnhancedHome.css';
 import { dashboardTokens, cardTokens, cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -85,14 +85,14 @@ import localV3Blocks from '../../localData/localV3Blocks.json';
 
 // Enhanced components
 import SectionCard from './SectionCard';
-import EnhancedMetricCard from './EnhancedMetricCard';
-import EnhancedCollapsibleSection from './EnhancedCollapsibleSection';
+// Removed legacy Enhanced metrics components
 
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
 import QuickActionsBar from './QuickActionsBar';
 import { getQuickActionIcon } from './QuickActionsCard';
 import ImmediateActionsBar from './ImmediateActionsBar';
+import type { ImmediateActionCategory } from './ImmediateActionChip';
 import { getActionableInstructions } from './InstructionsPrompt';
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
@@ -238,12 +238,7 @@ interface Person {
   nickname?: string;
 }
 
-interface CollapsibleSectionProps {
-  title: string;
-  metrics: { title: string }[];
-  children: React.ReactNode;
-  isDarkMode: boolean; // added for dynamic theming
-}
+// Removed legacy CollapsibleSectionProps interface
 
 interface MetricItem {
   title: string;
@@ -279,107 +274,7 @@ interface MatterBalance {
 // Collapsible Section
 //////////////////////
 
-const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics, children, isDarkMode }) => {
-  // Start expanded by default
-  const [collapsed, setCollapsed] = useState(false);
-  const toggleCollapse = () => setCollapsed(!collapsed);
-
-  // Build the metric labels array (only used when collapsed)
-  const metricLabels = metrics.map(m => m.title);
-
-  // Height of the tray that remains visible when collapsed
-  const trayHeight = 50;
-
-  return (
-    <div
-      style={{
-        marginBottom: '20px',
-        boxShadow: (cardStyles.root as React.CSSProperties).boxShadow,
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-        borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
-          .borderRadius,
-        borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
-          .borderRadius,
-        overflow: 'hidden',
-      }}
-    >
-      <button
-        onClick={toggleCollapse}
-        aria-expanded={!collapsed}
-        aria-controls={`${title}-content`}
-        style={{
-          backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-          color: isDarkMode ? colours.dark.text : colours.light.text,
-          border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-          padding: '8px 12px',
-          minHeight: '38px',
-          cursor: 'pointer',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '14px',
-          width: '100%',
-          borderRadius: 0,
-          fontWeight: 600,
-        }}
-      >
-        <span style={{ fontWeight: 600 }}>{title}</span>
-        <Icon
-          iconName="ChevronDown"
-          styles={{
-            root: {
-              fontSize: '16px',
-              transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
-              transition: 'transform 0.3s ease',
-            }
-          }}
-        />
-      </button>
-      <div
-        id={`${title}-content`}
-        style={{
-          padding: collapsed ? '6px 10px' : componentTokens.summaryPane.base.padding,
-          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-          boxShadow: componentTokens.summaryPane.base.boxShadow,
-          borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
-            .borderRadius,
-          borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
-            .borderRadius,
-          maxHeight: collapsed ? trayHeight : '2000px',
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease, opacity 0.3s ease',
-        }}
-      >
-        {collapsed ? (
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px',
-              fontSize: '12px',
-            }}
-          >
-            {metricLabels.map((label, idx) => (
-              <span
-                key={idx}
-                style={{
-                  backgroundColor: colours.tagBackground,
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                }}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        ) : (
-          children
-        )}
-      </div>
-    </div>
-  );
-};
+// Removed legacy CollapsibleSection component
 
 
 //////////////////////
@@ -414,7 +309,7 @@ const quickActions: QuickLink[] = [
   { title: 'Update Attendance', icon: 'Calendar' },
   { title: 'Create a Task', icon: 'Checklist' },
   { title: 'Save Telephone Note', icon: 'Comment' },
-  { title: 'Request Annual Leave', icon: 'PalmTree' }, // Better icon for vacation/leave
+  { title: 'Request Annual Leave', icon: 'PalmTree' }, // Icon resolved to umbrella for consistency
   { title: 'Book Space', icon: 'Room' },
 ];
 
@@ -502,24 +397,7 @@ const favouritesGridStyle = mergeStyles({
   '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(5, 1fr)' },
 });
 
-const metricsGridThree = mergeStyles({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: '16px',
-  width: '100%',
-  margin: '16px 0',
-  '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' },
-  '@media (max-width: 600px)': { gridTemplateColumns: '1fr', gap: '12px' },
-});
-
-const metricsGridTwo = mergeStyles({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-  gap: '16px',
-  width: '100%',
-  margin: '16px 0',
-  '@media (max-width: 600px)': { gridTemplateColumns: '1fr', gap: '12px' },
-});
+// Removed legacy metrics grid styles (metricsGridThree/metricsGridTwo)
 
 const peopleGridStyle = mergeStyles({
   display: 'grid',
@@ -2664,7 +2542,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     userMatterIDs,           // ADDED
   ]);
   const timeMetrics = metricsData.slice(0, 5);
-  const enquiryMetrics = metricsData.slice(5);
+  // Removed enquiryMetrics; conversion summary now handled by TimeMetricsV2 props
 
   // Combine annualLeaveRecords and futureLeaveRecords for approval filtering
   const combinedLeaveRecords = useMemo(() => {
@@ -2700,6 +2578,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       ),
     [annualLeaveRecords, futureLeaveRecords, userInitials]
   );
+
+  type BookingItem = typeof bookingsNeeded[number];
 
   // Quick action button styles
   const approveButtonStyles = {
@@ -2831,12 +2711,16 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     setIsBespokePanelOpen(true);
   }, [futureLeaveRecords, annualLeaveTotals, annualLeaveAllData, handleApprovalUpdate]);
 
-  const handleBookLeaveClick = () => {
-    if (bookingsNeeded.length > 0) {
+  const openBookLeavePanel = React.useCallback(
+    (entries: BookingItem[]) => {
+      if (!entries || entries.length === 0) {
+        return;
+      }
+
       setBespokePanelContent(
         <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
           <AnnualLeaveBookings
-            bookings={bookingsNeeded.map((item) => ({
+            bookings={entries.map((item) => ({
               id: item.id,
               person: item.person,
               start_date: item.start_date,
@@ -2846,7 +2730,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
             }))}
             onClose={() => {
               setIsBespokePanelOpen(false);
-              resetQuickActionsSelection();
+              resetQuickActionsSelectionRef.current?.();
             }}
             team={transformedTeamData}
           />
@@ -2854,8 +2738,29 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       );
       setBespokePanelTitle('Book Requested Leave');
       setIsBespokePanelOpen(true);
-    }
-  };
+    },
+    [setBespokePanelContent, setBespokePanelTitle, setIsBespokePanelOpen, transformedTeamData]
+  );
+
+  const handleBookLeaveClick = React.useCallback(() => {
+    openBookLeavePanel(bookingsNeeded);
+  }, [bookingsNeeded, openBookLeavePanel]);
+
+  const handleBookLeavePreviewClick = React.useCallback(() => {
+    const todayIso = new Date().toISOString();
+    const tomorrowIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const sample: BookingItem[] = [
+      {
+        id: 'preview-booking',
+        person: userData[0]?.FullName ?? 'You',
+        start_date: todayIso,
+        end_date: tomorrowIso,
+        status: 'approved',
+        rejection_notes: '',
+      } as BookingItem,
+    ];
+    openBookLeavePanel(sample);
+  }, [openBookLeavePanel, userData]);
 
   const approveSnippet = async (id: number, approve: boolean) => {
     try {
@@ -2902,7 +2807,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   };
 
   const immediateALActions = useMemo(() => {
-    const actions: { title: string; onClick: () => void; icon?: string; styles?: any }[] = [];
+    const actions: Array<{ title: string; onClick: () => void; icon?: string; category?: ImmediateActionCategory }> = [];
     
     // Add test annual leave approval for localhost (only if no real approvals exist)
     if (isLocalhost && approvalsNeeded.length === 0) {
@@ -2910,7 +2815,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Approve Annual Leave (Test)',
         onClick: handleTestApproveLeaveClick,
         icon: 'PalmTree',
-        styles: approveButtonStyles,
+        category: 'critical',
       });
     }
     
@@ -2919,7 +2824,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Approve Annual Leave',
         onClick: handleApproveLeaveClick,
         icon: 'PalmTree',
-        styles: approveButtonStyles,
+        category: 'critical',
       });
     }
     if (isApprover && snippetApprovalsNeeded.length > 0) {
@@ -2927,7 +2832,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Approve Snippet Edits',
         onClick: handleSnippetApprovalClick,
         icon: 'Edit',
-        styles: approveButtonStyles,
+        category: 'standard',
       });
     }
     if (bookingsNeeded.length > 0) {
@@ -2935,15 +2840,40 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Book Requested Leave',
         onClick: handleBookLeaveClick,
         icon: 'Accept',
-        styles: bookButtonStyles,
+        category: 'success',
+      });
+    }
+    if (isLocalhost && bookingsNeeded.length === 0) {
+      actions.push({
+        title: 'Book Requested Leave',
+        onClick: handleBookLeavePreviewClick,
+        icon: 'Accept',
+        category: 'success',
       });
     }
     return actions;
-  }, [isApprover, approvalsNeeded, snippetApprovalsNeeded, bookingsNeeded, approveButtonStyles, bookButtonStyles, handleTestApproveLeaveClick]);
+  }, [
+    isApprover,
+    approvalsNeeded,
+    snippetApprovalsNeeded,
+    bookingsNeeded,
+    handleTestApproveLeaveClick,
+    handleApproveLeaveClick,
+    handleSnippetApprovalClick,
+    handleBookLeaveClick,
+    handleBookLeavePreviewClick,
+    isLocalhost,
+  ]);
 
   // Build immediate actions list
   // Ensure every action has an icon (never undefined)
-  type Action = { title: string; onClick: () => void; icon: string; disabled?: boolean };
+  type Action = { title: string; onClick: () => void; icon: string; disabled?: boolean; category?: ImmediateActionCategory };
+
+  const resetQuickActionsSelection = useCallback(() => {
+    if (resetQuickActionsSelectionRef.current) {
+      resetQuickActionsSelectionRef.current();
+    }
+  }, []);
   const handleActionClick = useCallback((action: { title: string; icon: string }) => {
     let content: React.ReactNode = <div>No form available.</div>;
     let titleText = action.title;
@@ -3070,7 +3000,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         } catch (error) {
           console.error('Failed to dispatch navigation event:', error);
         }
-        return;
         break;
       case 'Book Space':
         content = (
@@ -3143,6 +3072,13 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     annualLeaveAllData,
     futureBookings,
     unclaimedEnquiries,
+    isDarkMode,
+    transformedAttendanceRecords,
+    annualLeaveRecords,
+    saveAttendance,
+    actionableInstructionIds,
+    resetQuickActionsSelection,
+    setReviewedInstructionIds,
   ]);
 
   // Group instruction next actions by type with counts
@@ -3171,7 +3107,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     
     return actionGroups;
   }, [actionableSummaries]);
-
   const immediateActionsList: Action[] = useMemo(() => {
     const actions: Action[] = [];
     if (!isLoadingAttendance && !currentUserConfirmed) {
@@ -3179,47 +3114,20 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Confirm Attendance',
         icon: 'Calendar',
         onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Calendar' }),
+        category: 'critical',
       });
     }
-    if ((hasActiveMatter && (userInitials === 'LZ' || isLocalhost)) || isLocalhost) {
-      actions.push({
-  title: 'Open Matter',
-        icon: 'OpenFile',
-  onClick: () => handleActionClick({ title: 'Open Matter', icon: 'OpenFile' }),
-      });
-    }
-    // Local dev immediate Matter Opening: surface when any instruction is ready
-    if (isLocalhost) {
-      try {
-        const candidates = (instructionData || []).flatMap((p: any) => (p.instructions || []).map((inst: any) => {
-          const paymentOk = (inst.PaymentResult || '').toLowerCase() === 'successful';
-          const eidResult = (inst.eid?.EIDOverallResult || inst.EIDOverallResult || '').toLowerCase();
-          const poidPassed = eidResult === 'passed' || eidResult === 'approved';
-          const hasMatter = Boolean(inst.MatterId || (inst.matters && inst.matters.length));
-            // Accept also if user forced open via draft flag (optional future logic)
-          // For localhost, allow matter opening for all qualifying instructions (including those with existing matters)
-          const ready = paymentOk && poidPassed;
-          return ready ? inst : null;
-        }).filter(Boolean));
-        if (candidates.length > 0) {
-          actions.push({
-            title: candidates.length === 1 ? 'Open Matter' : 'Open Matters',
-            icon: 'OpenFile',
-            onClick: () => handleActionClick({ title: 'Open a Matter', icon: 'OpenFile' }),
-          });
-        }
-      } catch { /* swallow */ }
-    }
-    if (hasActivePitch) {
-      actions.push({
-        title: 'Resume Pitch',
-        icon: 'Presentation',
-        onClick: () => handleActionClick({ title: 'Resume Pitch', icon: 'Presentation' }),
-      });
-    }
+    // Resume prompts (pitch / matter) suppressed intentionally; cached data remains for manual navigation
     
     // Add grouped instruction actions (replaces old single "Review Instructions" action)
     if (!instructionsActionDone && (userInitials === 'LZ' || isLocalhost)) {
+      const instructionCategoryFor = (actionType: string): ImmediateActionCategory => {
+        if (['Verify ID', 'Review ID', 'Review', 'Open Matter'].includes(actionType)) {
+          return 'standard';
+        }
+        return 'critical';
+      };
+
       Object.entries(groupedInstructionActions).forEach(([actionType, { count, icon, disabled }]) => {
         const title = count === 1 ? actionType : `${actionType} (${count})`;
         actions.push({
@@ -3229,6 +3137,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           onClick: disabled 
             ? () => console.log('CCL action disabled in production') 
             : () => handleActionClick({ title: actionType, icon }),
+          category: instructionCategoryFor(actionType),
         });
       });
     }
@@ -3236,6 +3145,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       ...immediateALActions.map(a => ({
         ...a,
         icon: a.icon || '',
+        category: a.category ?? 'standard',
       }))
     );
     // Normalize titles (strip count suffix like " (3)") when sorting
@@ -3265,14 +3175,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       onImmediateActionsChange(immediateActionsList.length > 0);
     }
   }, [immediateActionsList.length, onImmediateActionsChange]);
-
-  // Helper function to reset quick actions selection when panels close
-  const resetQuickActionsSelection = useCallback(() => {
-    if (resetQuickActionsSelectionRef.current) {
-      resetQuickActionsSelectionRef.current();
-    }
-  }, []);
-
 
   // Removed first-entry overlay logic and session flags
 
@@ -3306,6 +3208,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         resetSelectionRef={resetQuickActionsSelectionRef}
         panelActive={isBespokePanelOpen || isContextPanelOpen || isOutstandingPanelOpen || isTransactionPopupOpen}
         seamless
+        userDisplayName={currentUserName}
+        userIdentifier={currentUserEmail}
       />
     );
     setContent(content);
@@ -3313,6 +3217,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     isDarkMode,
     normalQuickActions,
     currentUserConfirmed,
+    currentUserName,
+    currentUserEmail,
   ]);
 
   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)
@@ -3498,16 +3404,17 @@ const conversionRate = enquiriesMonthToDate
   );
 
   return (
-    <>
+    <div className={containerStyle(isDarkMode)}>
       {/* Portal immediate actions to app level */}
       {typeof document !== 'undefined' && document.getElementById('app-level-immediate-actions') && 
         createPortal(appLevelImmediateActions, document.getElementById('app-level-immediate-actions')!)
       }
 
       {/* Modern Time Metrics V2 - directly on page background */}
-      <TimeMetricsV2 
-        metrics={timeMetrics} 
-        enquiryMetrics={[
+      <div style={{ paddingTop: '16px' }}>
+        <TimeMetricsV2 
+          metrics={timeMetrics} 
+          enquiryMetrics={[
           { title: 'Enquiries Today', count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
           { title: 'Enquiries This Month', count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
@@ -3520,197 +3427,17 @@ const conversionRate = enquiriesMonthToDate
         ]}
         isDarkMode={isDarkMode} 
       />
+      </div>
 
-    <div className={`enhanced-dashboard ${isDarkMode ? 'dark-mode' : ''}`}>
-      
-      {/* Separator between header and dashboard content */}
-      <div 
-        style={{
-          height: '1px',
-          background: isDarkMode 
-            ? 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)'
-            : 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
-          margin: '12px 0',
-        }}
-      />
-      
-      <div className="dashboard-container">
-        {/* Entry overlay removed */}
-        
-        <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
-        
-        <EnhancedCollapsibleSection 
-          title="Time Metrics" 
-          metrics={timeMetrics.map(m => ({ title: m.title, icon: 'Clock' }))}
-          isDarkMode={isDarkMode}
-          variant="default"
-        >
-            <div className={metricsGridThree}>
-              {timeMetrics.slice(0, 3).map((metric, index) => (
-                <EnhancedMetricCard
-                  key={metric.title}
-                  title={metric.title}
-                  value={metric.isMoneyOnly ? (metric.money || 0) : metric.isTimeMoney ? (metric.hours || 0) : (metric.count || 0)}
-                  secondaryValue={metric.isTimeMoney ? (metric.money || 0) : undefined}
-                  previousValue={metric.isMoneyOnly ? metric.prevMoney : metric.isTimeMoney ? metric.prevHours : metric.prevCount}
-                  prefix={metric.isMoneyOnly ? '£' : ''}
-                  suffix={metric.isTimeMoney ? 'h' : metric.isMoneyOnly ? '' : ''}
-                  secondaryPrefix={metric.isTimeMoney ? '£' : ''}
-                  secondarySuffix={''}
-                  showDial={metric.showDial}
-                  dialTarget={metric.dialTarget}
-                  icon={metric.title.includes('Time') ? 'Clock' : 'Money'}
-                  animationDelay={index * 0.1}
-                  variant={index === 1 ? 'featured' : 'default'}
-                  accentColor={metric.title.includes('Time') ? colours.blue : colours.green}
-                  isTimeMoney={metric.isTimeMoney}
-                />
-              ))}
-            </div>
-
-            <div className={metricsGridTwo}>
-              {timeMetrics.slice(3).map((metric, index) => {
-                if (metric.title === 'Outstanding Office Balances') {
-                  return (
-                    <div
-                      key={metric.title}
-                      onClick={() => setIsOutstandingPanelOpen(true)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <EnhancedMetricCard
-                        title={metric.title}
-                        value={metric.money || 0}
-                        previousValue={metric.prevMoney}
-                        prefix="£"
-                        icon="Money"
-                        animationDelay={(index + 3) * 0.1}
-                        variant="default"
-                        accentColor={colours.red}
-                      />
-                    </div>
-                  );
-                }
-                return (
-                  <EnhancedMetricCard
-                    key={metric.title}
-                    title={metric.title}
-                    value={metric.isMoneyOnly ? (metric.money || 0) : metric.isTimeMoney ? (metric.hours || 0) : (metric.count || 0)}
-                    secondaryValue={metric.isTimeMoney ? (metric.money || 0) : undefined}
-                    previousValue={metric.isMoneyOnly ? metric.prevMoney : metric.isTimeMoney ? metric.prevHours : metric.prevCount}
-                    prefix={metric.isMoneyOnly ? '£' : ''}
-                    suffix={metric.isTimeMoney ? 'h' : metric.isMoneyOnly ? '' : ''}
-                    secondaryPrefix={metric.isTimeMoney ? '£' : ''}
-                    secondarySuffix={''}
-                    showDial={metric.showDial}
-                    dialTarget={metric.dialTarget}
-                    icon={metric.title.includes('Time') ? 'Clock' : 'Money'}
-                    animationDelay={(index + 3) * 0.1}
-                    variant="default"
-                    accentColor={colours.darkBlue}
-                    isTimeMoney={metric.isTimeMoney}
-                  />
-                );
-              })}
-          </div>
-        </EnhancedCollapsibleSection>
-        
-        <EnhancedCollapsibleSection 
-          title="Conversion Metrics" 
-          metrics={enquiryMetrics.map(m => ({ title: m.title, icon: 'People' }))}
-          isDarkMode={isDarkMode}
-          variant="default"
-        >
-              <div className={metricsGridThree}>
-                {enquiryMetrics.slice(0, 3).map((metric, index) => (
-                  <EnhancedMetricCard
-                    key={metric.title}
-                    title={metric.title}
-                    value={metric.count || 0}
-                    previousValue={metric.prevCount}
-                    icon="People"
-                    animationDelay={index * 0.1}
-                    variant={index === 1 ? 'featured' : 'default'}
-                    accentColor={index === 0 ? colours.green : index === 1 ? colours.blue : colours.highlight}
-                  />
-                ))}
-              </div>
-
-              <div className={metricsGridTwo}>
-                <EnhancedMetricCard
-                  title={enquiryMetrics[3]?.title || 'Matters Opened'}
-                  value={enquiryMetrics[3]?.count || 0}
-                  secondaryValue={enquiryMetrics[3]?.secondary}
-                  secondaryLabel="Firm"
-                  previousValue={enquiryMetrics[3]?.prevCount}
-                  icon="CheckMark"
-                  animationDelay={0}
-                  variant="default"
-                  accentColor={colours.green}
-                />
-
-                <EnhancedMetricCard
-                  title="Conversion Rate"
-                  value={conversionRate}
-                  suffix="%"
-                  showDial={true}
-                  dialTarget={100}
-                  // Replaced unregistered icon 'TrendingUp' with 'Ascending' (registered Fluent UI icon)
-                  icon="Ascending"
-                  animationDelay={0.1}
-                  variant="featured"
-                  accentColor={colours.highlight}
-                />
-              </div>
-        </EnhancedCollapsibleSection>
-
-      {useLocalData ? (
-        <SectionCard 
-          title="Transactions & Balances" 
-          id="transactions-section"
-          variant="default"
-          animationDelay={0.1}
-        >
-          <ActionSection
-            transactions={transactions}
-            userInitials={userInitials}
-            isDarkMode={isDarkMode}
-            onTransactionClick={handleTransactionClick}
-            matters={allMatters || []}
-            updateTransaction={updateTransaction}
-            outstandingBalances={myOutstandingBalances}
-          />
-        </SectionCard>
-      ) : (
-        <SectionCard 
-          title="Transactions & Balances" 
-          id="transactions-section-disabled"
-          variant="default"
-          animationDelay={0.1}
-        >
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '20px', 
-            color: isDarkMode ? colours.dark.subText : colours.light.subText,
-            background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-            borderRadius: '8px',
-            border: `1px dashed ${isDarkMode ? colours.dark.border : colours.light.border}`
-          }}>
-            <Icon iconName="Build" style={{ fontSize: '24px', marginBottom: '8px', opacity: 0.5 }} />
-            <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>
-              Under Development
-            </Text>
-          </div>
-        </SectionCard>
-      )}
-
-      {/* Hide attendance section when bespoke panel is open */}
+      {/* Attendance placed outside dashboard container, directly below TimeMetricsV2 */}
       {!isBespokePanelOpen && (
-        <SectionCard 
-          title="Attendance" 
-          id="attendance-section"
-          variant="default"
-          animationDelay={0.3}
-        >
+        <div style={{ margin: '12px 16px' }}>
+          <SectionCard 
+            title="Attendance" 
+            id="attendance-section"
+            variant="default"
+            animationDelay={0.1}
+          >
             <EnhancedAttendance
               ref={attendanceRef}
               isDarkMode={isDarkMode}
@@ -3719,17 +3446,72 @@ const conversionRate = enquiriesMonthToDate
               attendanceError={attendanceError}
               annualLeaveError={annualLeaveError}
               attendanceRecords={transformedAttendanceRecords}
-                teamData={attendanceTeam}
+              teamData={attendanceTeam}
               annualLeaveRecords={annualLeaveRecords}
               futureLeaveRecords={futureLeaveRecords}
               userData={userData}
               onAttendanceUpdated={handleAttendanceUpdated}
             />
-        </SectionCard>
+          </SectionCard>
+        </div>
       )}
 
+      {/* Transactions & Balances moved outside container, below Attendance */}
+      <div style={{ margin: '12px 16px' }}>
+        {useLocalData ? (
+          <SectionCard 
+            title="Transactions & Balances" 
+            id="transactions-section"
+            variant="default"
+            animationDelay={0.1}
+          >
+            <ActionSection
+              transactions={transactions}
+              userInitials={userInitials}
+              isDarkMode={isDarkMode}
+              onTransactionClick={handleTransactionClick}
+              matters={allMatters || []}
+              updateTransaction={updateTransaction}
+              outstandingBalances={myOutstandingBalances}
+            />
+          </SectionCard>
+        ) : (
+          <SectionCard 
+            title="Transactions & Balances" 
+            id="transactions-section-disabled"
+            variant="default"
+            animationDelay={0.1}
+          >
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '20px', 
+              color: isDarkMode ? colours.dark.subText : colours.light.subText,
+              background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+              borderRadius: '8px',
+              border: `1px dashed ${isDarkMode ? colours.dark.border : colours.light.border}`
+            }}>
+              <Icon iconName="Build" style={{ fontSize: '24px', marginBottom: '8px', opacity: 0.5, color: isDarkMode ? colours.blue : undefined }} />
+              <Text style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '4px', color: isDarkMode ? colours.blue : undefined }}>
+                Under Development
+              </Text>
+            </div>
+          </SectionCard>
+        )}
+      </div>
 
-      {/* Contexts Panel */}
+      {/* Separator after the top sections */}
+      <div 
+        style={{
+          height: '1px',
+          background: isDarkMode 
+            ? 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)'
+            : 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
+          margin: '12px 16px',
+        }}
+      />
+
+
+  {/* Contexts Panel */}
       <BespokePanel
         isOpen={isContextPanelOpen}
         onClose={() => {
@@ -3829,15 +3611,8 @@ const conversionRate = enquiriesMonthToDate
           resetQuickActionsSelection();
         }} />
       )}
-
   {/* Removed version and info button per request */}
-
-        </Stack>
-      </div>
-
-  {/* Removed floating action hint per request */}
     </div>
-    </>
   );
 };
 

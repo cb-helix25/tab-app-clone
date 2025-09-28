@@ -18,24 +18,25 @@ interface QuickActionsBarProps {
     resetSelectionRef?: React.MutableRefObject<(() => void) | null>;
     panelActive?: boolean;
     seamless?: boolean;
+    userDisplayName?: string;
+    userIdentifier?: string;
 }
 
 const ACTION_BAR_HEIGHT = 30; // More compact header height
 
 const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean, seamless: boolean) =>
     mergeStyles({
-        // Subtle gradient background (always applied); seamless only disables extras like blur/shadow
+        // Use transparent background in dark mode to avoid introducing new greys; let page background show through
         background: isDarkMode
-            // Lightened dark gradient for better contrast and polish
-            ? 'linear-gradient(135deg, rgba(42, 47, 58, 0.95) 0%, rgba(52, 58, 70, 0.92) 100%)'
+            ? 'transparent'
             : `linear-gradient(135deg, #FFFFFF 0%, ${colours.light.grey} 100%)`,
 
         // Hairline borders top/bottom for structure (omit when seamless)
         borderTop: seamless ? 'none' : `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(6,23,51,0.06)'}`,
         borderBottom: seamless ? 'none' : `1px solid ${isDarkMode ? 'rgba(0,0,0,0.35)' : 'rgba(6,23,51,0.08)'}`,
         
-        // Modern backdrop blur (disabled when seamless)
-        backdropFilter: seamless ? 'none' : 'blur(10px)',
+    // Remove backdrop blur for crisp overlay
+    backdropFilter: 'none',
         
         // Professional shadows (removed when seamless)
         boxShadow: seamless
@@ -44,12 +45,12 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean, seamless: bo
                 ? '0 4px 6px rgba(0, 0, 0, 0.30)'
                 : '0 4px 6px rgba(6, 23, 51, 0.07)'),
         
-        // Layout stability - compact padding
+        // Layout stability - padding with more vertical spacing above and below
         // Align content to left (remove excessive left padding)
-        padding: '2px 10px',
+        padding: '8px 10px',
         minHeight: ACTION_BAR_HEIGHT,
-        height: ACTION_BAR_HEIGHT,        // Smooth professional transitions
-        transition: 'all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)',
+        height: 46, // Even more compact height
+    transition: 'all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)',
         
         // Flex layout: row so content reveals inline to the right of the label
         display: 'flex',
@@ -64,7 +65,7 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean, seamless: bo
         // Position and layering
         // Render inline within Navigator without sticky offset so it touches CustomTabs
         position: 'relative',
-        zIndex: 100,
+        zIndex: 200,
         
         // More compact rounding
         borderRadius: 0,
@@ -115,10 +116,98 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     resetSelectionRef,
     panelActive = false,
     seamless = false,
+    userDisplayName,
+    userIdentifier,
 }) => {
     const [selected, setSelected] = React.useState<string | null>(null);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [collapsed, setCollapsed] = React.useState<boolean>(true);
+    const [labelsExpanded, setLabelsExpanded] = React.useState<boolean>(false);
+    const [showGreeting, setShowGreeting] = React.useState<boolean>(false);
+    const iconRailWidth = React.useMemo(() => {
+        const chipCount = quickActions.length;
+        if (chipCount === 0) {
+            return 0;
+        }
+        const chipWidth = 44;
+        const horizontalPadding = 8;
+        return chipCount * chipWidth + horizontalPadding;
+    }, [quickActions.length]);
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const barRef = React.useRef<HTMLDivElement>(null);
+    const headerRef = React.useRef<HTMLButtonElement>(null);
+    const hasTriggeredGreetingRef = React.useRef<string | null>(null);
+
+    const greetingStorageKey = React.useMemo(() => {
+        if (!userDisplayName && !userIdentifier) {
+            return null;
+        }
+        const identifier = (userIdentifier || userDisplayName || '').toLowerCase().trim();
+        if (!identifier) {
+            return null;
+        }
+        return `quickActionsGreeting:${identifier}`;
+    }, [userDisplayName, userIdentifier]);
+
+    const greetingLabel = React.useMemo(() => {
+        if (!userDisplayName) {
+            return null;
+        }
+        const trimmed = userDisplayName.trim();
+        if (!trimmed) {
+            return null;
+        }
+        const firstToken = trimmed.split(' ')[0];
+        const capitalised = firstToken.charAt(0).toUpperCase() + firstToken.slice(1);
+        return `Hi ${capitalised}!`;
+    }, [userDisplayName]);
+
+    const greetingVisible = showGreeting && Boolean(greetingLabel);
+
+    React.useEffect(() => {
+        if (!greetingStorageKey || !greetingLabel) {
+            return;
+        }
+        if (hasTriggeredGreetingRef.current === greetingStorageKey) {
+            return;
+        }
+
+        let alreadySeen = false;
+        try {
+            alreadySeen = window.sessionStorage.getItem(greetingStorageKey) === 'seen';
+        } catch {
+            alreadySeen = false;
+        }
+
+        if (!alreadySeen) {
+            hasTriggeredGreetingRef.current = greetingStorageKey;
+            setShowGreeting(true);
+            try {
+                window.sessionStorage.setItem(greetingStorageKey, 'seen');
+            } catch {
+                // Ignore storage failures
+            }
+        }
+    }, [greetingLabel, greetingStorageKey]);
+
+    React.useEffect(() => {
+        if (!showGreeting) {
+            return;
+        }
+        const timeout = window.setTimeout(() => {
+            setShowGreeting(false);
+        }, 4200);
+
+        return () => {
+            window.clearTimeout(timeout);
+        };
+    }, [showGreeting]);
+
+    React.useEffect(() => {
+        if (!collapsed) {
+            setShowGreeting(false);
+        }
+    }, [collapsed]);
 
     // Expose reset function via ref, but don't reset if panel is still active
     React.useEffect(() => {
@@ -138,10 +227,60 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
         };
     }, []);
 
+    const evaluateLabelSpace = React.useCallback(() => {
+        if (collapsed) {
+            return;
+        }
+
+        const chipCount = quickActions.length;
+        if (chipCount === 0) {
+            setLabelsExpanded(false);
+            return;
+        }
+
+        const barWidth = barRef.current?.clientWidth ?? 0;
+        const headerWidth = headerRef.current?.getBoundingClientRect().width ?? 0;
+        const structuralAllowance = 40; // gaps + padding within the bar
+        const backControlAllowance = 32; // collapse button footprint
+
+        const usableWidth = Math.max(0, barWidth - headerWidth - structuralAllowance - backControlAllowance);
+        const availablePerChip = usableWidth / chipCount;
+        const nextExpanded = availablePerChip >= 120;
+        setLabelsExpanded((prev) => (prev === nextExpanded ? prev : nextExpanded));
+    }, [collapsed, quickActions.length]);
+
+    React.useLayoutEffect(() => {
+        if (collapsed) {
+            return undefined;
+        }
+
+        evaluateLabelSpace();
+        const frameId = window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(evaluateLabelSpace);
+        });
+        const settleTimer = window.setTimeout(evaluateLabelSpace, 220);
+
+        const handleResize = () => evaluateLabelSpace();
+        window.addEventListener('resize', handleResize);
+
+        const observer = new ResizeObserver(() => evaluateLabelSpace());
+        if (containerRef.current) {
+            observer.observe(containerRef.current);
+        }
+
+        return () => {
+            window.cancelAnimationFrame(frameId);
+            window.clearTimeout(settleTimer);
+            window.removeEventListener('resize', handleResize);
+            observer.disconnect();
+        };
+    }, [collapsed, evaluateLabelSpace]);
+
     const onCardClick = (action: QuickAction) => {
         // Smooth loading state transition
         setSelected(action.title);
         setIsLoading(true);
+        setShowGreeting(false);
         
         // Professional loading feedback
         setTimeout(() => {
@@ -172,15 +311,19 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
 
     return (
         <div
+            ref={barRef}
             className={quickLinksStyle(isDarkMode, highlighted, seamless)}
             role="region"
             aria-label="Quick actions"
         >
             {/* Header: compact label with chevron toggle (chevron to the right) */}
             <button
+                ref={headerRef}
                 type="button"
                 aria-expanded={!collapsed}
-                onClick={() => setCollapsed((c) => !c)}
+                onClick={() => {
+                    setCollapsed((c) => !c);
+                }}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -211,23 +354,60 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                 />
             </button>
 
+            {greetingLabel && (
+                <div
+                    aria-live="polite"
+                    role="status"
+                    style={{
+                        position: 'absolute',
+                        right: seamless ? 12 : 10,
+                        top: '50%',
+                        transform: greetingVisible
+                            ? 'translateY(-50%) translateX(0)'
+                            : 'translateY(-50%) translateX(42px)',
+                        opacity: greetingVisible ? 1 : 0,
+                        transition: 'opacity 200ms ease, transform 260ms cubic-bezier(0.33, 1, 0.68, 1)',
+                        color: isDarkMode ? '#E5E7EB' : '#0F172A',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        letterSpacing: 0.2,
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        textShadow: isDarkMode ? '0 1px 2px rgba(0,0,0,0.35)' : 'none',
+                    }}
+                >
+                    {greetingLabel}
+                </div>
+            )}
+
             {/* Content: action chips list (expands inline to the right) */}
             <div
+                ref={containerRef}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 2,
-                    paddingBottom: 0,
+                    gap: 0,
+                    paddingTop: collapsed ? 0 : 2,
+                    paddingBottom: collapsed ? 0 : 2,
                     flexWrap: 'nowrap',
-                    overflowX: 'auto',
+                    overflowX: 'hidden', // Hide overflow instead of scrolling
                     msOverflowStyle: 'none',
                     scrollbarWidth: 'none',
-                    flex: '0 0 auto',
+                    flex: collapsed ? '0 0 0' : '0 1 auto',
                     minWidth: 0,
                     width: collapsed ? 0 : 'auto',
+                    maxWidth: collapsed
+                        ? 0
+                        : (labelsExpanded ? '100%' : `${iconRailWidth}px`),
                     opacity: collapsed ? 0 : 1,
                     pointerEvents: collapsed ? 'none' : 'auto',
-                    transition: 'width 200ms ease, opacity 180ms ease',
+                    transition: 'max-width 220ms ease, flex 220ms ease, opacity 180ms ease',
+                    // One big container box with subtle border
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(6,23,51,0.1)'}`,
+                    borderColor: collapsed ? 'transparent' : undefined,
+                    borderRadius: collapsed ? 0 : 8,
+                    padding: collapsed ? 0 : '0px 4px', // Horizontal padding only; vertical handled above
+                    background: 'transparent', // No fill
                 }}
             >
                 {/* Back control when expanded */}
@@ -266,22 +446,29 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                         confirmed={action.title === 'Confirm Attendance' || action.title === 'Update Attendance' ? currentUserConfirmed : undefined}
                         disabled={isLoading && selected !== action.title}
                         panelActive={panelActive && selected === action.title}
+                        alwaysShowText={labelsExpanded}
                         style={{
                             '--card-index': index,
-                            '--card-bg': isDarkMode 
-                                ? colours.dark.sectionBackground 
-                                : colours.light.sectionBackground,
+                            // Remove individual boxes - transparent background, no border, no shadow
+                            '--card-bg': 'transparent',
+                            '--card-border': 'transparent',
                             '--card-hover': isDarkMode 
-                                ? colours.dark.cardHover 
-                                : colours.light.cardHover,
+                                ? 'rgba(255,255,255,0.08)'
+                                : 'rgba(6,23,51,0.08)',
                             '--card-selected': isDarkMode 
-                                ? colours.dark.cardHover 
-                                : colours.light.cardHover,
+                                ? 'rgba(255,255,255,0.12)'
+                                : 'rgba(6,23,51,0.12)',
+                            '--card-shadow': 'none',
                             height: '32px',
                             opacity: (isLoading && selected !== action.title) ? 0.6 : 1,
                             filter: (isLoading && selected === action.title) 
                                 ? 'brightness(1.06)'
                                 : 'none',
+                            borderRadius: 6, // Subtle rounding for hover area
+                            // Cascading animation
+                            animation: `quickActionCascade 0.3s ease-out ${index * 0.05}s both`,
+                            transform: 'translateX(-10px)',
+                            animationFillMode: 'forwards',
                         } as React.CSSProperties}
                     />
                 ))}

@@ -12,6 +12,7 @@ import { mergeMattersFromSources } from "./utils/matterNormalization";
 import "./utils/callLogger";
 import { getProxyBaseUrl } from "./utils/getProxyBaseUrl";
 import { initializeIcons } from "@fluentui/react";
+import Loading from "./app/styles/Loading";
 const Data = lazy(() => import("./tabs/Data"));
 
 // Initialize icons once, but defer to idle to speed first paint
@@ -44,6 +45,25 @@ const customTheme = createTheme({
 });
 
 const proxyBaseUrl = getProxyBaseUrl();
+
+const resolveSystemDarkMode = () => {
+  if (typeof window === "undefined" || !window.matchMedia) {
+    return false;
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+};
+
+const dismissStaticLoader = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const loader = document.getElementById('loading-screen');
+  if (!loader) {
+    return;
+  }
+  loader.classList.add('fade-out');
+  window.setTimeout(() => loader.remove(), 360);
+};
 
 // Flag to decide whether to use local sample data instead of remote API
 const inTeams = isInTeams();
@@ -844,12 +864,25 @@ if (window.location.pathname === '/data') {
   appRoot.render(
     <React.StrictMode>
       <ThemeProvider theme={customTheme}>
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense
+          fallback={
+            <Loading
+              message="Loading data..."
+              detailMessages={[
+                'Fetching reporting data…',
+                'Normalizing records…',
+                'Preparing analytics…',
+              ]}
+              isDarkMode={resolveSystemDarkMode()}
+            />
+          }
+        >
           <Data />
         </Suspense>
       </ThemeProvider>
     </React.StrictMode>
   );
+  dismissStaticLoader();
 } else {
   appRoot.render(
     <React.StrictMode>
@@ -858,4 +891,5 @@ if (window.location.pathname === '/data') {
       </ThemeProvider>
     </React.StrictMode>
   );
+  dismissStaticLoader();
 }

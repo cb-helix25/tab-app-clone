@@ -1,8 +1,72 @@
 import React, { useState, useMemo, forwardRef, useImperativeHandle } from 'react';
+import type { CSSProperties } from 'react';
 import { DefaultButton, Icon } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import helixLogo from '../../assets/dark blue mark.svg';
-import { PiTreePalmFill } from 'react-icons/pi';
+import { FaUmbrellaBeach } from 'react-icons/fa';
+
+interface StatusConfig {
+    readonly icon: 'office' | 'wfh' | 'away' | 'off-sick' | 'out-of-office';
+    readonly color: string;
+    readonly label: string;
+    readonly bgColor: string;
+    readonly darkBg: string;
+}
+
+const getPanelContainerStyle = (isDarkMode: boolean): CSSProperties => ({
+    background: isDarkMode
+        ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.98) 0%, rgba(9, 22, 44, 0.94) 52%, rgba(13, 35, 63, 0.9) 100%)'
+        : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+    borderRadius: '16px',
+    padding: '24px',
+        boxShadow: isDarkMode
+            ? '0 20px 44px rgba(2, 6, 17, 0.72)'
+            : '0 16px 40px rgba(13, 47, 96, 0.18)',
+        border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.26)' : 'rgba(148, 163, 184, 0.16)'}`,
+    width: '100%',
+    maxWidth: '920px',
+    margin: '0 auto',
+    transition: 'background 0.25s ease, box-shadow 0.25s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+    color: isDarkMode ? colours.dark.text : colours.light.text,
+});
+
+const getWeekCardStyle = (isDarkMode: boolean): CSSProperties => ({
+    background: isDarkMode
+        ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.86) 55%, rgba(10, 39, 72, 0.8) 100%)'
+        : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+    border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.22)'}`,
+    borderRadius: '12px',
+    padding: '20px',
+    marginBottom: '16px',
+    boxShadow: isDarkMode
+        ? '0 18px 32px rgba(2, 6, 17, 0.58)'
+        : '0 12px 28px rgba(13, 47, 96, 0.12)',
+    backdropFilter: 'blur(12px)',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+});
+
+const getQuickSelectButtonStyle = (isDarkMode: boolean, accent: string): CSSProperties => ({
+    padding: '6px 12px',
+    borderRadius: '6px',
+    border: `1px solid ${accent}`,
+    background: isDarkMode
+        ? `linear-gradient(135deg, ${accent}40 0%, rgba(8, 23, 42, 0.75) 100%)`
+        : `linear-gradient(135deg, #FFFFFF 0%, ${accent}1f 100%)`,
+    color: isDarkMode ? '#E9F5FF' : accent,
+    cursor: 'pointer',
+    fontSize: '11px',
+    fontWeight: 500,
+    boxShadow: isDarkMode
+        ? '0 6px 16px rgba(0, 0, 0, 0.35)'
+        : '0 6px 16px rgba(13, 47, 96, 0.12)',
+    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+});
 
 // Custom icon component to handle both FluentUI icons and custom images
 const StatusIcon: React.FC<{ 
@@ -25,16 +89,16 @@ const StatusIcon: React.FC<{
     );
   }
   
-  if (status === 'away') {
-    return (
-      <PiTreePalmFill
-        style={{ 
-          color: color, 
-          fontSize: size 
-        }} 
-      />
-    );
-  }
+    if (status === 'away') {
+        return (
+            <FaUmbrellaBeach
+                style={{
+                    color,
+                    fontSize: size
+                }}
+            />
+        );
+    }
   
   const iconName = status === 'off-sick' ? 'Health' :
                    status === 'out-of-office' ? 'Suitcase' :
@@ -191,49 +255,55 @@ const PersonalAttendanceConfirm = forwardRef<
     const statuses = ['wfh', 'office', 'away', 'off-sick', 'out-of-office'];
     
     // Status display configuration
-    const getStatusConfig = (status: string) => {
+    const getStatusConfig = (status: string): StatusConfig => {
         switch (status) {
             case 'office':
                 return { 
                     icon: 'office', 
                     color: colours.missedBlue, 
                     label: 'In Office',
-                    bgColor: colours.missedBlue + '20'
+                    bgColor: `${colours.missedBlue}20`,
+                    darkBg: 'linear-gradient(135deg, rgba(13, 47, 96, 0.55) 0%, rgba(9, 25, 49, 0.68) 100%)'
                 };
             case 'wfh':
                 return { 
                     icon: 'wfh', 
                     color: colours.green, 
                     label: 'WFH',
-                    bgColor: colours.green + '20'
+                    bgColor: `${colours.green}20`,
+                    darkBg: 'linear-gradient(135deg, rgba(32, 178, 108, 0.32) 0%, rgba(15, 63, 63, 0.55) 100%)'
                 };
             case 'away':
                 return { 
                     icon: 'away', 
                     color: colours.subtleGrey, 
                     label: 'Away',
-                    bgColor: colours.subtleGrey + '20'
+                    bgColor: `${colours.subtleGrey}20`,
+                    darkBg: 'linear-gradient(135deg, rgba(107, 114, 128, 0.38) 0%, rgba(55, 65, 81, 0.48) 100%)'
                 };
             case 'off-sick':
                 return { 
                     icon: 'off-sick', 
                     color: colours.cta, 
                     label: 'Off Sick',
-                    bgColor: colours.cta + '20'
+                    bgColor: `${colours.cta}20`,
+                    darkBg: 'linear-gradient(135deg, rgba(214, 85, 65, 0.3) 0%, rgba(127, 29, 29, 0.45) 100%)'
                 };
             case 'out-of-office':
                 return { 
                     icon: 'out-of-office', 
                     color: colours.orange, 
                     label: 'Out-Of-Office',
-                    bgColor: colours.orange + '20'
+                    bgColor: `${colours.orange}20`,
+                    darkBg: 'linear-gradient(135deg, rgba(255, 140, 0, 0.28) 0%, rgba(146, 64, 14, 0.45) 100%)'
                 };
             default:
                 return { 
-                    icon: 'Home', 
+                    icon: 'wfh', 
                     color: colours.green, 
                     label: 'WFH',
-                    bgColor: colours.green + '20'
+                    bgColor: `${colours.green}20`,
+                    darkBg: 'linear-gradient(135deg, rgba(32, 178, 108, 0.32) 0%, rgba(15, 63, 63, 0.55) 100%)'
                 };
         }
     };
@@ -330,90 +400,97 @@ const PersonalAttendanceConfirm = forwardRef<
 
     const renderWeek = (label: string, weekStart: string) => {
         return (
-            <div key={weekStart} style={{
-                background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-                border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                borderRadius: '8px',
-                padding: '20px',
-                marginBottom: '16px'
-            }}>
+            <div key={weekStart} style={getWeekCardStyle(isDarkMode)}>
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    marginBottom: '16px',
-                    paddingBottom: '8px',
-                    borderBottom: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`
+                    gap: '12px',
+                    marginBottom: '12px',
+                    paddingBottom: '12px',
+                    borderBottom: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.28)' : 'rgba(148, 163, 184, 0.22)'}`
                 }}>
                     <h3 style={{
                         margin: 0,
-                        color: isDarkMode ? colours.dark.text : colours.light.text,
+                        color: isDarkMode ? '#FFFFFF' : colours.light.text,
                         fontSize: '16px',
-                        fontWeight: 600
+                        fontWeight: 600,
+                        letterSpacing: '0.01em'
                     }}>
                         {label}
                     </h3>
                     <span style={{
                         fontSize: '12px',
-                        color: isDarkMode ? colours.dark.subText : colours.light.subText
+                        color: isDarkMode ? 'rgba(226, 232, 240, 0.75)' : colours.greyText
                     }}>
                         {getWeekDateRange(weekStart)}
                     </span>
                 </div>
 
-                {/* Feedback messages */}
                 {(saveError || saveSuccess) && (
                     <div style={{
                         marginBottom: '12px',
-                        padding: '8px 10px',
-                        borderRadius: '6px',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
                         border: `1px solid ${saveError ? colours.cta : colours.green}`,
-                        background: saveError ? `${colours.cta}10` : `${colours.green}10`,
-                        color: isDarkMode ? colours.dark.text : colours.light.text
+                        background: saveError
+                            ? (isDarkMode
+                                ? 'linear-gradient(135deg, rgba(214, 85, 65, 0.22) 0%, rgba(127, 29, 29, 0.45) 100%)'
+                                : `${colours.cta}10`)
+                            : (isDarkMode
+                                ? 'linear-gradient(135deg, rgba(32, 178, 108, 0.24) 0%, rgba(17, 99, 67, 0.4) 100%)'
+                                : `${colours.green}10`),
+                        color: isDarkMode ? colours.dark.text : colours.light.text,
+                        boxShadow: isDarkMode
+                            ? '0 6px 16px rgba(8, 23, 44, 0.35)'
+                            : '0 6px 16px rgba(13, 47, 96, 0.1)'
                     }}>
-                        {saveError ? (
-                            <span>Could not save attendance. Please try again.</span>
-                        ) : (
-                            <span>Attendance saved.</span>
-                        )}
+                        {saveError ? 'Could not save attendance. Please try again.' : 'Attendance saved.'}
                     </div>
                 )}
 
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(5, 1fr)',
+                    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
                     gap: '12px'
                 }}>
                     {weekDays.map((day, dayIndex) => {
                         const currentStatus = localAttendance[weekStart]?.[day] || 'home';
                         const onLeave = isOnLeave(weekStart, dayIndex);
+                        const statusConfig = getStatusConfig(currentStatus);
                         
                         return (
                             <div
                                 key={day}
                                 onClick={onLeave ? undefined : () => toggleDay(weekStart, day)}
                                 style={{
-                                    padding: '16px 8px',
-                                    borderRadius: '8px',
+                                    padding: '16px 10px',
+                                    borderRadius: '10px',
                                     border: `2px solid ${
-                                        onLeave 
-                                            ? colours.greyText 
-                                            : getStatusConfig(currentStatus).color
+                                        onLeave
+                                            ? 'rgba(148, 163, 184, 0.45)'
+                                            : statusConfig.color
                                     }`,
-                                    backgroundColor: onLeave
-                                        ? `${colours.greyText}20`
-                                        : getStatusConfig(currentStatus).bgColor,
+                                    background: onLeave
+                                        ? (isDarkMode
+                                            ? 'linear-gradient(135deg, rgba(107, 114, 128, 0.24) 0%, rgba(55, 65, 81, 0.42) 100%)'
+                                            : `${colours.greyText}20`)
+                                        : (isDarkMode ? statusConfig.darkBg : statusConfig.bgColor),
                                     cursor: onLeave ? 'not-allowed' : 'pointer',
                                     textAlign: 'center',
-                                    transition: 'all 0.2s ease',
-                                    opacity: onLeave ? 0.6 : 1
+                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                    opacity: onLeave ? 0.6 : 1,
+                                    boxShadow: isDarkMode
+                                        ? '0 8px 18px rgba(8, 23, 44, 0.35)'
+                                        : '0 8px 18px rgba(13, 47, 96, 0.1)'
                                 }}
                             >
                                 <div style={{
                                     fontSize: '12px',
                                     fontWeight: 600,
-                                    color: isDarkMode ? colours.dark.text : colours.light.text,
-                                    marginBottom: '8px'
+                                    color: isDarkMode ? '#E9F5FF' : colours.light.text,
+                                    marginBottom: '10px',
+                                    letterSpacing: '0.05em'
                                 }}>
                                     {day.substring(0, 3).toUpperCase()}
                                 </div>
@@ -421,76 +498,59 @@ const PersonalAttendanceConfirm = forwardRef<
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    height: '24px'
+                                    height: '26px'
                                 }}>
                                     {onLeave ? (
                                         <Icon 
                                             iconName="Airplane" 
                                             style={{ 
-                                                color: colours.greyText,
-                                                fontSize: '16px'
+                                                color: isDarkMode ? '#CBD5F5' : colours.greyText,
+                                                fontSize: '18px'
                                             }} 
                                         />
                                     ) : (
                                         <StatusIcon
                                             status={currentStatus as 'wfh' | 'office' | 'away' | 'off-sick' | 'out-of-office'}
-                                            size="16px"
-                                            color={getStatusConfig(currentStatus).color}
+                                            size="18px"
+                                            color={statusConfig.color}
                                         />
                                     )}
                                 </div>
                                 <div style={{
-                                    fontSize: '10px',
-                                    color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                                    marginTop: '4px'
+                                    fontSize: '11px',
+                                    color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.light.subText,
+                                    marginTop: '6px'
                                 }}>
-                                    {onLeave ? 'Away' : getStatusConfig(currentStatus).label}
+                                    {onLeave ? 'Away' : statusConfig.label}
                                 </div>
                             </div>
                         );
                     })}
                 </div>
 
-                {/* Quick select buttons */}
                 <div style={{
                     display: 'flex',
-                    gap: '8px',
-                    marginTop: '12px',
+                    gap: '10px',
+                    marginTop: '14px',
                     flexWrap: 'wrap'
                 }}>
                     <button
+                        type="button"
                         onClick={() => setLocalAttendance(prev => ({ 
                             ...prev, 
                             [weekStart]: weekDays.reduce((acc, day) => ({ ...acc, [day]: 'wfh' }), {})
                         }))}
-                        style={{
-                            padding: '6px 12px',
-                            border: `1px solid ${colours.green}`,
-                            backgroundColor: `${colours.green}20`,
-                            color: colours.green,
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '11px',
-                            fontWeight: 500
-                        }}
+                        style={getQuickSelectButtonStyle(isDarkMode, colours.green)}
                     >
                         All WFH
                     </button>
                     <button
+                        type="button"
                         onClick={() => setLocalAttendance(prev => ({ 
                             ...prev, 
                             [weekStart]: weekDays.reduce((acc, day) => ({ ...acc, [day]: 'office' }), {})
                         }))}
-                        style={{
-                            padding: '6px 12px',
-                            border: `1px solid ${colours.missedBlue}`,
-                            backgroundColor: `${colours.missedBlue}20`,
-                            color: colours.missedBlue,
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '11px',
-                            fontWeight: 500
-                        }}
+                        style={getQuickSelectButtonStyle(isDarkMode, colours.missedBlue)}
                     >
                         All Office
                     </button>
@@ -500,21 +560,29 @@ const PersonalAttendanceConfirm = forwardRef<
     };
 
     return (
-        <div style={{ 
-            padding: '8px'
-        }}>
+        <div style={getPanelContainerStyle(isDarkMode)}>
             <div style={{
-                marginBottom: '20px',
-                textAlign: 'center'
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
             }}>
                 <h2 style={{
-                    margin: '0 0 8px 0',
-                    color: isDarkMode ? colours.dark.text : colours.light.text,
-                    fontSize: '18px',
-                    fontWeight: 600
+                    margin: 0,
+                    color: isDarkMode ? '#FFFFFF' : colours.light.text,
+                    fontSize: '19px',
+                    fontWeight: 600,
+                    letterSpacing: '0.01em'
                 }}>
                     Confirm Your Attendance
                 </h2>
+                <p style={{
+                    margin: 0,
+                    fontSize: '12px',
+                    color: isDarkMode ? 'rgba(226, 232, 240, 0.7)' : colours.greyText
+                }}>
+                    Tap each day to cycle through Office, WFH, Away, Sick or OOO. We auto mark booked leave.
+                </p>
             </div>
 
             {renderWeek('This Week', currentWeekStart)}
@@ -524,17 +592,24 @@ const PersonalAttendanceConfirm = forwardRef<
                 display: 'flex', 
                 gap: '12px', 
                 justifyContent: 'flex-end',
-                marginTop: '20px',
-                paddingTop: '16px',
-                borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`
+                marginTop: '12px',
+                paddingTop: '18px',
+                borderTop: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.24)' : 'rgba(148, 163, 184, 0.24)'}`
             }}>
                 <DefaultButton 
                     text="Cancel" 
                     onClick={onClose}
                     styles={{
                         root: {
-                            border: `1px solid ${colours.greyText}`,
-                            backgroundColor: 'transparent'
+                            border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.45)' : colours.greyText}`,
+                            backgroundColor: isDarkMode ? 'rgba(15, 35, 61, 0.6)' : 'transparent',
+                            color: isDarkMode ? colours.dark.text : colours.light.text,
+                            transition: 'transform 0.15s ease, background-color 0.15s ease',
+                        },
+                        rootHovered: {
+                            backgroundColor: isDarkMode ? 'rgba(54, 144, 206, 0.22)' : 'rgba(54, 144, 206, 0.12)',
+                            borderColor: colours.highlight,
+                            color: colours.highlight,
                         }
                     }}
                 />
@@ -545,8 +620,26 @@ const PersonalAttendanceConfirm = forwardRef<
                     primary
                     styles={{
                         root: {
-                            backgroundColor: colours.missedBlue,
-                            border: `1px solid ${colours.missedBlue}`
+                            background: 'linear-gradient(135deg, #0d2f60 0%, #174a92 100%)',
+                            border: '1px solid #174a92',
+                            color: '#ffffff',
+                            boxShadow: isDarkMode
+                                ? '0 10px 28px rgba(8, 23, 44, 0.5)'
+                                : '0 10px 24px rgba(13, 47, 96, 0.28)',
+                            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                        },
+                        rootHovered: {
+                            background: 'linear-gradient(135deg, #174a92 0%, #1c5fb8 100%)',
+                            borderColor: '#1c5fb8',
+                        },
+                        rootPressed: {
+                            background: 'linear-gradient(135deg, #123a78 0%, #174a92 100%)',
+                            borderColor: '#123a78',
+                        },
+                        rootDisabled: {
+                            backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+                            borderColor: 'transparent',
+                            color: isDarkMode ? 'rgba(226, 232, 240, 0.5)' : 'rgba(55, 65, 81, 0.5)',
                         }
                     }}
                 />

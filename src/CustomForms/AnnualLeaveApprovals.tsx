@@ -12,7 +12,7 @@ import { mergeStyles } from '@fluentui/react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { colours } from '../app/styles/colours';
 import HelixAvatar from '../assets/helix avatar.png';
-import { PiTreePalm } from 'react-icons/pi';
+import { FaUmbrellaBeach } from 'react-icons/fa';
 
 /* ---------------------------------------------------------------------------
    Types & Interfaces
@@ -749,7 +749,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
             fontSize: '18px',
             color: colours.greyText
           }}>
-            <PiTreePalm style={{ fontSize: '48px', marginBottom: '16px', color: colours.green }} />
+            <FaUmbrellaBeach style={{ fontSize: '48px', marginBottom: '16px', color: colours.green }} />
             <div>No leave requests to review</div>
             <div style={{ fontSize: '14px', marginTop: '8px' }}>
               All annual leave requests have been processed.

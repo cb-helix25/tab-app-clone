@@ -17,9 +17,13 @@ const PulsingDot: React.FC<PulsingDotProps> = ({
   className = '',
   style = {}
 }) => {
+  const scopedClass = React.useMemo(
+    () => `pulsing-dot-${Math.random().toString(36).slice(2, 10)}`,
+    []
+  );
   return (
     <div
-      className={`pulsing-dot ${className}`}
+      className={`pulsing-dot ${scopedClass} ${className}`}
       style={{
         width: size,
         height: size,
@@ -30,7 +34,7 @@ const PulsingDot: React.FC<PulsingDotProps> = ({
       }}
     >
       <style>{`
-        .pulsing-dot::before {
+        .${scopedClass}::before {
           content: '';
           position: absolute;
           top: 0;
@@ -43,7 +47,7 @@ const PulsingDot: React.FC<PulsingDotProps> = ({
           opacity: 0.7;
         }
         
-        .pulsing-dot::after {
+        .${scopedClass}::after {
           content: '';
           position: absolute;
           top: 0;

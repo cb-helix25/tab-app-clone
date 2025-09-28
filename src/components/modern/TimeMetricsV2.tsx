@@ -84,21 +84,38 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
   // Count-up animation hook
   const useCountUp = (target: number, durationMs: number = 700): number => {
     const [value, setValue] = React.useState(0);
+    const previousTargetRef = React.useRef(0);
     React.useEffect(() => {
-      if (!Number.isFinite(target)) { setValue(0); return; }
-      const start = performance.now();
+      if (!Number.isFinite(target)) {
+        setValue(0);
+        previousTargetRef.current = 0;
+        return;
+      }
+
+      const startValue = previousTargetRef.current;
+      const delta = target - startValue;
+      const startTime = performance.now();
       let raf = 0;
+
       const tick = (now: number) => {
-        const t = Math.min(1, (now - start) / durationMs);
-        // ease-out cubic
-        const eased = 1 - Math.pow(1 - t, 3);
-        setValue(target * eased);
-        if (t < 1) raf = requestAnimationFrame(tick);
+        const progress = Math.min(1, (now - startTime) / durationMs);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setValue(startValue + delta * eased);
+        if (progress < 1) {
+          raf = requestAnimationFrame(tick);
+        } else {
+          previousTargetRef.current = target;
+        }
       };
-      setValue(0);
+
+      setValue(startValue);
       raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
+
+      return () => {
+        cancelAnimationFrame(raf);
+      };
     }, [target, durationMs]);
+
     return value;
   };
 
@@ -209,7 +226,7 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
             borderRadius: '13px',
             border: `1px solid ${isDarkMode ? '#374151' : '#CBD5E1'}`,
             background: showEnquiryMetrics 
-              ? (isDarkMode ? '#2563EB' : '#3690CE')
+              ? colours.highlight
               : (isDarkMode ? '#111827' : '#FFFFFF'),
             position: 'relative',
             cursor: 'pointer',
@@ -236,7 +253,7 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
           color: isDarkMode ? '#E5E7EB' : '#111827',
           fontWeight: showEnquiryMetrics ? 700 : 400,
         }}>
-          Enquiries
+          Conversion
         </span>
       </div>
     );
@@ -247,7 +264,7 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
           metrics={enquiryMetrics} 
           isDarkMode={isDarkMode} 
           headerActions={headerActions}
-          title={'Business Metrics'}
+          title={'Conversion Metrics'}
         />
       </div>
     );
@@ -260,18 +277,18 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
       position: 'relative',
       background: 'transparent',
     }}>
-      {/* Unified Time Metrics Container with integrated header */}
+      {/* Unified Time Metrics Container with integrated header (match SectionCard visuals) */}
       <div style={{
         background: isDarkMode 
-          ? `linear-gradient(135deg, ${colours.dark.cardBackground} 0%, rgba(54, 144, 206, 0.1) 100%)`
+          ? 'linear-gradient(135deg, #0B1224 0%, #0F1B33 100%)'
           : `linear-gradient(135deg, ${colours.light.cardBackground} 0%, rgba(54, 144, 206, 0.05) 100%)`,
-        borderRadius: '12px',
+        borderRadius: '8px',
         border: isDarkMode 
           ? `1px solid ${colours.dark.border}` 
           : `1px solid ${colours.light.border}`,
         boxShadow: isDarkMode
-          ? '0 4px 6px rgba(0, 0, 0, 0.3)'
-          : '0 1px 3px rgba(0, 0, 0, 0.1)',
+          ? '0 2px 8px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.08)'
+          : '0 2px 8px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.01)',
         marginBottom: '20px',
         width: '100%',
         boxSizing: 'border-box',
@@ -312,7 +329,7 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                 borderRadius: '13px',
                 border: `1px solid ${isDarkMode ? '#374151' : '#CBD5E1'}`,
                 background: showEnquiryMetrics 
-                  ? (isDarkMode ? '#2563EB' : '#3690CE')
+                  ? colours.highlight
                   : (isDarkMode ? '#111827' : '#FFFFFF'),
                 position: 'relative',
                 cursor: 'pointer',
@@ -334,7 +351,7 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                 boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
               }} />
             </button>
-            <span style={{ fontSize: '13px', color: isDarkMode ? '#E5E7EB' : '#111827', fontWeight: showEnquiryMetrics ? 700 : 400 }}>Enquiries</span>
+            <span style={{ fontSize: '13px', color: isDarkMode ? '#E5E7EB' : '#111827', fontWeight: showEnquiryMetrics ? 700 : 400 }}>Conversion</span>
           </div>
         </div>
         

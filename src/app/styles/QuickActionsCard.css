@@ -1,5 +1,17 @@
 /* Quick Actions Card - Simple Static Display (No Hover Effects) */
 
+/* Cascading animation for quick action items */
+@keyframes quickActionCascade {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .quickActionCard {
   position: relative;
   display: flex;
@@ -7,25 +19,49 @@
   justify-content: center;
   flex: 0 0 auto; /* prevent stretch/grow on small screens */
   height: 38px;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s ease 0.6s, width 0.4s ease 0.6s, gap 0.4s ease 0.6s;
-  background: transparent;
-  border: 1px solid transparent;
+  /* Smooth transitions for all states */
+  transition: transform 140ms ease, background-color 160ms ease, color 140ms ease, opacity 140ms ease, width 300ms ease, gap 300ms ease;
+  background: var(--card-bg, transparent);
+  border: none; /* Remove individual borders */
   padding: 0 10px;
   width: 40px;
   min-width: 40px;
   gap: 0;
   overflow: hidden;
+  box-shadow: none; /* Remove individual shadows */
 }
 
-.quickActionCard:hover {
-  width: auto;
-  min-width: 120px;
-  gap: 8px;
-  justify-content: flex-start;
-  transition-delay: 0s;
+.quickActionCard.light-mode .quick-action-label {
+  color: #1F2937;
 }
+
+.quickActionCard.dark-mode .quick-action-label {
+  color: #E5E7EB;
+}
+
+.quickActionCard.dark-mode.show-label .quick-action-label,
+.quickActionCard.dark-mode.labels-locked:hover .quick-action-label,
+.quickActionCard.dark-mode.labels-locked.hovered .quick-action-label,
+.quickActionCard.dark-mode.always-show-text .quick-action-label {
+  color: #F3F4F6 !important;
+}
+
+.quickActionCard.dark-mode .quick-action-icon {
+  color: rgba(255, 255, 255, 0.7);
+  opacity: 0.7;
+}
+
+.quickActionCard.dark-mode.show-label .quick-action-icon,
+.quickActionCard.dark-mode.labels-locked:hover .quick-action-icon,
+.quickActionCard.dark-mode.labels-locked.hovered .quick-action-icon,
+.quickActionCard.dark-mode.always-show-text .quick-action-icon {
+  color: rgba(255, 255, 255, 0.85);
+  opacity: 1;
+}
+
+
 
 /* Keep expanded when panel is active or when this specific card opened a panel */
 .quickActionCard.panel-active,
@@ -35,6 +71,7 @@
   gap: 8px;
   justify-content: flex-start;
   transition-delay: 0s;
+  background-color: var(--card-selected, rgba(54, 144, 206, 0.12));
 }
 
 .quickActionCard::after {
@@ -50,16 +87,81 @@
   border-radius: 1px;
 }
 
-.quickActionCard:hover {
-  background-color: rgba(54, 144, 206, 0.05);
+/* Only apply width/gap transitions on hover if not in persistent show-label mode */
+.quickActionCard:hover:not(.show-label),
+.quickActionCard.hovered:not(.show-label) {
+  background-color: var(--card-hover, rgba(54, 144, 206, 0.08));
   width: auto;
   min-width: 120px;
   gap: 8px;
   transition-delay: 0s;
+  transition: transform 140ms ease, background-color 160ms ease, color 140ms ease, opacity 140ms ease, width 200ms ease, gap 200ms ease;
+  transform: translateY(-1px);
+  border-radius: 4px;
+  justify-content: flex-start;
+}
+
+/* For cards in show-label mode, only apply visual hover effects without changing layout */
+.quickActionCard.show-label:hover,
+.quickActionCard.show-label.hovered {
+  background-color: var(--card-hover, rgba(54, 144, 206, 0.08));
+  transform: translateY(-1px);
+  border-radius: 4px;
+  transition: transform 140ms ease, background-color 160ms ease, color 140ms ease;
+}
+
+.quickActionCard.light-mode:hover .quick-action-icon,
+.quickActionCard.light-mode.hovered .quick-action-icon,
+.quickActionCard.light-mode:hover .quick-action-label,
+.quickActionCard.light-mode.hovered .quick-action-label {
+  color: #3690CE !important; /* Blue highlight on hover for icons and text */
+}
+
+.quickActionCard.dark-mode:hover .quick-action-icon,
+.quickActionCard.dark-mode.hovered .quick-action-icon,
+.quickActionCard.dark-mode:hover .quick-action-label,
+.quickActionCard.dark-mode.hovered .quick-action-label {
+  color: #7DD3FC !important;
 }
 
 .quickActionCard.selected::after {
   transform: scaleX(1);
+}
+
+/* Also show the underline on hover for feedback */
+.quickActionCard:hover::after,
+.quickActionCard.hovered::after {
+  transform: scaleX(1);
+}
+
+/* When labels are locked (insufficient width), keep icon-only even on hover */
+.quickActionCard.labels-locked {
+  width: 40px !important;
+  min-width: 40px !important;
+  gap: 0 !important;
+}
+
+.quickActionCard.labels-locked .quick-action-label {
+  opacity: 0 !important;
+  width: 0 !important;
+}
+
+/* When labels are locked but hovered, reveal temporarily */
+.quickActionCard.labels-locked:hover,
+.quickActionCard.labels-locked.hovered {
+  background-color: var(--card-hover, rgba(54, 144, 206, 0.08));
+  /* Expand on hover to reveal label for clarity */
+  width: auto !important;
+  min-width: 120px !important;
+  gap: 8px !important;
+  transform: translateY(-1px);
+  justify-content: flex-start !important;
+}
+
+.quickActionCard.labels-locked:hover .quick-action-label,
+.quickActionCard.labels-locked.hovered .quick-action-label {
+  opacity: 1 !important;
+  width: auto !important;
 }
 
 /* Icon container - subtle styling */
@@ -110,22 +212,24 @@
   opacity: 1;
 }
 
-/* Label - hidden by default, revealed on hover */
+/* Label - hidden by default, revealed on hover or when always-show-text */
 .quick-action-label {
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 13px; /* Match immediate actions */
+  font-weight: 500; /* Match immediate actions */
   white-space: nowrap;
-  color: #eee;
+  color: inherit;
   opacity: 0;
   width: 0;
   overflow: hidden;
-  transition: opacity 0.3s ease 0.4s, width 0.3s ease 0.4s;
+  /* Smooth transitions for label show/hide */
+  transition: opacity 300ms ease, width 300ms ease;
 }
 
-.quickActionCard:hover .quick-action-label {
-  opacity: 1;
-  width: auto;
-  transition-delay: 0.15s;
+.quickActionCard:hover .quick-action-label,
+.quickActionCard.hovered .quick-action-label {
+  opacity: 1 !important;
+  width: auto !important;
+  transition-delay: 0s;
 }
 
 /* Show labels when panel is active or card is selected */
@@ -136,25 +240,123 @@
   transition-delay: 0s;
 }
 
-.quickActionCard:hover .quick-action-label,
-.quickActionCard.selected .quick-action-label {
+/* Show label when there's space - this is the persistent expanded state */
+.quickActionCard.show-label {
+  width: auto !important;
+  min-width: 120px !important;
+  gap: 8px !important;
+  justify-content: flex-start !important;
+  /* Smooth transitions for expanding to show-label state */
+  transition: transform 140ms ease, background-color 160ms ease, color 140ms ease, opacity 140ms ease, width 300ms ease, gap 300ms ease;
+}
+
+.quickActionCard.show-label .quick-action-label {
+  opacity: 1 !important;
+  width: auto !important;
+  /* Smooth transition for label appearance */
+  transition: opacity 300ms ease 150ms, width 300ms ease 150ms !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+}
+
+.quickActionCard.always-show-text .quick-action-label {
+  opacity: 1 !important;
+  width: auto !important;
+  transition-delay: 0s !important;
+  font-weight: 500 !important; /* Match immediate actions font weight */
+  font-size: 13px !important; /* Match immediate actions font size */
+}
+
+/* Extra specificity rule to ensure it overrides everything */
+div.quickActionCard.always-show-text.light-mode span.quick-action-label {
+  color: #000000 !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+}
+
+div.quickActionCard.always-show-text.dark-mode span.quick-action-label {
+  color: #F3F4F6 !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+}
+
+
+
+.quickActionCard.always-show-text .quick-action-icon {
+  opacity: 0.8; /* Less washed out */
+}
+
+/* Show outline icons by default, even when always-show-text is active */
+.quickActionCard.always-show-text .icon-outline {
+  opacity: 1;
+}
+
+.quickActionCard.always-show-text .icon-filled {
+  opacity: 0;
+}
+
+/* On hover when always-show-text, enhance the styling */
+.quickActionCard.always-show-text:hover .quick-action-icon,
+.quickActionCard.always-show-text.selected .quick-action-icon {
   color: #3690CE;
   opacity: 1;
 }
 
-.quickActionCard:hover .quick-action-icon,
-.quickActionCard.selected .quick-action-icon {
+/* Show filled icons on hover/selected */
+.quickActionCard.always-show-text:hover .icon-outline,
+.quickActionCard.always-show-text.selected .icon-outline {
+  opacity: 0;
+}
+
+.quickActionCard.always-show-text:hover .icon-filled,
+.quickActionCard.always-show-text.selected .icon-filled {
+  opacity: 1;
+}
+
+.quickActionCard.always-show-text:hover .quick-action-label,
+.quickActionCard.always-show-text.selected .quick-action-label {
+  color: #3690CE;
+}
+
+.quickActionCard.light-mode:hover .quick-action-label,
+.quickActionCard.light-mode.selected .quick-action-label {
   color: #3690CE;
   opacity: 1;
 }
 
-/* Panel active states */
-.quickActionCard.panel-active .quick-action-label {
+.quickActionCard.light-mode:hover .quick-action-icon,
+.quickActionCard.light-mode.selected .quick-action-icon {
+  color: #3690CE;
+  opacity: 1;
+}
+
+.quickActionCard.light-mode.panel-active .quick-action-label {
   color: #3690CE;
 }
 
-.quickActionCard.panel-active .quick-action-icon {
+.quickActionCard.light-mode.panel-active .quick-action-icon {
   color: #3690CE;
+  opacity: 1;
+}
+
+.quickActionCard.dark-mode:hover .quick-action-label,
+.quickActionCard.dark-mode.selected .quick-action-label {
+  color: #7DD3FC;
+  opacity: 1;
+}
+
+.quickActionCard.dark-mode:hover .quick-action-icon,
+.quickActionCard.dark-mode.selected .quick-action-icon {
+  color: #93C5FD;
+  opacity: 1;
+}
+
+.quickActionCard.dark-mode.panel-active .quick-action-label {
+  color: #7DD3FC;
+}
+
+.quickActionCard.dark-mode.panel-active .quick-action-icon {
+  color: #93C5FD;
   opacity: 1;
 }
 
@@ -183,6 +385,10 @@
   
   .quick-action-label {
     color: #e5e7eb; /* improve dark-mode readability */
+  }
+  
+  .quickActionCard.always-show-text .quick-action-label {
+    color: #e5e7eb !important; /* Better contrast in dark mode */
   }
   
   .quickActionCard:hover .quick-action-label,
@@ -219,7 +425,7 @@
 /* Responsive */
 @media (max-width: 900px) {
   .quickActionCard {
-    min-width: 40px; /* keep compact; do not expand */
+    min-width: 40px;
     padding: 0 8px;
   }
   
@@ -230,7 +436,7 @@
 
 @media (max-width: 600px) {
   .quickActionCard {
-    min-width: 40px; /* keep compact; do not expand */
+    min-width: 40px;
     padding: 0 8px;
     height: 36px;
     gap: 6px;

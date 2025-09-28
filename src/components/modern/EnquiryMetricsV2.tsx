@@ -132,7 +132,7 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
       {/* Unified Enquiry Metrics Container */}
       <div style={{
         background: isDarkMode 
-          ? `linear-gradient(135deg, ${colours.dark.cardBackground} 0%, rgba(54, 144, 206, 0.1) 100%)`
+          ? 'linear-gradient(135deg, #0B1224 0%, #0F1B33 100%)'
           : `linear-gradient(135deg, ${colours.light.cardBackground} 0%, rgba(54, 144, 206, 0.05) 100%)`,
         borderRadius: '12px',
         border: isDarkMode 
@@ -233,7 +233,9 @@ const EnquiryMetricsV2: React.FC<EnquiryMetricsV2Props> = ({ metrics, isDarkMode
                       width: '32px',
                       height: '32px',
                       borderRadius: '8px',
-                      background: `linear-gradient(135deg, ${colours.highlight} 0%, rgba(54, 144, 206, 0.8) 100%)`,
+                      background: isDarkMode
+                        ? 'linear-gradient(135deg, #1E293B 0%, #334155 100%)'
+                        : `linear-gradient(135deg, ${colours.highlight} 0%, rgba(54, 144, 206, 0.8) 100%)`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

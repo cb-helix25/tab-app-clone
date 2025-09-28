@@ -9,60 +9,265 @@
     />
     <title>Microsoft Teams Tab</title>
     <style>
-      /* Keyframes for the animation */
+      :root {
+        color-scheme: light dark;
+        --loading-background: linear-gradient(135deg, #ffffff 0%, #f8fafc 40%, #e8f0ff 100%);
+        --loading-text: #061733;
+        --loading-subtext: rgba(6, 23, 51, 0.72);
+        --loading-spinner-border: rgba(6, 23, 51, 0.12);
+        --loading-spinner-top: #3690ce;
+        --loading-shadow: 0 10px 30px rgba(6, 23, 51, 0.08);
+      }
+
+      body.theme-dark {
+        --loading-background: radial-gradient(circle at 20% 20%, rgba(54, 144, 206, 0.12), transparent 55%), linear-gradient(135deg, #0b1220 0%, #1f2937 45%, #0f1c32 100%);
+        --loading-text: #f3f4f6;
+        --loading-subtext: rgba(243, 244, 246, 0.75);
+        --loading-spinner-border: rgba(255, 255, 255, 0.12);
+        --loading-spinner-top: #3690ce;
+        --loading-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+      }
+
+      body.theme-contrast {
+        --loading-background: radial-gradient(circle at 20% 20%, rgba(255, 255, 0, 0.2), transparent 55%), linear-gradient(135deg, #000000 0%, #1a1a1a 45%, #000000 100%);
+        --loading-text: #ffffff;
+        --loading-subtext: rgba(255, 255, 255, 0.75);
+        --loading-spinner-border: rgba(255, 255, 255, 0.2);
+        --loading-spinner-top: #ffff00;
+        --loading-shadow: 0 16px 42px rgba(0, 0, 0, 0.55);
+      }
+
       @keyframes fadeInScaleLoop {
         0% {
-          opacity: 0;
-          transform: scale(1.25); /* Start at 125% size */
+          opacity: 0.4;
+          transform: scale(0.88);
         }
         50% {
           opacity: 1;
-          transform: scale(1); /* End at 100% size */
+          transform: scale(1);
         }
         100% {
-          opacity: 0;
-          transform: scale(1.25); /* Return to 125% size */
+          opacity: 0.4;
+          transform: scale(0.88);
         }
       }
-    
-      /* Apply animation to the logo */
-      #loading-screen svg {
-        animation: fadeInScaleLoop 3.75s ease-in-out infinite; /* Slow down and loop indefinitely */
+
+      @keyframes helixGradientShiftIntro {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
       }
-    
-      /* Ensure the loading screen is visible immediately */
+
+      @keyframes spinHelixLoader {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes fadeOutLoader {
+        to {
+          opacity: 0;
+          visibility: hidden;
+        }
+      }
+
       #loading-screen {
         position: fixed;
-        top: 0;
-        left: 0;
+        inset: 0;
         width: 100%;
         height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: white; /* Adjust based on theme */
+        background: var(--loading-background);
+        background-size: 220% 220%;
+        animation: helixGradientShiftIntro 14s ease-in-out infinite;
+        color: var(--loading-text);
         z-index: 9999;
+        transition: opacity 0.4s ease, visibility 0.4s ease;
+      }
+
+      #loading-screen.fade-out {
+        animation: fadeOutLoader 0.32s ease forwards;
+      }
+
+      body.loading-paused #loading-screen,
+      body.loading-paused #loading-screen svg,
+      body.loading-paused #loading-screen .spinner {
+        animation-play-state: paused;
+      }
+
+      #loading-screen .loading-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        text-align: center;
+        padding: 32px;
+      }
+
+      #loading-screen svg {
+        width: 150px;
+        height: auto;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.12));
+        animation: fadeInScaleLoop 3.75s ease-in-out infinite;
+      }
+
+      #loading-screen h1 {
+        margin: 0;
+        font-family: 'Raleway', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: var(--loading-text);
+      }
+
+      #loading-screen p {
+        margin: 0;
+        max-width: 420px;
+        font-family: 'Raleway', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 16px;
+        line-height: 24px;
+        color: var(--loading-subtext);
+      }
+
+      #loading-screen .spinner {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 3px solid var(--loading-spinner-border);
+        border-top-color: var(--loading-spinner-top);
+        animation: spinHelixLoader 1s linear infinite;
+      }
+
+      @media (max-width: 480px) {
+        #loading-screen .loading-content {
+          gap: 16px;
+          padding: 24px;
+        }
+
+        #loading-screen svg {
+          width: 120px;
+        }
+
+        #loading-screen h1 {
+          font-size: 20px;
+        }
+
+        #loading-screen p {
+          font-size: 15px;
+        }
       }
     </style>
-    
+    <script>
+      (function detectTheme() {
+        function run() {
+          try {
+            if (!document.body) {
+              return;
+            }
+            var params = new URLSearchParams(window.location.search);
+            var themeParam = (params.get('theme') || '').toLowerCase();
+            if (themeParam === 'dark' || themeParam === 'contrast') {
+              document.body.classList.add('theme-dark');
+            } else if (themeParam === 'default' || themeParam === 'light') {
+              document.body.classList.add('theme-light');
+            }
+            var hostTheme = document.body.dataset ? (document.body.dataset.theme || '').toLowerCase() : '';
+            if (hostTheme === 'dark' || hostTheme === 'contrast') {
+              document.body.classList.add('theme-dark');
+            } else if (hostTheme === 'default' || hostTheme === 'light') {
+              document.body.classList.add('theme-light');
+            }
+          } catch (err) {
+            /* swallow theme detection errors silently */
+          }
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', run, { once: true });
+        } else {
+          run();
+        }
+      })();
+
+      (function bindLoaderPauseShortcut() {
+        function onDomReady(callback) {
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', callback, { once: true });
+          } else {
+            callback();
+          }
+        }
+
+        onDomReady(function registerShortcut() {
+          try {
+            var loader = document.getElementById('loading-screen');
+            if (!loader) {
+              return;
+            }
+
+            var paused = false;
+
+            var setPaused = function (next) {
+              paused = next;
+              if (next) {
+                document.body.classList.add('loading-paused');
+                loader.setAttribute('data-paused', 'true');
+              } else {
+                document.body.classList.remove('loading-paused');
+                loader.removeAttribute('data-paused');
+              }
+            };
+
+            var handleKeydown = function (event) {
+              var key = event.key || '';
+              var isControl = event.ctrlKey || event.metaKey;
+              if (isControl && event.shiftKey && (key === 'p' || key === 'P')) {
+                setPaused(!paused);
+                event.preventDefault();
+              }
+            };
+
+            window.addEventListener('keydown', handleKeydown, { passive: true });
+
+            var cleanup = function () {
+              window.removeEventListener('keydown', handleKeydown);
+              setPaused(false);
+            };
+
+            loader.addEventListener('animationend', function (event) {
+              if (event && event.animationName === 'fadeOutLoader') {
+                cleanup();
+              }
+            });
+          } catch (err) {
+            /* swallow loader pause binding errors silently */
+          }
+        });
+      })();
+    </script>
   </head>
 
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     
     <!-- Static Loading Screen -->
-    <div id="loading-screen">
-      <!-- Inline SVG with animation -->
-      <svg id="Layer_2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" style="width: 150px;">
-        <defs>
-          <style>.cls-1{fill:#061733;}</style>
-        </defs>
-        <g id="Layer_3">
-          <path class="cls-1" d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/>
-          <path class="cls-1" d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/>
-          <path class="cls-1" d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/>
-        </g>
-      </svg>
+    <div id="loading-screen" role="status" aria-live="polite">
+      <div class="loading-content">
+        <h1>Loading your workspace…</h1>
+  <p>Authenticating with Microsoft Teams…</p>
+        <div class="spinner" aria-hidden="true"></div>
+      </div>
     </div>
 
     <!-- Root Div for React -->

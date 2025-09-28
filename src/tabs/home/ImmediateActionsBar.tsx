@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 // invisible change 2
 import { Spinner, SpinnerSize, mergeStyles, keyframes } from '@fluentui/react';
 import { FaCheck } from 'react-icons/fa';
-import ImmediateActionChip from './ImmediateActionChip';
+import ImmediateActionChip, { ImmediateActionCategory } from './ImmediateActionChip';
 import { colours } from '../../app/styles/colours';
 
 interface Action {
@@ -10,6 +10,7 @@ interface Action {
     onClick: () => void;
     icon: string;
     disabled?: boolean; // For greyed out production features
+    category?: ImmediateActionCategory;
 }
 
 interface ImmediateActionsBarProps {
@@ -33,29 +34,29 @@ const immediateActionsContainerStyle = (
         position: 'relative',
         zIndex: 10, // Much lower z-index to avoid blocking navigation
         
-        // Match Navigator/Quick gradient for seamless connection
+        // Distinct tray background (darker, inkier than QuickActions in dark; softer blue tint in light)
         background: isDarkMode
-            ? 'linear-gradient(135deg, #0F172A 0%, #111827 100%)'
-            : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+            // Deep navy with subtle gloss to distinguish from navigator
+            ? 'linear-gradient(135deg, #0B1224 0%, #0F1B33 50%, #0B1328 100%)'
+            : 'linear-gradient(135deg, #FFFFFF 0%, #F3F7FC 100%)',
         
-        // Remove all borders to create seamless connection
-        border: 'none',
-        borderRadius: '0 0 10px 10px', // Only bottom corners rounded
+        // Subtle top hairline to separate from QuickActions while keeping a seamless feel
+        borderTop: isDarkMode
+            ? '1px solid rgba(255,255,255,0.04)'
+            : '1px solid rgba(6,23,51,0.06)',
+        borderBottom: 'none',
+        borderRadius: '0', // No corner rounding
         
         // Softer, professional shadow per style guide
         boxShadow: isDarkMode
-            ? '0 4px 6px rgba(0, 0, 0, 0.3)'
-            : '0 4px 6px rgba(0, 0, 0, 0.07)',
+            ? '0 4px 6px rgba(0, 0, 0, 0.28)'
+            : '0 4px 6px rgba(6, 23, 51, 0.07)',
         
     // Full width at app level
     margin: '0',
-    // Attach to Quick Actions bar: negate only Navigator bottom padding (~8px)
-    // so there's no visible gap, but do not sit "behind" it.
-    marginTop: '-8px',
 
-    // Layout - compact top padding since we're not extending behind
-    padding: '6px 10px 10px 10px',
-        marginBottom: '12px', // Space before main content
+    // Layout - balanced padding above and below immediate actions
+    padding: '8px 10px',
         transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
         
         // Highlighted state for notifications
@@ -206,6 +207,11 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
                 transform: computedVisible ? 'translateY(0)' : 'translateY(-10px)',
                 transition: 'height 0.3s ease, opacity 0.3s ease, transform 0.3s ease',
                 pointerEvents: (computedVisible && immediateActionsReady) ? 'auto' : 'none',
+                // When hidden (height: 0), also remove hairline and spacing to avoid visible seam in dark mode
+                borderTop: computedVisible ? undefined : 'none',
+                padding: computedVisible ? undefined : 0,
+                marginTop: computedVisible ? undefined : 0,
+                marginBottom: computedVisible ? undefined : 0,
             }}
         >
             {/* Removed animated accent; using a static label instead */}
@@ -240,6 +246,7 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
                             isDarkMode={isDarkMode}
                             onClick={action.onClick}
                             disabled={action.disabled}
+                            category={action.category}
                         />
                     ))}
                     

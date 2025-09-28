@@ -2,8 +2,6 @@ import React from 'react';
 import {
   FaRegCheckSquare,
   FaCheckSquare,
-  FaRegCalendarAlt,
-  FaCalendarAlt,
   FaRegClock,
   FaClock,
   FaRegBuilding,
@@ -17,8 +15,7 @@ import {
   FaIdBadge,
   FaUserCheck,
   FaMobileAlt,
-  FaRegCalendarCheck,
-  FaCalendarCheck,
+  FaUmbrellaBeach,
 } from 'react-icons/fa';
 import {
   AiOutlinePlus,
@@ -41,7 +38,7 @@ import {
   MdOutlineSlideshow,
   MdSlideshow,
 } from 'react-icons/md';
-import { PiTreePalm, PiTreePalmFill } from 'react-icons/pi';
+import { Icon } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import '../../app/styles/QuickActionsCard.css';
 import AnimatedPulsingDot from '../../components/AnimatedPulsingDot';
@@ -63,18 +60,26 @@ interface QuickActionsCardProps {
 }
 
 // Icon mapping with outline/filled pairs
-const iconMap: Record<string, { outline: React.ComponentType<any>; filled: React.ComponentType<any> }> = {
+type IconComponent = React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
+
+const CalendarDayIcon: IconComponent = (props) => {
+  const safeProps = props ?? {};
+  const { style, className } = safeProps;
+  return <Icon iconName="CalendarDay" style={style} className={className} />;
+};
+
+const iconMap: Record<string, { outline: IconComponent; filled: IconComponent }> = {
   Accept: { outline: FaRegCheckSquare, filled: FaCheckSquare },
   Checklist: { outline: FaRegCheckSquare, filled: FaCheckSquare },
   Comment: { outline: MdSmartphone, filled: FaMobileAlt },
-  Calendar: { outline: FaRegCalendarCheck, filled: FaCalendarCheck },
+  Calendar: { outline: CalendarDayIcon, filled: CalendarDayIcon },
   CalendarCheck: { outline: FaRegUser, filled: FaUser },
   Room: { outline: MdOutlineEventSeat, filled: MdEventSeat },
   Building: { outline: FaRegBuilding, filled: FaBuilding },
   Plus: { outline: AiOutlinePlus, filled: AiFillPlusSquare },
   Phone: { outline: MdSmartphone, filled: FaMobileAlt },
-  Leave: { outline: PiTreePalm, filled: PiTreePalmFill },
-  PalmTree: { outline: PiTreePalm, filled: PiTreePalmFill },
+  Leave: { outline: FaUmbrellaBeach, filled: FaUmbrellaBeach },
+  PalmTree: { outline: FaUmbrellaBeach, filled: FaUmbrellaBeach },
   OpenFile: { outline: FaRegFolder, filled: FaFolder },
   IdCheck: { outline: FaRegIdBadge, filled: FaIdBadge },
   Assessment: { outline: MdOutlineAssessment, filled: MdAssessment },
@@ -131,6 +136,9 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   showPulsingDot = false,
   panelActive = false,
 }) => {
+  const [hovered, setHovered] = React.useState(false);
+  const [showLabel, setShowLabel] = React.useState(false);
+  const [forceUpdate, setForceUpdate] = React.useState(0);
 
   // Get icon components
   const getIcons = (iconName: string) => {
@@ -150,18 +158,26 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
 
   const { OutlineIcon, FilledIcon } = getIcons(icon);
 
+  // Initialize showLabel based on alwaysShowText
+  React.useEffect(() => {
+    setShowLabel(alwaysShowText);
+  }, [alwaysShowText]);
+
   // Dynamic classes
   const cardClasses = [
     'quickActionCard',
+    isDarkMode ? 'dark-mode' : 'light-mode',
     selected && 'selected',
     orientation === 'column' && 'vertical',
-    alwaysShowText && 'always-show-text',
+    showLabel && 'show-label',
+    !showLabel && 'labels-locked',
+    hovered && 'hovered',
     disabled && 'disabled',
     panelActive && 'panel-active'
   ].filter(Boolean).join(' ');
 
   const iconStyle = {
-    fontSize: 20,
+    fontSize: 15, // Match immediate actions icon size
     color: isDarkMode ? colours.dark.text : colours.light.text,
   };
 
@@ -171,12 +187,27 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       onClick={disabled ? undefined : onClick}
       role="button"
       tabIndex={disabled ? -1 : 0}
-      style={style}
+      style={{...style, transform: `translateZ(${forceUpdate}px)`}}
+      onMouseEnter={() => {
+        setHovered(true);
+        if (!alwaysShowText) {
+          setShowLabel(true);
+        }
+        setForceUpdate(prev => prev + 1);
+      }}
+      onMouseLeave={() => {
+        setHovered(false);
+        if (!alwaysShowText) {
+          setShowLabel(false);
+        }
+        setForceUpdate(prev => prev + 1);
+      }}
       onKeyPress={(e) => {
         if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
           onClick();
         }
       }}
+      data-action={title}
     >
       {/* Icon container */}
       <div className="quick-action-icon">

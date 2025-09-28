@@ -15,6 +15,7 @@ import localIdVerifications from '../localData/localIdVerifications.json';
 import localInstructionData from '../localData/localInstructionData.json';
 import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
 import { ADMIN_USERS, isAdminUser, hasInstructionsAccess } from './admin';
+import Loading from './styles/Loading';
 
 const proxyBaseUrl = getProxyBaseUrl();
 
@@ -58,7 +59,62 @@ const App: React.FC<AppProps> = ({
   onRefreshEnquiries,
 }) => {
   const [activeTab, setActiveTab] = useState('home');
-  const isDarkMode = teamsContext?.theme === 'dark';
+  const systemPrefersDark = typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+    : false;
+  const hostTheme = useMemo(() => {
+    const normalizeTheme = (value?: string | null) => {
+      if (!value) {
+        return undefined;
+      }
+      const lower = value.toLowerCase();
+      if (lower === 'dark' || lower === 'contrast' || lower === 'light' || lower === 'default') {
+        return lower;
+      }
+      return undefined;
+    };
+
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = normalizeTheme(params.get('theme'));
+      if (fromQuery) {
+        return fromQuery;
+      }
+    }
+
+    const datasetTheme = normalizeTheme(document.body?.dataset?.theme ?? null);
+    if (datasetTheme) {
+      return datasetTheme;
+    }
+
+    if (document.body?.classList.contains('theme-dark')) {
+      return 'dark';
+    }
+    if (document.body?.classList.contains('theme-contrast')) {
+      return 'contrast';
+    }
+    if (document.body?.classList.contains('theme-light')) {
+      return 'light';
+    }
+
+    return undefined;
+  }, []);
+  const teamsTheme = teamsContext?.theme ? teamsContext.theme.toLowerCase() : undefined;
+  const themeName = teamsTheme ?? hostTheme;
+  const isDarkMode = themeName === 'dark' || themeName === 'contrast' || (!themeName && systemPrefersDark);
+  const workspaceLoadingMessages = useMemo(
+    () => [
+      'Syncing Microsoft Teams context…',
+      'Loading user profile…',
+      'Retrieving matters and enquiries…',
+      'Preparing dashboards…',
+    ],
+    [],
+  );
 
   // Map and validate POID data from localIdVerifications
   const initialPoidData: POID[] = (localIdVerifications as any[])
@@ -592,7 +648,13 @@ const App: React.FC<AppProps> = ({
   };
 
   if (!teamsContext || !userData || !enquiries || !matters) {
-    return <div>Loading or Error...</div>;
+    return (
+      <Loading
+        message="Loading your workspace..."
+        detailMessages={workspaceLoadingMessages}
+        isDarkMode={isDarkMode}
+      />
+    );
   }
 
   return (
@@ -628,7 +690,15 @@ const App: React.FC<AppProps> = ({
           
           {/* App-level Immediate Actions Bar */}
           {activeTab === 'home' && (
-            <div id="app-level-immediate-actions" />
+            <div
+              id="app-level-immediate-actions"
+              style={{
+                // Ensure the area behind the ImmediateActionsBar matches the app background
+                background: isDarkMode ? colours.dark.background : colours.light.background,
+                // Remove white space above by pulling up to touch Navigator
+                marginTop: '-8px',
+              }}
+            />
           )}
           
           {/* Full-width Modal Overlays */}
@@ -644,7 +714,20 @@ const App: React.FC<AppProps> = ({
             onDismiss={closeResourcesModal}
           />
           
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense
+            fallback={
+              <Loading
+                message="Loading content..."
+                detailMessages={[
+                  'Fetching module data…',
+                  'Applying filters…',
+                  'Rendering components…',
+                  'Almost ready…',
+                ]}
+                isDarkMode={isDarkMode}
+              />
+            }
+          >
             {renderContent()}
           </Suspense>
         </div>
