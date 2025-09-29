@@ -1057,6 +1057,36 @@ const Instructions: React.FC<InstructionsProps> = ({
     (typeof process !== 'undefined' && process.env && process.env.REACT_APP_USE_LOCAL_DATA === "true") ||
     window.location.hostname === "localhost";
 
+const workbenchPanelBackground = (isDarkMode: boolean): string => (
+  isDarkMode
+    ? 'linear-gradient(135deg, rgba(17, 24, 39, 0.94) 0%, rgba(15, 23, 42, 0.98) 100%)'
+    : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)'
+);
+
+const workbenchHeaderBackground = (isDarkMode: boolean): string => (
+  isDarkMode
+    ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.32) 0%, rgba(37, 99, 235, 0.24) 100%)'
+    : 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%)'
+);
+
+const workbenchCardBackground = (isDarkMode: boolean): string => (
+  isDarkMode
+    ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.96) 100%)'
+    : '#FFFFFF'
+);
+
+const workbenchBorderColour = (isDarkMode: boolean): string => (
+  isDarkMode ? 'rgba(148, 163, 184, 0.32)' : '#e2e8f0'
+);
+
+const workbenchMutedText = (isDarkMode: boolean): string => (
+  isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText
+);
+
+const workbenchButtonHover = (isDarkMode: boolean): string => (
+  isDarkMode ? 'rgba(59, 130, 246, 0.2)' : '#f0f9ff'
+);
+
   const isProduction = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === "production") && !useLocalData;
 
   const handleBack = () => {
@@ -1701,6 +1731,20 @@ const Instructions: React.FC<InstructionsProps> = ({
     ? "Review ID"
     : "Verify ID";
 
+  const verifyButtonBorder = verifyButtonDisabled
+    ? (isDarkMode ? 'rgba(34, 197, 94, 0.6)' : colours.green)
+    : verifyButtonReview
+      ? (isDarkMode ? 'rgba(250, 204, 21, 0.7)' : colours.yellow)
+      : (isDarkMode ? 'rgba(96, 165, 250, 0.7)' : colours.blue);
+  const verifyButtonBackground = verifyButtonDisabled
+    ? (isDarkMode ? 'rgba(34, 197, 94, 0.12)' : '#f0f9ff')
+    : (isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'transparent');
+  const verifyButtonColor = verifyButtonDisabled
+    ? (isDarkMode ? '#bbf7d0' : colours.green)
+    : verifyButtonReview
+      ? (isDarkMode ? '#facc15' : colours.yellow)
+      : (isDarkMode ? '#93c5fd' : colours.blue);
+
   const riskResultRaw = selectedOverviewItem?.risk?.RiskAssessmentResult?.toString().toLowerCase() ?? "";
   const riskStatus = riskResultRaw
     ? ['low', 'low risk', 'pass', 'approved'].includes(riskResultRaw)
@@ -1708,6 +1752,15 @@ const Instructions: React.FC<InstructionsProps> = ({
         : 'flagged'
     : 'pending';
   const riskButtonDisabled = riskStatus === 'complete';
+  const riskButtonBorder = riskButtonDisabled
+    ? (isDarkMode ? 'rgba(34, 197, 94, 0.6)' : colours.green)
+    : (isDarkMode ? 'rgba(96, 165, 250, 0.7)' : colours.blue);
+  const riskButtonBackground = riskButtonDisabled
+    ? (isDarkMode ? 'rgba(34, 197, 94, 0.12)' : '#f0f9ff')
+    : (isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'transparent');
+  const riskButtonColor = riskButtonDisabled
+    ? (isDarkMode ? '#bbf7d0' : colours.green)
+    : (isDarkMode ? '#bfdbfe' : colours.blue);
   
   // Payment status logic
   const paymentResult = selectedOverviewItem?.instruction?.PaymentResult?.toLowerCase();
@@ -1743,6 +1796,34 @@ const Instructions: React.FC<InstructionsProps> = ({
   // 1. Both ID is verified AND payment is complete (normal flow), OR
   // 2. There's a matter opening in progress (so user can continue)
   const canOpenMatter = (poidPassed && paymentCompleted) || hasActiveMatterOpening();
+  const matterButtonBorder = matterLinked
+    ? (isDarkMode ? 'rgba(34, 197, 94, 0.6)' : colours.green)
+    : (isDarkMode ? 'rgba(96, 165, 250, 0.7)' : colours.blue);
+  const matterButtonBackground = matterLinked
+    ? (isDarkMode ? 'rgba(34, 197, 94, 0.12)' : '#f0f9ff')
+    : (isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'transparent');
+  const matterButtonColor = matterLinked
+    ? (isDarkMode ? '#bbf7d0' : colours.green)
+    : (isDarkMode ? '#bfdbfe' : colours.blue);
+
+  const syncButtonActive = Boolean(selectedOverviewItem?.instruction?.MatterRef);
+  const syncButtonBorder = isDarkMode ? 'rgba(34, 197, 94, 0.6)' : colours.green;
+  const syncButtonBackground = syncButtonActive
+    ? (isDarkMode ? 'rgba(34, 197, 94, 0.16)' : '#f0f9ff')
+    : (isDarkMode ? 'rgba(30, 41, 59, 0.55)' : '#f5f5f5');
+  const syncButtonColor = syncButtonActive
+    ? (isDarkMode ? '#bbf7d0' : colours.green)
+    : (isDarkMode ? 'rgba(226, 232, 240, 0.5)' : colours.greyText);
+
+  const cclButtonBorder = cclCompleted
+    ? (isDarkMode ? 'rgba(34, 197, 94, 0.6)' : colours.green)
+    : (isDarkMode ? 'rgba(96, 165, 250, 0.7)' : colours.blue);
+  const cclButtonBackground = cclCompleted
+    ? (isDarkMode ? 'rgba(34, 197, 94, 0.12)' : '#f0f9ff')
+    : (isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'transparent');
+  const cclButtonColor = cclCompleted
+    ? (isDarkMode ? '#bbf7d0' : colours.green)
+    : (isDarkMode ? '#bfdbfe' : colours.blue);
 
   // Derive current matter display number for the selected instruction (fallback across common field names)
   const currentMatterDisplayNumber = useMemo(() => {
@@ -3424,11 +3505,12 @@ const Instructions: React.FC<InstructionsProps> = ({
                 bottom: 0,
                 left: 0,
                 right: 0,
-                background: isDarkMode ? colours.dark.background : '#ffffff',
-                borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
-                boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.15)',
+                background: workbenchPanelBackground(isDarkMode),
+                borderTop: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                boxShadow: isDarkMode ? '0 -10px 24px rgba(2, 6, 23, 0.55)' : '0 -4px 12px rgba(15, 23, 42, 0.08)',
                 zIndex: 1000,
                 transition: 'all 0.3s ease',
+                backdropFilter: 'blur(8px)'
               }}
             >
               {/* Unified bottom panel with animated swap */}
@@ -3441,7 +3523,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '12px 26px',
-                    background: selectedInstruction ? colours.darkBlue : 'transparent',
+                    background: selectedInstruction ? workbenchHeaderBackground(isDarkMode) : 'transparent',
                     border: 'none',
                     borderRadius: '0',
                     cursor: selectedInstruction ? 'pointer' : 'default',
@@ -3466,7 +3548,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                         fontWeight: 600, 
                         color: selectedInstruction ? '#ffffff' : (isDarkMode ? colours.dark.text : '#1f2937'),
                         letterSpacing: '0.02em',
-                        fontFamily: 'monospace'
+                        fontFamily: selectedInstruction ? 'monospace' : 'Raleway, sans-serif'
                       }}>
                         {selectedInstruction ? selectedInstruction.InstructionRef : 'One Off Actions'}
                       </span>
@@ -3560,19 +3642,21 @@ const Instructions: React.FC<InstructionsProps> = ({
                       onMouseEnter={(e) => {
                         if (!verifyButtonDisabled) {
                           e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.background = workbenchButtonHover(isDarkMode);
                           setHoveredButton('verify');
                         }
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.background = verifyButtonBackground;
                         setHoveredButton(null);
                       }}
                       style={{
                         padding: '8px 12px',
                         borderRadius: '6px',
-                        border: `1px solid ${verifyButtonDisabled ? colours.green : verifyButtonReview ? colours.yellow : colours.blue}`,
-                        background: verifyButtonDisabled ? '#f0f9ff' : 'transparent',
-                        color: verifyButtonDisabled ? colours.green : verifyButtonReview ? colours.yellow : colours.blue,
+                        border: `1px solid ${verifyButtonBorder}`,
+                        background: verifyButtonBackground,
+                        color: verifyButtonColor,
                         cursor: verifyButtonDisabled ? 'default' : 'pointer',
                         fontSize: '11px',
                         fontWeight: '600',
@@ -3611,19 +3695,21 @@ const Instructions: React.FC<InstructionsProps> = ({
                       onMouseEnter={(e) => {
                         if (!riskButtonDisabled) {
                           e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.background = workbenchButtonHover(isDarkMode);
                           setHoveredButton('risk');
                         }
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.background = riskButtonBackground;
                         setHoveredButton(null);
                       }}
                       style={{
                         padding: '8px 12px',
                         borderRadius: '6px',
-                        border: `1px solid ${riskButtonDisabled ? colours.green : colours.blue}`,
-                        background: riskButtonDisabled ? '#f0f9ff' : 'transparent',
-                        color: riskButtonDisabled ? colours.green : colours.blue,
+                        border: `1px solid ${riskButtonBorder}`,
+                        background: riskButtonBackground,
+                        color: riskButtonColor,
                         cursor: riskButtonDisabled ? 'default' : 'pointer',
                         fontSize: '11px',
                         fontWeight: '600',
@@ -3661,19 +3747,21 @@ const Instructions: React.FC<InstructionsProps> = ({
                       onMouseEnter={(e) => {
                         if (!matterLinked) {
                           e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.background = workbenchButtonHover(isDarkMode);
                           setHoveredButton('matter');
                         }
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.background = matterButtonBackground;
                         setHoveredButton(null);
                       }}
                       style={{
                         padding: '8px 12px',
                         borderRadius: '6px',
-                        border: `1px solid ${matterLinked ? colours.green : colours.blue}`,
-                        background: matterLinked ? '#f0f9ff' : 'transparent',
-                        color: matterLinked ? colours.green : colours.blue,
+                        border: `1px solid ${matterButtonBorder}`,
+                        background: matterButtonBackground,
+                        color: matterButtonColor,
                         cursor: matterLinked ? 'default' : 'pointer',
                         fontSize: '11px',
                         fontWeight: '600',
@@ -3710,19 +3798,21 @@ const Instructions: React.FC<InstructionsProps> = ({
                       onMouseEnter={(e) => {
                         if (selectedOverviewItem?.instruction?.MatterRef) {
                           e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.background = workbenchButtonHover(isDarkMode);
                           setHoveredButton('sync');
                         }
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.background = syncButtonBackground;
                         setHoveredButton(null);
                       }}
                       style={{
                         padding: '8px 12px',
                         borderRadius: '6px',
-                        border: `1px solid ${colours.green}`,
-                        background: '#f0f9ff',
-                        color: colours.green,
+                        border: `1px solid ${syncButtonBorder}`,
+                        background: syncButtonBackground,
+                        color: syncButtonColor,
                         cursor: selectedOverviewItem?.instruction?.MatterRef ? 'pointer' : 'default',
                         fontSize: '11px',
                         fontWeight: '600',
@@ -3760,19 +3850,21 @@ const Instructions: React.FC<InstructionsProps> = ({
                       onMouseEnter={(e) => {
                         if (!cclCompleted) {
                           e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.background = workbenchButtonHover(isDarkMode);
                           setHoveredButton('ccl');
                         }
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.background = cclButtonBackground;
                         setHoveredButton(null);
                       }}
                       style={{
                         padding: '8px 12px',
                         borderRadius: '6px',
-                        border: `1px solid ${cclCompleted ? colours.green : colours.blue}`,
-                        background: cclCompleted ? '#f0f9ff' : 'transparent',
-                        color: cclCompleted ? colours.green : colours.blue,
+                        border: `1px solid ${cclButtonBorder}`,
+                        background: cclButtonBackground,
+                        color: cclButtonColor,
                         cursor: cclCompleted ? 'default' : 'pointer',
                         fontSize: '11px',
                         fontWeight: '600',
@@ -3812,11 +3904,12 @@ const Instructions: React.FC<InstructionsProps> = ({
                     <div 
                       className="comprehensive-workbench"
                       style={{
-                        background: 'transparent',
-                        border: 'none',
-                        borderRadius: '0',
+                        background: workbenchCardBackground(isDarkMode),
+                        border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                        borderTopLeftRadius: 20,
+                        borderTopRightRadius: 20,
                         overflow: 'hidden',
-                        boxShadow: 'none',
+                        boxShadow: isDarkMode ? '0 -16px 32px rgba(2, 6, 23, 0.45)' : '0 -10px 24px rgba(15, 23, 42, 0.08)',
                         animation: 'workbenchSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                         transform: 'translateY(0)',
                         opacity: 1,
@@ -3828,8 +3921,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                     display: 'flex',
                     width: '100%',
                     background: 'transparent',
-                    borderBottom: 'none',
-                    padding: '0'
+                    borderBottom: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                    padding: '0 16px'
                   }}>
                     {[
                       { 
@@ -3884,14 +3977,20 @@ const Instructions: React.FC<InstructionsProps> = ({
                           padding: '12px 16px',
                           border: 'none',
                           background: activeWorkbenchTab === tab.key 
-                            ? (isDarkMode ? colours.dark.cardBackground : '#ffffff')
+                            ? (isDarkMode
+                              ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.24) 0%, rgba(37, 99, 235, 0.18) 100%)'
+                              : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)')
                             : 'transparent',
                           borderBottom: activeWorkbenchTab === tab.key 
                             ? `2px solid ${tab.isComplete ? colours.green : colours.blue}` 
                             : '2px solid transparent',
-                          color: tab.isComplete ? (activeWorkbenchTab === tab.key ? colours.green : (isDarkMode ? '#4a7c59' : '#90c695')) : (activeWorkbenchTab === tab.key 
-                            ? (isDarkMode ? colours.dark.text : colours.light.text)
-                            : (isDarkMode ? '#888' : '#bbb')),
+                          color: tab.isComplete
+                            ? (activeWorkbenchTab === tab.key
+                              ? (isDarkMode ? '#4ade80' : colours.green)
+                              : (isDarkMode ? '#22c55e' : '#90c695'))
+                            : (activeWorkbenchTab === tab.key
+                              ? (isDarkMode ? colours.dark.text : colours.light.text)
+                              : workbenchMutedText(isDarkMode)),
                           cursor: 'pointer',
                           fontSize: '11px',
                           fontWeight: activeWorkbenchTab === tab.key ? 600 : 500,
@@ -3904,10 +4003,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                           position: 'relative'
                         }}
                       >
-                        <span style={{ color: tab.isComplete ? (activeWorkbenchTab === tab.key ? colours.green : (isDarkMode ? '#4a7c59' : '#90c695')) : 'inherit', display: 'flex', alignItems: 'center' }}>
+                        <span style={{ color: 'inherit', display: 'flex', alignItems: 'center' }}>
                           {tab.icon}
                         </span>
-                        <span style={{ color: tab.isComplete ? (activeWorkbenchTab === tab.key ? colours.green : (isDarkMode ? '#4a7c59' : '#90c695')) : 'inherit' }}>
+                        <span style={{ color: 'inherit' }}>
                           {tab.label}
                         </span>
                       </button>
@@ -3920,7 +4019,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                     minHeight: '150px',
                     maxHeight: '35vh',
                     overflowY: 'auto',
-                    background: 'transparent',
+                    background: workbenchCardBackground(isDarkMode),
+                    borderTop: `1px solid ${workbenchBorderColour(isDarkMode)}`,
                     borderTopLeftRadius: '12px',
                     borderTopRightRadius: '12px'
                   }}>
@@ -3945,10 +4045,11 @@ const Instructions: React.FC<InstructionsProps> = ({
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                             {/* Personal Information */}
                             <div style={{
-                              background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-                              borderRadius: '8px',
+                              background: workbenchCardBackground(isDarkMode),
+                              borderRadius: '12px',
                               padding: '16px',
-                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                              border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                              boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                             }}>
                               <div style={{
                                 fontSize: '12px',
@@ -3975,7 +4076,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                                   <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{
                                       fontSize: '10px',
-                                      color: colours.greyText,
+                                      color: workbenchMutedText(isDarkMode),
                                       fontWeight: 500,
                                       textTransform: 'uppercase',
                                       letterSpacing: '0.025em',
@@ -3985,7 +4086,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                                     </span>
                                     <span style={{
                                       fontSize: '11px',
-                                      color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                      color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : workbenchMutedText(isDarkMode),
                                       fontWeight: field.value ? 500 : 400,
                                       textAlign: 'right',
                                       fontStyle: field.value ? 'normal' : 'italic'
@@ -3999,10 +4100,11 @@ const Instructions: React.FC<InstructionsProps> = ({
 
                             {/* Identification */}
                             <div style={{
-                              background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-                              borderRadius: '8px',
+                              background: workbenchCardBackground(isDarkMode),
+                              borderRadius: '10px',
                               padding: '16px',
-                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                              border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                              boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                             }}>
                               <div style={{
                                 fontSize: '12px',
@@ -4028,7 +4130,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                                   <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{
                                       fontSize: '10px',
-                                      color: colours.greyText,
+                                      color: workbenchMutedText(isDarkMode),
                                       fontWeight: 500,
                                       textTransform: 'uppercase',
                                       letterSpacing: '0.025em',
@@ -4038,7 +4140,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                                     </span>
                                     <span style={{
                                       fontSize: '11px',
-                                      color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                      color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : workbenchMutedText(isDarkMode),
                                       fontWeight: field.value ? 500 : 400,
                                       textAlign: 'right',
                                       fontStyle: field.value ? 'normal' : 'italic'
@@ -4052,10 +4154,11 @@ const Instructions: React.FC<InstructionsProps> = ({
 
                             {/* Residential Address */}
                             <div style={{
-                              background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-                              borderRadius: '8px',
+                              background: workbenchCardBackground(isDarkMode),
+                              borderRadius: '10px',
                               padding: '16px',
-                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                              border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                              boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                             }}>
                               <div style={{
                                 fontSize: '12px',
@@ -4080,7 +4183,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                                   <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{
                                       fontSize: '10px',
-                                      color: colours.greyText,
+                                      color: workbenchMutedText(isDarkMode),
                                       fontWeight: 500,
                                       textTransform: 'uppercase',
                                       letterSpacing: '0.025em',
@@ -4090,7 +4193,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                                     </span>
                                     <span style={{
                                       fontSize: '11px',
-                                      color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                      color: field.value ? (isDarkMode ? colours.dark.text : '#111827') : workbenchMutedText(isDarkMode),
                                       fontWeight: field.value ? 500 : 400,
                                       textAlign: 'right',
                                       fontStyle: field.value ? 'normal' : 'italic'
@@ -4104,10 +4207,11 @@ const Instructions: React.FC<InstructionsProps> = ({
 
                             {/* Company Information */}
                             <div style={{
-                              background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-                              borderRadius: '8px',
+                              background: workbenchCardBackground(isDarkMode),
+                              borderRadius: '10px',
                               padding: '16px',
-                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                              border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                              boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                             }}>
                               <div style={{
                                 fontSize: '12px',
@@ -4133,7 +4237,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                                   <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{
                                       fontSize: '10px',
-                                      color: colours.greyText,
+                                      color: workbenchMutedText(isDarkMode),
                                       fontWeight: 500,
                                       textTransform: 'uppercase',
                                       letterSpacing: '0.025em',
@@ -4143,7 +4247,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                                     </span>
                                     <span style={{
                                       fontSize: '11px',
-                                      color: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? (isDarkMode ? colours.dark.text : '#111827') : colours.greyText,
+                                      color: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided'
+                                        ? (isDarkMode ? colours.dark.text : '#111827')
+                                        : workbenchMutedText(isDarkMode),
                                       fontWeight: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 500 : 400,
                                       textAlign: 'right',
                                       fontStyle: field.value && field.value !== 'Not applicable' && field.value !== 'Not provided' ? 'normal' : 'italic'
@@ -4173,10 +4279,11 @@ const Instructions: React.FC<InstructionsProps> = ({
                           </div>
 
                           <div style={{
-                            background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-                            borderRadius: '8px',
+                            background: workbenchCardBackground(isDarkMode),
+                            borderRadius: '12px',
                             padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+                            border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                            boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                           }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', alignItems: 'stretch' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -4188,7 +4295,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                                   <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{
                                       fontSize: '10px',
-                                      color: colours.greyText,
+                                      color: workbenchMutedText(isDarkMode),
                                       fontWeight: 500,
                                       textTransform: 'uppercase',
                                       letterSpacing: '0.025em'
@@ -4216,11 +4323,11 @@ const Instructions: React.FC<InstructionsProps> = ({
                                   <div
                                     style={{
                                       width: '100%',
-                                      border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
-                                      borderRadius: 6,
-                                      background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#FFFFFF',
+                                      border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                                      borderRadius: 10,
+                                      background: workbenchCardBackground(isDarkMode),
                                       padding: 12,
-                                      boxShadow: isDarkMode ? 'none' : '0 4px 10px rgba(0,0,0,0.04)'
+                                      boxShadow: isDarkMode ? '0 4px 12px rgba(2, 6, 23, 0.4)' : '0 4px 12px rgba(15, 23, 42, 0.08)'
                                     }}
                                   >
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>

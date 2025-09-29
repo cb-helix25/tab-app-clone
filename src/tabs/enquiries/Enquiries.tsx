@@ -176,8 +176,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       hasFetchedAllData.current = true;
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       
-  // Call server-side routes to aggregate ALL enquiries to avoid browser CORS
-  const allDataUrl = isLocalDev ? '/api/enquiries-unified' : '/api/enquiries-combined';
+  // Call unified server-side route for ALL environments to avoid legacy combined route
+  const allDataUrl = '/api/enquiries-unified';
       
       console.log('🌐 Fetching ALL enquiries (unified) from:', allDataUrl);
       

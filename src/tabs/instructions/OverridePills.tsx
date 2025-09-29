@@ -17,6 +17,30 @@ interface WorkflowStep {
   canOverride: boolean;
 }
 
+const panelBackground = (dark: boolean): string => (
+  dark
+    ? 'linear-gradient(135deg, rgba(17, 24, 39, 0.94) 0%, rgba(15, 23, 42, 0.98) 100%)'
+    : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)'
+);
+
+const cardBackground = (dark: boolean): string => (
+  dark
+    ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.96) 100%)'
+    : '#FFFFFF'
+);
+
+const borderColour = (dark: boolean): string => (
+  dark ? 'rgba(148, 163, 184, 0.32)' : '#e2e8f0'
+);
+
+const mutedText = (dark: boolean): string => (
+  dark ? 'rgba(226, 232, 240, 0.72)' : colours.greyText
+);
+
+const accentBlue = (dark: boolean): string => (
+  dark ? 'rgba(96, 165, 250, 0.75)' : '#2563EB'
+);
+
 const OverridePills: React.FC<OverridePillsProps> = ({
   instruction,
   selectedOverviewItem,
@@ -90,8 +114,8 @@ const OverridePills: React.FC<OverridePillsProps> = ({
     switch (status) {
       case 'complete': return colours.green;
       case 'failed': return colours.red;
-      case 'in-progress': return colours.blue;
-      default: return colours.greyText;
+      case 'in-progress': return accentBlue(isDarkMode);
+      default: return mutedText(isDarkMode);
     }
   };
 
@@ -183,10 +207,11 @@ const OverridePills: React.FC<OverridePillsProps> = ({
 
   return (
     <div style={{
-      background: isDarkMode ? colours.dark.cardBackground : '#f8fafc',
-      borderRadius: '12px',
-      padding: '16px',
-      border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`
+      background: panelBackground(isDarkMode),
+      borderRadius: '16px',
+      padding: '18px',
+      border: `1px solid ${borderColour(isDarkMode)}`,
+      boxShadow: isDarkMode ? '0 10px 26px rgba(2, 6, 23, 0.5)' : '0 12px 28px rgba(15, 23, 42, 0.14)'
     }}>
       <div style={{
         display: 'grid',
@@ -201,11 +226,12 @@ const OverridePills: React.FC<OverridePillsProps> = ({
 
           return (
             <div key={step.key} style={{
-              background: isDarkMode ? colours.dark.cardHover : 'white',
-              borderRadius: '8px',
-              padding: '12px',
-              border: `1px solid ${overridden ? colours.orange : isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-              position: 'relative'
+              background: cardBackground(isDarkMode),
+              borderRadius: '12px',
+              padding: '14px',
+              border: `1px solid ${overridden ? colours.orange : borderColour(isDarkMode)}`,
+              position: 'relative',
+              boxShadow: isDarkMode ? '0 6px 18px rgba(2, 6, 23, 0.45)' : '0 10px 22px rgba(15, 23, 42, 0.12)'
             }}>
               {/* Override Badge */}
               {overridden && (
@@ -256,7 +282,7 @@ const OverridePills: React.FC<OverridePillsProps> = ({
 
               <div style={{
                 fontSize: '10px',
-                color: colours.greyText,
+                color: mutedText(isDarkMode),
                 marginBottom: '8px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px'
@@ -285,16 +311,18 @@ const OverridePills: React.FC<OverridePillsProps> = ({
                       onClick={() => handleOverrideToComplete(step.key, step.label)}
                       disabled={isCurrentlyUpdating}
                       style={{
-                        padding: '4px 8px',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        background: colours.green,
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: isCurrentlyUpdating ? 'not-allowed' : 'pointer',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
+                          padding: '6px 10px',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          background: accentBlue(isDarkMode),
+                          color: '#FFFFFF',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: isCurrentlyUpdating ? 'not-allowed' : 'pointer',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          boxShadow: isDarkMode ? '0 4px 12px rgba(59, 130, 246, 0.35)' : '0 6px 16px rgba(37, 99, 235, 0.25)',
+                          transition: 'transform 0.2s ease'
                       }}
                     >
                       {isCurrentlyUpdating ? <FaSpinner className="spin" /> : 'Complete'}
@@ -305,12 +333,12 @@ const OverridePills: React.FC<OverridePillsProps> = ({
                         setOverrideReason('');
                       }}
                       style={{
-                        padding: '4px 8px',
+                        padding: '6px 10px',
                         fontSize: '10px',
                         background: 'transparent',
-                        color: colours.greyText,
-                        border: `1px solid ${colours.greyText}`,
-                        borderRadius: '4px',
+                        color: mutedText(isDarkMode),
+                        border: `1px solid ${borderColour(isDarkMode)}`,
+                        borderRadius: '6px',
                         cursor: 'pointer'
                       }}
                     >
@@ -324,13 +352,13 @@ const OverridePills: React.FC<OverridePillsProps> = ({
                     onClick={() => setShowOverrideInput(step.key)}
                     disabled={isCurrentlyUpdating}
                     style={{
-                      padding: '4px 8px',
+                      padding: '6px 10px',
                       fontSize: '10px',
                       fontWeight: 600,
                       background: 'transparent',
-                      color: colours.orange,
-                      border: `1px solid ${colours.orange}`,
-                      borderRadius: '4px',
+                      color: accentBlue(isDarkMode),
+                      border: `1px solid ${accentBlue(isDarkMode)}`,
+                      borderRadius: '6px',
                       cursor: 'pointer',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px',

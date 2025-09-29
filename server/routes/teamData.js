@@ -1,57 +1,50 @@
 const express = require('express');
-const sql = require('mssql');
+const { withRequest } = require('../utils/db');
+
 const router = express.Router();
 
-// Get all team data
-router.get('/', async (req, res) => {
+// Get all team data (shared pool + retry via withRequest)
+router.get('/', async (_req, res) => {
+  const connectionString = process.env.SQL_CONNECTION_STRING;
+  if (!connectionString) {
+    return res.status(500).json({ error: 'SQL_CONNECTION_STRING not configured' });
+  }
+
   try {
-    console.log('🔍 Fetching team data from SQL...');
-    
-    // Connect to the database using the same connection string as other routes
-    const connectionString = process.env.SQL_CONNECTION_STRING;
-    if (!connectionString) {
-      throw new Error('SQL_CONNECTION_STRING not found in environment');
-    }
-    
-    const pool = new sql.ConnectionPool(connectionString);
-    await pool.connect();
-    
-    // Query team table for all members with all fields
-    const result = await pool.request().query(`
-      SELECT 
-        [Created Date],
-        [Created Time], 
-        [Full Name],
-        [Last],
-        [First],
-        [Nickname],
-        [Initials],
-        [Email],
-        [Entra ID],
-        [Clio ID],
-        [Rate],
-        [Role],
-        [AOW],
-        [holiday_entitlement],
-        [status]
-      FROM [dbo].[team]
-      ORDER BY [Full Name]
-    `);
-    
-    await pool.close();
-    
-    const teamData = result.recordset;
-    console.log(`✅ Retrieved ${teamData.length} team members from database`);
-    console.log(`📊 Active: ${teamData.filter(m => m.status?.toLowerCase() === 'active').length}, Inactive: ${teamData.filter(m => m.status?.toLowerCase() === 'inactive').length}`);
-    
-    res.json(teamData);
-    
+    console.log('\ud83d\udd0d Fetching team data from SQL...');
+    const rows = await withRequest(connectionString, async (request) => {
+      const result = await request.query(`
+        SELECT 
+          [Created Date],
+          [Created Time], 
+          [Full Name],
+          [Last],
+          [First],
+          [Nickname],
+          [Initials],
+          [Email],
+          [Entra ID],
+          [Clio ID],
+          [Rate],
+          [Role],
+          [AOW],
+          [holiday_entitlement],
+          [status]
+        FROM [dbo].[team]
+        ORDER BY [Full Name]
+      `);
+      return Array.isArray(result.recordset) ? result.recordset : [];
+    }, 2);
+
+    console.log(`\u2705 Retrieved ${rows.length} team members from database`);
+    const active = rows.filter((m) => String(m.status || '').toLowerCase() === 'active').length;
+    const inactive = rows.filter((m) => String(m.status || '').toLowerCase() === 'inactive').length;
+    console.log(`\ud83d\udcca Active: ${active}, Inactive: ${inactive}`);
+    return res.json(rows);
   } catch (error) {
-    console.error('❌ Team data fetch error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch team data',
-      details: error.message 
-    });
+    console.error('\u274c Team data fetch error:', error);
+    // For flows that can tolerate missing team data, degrade gracefully with empty array
+    return res.status(200).json([]);
   }
 });
 

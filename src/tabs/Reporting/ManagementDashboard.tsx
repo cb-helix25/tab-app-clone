@@ -26,6 +26,8 @@ export interface WIP {
   total?: number;
   quantity_in_hours?: number;
   user_id?: number;
+  // When sourced from Clio API, user is nested
+  user?: { id?: number | string };
 }
 
 interface ManagementDashboardProps {
@@ -58,6 +60,9 @@ interface MemberMetrics {
   collected: number;
 }
 
+type SortColumn = 'displayName' | 'enquiries' | 'matters' | 'wipHours' | 'wipValue' | 'collected';
+type SortDirection = 'asc' | 'desc';
+
 const RANGE_OPTIONS: RangeOption[] = [
   { key: 'today', label: 'Today' },
   { key: 'week', label: 'This Week' },
@@ -68,49 +73,81 @@ const RANGE_OPTIONS: RangeOption[] = [
 ];
 
 const getDatePickerStyles = (isDarkMode: boolean): Partial<IDatePickerStyles> => {
-  const baseBorder = isDarkMode ? 'rgba(148, 163, 184, 0.32)' : 'rgba(13, 47, 96, 0.2)';
-  const hoverBorder = isDarkMode ? 'rgba(135, 176, 255, 0.6)' : 'rgba(13, 47, 96, 0.32)';
-  const focusBorder = isDarkMode ? '#87f3f3' : colours.highlight;
-  const backgroundColour = isDarkMode ? 'rgba(15, 23, 42, 0.85)' : 'rgba(248, 250, 252, 0.95)';
+  const baseBorder = isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(13, 47, 96, 0.18)';
+  const hoverBorder = isDarkMode ? 'rgba(135, 206, 255, 0.5)' : 'rgba(54, 144, 206, 0.4)';
+  const focusBorder = isDarkMode ? '#87ceeb' : colours.highlight;
+  const backgroundColour = isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.95)';
+  const hoverBackground = isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(248, 250, 252, 1)';
+  const focusBackground = isDarkMode ? 'rgba(15, 23, 42, 1)' : 'rgba(255, 255, 255, 1)';
 
   return {
-    root: { maxWidth: 210 },
+    root: { 
+      maxWidth: 220,
+      '.ms-DatePicker': {
+        fontFamily: 'Raleway, sans-serif !important',
+      }
+    },
     textField: {
       root: {
-        fontFamily: 'Raleway, sans-serif',
+        fontFamily: 'Raleway, sans-serif !important',
+        width: '100% !important',
       },
       fieldGroup: {
-        height: 34,
-        borderRadius: 999,
-        border: `1px solid ${baseBorder}`,
-        background: backgroundColour,
-        padding: '0 12px',
-        boxShadow: 'none',
-        transition: 'background 0.2s ease, border-color 0.2s ease',
-      },
-      fieldGroupHovered: {
-        border: `1px solid ${hoverBorder}`,
-        background: isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(240, 244, 248, 0.95)',
-      },
-      fieldGroupFocused: {
-        border: `1px solid ${focusBorder}`,
-        background: isDarkMode ? 'rgba(15, 23, 42, 0.96)' : 'rgba(236, 244, 251, 0.96)',
+        height: '36px !important',
+        borderRadius: '8px !important',
+        border: `1px solid ${baseBorder} !important`,
+        background: `${backgroundColour} !important`,
+        padding: '0 14px !important',
+        boxShadow: isDarkMode 
+          ? '0 2px 4px rgba(0, 0, 0, 0.2) !important' 
+          : '0 1px 3px rgba(15, 23, 42, 0.08) !important',
+        transition: 'all 0.2s ease !important',
+        selectors: {
+          ':hover': {
+            border: `1px solid ${hoverBorder} !important`,
+            background: `${hoverBackground} !important`,
+            boxShadow: isDarkMode 
+              ? '0 4px 8px rgba(0, 0, 0, 0.25) !important' 
+              : '0 2px 6px rgba(15, 23, 42, 0.12) !important',
+            transform: 'translateY(-1px) !important',
+          },
+          ':focus-within': {
+            border: `1px solid ${focusBorder} !important`,
+            background: `${focusBackground} !important`,
+            boxShadow: isDarkMode 
+              ? `0 0 0 3px rgba(135, 206, 235, 0.1), 0 4px 12px rgba(0, 0, 0, 0.25) !important`
+              : `0 0 0 3px rgba(54, 144, 206, 0.1), 0 2px 8px rgba(15, 23, 42, 0.15) !important`,
+            transform: 'translateY(-1px) !important',
+          }
+        }
       },
       field: {
-        fontSize: 13,
-        color: isDarkMode ? colours.dark.text : colours.light.text,
-        fontFamily: 'Raleway, sans-serif',
+        fontSize: '14px !important',
+        color: `${isDarkMode ? colours.dark.text : colours.light.text} !important`,
+        fontFamily: 'Raleway, sans-serif !important',
+        fontWeight: '500 !important',
+        background: 'transparent !important',
+        lineHeight: '20px !important',
+        border: 'none !important',
+        outline: 'none !important',
       },
     },
     icon: {
-      color: isDarkMode ? colours.highlight : colours.missedBlue,
+      color: `${isDarkMode ? colours.highlight : colours.missedBlue} !important`,
+      fontSize: '16px !important',
+      fontWeight: 'bold !important',
     },
     callout: {
-      fontSize: 13,
-      borderRadius: 10,
-      boxShadow: isDarkMode ? '0 6px 14px rgba(0, 0, 0, 0.32)' : '0 4px 12px rgba(15, 23, 42, 0.12)',
+      fontSize: '14px !important',
+      borderRadius: '12px !important',
+      border: `1px solid ${baseBorder} !important`,
+      boxShadow: isDarkMode 
+        ? '0 8px 24px rgba(0, 0, 0, 0.4) !important' 
+        : '0 6px 20px rgba(15, 23, 42, 0.15) !important',
     },
-    wrapper: { borderRadius: 10 },
+    wrapper: { 
+      borderRadius: '12px !important',
+    },
   };
 };
 
@@ -125,7 +162,8 @@ const getRangeButtonStyles = (isDarkMode: boolean, active: boolean): IButtonStyl
         ? `1px solid ${isDarkMode ? 'rgba(135, 176, 255, 0.5)' : 'rgba(13, 47, 96, 0.32)'}`
         : `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.28)' : 'rgba(13, 47, 96, 0.18)'}`,
   padding: '0 12px',
-  minHeight: 30,
+  minHeight: 32,
+  height: 32,
       fontWeight: 600,
       fontSize: 13,
       color: active ? '#ffffff' : (isDarkMode ? '#E2E8F0' : colours.missedBlue),
@@ -143,29 +181,46 @@ const getRangeButtonStyles = (isDarkMode: boolean, active: boolean): IButtonStyl
 };
 
 const getTeamButtonStyles = (isDarkMode: boolean, active: boolean): IButtonStyles => {
-  const activeBackground = colours.highlight;
-  const inactiveBackground = isDarkMode ? 'rgba(15, 23, 42, 0.8)' : 'transparent';
+  const activeBackground = active 
+    ? `linear-gradient(135deg, ${colours.highlight} 0%, #2f7cb3 100%)`
+    : (isDarkMode ? 'rgba(15, 23, 42, 0.8)' : 'transparent');
+  
+  const activeBorder = active
+    ? `2px solid ${isDarkMode ? '#87ceeb' : colours.highlight}`
+    : `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(13, 47, 96, 0.16)'}`;
 
   return {
     root: {
       borderRadius: 999,
-      minHeight: 30,
-  padding: '0 8px',
-      fontWeight: 600,
+      minHeight: 32,
+      height: 32,
+      padding: '0 8px',
+      fontWeight: active ? 700 : 600,
       fontSize: 12,
-      border: active
-        ? `1px solid ${isDarkMode ? 'rgba(135, 176, 255, 0.5)' : 'rgba(13, 47, 96, 0.28)'}`
-        : `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(13, 47, 96, 0.16)'}`,
-      background: active ? activeBackground : inactiveBackground,
+      border: activeBorder,
+      background: activeBackground,
       color: active ? '#ffffff' : (isDarkMode ? '#E2E8F0' : colours.missedBlue),
-      boxShadow: 'none',
+      boxShadow: active 
+        ? (isDarkMode ? '0 2px 8px rgba(54, 144, 206, 0.3)' : '0 2px 8px rgba(54, 144, 206, 0.25)')
+        : 'none',
       fontFamily: 'Raleway, sans-serif',
+      transform: active ? 'translateY(-1px)' : 'none',
+      transition: 'all 0.2s ease',
     },
     rootHovered: {
-      background: active ? '#2f7cb3' : (isDarkMode ? 'rgba(15, 23, 42, 0.86)' : 'rgba(54, 144, 206, 0.1)'),
+      background: active 
+        ? `linear-gradient(135deg, #2f7cb3 0%, #266795 100%)` 
+        : (isDarkMode ? 'rgba(15, 23, 42, 0.86)' : 'rgba(54, 144, 206, 0.1)'),
+      transform: 'translateY(-1px)',
+      boxShadow: active 
+        ? (isDarkMode ? '0 4px 12px rgba(54, 144, 206, 0.4)' : '0 4px 12px rgba(54, 144, 206, 0.35)')
+        : (isDarkMode ? '0 2px 4px rgba(0, 0, 0, 0.1)' : '0 2px 4px rgba(15, 23, 42, 0.05)'),
     },
     rootPressed: {
-      background: active ? '#266795' : (isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(54, 144, 206, 0.14)'),
+      background: active 
+        ? `linear-gradient(135deg, #266795 0%, #1e5a7a 100%)` 
+        : (isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(54, 144, 206, 0.14)'),
+      transform: 'translateY(0)',
     },
   };
 };
@@ -174,13 +229,15 @@ const summaryChipStyle = (isDarkMode: boolean): CSSProperties => ({
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'center',
-  padding: '8px 12px',
-  borderRadius: 8,
+  alignItems: 'center',
+  padding: '12px 16px',
+  borderRadius: 10,
   background: isDarkMode ? 'rgba(15, 23, 42, 0.72)' : '#ffffff',
   border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.25)' : '#e2e8f0'}`,
   boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
-  minWidth: 100,
-  rowGap: 4,
+  textAlign: 'center' as const,
+  rowGap: 6,
+  width: '100%',
 });
 
 const computeRange = (range: RangeKey): { start: Date; end: Date } => {
@@ -209,10 +266,21 @@ const computeRange = (range: RangeKey): { start: Date; end: Date } => {
       start.setHours(0, 0, 0, 0);
       break;
     }
-    case 'year':
-      start.setMonth(0, 1);
+    case 'year': {
+      // Financial year: 1 April to 31 March
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth(); // 0-11 (0 = January)
+      
+      if (currentMonth >= 3) { // April onwards (month 3+)
+        // We're in the financial year that started this calendar year
+        start.setFullYear(currentYear, 3, 1); // 1 April this year
+      } else {
+        // We're in Jan/Feb/Mar - still in the financial year that started last calendar year
+        start.setFullYear(currentYear - 1, 3, 1); // 1 April last year
+      }
       start.setHours(0, 0, 0, 0);
       break;
+    }
     case 'all':
     default:
       return { start: new Date(0), end };
@@ -267,6 +335,22 @@ const matchesInitials = (value: unknown, initials: string): boolean => {
     return false;
   }
   return value.toLowerCase().includes(initials.toLowerCase());
+};
+
+// Normalise a full name: letters only, lowercase
+const normalizeName = (name?: string | null): string => (
+  typeof name === 'string' ? name.replace(/[^a-zA-Z]/g, '').toLowerCase() : ''
+);
+
+// Known display name corrections from legacy data
+const NAME_MAP: Record<string, string> = {
+  'Samuel Packwood': 'Sam Packwood',
+  'Bianca ODonnell': "Bianca O'Donnell",
+};
+
+const mapNameIfNeeded = (name?: string | null): string => {
+  if (!name) return '';
+  return NAME_MAP[name] ?? name;
 };
 
 const displayName = (record?: TeamData | null): string => {
@@ -339,6 +423,8 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   const [startDate, setStartDate] = useState<Date | undefined>(() => rangeStart);
   const [endDate, setEndDate] = useState<Date | undefined>(() => rangeEnd);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [sortColumn, setSortColumn] = useState<SortColumn>('displayName');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
     const next = computeRange(rangeKey);
@@ -370,7 +456,13 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   ), [enquiries, activeStart, activeEnd]);
 
   const filteredMatters = useMemo(() => (
-    matters.filter((entry) => withinRange(parseDateValue(entry.OpenDate ?? entry.CloseDate ?? '')))
+    matters.filter((entry) => {
+      const openDate = (entry as any)['Open Date'] ?? entry.OpenDate;
+      const closeDate = (entry as any)['Close Date'] ?? entry.CloseDate;
+      const dateToCheck = openDate ?? closeDate ?? '';
+      const parsedDate = parseDateValue(dateToCheck);
+      return withinRange(parsedDate);
+    })
   ), [matters, activeStart, activeEnd]);
 
   const filteredWip = useMemo(() => (
@@ -390,7 +482,11 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
             ? String((member as Record<string, unknown>)['Status'])
             : undefined;
         const isActive = statusValueRaw ? statusValueRaw.toLowerCase() === 'active' : false;
-        return Boolean(member['Initials']) && isActive;
+        const roleValueRaw = (member as Record<string, unknown>)['Role'] 
+          ? String((member as Record<string, unknown>)['Role'])
+          : undefined;
+        const isFeeEarningRole = roleValueRaw && ['Partner', 'Associate Solicitor', 'Solicitor', 'Paralegal'].includes(roleValueRaw);
+        return Boolean(member['Initials']) && isActive && isFeeEarningRole;
       })
       .map((member) => ({
         initials: member['Initials'] ?? '',
@@ -407,13 +503,40 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
 
   const metricsByMember: MemberMetrics[] = useMemo(() => (
     visibleMembers.map((member) => {
-      const enquiriesForMember = filteredEnquiries.filter((enquiry) => enquiriesHandledBy(enquiry, member.initials));
-      const mattersForMember = filteredMatters.filter((matterRecord) => matterOwnedBy(matterRecord, member.initials));
+      const memberEmail = (member.record as Record<string, unknown>)['Email']
+        ? String((member.record as Record<string, unknown>)['Email']).toLowerCase()
+        : undefined;
+      const memberFullName = (member.record as Record<string, unknown>)['Full Name']
+        ? String((member.record as Record<string, unknown>)['Full Name'])
+        : member.display;
+
+      // Enquiries: prefer email equality when available; otherwise fallback to initials containment
+      const enquiriesForMember = filteredEnquiries.filter((enquiry) => {
+        if (memberEmail && typeof enquiry.Point_of_Contact === 'string') {
+          return enquiry.Point_of_Contact.toLowerCase() === memberEmail;
+        }
+        return enquiriesHandledBy(enquiry, member.initials);
+      });
+
+      // Matters: match by normalized full name against Originating/Responsible Solicitor with legacy name map
+      const normalizedMemberName = normalizeName(memberFullName);
+      const mattersForMember = filteredMatters.filter((m) => {
+        const rawOriginating = mapNameIfNeeded((m as any)['Originating Solicitor'] ?? (m as any).OriginatingSolicitor);
+        const rawResponsible = mapNameIfNeeded((m as any)['Responsible Solicitor'] ?? (m as any).ResponsibleSolicitor);
+        const normalizedOriginating = normalizeName(rawOriginating);
+        const normalizedResponsible = normalizeName(rawResponsible);
+        return (
+          normalizedMemberName !== '' &&
+          (normalizedOriginating === normalizedMemberName || normalizedResponsible === normalizedMemberName)
+        );
+      });
+
+      // WIP: support DB shape (user_id) and Clio API shape (user.id)
       const wipForMember = filteredWip.filter((record) => {
-        const matchId = member.clioId && record.user_id !== undefined
-          ? String(record.user_id) === member.clioId
-          : false;
-        return matchId;
+        if (!member.clioId) return false;
+        const flat = record.user_id != null ? String(record.user_id) : undefined;
+        const nested = record.user?.id != null ? String(record.user.id) : undefined;
+        return flat === member.clioId || nested === member.clioId;
       });
       const feesForMember = filteredFees.filter((record) => (
         member.clioId ? String(record.user_id ?? '') === member.clioId : false
@@ -430,7 +553,30 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
     })
   ), [visibleMembers, filteredEnquiries, filteredMatters, filteredWip, filteredFees]);
 
-  const totals = metricsByMember.reduce(
+  // Sort the metrics by the selected column and direction
+  const sortedMetricsByMember = useMemo(() => {
+    const sorted = [...metricsByMember].sort((a, b) => {
+      let aValue: string | number = a[sortColumn];
+      let bValue: string | number = b[sortColumn];
+
+      // For string comparison (displayName), use locale compare
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        const result = aValue.localeCompare(bValue);
+        return sortDirection === 'asc' ? result : -result;
+      }
+
+      // For numeric comparison
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        const result = aValue - bValue;
+        return sortDirection === 'asc' ? result : -result;
+      }
+
+      return 0;
+    });
+    return sorted;
+  }, [metricsByMember, sortColumn, sortDirection]);
+
+  const totals = sortedMetricsByMember.reduce(
     (acc, row) => ({
       enquiries: acc.enquiries + row.enquiries,
       matters: acc.matters + row.matters,
@@ -459,6 +605,41 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
         ? prev.filter((item) => item !== initials)
         : [...prev, initials]
     ));
+  };
+
+  const handleColumnSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to ascending
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column: SortColumn): JSX.Element => {
+    const isActive = sortColumn === column;
+    const iconStyle: React.CSSProperties = {
+      marginLeft: '4px',
+      fontSize: '8px',
+      opacity: isActive ? 0.9 : 0.3,
+      transition: 'opacity 0.2s ease',
+      fontWeight: 'bold',
+      color: 'currentColor',
+    };
+
+    if (!isActive) {
+      return (
+        <span style={iconStyle}>▸</span>
+      );
+    }
+
+    return (
+      <span style={iconStyle}>
+        {sortDirection === 'asc' ? '▲' : '▼'}
+      </span>
+    );
   };
 
   const dashboardThemeClass = isDarkMode ? 'dark-theme' : 'light-theme';
@@ -497,6 +678,47 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
               parseDateFromString={parseDatePickerInput}
             />
           </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginLeft: 'auto',
+            fontSize: 11,
+            fontWeight: 500,
+            color: isDarkMode ? 'rgba(226, 232, 240, 0.7)' : 'rgba(15, 23, 42, 0.6)',
+            fontFamily: 'Monaco, Consolas, monospace',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            padding: '6px 12px',
+            borderRadius: 6,
+            background: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(248, 250, 252, 0.8)',
+            border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`,
+            userSelect: 'none',
+          }}>
+            {isFetching ? (
+              <>
+                <div style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: isDarkMode ? '#60a5fa' : colours.highlight,
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }} />
+                Refreshing
+              </>
+            ) : (
+              <>
+                Last Refreshed: {lastRefreshTimestamp ? new Date(lastRefreshTimestamp).toLocaleString('en-GB', {
+                  day: '2-digit',
+                  month: '2-digit', 
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit'
+                }) : 'Pending'}
+              </>
+            )}
+          </div>
           <div className="date-range-buttons">
             <Stack horizontal tokens={{ childrenGap: 6 }}>
               {RANGE_OPTIONS.map(({ key, label }) => (
@@ -528,7 +750,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
         </div>
     </div>
 
-    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
         <div style={summaryChipStyle(isDarkMode)}>
           <span style={{ fontSize: 12, opacity: 0.65 }}>Enquiries</span>
           <span style={{ fontSize: 20, fontWeight: 700 }}>{summaryTotals.enquiries.toLocaleString('en-GB')}</span>
@@ -549,12 +771,6 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
           <span style={{ fontSize: 12, opacity: 0.65 }}>Collected</span>
           <span style={{ fontSize: 20, fontWeight: 700 }}>{formatCurrency(summaryTotals.collected)}</span>
         </div>
-        <div style={summaryChipStyle(isDarkMode)}>
-          <span style={{ fontSize: 12, opacity: 0.65 }}>Last Refresh</span>
-          <span style={{ fontSize: 20, fontWeight: 700 }}>
-            {lastRefreshTimestamp ? formatDateTag(new Date(lastRefreshTimestamp)) : 'Pending'}
-          </span>
-        </div>
       </div>
 
       {isFetching && (
@@ -565,14 +781,50 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
 
       <div className="metrics-table">
         <div className="metrics-table-header">
-          <span>Team</span>
-          <span>Enquiries</span>
-          <span>Matters</span>
-          <span>WIP (h)</span>
-          <span>WIP (£)</span>
-          <span>Collected</span>
+          <span 
+            onClick={() => handleColumnSort('displayName')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            title="Click to sort by team member"
+          >
+            Team {getSortIcon('displayName')}
+          </span>
+          <span 
+            onClick={() => handleColumnSort('enquiries')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            title="Click to sort by enquiries"
+          >
+            Enquiries {getSortIcon('enquiries')}
+          </span>
+          <span 
+            onClick={() => handleColumnSort('matters')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            title="Click to sort by matters"
+          >
+            Matters {getSortIcon('matters')}
+          </span>
+          <span 
+            onClick={() => handleColumnSort('wipHours')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            title="Click to sort by WIP hours"
+          >
+            WIP (h) {getSortIcon('wipHours')}
+          </span>
+          <span 
+            onClick={() => handleColumnSort('wipValue')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            title="Click to sort by WIP value"
+          >
+            WIP (£) {getSortIcon('wipValue')}
+          </span>
+          <span 
+            onClick={() => handleColumnSort('collected')}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            title="Click to sort by collected fees"
+          >
+            Collected {getSortIcon('collected')}
+          </span>
         </div>
-        {metricsByMember.length === 0 && (
+        {sortedMetricsByMember.length === 0 && (
           <div className="metrics-table-row animate-table-row">
             <span>No team members selected</span>
             <span>0</span>
@@ -582,7 +834,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
             <span>£0</span>
           </div>
         )}
-        {metricsByMember.map((row, index) => (
+        {sortedMetricsByMember.map((row, index) => (
           <div key={row.initials} className="metrics-table-row animate-table-row" style={{ animationDelay: `${index * 0.05}s` }}>
             <span>{row.displayName}</span>
             <span>{row.enquiries.toLocaleString('en-GB')}</span>
@@ -592,7 +844,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
             <span>{formatCurrency(row.collected)}</span>
           </div>
         ))}
-        <div className="metrics-table-row animate-table-row" style={{ animationDelay: `${metricsByMember.length * 0.05}s` }}>
+        <div className="metrics-table-row animate-table-row" style={{ animationDelay: `${sortedMetricsByMember.length * 0.05}s` }}>
           <span>Total</span>
           <span>{totals.enquiries.toLocaleString('en-GB')}</span>
           <span>{totals.matters.toLocaleString('en-GB')}</span>

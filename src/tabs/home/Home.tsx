@@ -1505,102 +1505,45 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     }
   }, [userData]);
 
+  // Prefer reporting route for current-week WIP (backend merges DB and Clio); do not call Clio from client
   useEffect(() => {
-    if (
-      cachedWipClio ||
-      cachedWipClioError ||
-      cachedRecovered ||
-      cachedRecoveredError ||
-      cachedPrevRecovered ||
-      cachedPrevRecoveredError
-    ) {
+    const loadFromReporting = async () => {
+      try {
+        setIsLoadingWipClio(true);
+        // Fetch management datasets including wipClioCurrentWeek merged by backend; bypass cache for freshness
+        const url = new URL('/api/reporting/management-datasets', window.location.origin);
+        url.searchParams.set('datasets', 'wip,wipClioCurrentWeek');
+        url.searchParams.set('bypassCache', 'true');
+        const resp = await fetch(url.toString(), { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
+        if (resp.ok && (resp.headers.get('content-type') || '').toLowerCase().includes('application/json')) {
+          const data = await resp.json();
+          const merged = data.wipCurrentAndLastWeek || data.wipClioCurrentWeek;
+          if (merged && merged.current_week && merged.last_week) {
+            cachedWipClio = merged as any;
+            setWipClioData(cachedWipClio);
+            setWipClioError(null);
+            setIsLoadingWipClio(false);
+            return;
+          }
+        }
+      } catch (e) {
+        // swallow and fall back
+      }
+    };
+
+    // Use cache if already set
+    if (cachedWipClio || cachedWipClioError) {
       setWipClioData(cachedWipClio);
       setWipClioError(cachedWipClioError);
-      setRecoveredData(cachedRecovered);
-      setRecoveredError(cachedRecoveredError);
-      setPrevRecoveredData(cachedPrevRecovered);
-      setPrevRecoveredError(cachedPrevRecoveredError);
       setIsLoadingWipClio(false);
-      setIsLoadingRecovered(false);
     } else if (useLocalData) {
       cachedWipClio = localWipClio as any;
-      cachedRecovered = (localRecovered as any).totalPaymentAllocated;
-      cachedPrevRecovered = (localPrevRecovered as any).totalPaymentAllocated;
       setWipClioData(cachedWipClio);
-      setRecoveredData(cachedRecovered);
-      setPrevRecoveredData(cachedPrevRecovered);
       setIsLoadingWipClio(false);
-      setIsLoadingRecovered(false);
     } else {
-      const fetchWipClioAndRecovered = async () => {
-        try {
-          setIsLoadingWipClio(true);
-          setIsLoadingRecovered(true);
-          const clioIDForWip = metricsClioId || parseInt(userData[0]['Clio ID'], 10);
-          const clioIDForRecovered = metricsClioId || clioIDForWip;
-          const [wipResponse, recoveredResponse, prevRecoveredResponse] = await Promise.all([
-            fetch(
-              `${proxyBaseUrl}/${process.env.REACT_APP_GET_WIP_CLIO_PATH}?code=${process.env.REACT_APP_GET_WIP_CLIO_CODE}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ClioID: clioIDForWip }),
-              }
-            ),
-            fetch(
-              `${proxyBaseUrl}/${process.env.REACT_APP_GET_RECOVERED_PATH}?code=${process.env.REACT_APP_GET_RECOVERED_CODE}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ClioID: clioIDForRecovered }),
-              }
-            ),
-            fetch(
-              `${proxyBaseUrl}/${process.env.REACT_APP_GET_RECOVERED_PATH}?code=${process.env.REACT_APP_GET_RECOVERED_CODE}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ClioID: clioIDForRecovered, MonthOffset: -1 }),
-              }
-            ),
-          ]);
-          if (!wipResponse.ok)
-            throw new Error(`Failed to fetch WIP Clio: ${wipResponse.status}`);
-          const wipData = await wipResponse.json();
-          cachedWipClio = wipData;
-          setWipClioData(wipData);
-          if (!recoveredResponse.ok)
-            throw new Error(`Failed to fetch Recovered: ${recoveredResponse.status}`);
-          if (!prevRecoveredResponse.ok)
-            throw new Error(`Failed to fetch Previous Recovered: ${prevRecoveredResponse.status}`);
-          const recoveredData = await recoveredResponse.json();
-          cachedRecovered = recoveredData.totalPaymentAllocated;
-          setRecoveredData(recoveredData.totalPaymentAllocated);
-          const prevRecData = await prevRecoveredResponse.json();
-          cachedPrevRecovered = prevRecData.totalPaymentAllocated;
-          setPrevRecoveredData(prevRecData.totalPaymentAllocated);
-        } catch (error: any) {
-          console.error('Error fetching WIP Clio or Recovered:', error);
-          if (error.message.includes('WIP Clio')) {
-            cachedWipClioError = error.message || 'Unknown error occurred.';
-            setWipClioError(error.message || 'Unknown error occurred.');
-            setWipClioData(null);
-          } else {
-            cachedRecoveredError = error.message || 'Unknown error occurred.';
-            setRecoveredError(error.message || 'Unknown error occurred.');
-            setRecoveredData(null);
-            cachedPrevRecoveredError = error.message || 'Unknown error occurred.';
-            setPrevRecoveredError(error.message || 'Unknown error occurred.');
-            setPrevRecoveredData(null);
-          }
-        } finally {
-          setIsLoadingWipClio(false);
-          setIsLoadingRecovered(false);
-        }
-      };
-      fetchWipClioAndRecovered();
+      loadFromReporting();
     }
-  }, [userData]);  
+  }, [userData]);
 
   // Home no longer fetches matters itself; it receives normalized matters from App.
   // Keep the effect boundary to clear local cache if that logic remains elsewhere.

@@ -1,42 +1,15 @@
 const express = require('express');
 const { getSecret } = require('../utils/getSecret');
 const sql = require('mssql');
+const { getPool } = require('../utils/db');
 const router = express.Router();
 
-// Database connection configuration
-let dbConfig = null;
-
-async function getDbConfig() {
-  if (dbConfig) return dbConfig;
-  
-  // Use the INSTRUCTIONS_SQL_CONNECTION_STRING from .env
-  const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
-  if (!connectionString) {
-    throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
-  }
-  
-  // Parse connection string into config object
-  const params = new URLSearchParams(connectionString.split(';').join('&'));
-  const server = params.get('Server').replace('tcp:', '').split(',')[0];
-  const database = params.get('Initial Catalog');
-  const user = params.get('User ID');
-  const password = params.get('Password');
-  
-  dbConfig = {
-    server,
-    database, 
-    user,
-    password,
-    options: {
-      encrypt: true,
-      trustServerCertificate: false,
-      connectTimeout: 30000,
-      requestTimeout: 30000
-    }
-  };
-  
-  return dbConfig;
-}
+// Database connection (shared pool)
+const getInstrConnStr = () => {
+  const cs = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
+  if (!cs) throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
+  return cs;
+};
 
 // Generate unique request ID for logging
 function generateRequestId() {
@@ -49,15 +22,11 @@ router.get('/test-db', async (req, res) => {
   // Testing direct database connection
 
   try {
-    const config = await getDbConfig();
-    const pool = new sql.ConnectionPool(config);
-    await pool.connect();
+    const pool = await getPool(getInstrConnStr());
     
     // Test query - get a few deals to verify connection
     const result = await pool.request()
       .query('SELECT TOP 3 DealId, ProspectId, ServiceDescription, InstructionRef FROM Deals ORDER BY DealId DESC');
-    
-    await pool.close();
 
     res.json({
       status: 'success',
@@ -66,8 +35,8 @@ router.get('/test-db', async (req, res) => {
         rowCount: result.recordset.length,
         sampleDeals: result.recordset,
         connectionInfo: {
-          server: config.server,
-          database: config.database
+          // Avoid leaking full connection details; basic signal only
+          pooled: true
         }
       },
       requestId,
@@ -150,9 +119,7 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    const config = await getDbConfig();
-    const pool = new sql.ConnectionPool(config);
-    await pool.connect();
+    const pool = await getPool(getInstrConnStr());
 
     const initials = req.query.initials;
     const prospectId = req.query.prospectId && Number(req.query.prospectId);
@@ -392,8 +359,6 @@ router.get('/', async (req, res) => {
       documents = docRes.recordset || [];
     }
 
-    await pool.close();
-
     // Instruction data fetched
 
     // Transform the data to match frontend expectations
@@ -484,8 +449,7 @@ router.put('/deals/:dealId', async (req, res) => {
   }
 
   try {
-    const config = await getDbConfig();
-    const pool = await sql.connect(config);
+    const pool = await getPool(getInstrConnStr());
     
     // Build dynamic update query based on provided fields
     const updates = [];

@@ -33,10 +33,10 @@ const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 
 const enquiriesRouter = require('./routes/enquiries');
 const enquiriesUnifiedRouter = require('./routes/enquiries-unified');
-const enquiriesCombinedRouter = require('./routes/enquiries-combined');
 const enquiryEmailsRouter = require('./routes/enquiryEmails');
 const pitchesRouter = require('./routes/pitches');
 const mattersRouter = require('./routes/matters');
+const mattersUnifiedRouter = require('./routes/mattersUnified');
 const paymentsRouter = require('./routes/payments');
 const instructionsRouter = require('./routes/instructions');
 const documentsRouter = require('./routes/documents');
@@ -46,6 +46,7 @@ const teamDataRouter = require('./routes/teamData');
 const pitchTeamRouter = require('./routes/pitchTeam');
 const sendEmailRouter = require('./routes/sendEmail');
 const attendanceRouter = require('./routes/attendance');
+const reportingRouter = require('./routes/reporting');
 console.log('📋 Attendance router imported');
 // const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
@@ -103,7 +104,6 @@ app.use('/api/getMatters', getMattersRouter);
 
 app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
-app.use('/api/enquiries-combined', enquiriesCombinedRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 
 // Update enquiry endpoint - moved to enquiries-unified/update
@@ -112,6 +112,7 @@ console.log('🔧 REGISTERING UPDATE DEAL ROUTE: POST /api/update-deal');
 app.post('/api/update-deal', require('./routes/updateDeal'));
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/matters', mattersRouter);
+app.use('/api/matters-unified', mattersUnifiedRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/instructions', instructionsRouter);
 app.use('/api/documents', documentsRouter);
@@ -121,6 +122,7 @@ app.use('/api/team-lookup', teamLookupRouter);
 app.use('/api/team-data', teamDataRouter);
 app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api', sendEmailRouter);
+app.use('/api/reporting', reportingRouter);
 
 // IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
 app.use('/api/attendance', attendanceRouter);
@@ -180,6 +182,21 @@ app.get('/process', (req, res) => {
     }, 500);
 
     req.on('close', () => clearInterval(interval));
+});
+
+// Do not serve HTML for API routes that didn't match – return JSON 404 instead
+app.get('/api/*', (req, res) => {
+    res.status(404).json({ error: 'API endpoint not found' });
+});
+
+// JSON error handler to prevent HTML 500 pages from iisnode leaking to clients
+// Must be after routes and before static fallback
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+    console.error('Unhandled server error', err);
+    const status = typeof err?.status === 'number' ? err.status : 500;
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    res.status(status).json({ error: message, status });
 });
 
 // fallback to index.html for client-side routes

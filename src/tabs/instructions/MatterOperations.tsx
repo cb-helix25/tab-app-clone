@@ -32,6 +32,30 @@ interface ClientData {
   isLoading: boolean;
 }
 
+const panelBackground = (dark: boolean): string => (
+  dark
+    ? 'linear-gradient(135deg, rgba(17, 24, 39, 0.94) 0%, rgba(15, 23, 42, 0.98) 100%)'
+    : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)'
+);
+
+const cardBackground = (dark: boolean): string => (
+  dark
+    ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.96) 100%)'
+    : '#FFFFFF'
+);
+
+const borderColour = (dark: boolean): string => (
+  dark ? 'rgba(148, 163, 184, 0.32)' : '#e2e8f0'
+);
+
+const mutedText = (dark: boolean): string => (
+  dark ? 'rgba(226, 232, 240, 0.72)' : colours.greyText
+);
+
+const elevatedShadow = (dark: boolean): string => (
+  dark ? '0 8px 20px rgba(2, 6, 23, 0.45)' : '0 10px 24px rgba(15, 23, 42, 0.12)'
+);
+
 const MatterOperations: React.FC<MatterOperationsProps> = ({
   selectedInstruction,
   selectedOverviewItem,
@@ -183,22 +207,23 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
   };
 
   const cardStyle = mergeStyles({
-    background: isDarkMode ? colours.dark.cardHover : '#ffffff',
-    borderRadius: '6px',
-    padding: '10px',
-    border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-    marginBottom: '8px'
+    background: cardBackground(isDarkMode),
+    borderRadius: '12px',
+    padding: '16px',
+    border: `1px solid ${borderColour(isDarkMode)}`,
+    marginBottom: '12px',
+    boxShadow: elevatedShadow(isDarkMode)
   });
 
   const headerStyle = mergeStyles({
     fontSize: '11px',
     fontWeight: 600,
-    color: isDarkMode ? colours.dark.text : '#374151',
-    marginBottom: '8px',
+    color: isDarkMode ? colours.dark.text : '#1f2937',
+    marginBottom: '12px',
     textTransform: 'uppercase',
     letterSpacing: '0.025em',
-    borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-    paddingBottom: '6px',
+    borderBottom: `1px solid ${borderColour(isDarkMode)}`,
+    paddingBottom: '8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between'
@@ -217,13 +242,13 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
   if (!selectedInstruction) {
     return (
       <div style={{
-        padding: '40px 20px',
-        textAlign: 'center',
-        color: colours.greyText,
-        fontSize: '12px',
-        background: isDarkMode ? colours.dark.cardHover : '#f8fafc',
-        borderRadius: '8px',
-        border: `1px dashed ${isDarkMode ? colours.dark.border : '#d1d5db'}`
+          padding: '40px 20px',
+          textAlign: 'center',
+          color: mutedText(isDarkMode),
+          fontSize: '12px',
+          background: panelBackground(isDarkMode),
+          borderRadius: '12px',
+          border: `1px dashed ${borderColour(isDarkMode)}`
       }}>
         Select an instruction to manage matter operations
       </div>
@@ -266,19 +291,19 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <div>
               <div style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: 9, color: colours.greyText, marginBottom: 2 }}>CLIENT NAME</div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIENT NAME</div>
                 <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                   {clientData.name || 'Unknown'}
                 </div>
               </div>
               <div style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: 9, color: colours.greyText, marginBottom: 2 }}>EMAIL</div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>EMAIL</div>
                 <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                   {clientData.email || 'Not provided'}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 9, color: colours.greyText, marginBottom: 2 }}>CLIENT TYPE</div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIENT TYPE</div>
                 <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                   {clientData.type || 'Individual'}
                 </div>
@@ -287,19 +312,19 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
             
             <div>
               <div style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: 9, color: colours.greyText, marginBottom: 2 }}>CLIO CLIENT ID</div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIO CLIENT ID</div>
                 <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                   {clientData.id}
                 </div>
               </div>
               <div style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: 9, color: colours.greyText, marginBottom: 2 }}>PHONE</div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>PHONE</div>
                 <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                   {clientData.phone || 'Not provided'}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 9, color: colours.greyText, marginBottom: 2 }}>MATTERS COUNT</div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>MATTERS COUNT</div>
                 <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                   {clientData.matters?.length || 0} matters
                 </div>
@@ -308,13 +333,13 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
           </div>
         ) : (
           <div style={{
-            padding: '12px',
+            padding: '16px',
             textAlign: 'center',
-            color: colours.greyText,
-            fontSize: '10px',
-            background: isDarkMode ? colours.dark.background : '#f8fafc',
-            borderRadius: '4px',
-            border: `1px dashed ${isDarkMode ? colours.dark.border : '#d1d5db'}`
+            color: mutedText(isDarkMode),
+            fontSize: '11px',
+            background: panelBackground(isDarkMode),
+            borderRadius: '12px',
+            border: `1px dashed ${borderColour(isDarkMode)}`
           }}>
             No client linked to this instruction
           </div>
@@ -323,7 +348,7 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
         {/* Client Matters List */}
         {clientData.matters && clientData.matters.length > 0 && (
           <div style={{ marginTop: '8px' }}>
-            <div style={{ fontSize: 9, color: colours.greyText, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>
+            <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>
               Existing Matters ({clientData.matters.length})
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '80px', overflowY: 'auto' }}>
@@ -332,21 +357,22 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '4px 6px',
-                  background: isDarkMode ? colours.dark.background : '#ffffff',
-                  borderRadius: 3,
-                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                  fontSize: 9
+                  padding: '6px 8px',
+                  background: cardBackground(isDarkMode),
+                  borderRadius: 8,
+                  border: `1px solid ${borderColour(isDarkMode)}`,
+                  fontSize: 9,
+                  boxShadow: elevatedShadow(isDarkMode)
                 }}>
                   <div>
                     <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#111827' }}>
                       {matter.display_number || `Matter ${matter.id}`}
                     </div>
-                    <div style={{ color: colours.greyText, fontSize: 8 }}>
+                    <div style={{ color: mutedText(isDarkMode), fontSize: 8 }}>
                       {matter.description || 'No description'}
                     </div>
                   </div>
-                  <div style={{ fontSize: 8, color: colours.greyText }}>
+                  <div style={{ fontSize: 8, color: mutedText(isDarkMode) }}>
                     ID: {matter.id}
                   </div>
                 </div>
@@ -376,19 +402,19 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
             <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: 10, color: colours.greyText, marginBottom: 2 }}>MATTER ID</div>
+              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>MATTER ID</div>
               <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                 {matterData.matterId || 'Not assigned'}
               </div>
             </div>
             <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: 10, color: colours.greyText, marginBottom: 2 }}>DISPLAY NUMBER</div>
+              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>DISPLAY NUMBER</div>
               <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                 {matterData.displayNumber || 'Will be auto-generated'}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 10, color: colours.greyText, marginBottom: 2 }}>PRACTICE AREA</div>
+              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>PRACTICE AREA</div>
               <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                 {matterData.practiceArea || selectedInstruction.AreaOfWork || 'General Legal Services'}
               </div>
@@ -397,19 +423,19 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
           
           <div>
             <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: 10, color: colours.greyText, marginBottom: 2 }}>OPEN DATE</div>
+              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>OPEN DATE</div>
               <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                 {matterData.openDate ? new Date(matterData.openDate).toLocaleDateString() : 'Not opened'}
               </div>
             </div>
             <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: 10, color: colours.greyText, marginBottom: 2 }}>RESPONSIBLE SOLICITOR</div>
+              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>RESPONSIBLE SOLICITOR</div>
               <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
                 {matterData.responsibleSolicitor || selectedInstruction.ResponsibleSolicitor || 'Unassigned'}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 10, color: colours.greyText, marginBottom: 2 }}>STATUS</div>
+              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>STATUS</div>
               <div style={{ 
                 fontSize: 11, 
                 fontWeight: 500, 
@@ -432,13 +458,14 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
           {/* Primary Actions */}
           {!matterData.matterId ? (
             <div style={{
-              padding: '8px',
-              color: colours.greyText,
+              padding: '16px',
+              color: mutedText(isDarkMode),
               fontSize: 11,
               fontStyle: 'italic',
-              background: isDarkMode ? colours.dark.background : '#f8fafc',
-              borderRadius: 4,
-              border: `1px dashed ${isDarkMode ? colours.dark.border : '#d1d5db'}`
+              background: panelBackground(isDarkMode),
+              borderRadius: 12,
+              border: `1px dashed ${borderColour(isDarkMode)}`,
+              boxShadow: elevatedShadow(isDarkMode)
             }}>
               Use the Matter Opening workflow to create and configure the matter.
             </div>

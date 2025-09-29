@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { DefaultButton, PrimaryButton, type IButtonStyles } from '@fluentui/react';
+import {
+  DefaultButton,
+  PrimaryButton,
+  Spinner,
+  SpinnerSize,
+  FontIcon,
+  type IButtonStyles,
+} from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
@@ -97,12 +104,19 @@ const DARK_BACKGROUND_COLOUR = colours.dark.background;
 const LIGHT_SURFACE_COLOUR = colours.light.sectionBackground;
 const DARK_SURFACE_COLOUR = colours.dark.sectionBackground;
 
-const STATUS_BADGE_COLOURS: Record<DatasetStatusValue, { lightBg: string; darkBg: string; dot: string; label: string }> = {
+const STATUS_BADGE_COLOURS: Record<DatasetStatusValue, {
+  lightBg: string;
+  darkBg: string;
+  dot: string;
+  label: string;
+  icon?: string;
+}> = {
   ready: {
     lightBg: 'rgba(34, 197, 94, 0.16)',
     darkBg: 'rgba(34, 197, 94, 0.28)',
     dot: '#22c55e',
     label: 'Ready',
+    icon: 'CheckMark',
   },
   loading: {
     lightBg: 'rgba(59, 130, 246, 0.18)',
@@ -115,12 +129,14 @@ const STATUS_BADGE_COLOURS: Record<DatasetStatusValue, { lightBg: string; darkBg
     darkBg: 'rgba(248, 113, 113, 0.32)',
     dot: '#f87171',
     label: 'Error',
+    icon: 'WarningSolid',
   },
   idle: {
     lightBg: 'rgba(148, 163, 184, 0.16)',
     darkBg: 'rgba(148, 163, 184, 0.28)',
     dot: 'rgba(148, 163, 184, 0.7)',
     label: 'Not loaded',
+    icon: 'Clock',
   },
 };
 
@@ -255,6 +271,71 @@ const statusDotStyle = (colour: string): CSSProperties => ({
   background: colour,
 });
 
+const statusIconStyle = (isDarkMode: boolean): CSSProperties => ({
+  fontSize: 12,
+  color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+});
+
+const refreshProgressPanelStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: '14px 16px',
+  borderRadius: 12,
+  background: isDarkMode
+    ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.94) 100%)'
+    : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+  border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.28)' : 'rgba(59, 130, 246, 0.18)'}`,
+  boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
+});
+
+const refreshProgressHeaderStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  fontSize: 14,
+  fontWeight: 600,
+  color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+});
+
+const refreshProgressDetailStyle = (isDarkMode: boolean): CSSProperties => ({
+  fontSize: 12,
+  color: isDarkMode ? 'rgba(226, 232, 240, 0.82)' : 'rgba(15, 23, 42, 0.72)',
+  lineHeight: 1.5,
+});
+
+const refreshProgressDatasetListStyle = (): CSSProperties => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+});
+
+const refreshProgressDatasetRowStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '6px 10px',
+  borderRadius: 10,
+  background: isDarkMode ? 'rgba(30, 41, 59, 0.65)' : 'rgba(241, 245, 249, 0.85)',
+  border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.28)' : 'rgba(148, 163, 184, 0.28)'}`,
+  gap: 10,
+});
+
+const refreshProgressDatasetLabelStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  fontSize: 12,
+  fontWeight: 600,
+  color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+});
+
+const refreshProgressDatasetStatusStyle = (isDarkMode: boolean): CSSProperties => ({
+  fontSize: 11,
+  fontWeight: 600,
+  color: isDarkMode ? 'rgba(226, 232, 240, 0.74)' : 'rgba(15, 23, 42, 0.64)',
+});
+
 const sectionTitleStyle: CSSProperties = {
   margin: 0,
   fontSize: 16,
@@ -379,6 +460,49 @@ const formatTimestamp = (timestamp: number): string => (
   new Date(timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 );
 
+// Convert Clio current week data to WIP format for Management Dashboard
+function convertClioToWipFormat(clioData: any, teamData: any[], currentUserData: any[]): WIP[] {
+  if (!clioData || !currentUserData?.[0]) return [];
+  
+  const wipEntries: WIP[] = [];
+  const currentWeek = clioData.current_week;
+  const currentUser = currentUserData[0];
+  const currentUserClioId = currentUser['Clio ID'] ? parseInt(currentUser['Clio ID'], 10) : null;
+  
+  if (!currentUserClioId || !currentWeek?.daily_data) return [];
+  
+  // Iterate through each day in current week
+  Object.entries(currentWeek.daily_data).forEach(([date, dayData]: [string, any]) => {
+    if (dayData && typeof dayData === 'object' && dayData.total_hours > 0) {
+      // Create a WIP entry for this day and the current user
+      wipEntries.push({
+        created_at: `${date}T00:00:00`, // Use the date from Clio
+        total: dayData.total_amount || 0,
+        quantity_in_hours: dayData.total_hours || 0,
+        user_id: currentUserClioId,
+      });
+    }
+  });
+  
+  return wipEntries;
+}
+
+const formatDurationMs = (ms: number): string => {
+  if (ms <= 0) return '0s';
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `${seconds}s`;
+  return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+};
+
+const REFRESH_PHASES: Array<{ thresholdMs: number; label: string }> = [
+  { thresholdMs: 15000, label: 'Connecting to reporting data sources…' },
+  { thresholdMs: 45000, label: 'Pulling the latest matters and enquiries…' },
+  { thresholdMs: 90000, label: 'Crunching reporting metrics…' },
+  { thresholdMs: Number.POSITIVE_INFINITY, label: 'Finalising dashboard views…' },
+];
+
 interface ReportingHomeProps {
   userData?: UserData[] | null;
   teamData?: TeamData[] | null;
@@ -421,6 +545,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hasBootstrapped, setHasBootstrapped] = useState<boolean>(() => Boolean(cachedTimestamp || propUserData || propTeamData));
+  const [refreshStartedAt, setRefreshStartedAt] = useState<number | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -450,8 +575,9 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   }, [activeView, handleBackToOverview, isDarkMode, setContent]);
 
   const refreshDatasets = useCallback(async () => {
-    setIsFetching(true);
+  setIsFetching(true);
     setError(null);
+  setRefreshStartedAt(Date.now());
 
     setDatasetStatus((prev) => {
       const next: DatasetStatus = { ...prev };
@@ -463,24 +589,60 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     });
 
     try {
-      const params = new URLSearchParams();
-      params.set('datasets', MANAGEMENT_DATASET_KEYS.join(','));
-      const response = await fetch(`${REPORTING_ENDPOINT}?${params.toString()}`, {
+      const url = new URL(REPORTING_ENDPOINT, window.location.origin);
+      // Include current week Clio data in addition to standard datasets
+      const allDatasets = [...MANAGEMENT_DATASET_KEYS, 'wipClioCurrentWeek'];
+      url.searchParams.set('datasets', allDatasets.join(','));
+      
+      // Pass current user's Entra ID for Clio data fetching
+      const currentUserData = datasetData.userData || propUserData;
+      const entraId = currentUserData?.[0]?.EntraID;
+      if (entraId) {
+        url.searchParams.set('entraId', entraId);
+      }
+      
+      // Force a fresh fetch when user clicks Refresh
+      url.searchParams.set('bypassCache', 'true');
+
+      const response = await fetch(url.toString(), {
         method: 'GET',
         credentials: 'include',
+        headers: { Accept: 'application/json' },
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch datasets: ${response.status}`);
+        const text = await response.text().catch(() => '');
+        throw new Error(`Failed to fetch datasets: ${response.status} ${response.statusText}${text ? ` – ${text.slice(0, 160)}` : ''}`);
       }
 
-      const payload = (await response.json()) as Partial<DatasetMap> & { errors?: Record<string, string> };
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.toLowerCase().includes('application/json')) {
+        const body = await response.text().catch(() => '');
+        throw new Error(`Unexpected response (not JSON). Content-Type: ${contentType || 'unknown'} – ${body.slice(0, 160)}`);
+      }
+
+      const payload = (await response.json()) as Partial<DatasetMap> & { 
+        errors?: Record<string, string>;
+        wipClioCurrentWeek?: any;
+        wipCurrentAndLastWeek?: any;
+      };
+
+      // Merge current week Clio data with historical WIP data
+      let mergedWip = payload.wip ?? cachedData.wip;
+      // Use ONLY wipClioCurrentWeek (team-wide array), not wipCurrentAndLastWeek (old single-user object)
+      const clioCurrentWeek = payload.wipClioCurrentWeek;
+      
+      if (clioCurrentWeek && mergedWip && Array.isArray(mergedWip) && Array.isArray(clioCurrentWeek)) {
+        // Server now returns team-wide WIP data directly, no conversion needed
+        mergedWip = [...mergedWip, ...clioCurrentWeek];
+      }
+
       const nextData: DatasetMap = {
         userData: payload.userData ?? cachedData.userData,
         teamData: payload.teamData ?? cachedData.teamData,
         enquiries: payload.enquiries ?? cachedData.enquiries,
         allMatters: payload.allMatters ?? cachedData.allMatters,
-        wip: payload.wip ?? cachedData.wip,
+        wip: mergedWip,
         recoveredFees: payload.recoveredFees ?? cachedData.recoveredFees,
         poidData: payload.poidData ?? cachedData.poidData,
       };
@@ -517,6 +679,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       });
     } finally {
       setIsFetching(false);
+      setRefreshStartedAt(null);
     }
   }, []);
 
@@ -559,7 +722,11 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       const value = datasetData[dataset.key];
       const meta = datasetStatus[dataset.key];
       const hasValue = Array.isArray(value) ? value.length > 0 : Boolean(value);
-      const status: DatasetStatusValue = hasValue ? 'ready' : meta.status;
+      const status: DatasetStatusValue = meta.status === 'loading'
+        ? 'loading'
+        : hasValue
+          ? 'ready'
+          : meta.status;
       const count = Array.isArray(value) ? value.length : hasValue ? 1 : 0;
       return {
         definition: dataset,
@@ -569,6 +736,19 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       };
     })
   ), [datasetData, datasetStatus]);
+
+  const refreshElapsedMs = useMemo(
+    () => (refreshStartedAt ? currentTime.getTime() - refreshStartedAt : 0),
+    [currentTime, refreshStartedAt],
+  );
+
+  const refreshPhaseLabel = useMemo(() => {
+    if (!isFetching || !refreshStartedAt) {
+      return null;
+    }
+    const phase = REFRESH_PHASES.find((candidate) => refreshElapsedMs < candidate.thresholdMs);
+    return phase?.label ?? 'Finalising reporting data…';
+  }, [isFetching, refreshElapsedMs, refreshStartedAt]);
 
   const readyCount = datasetSummaries.filter((summary) => summary.status === 'ready').length;
   const formattedDate = currentTime.toLocaleDateString('en-GB', {
@@ -584,7 +764,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   });
 
   const heroSubtitle = isFetching
-    ? 'Refreshing'
+    ? (refreshPhaseLabel ?? 'Refreshing')
     : lastRefreshTimestamp
       ? `Updated ${formatRelativeTime(lastRefreshTimestamp)}`
       : 'Not refreshed yet';
@@ -670,6 +850,40 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
             </span>
           ))}
         </div>
+        {isFetching && (
+          <div style={refreshProgressPanelStyle(isDarkMode)}>
+            <div style={refreshProgressHeaderStyle(isDarkMode)}>
+              <Spinner size={SpinnerSize.small} />
+              <span>Refreshing reporting datasets…</span>
+            </div>
+            <span style={refreshProgressDetailStyle(isDarkMode)}>
+              {refreshStartedAt
+                ? `Elapsed ${formatDurationMs(refreshElapsedMs)}${refreshPhaseLabel ? ` • ${refreshPhaseLabel}` : ''}`
+                : 'Preparing data sources…'}
+            </span>
+            <div style={refreshProgressDatasetListStyle()}>
+              {datasetSummaries.map(({ definition, status }) => {
+                const palette = STATUS_BADGE_COLOURS[status];
+                const iconName = palette.icon;
+                return (
+                  <div key={definition.key} style={refreshProgressDatasetRowStyle(isDarkMode)}>
+                    <span style={refreshProgressDatasetLabelStyle(isDarkMode)}>
+                      {status === 'loading' ? (
+                        <Spinner size={SpinnerSize.xSmall} style={{ width: 16, height: 16 }} />
+                      ) : iconName ? (
+                        <FontIcon iconName={iconName} style={statusIconStyle(isDarkMode)} />
+                      ) : (
+                        <span style={statusDotStyle(palette.dot)} />
+                      )}
+                      {definition.name}
+                    </span>
+                    <span style={refreshProgressDatasetStatusStyle(isDarkMode)}>{palette.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {error && (
           <div style={{
             padding: '10px 14px',
@@ -725,7 +939,13 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
                   <span style={feedMetaStyle}>{details.join(' • ')}</span>
                 </div>
                 <span style={statusPillStyle(palette, isDarkMode)}>
-                  <span style={statusDotStyle(palette.dot)} />
+                  {status === 'loading' ? (
+                    <Spinner size={SpinnerSize.xSmall} style={{ width: 14, height: 14 }} />
+                  ) : palette.icon ? (
+                    <FontIcon iconName={palette.icon} style={statusIconStyle(isDarkMode)} />
+                  ) : (
+                    <span style={statusDotStyle(palette.dot)} />
+                  )}
                   {palette.label}
                 </span>
               </div>

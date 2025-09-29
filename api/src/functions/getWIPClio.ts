@@ -367,18 +367,19 @@ function structureResponse(
     // Populate daily data
     activities.forEach((activity) => {
         const { date, quantity_in_hours, total } = activity;
-        if (isDateInRange(date, lastWeekStart, lastWeekEnd)) {
-            if (!response.last_week.daily_data[date]) {
-                response.last_week.daily_data[date] = { total_hours: 0, total_amount: 0 };
+        const key = toDayKey(date); // Normalize to 'YYYY-MM-DD'
+        if (isDateInRange(key, lastWeekStart, lastWeekEnd)) {
+            if (!response.last_week.daily_data[key]) {
+                response.last_week.daily_data[key] = { total_hours: 0, total_amount: 0 };
             }
-            response.last_week.daily_data[date].total_hours += quantity_in_hours;
-            response.last_week.daily_data[date].total_amount += total;
-        } else if (isDateInRange(date, currentWeekStart, currentWeekEnd)) {
-            if (!response.current_week.daily_data[date]) {
-                response.current_week.daily_data[date] = { total_hours: 0, total_amount: 0 };
+            response.last_week.daily_data[key].total_hours += quantity_in_hours;
+            response.last_week.daily_data[key].total_amount += total;
+        } else if (isDateInRange(key, currentWeekStart, currentWeekEnd)) {
+            if (!response.current_week.daily_data[key]) {
+                response.current_week.daily_data[key] = { total_hours: 0, total_amount: 0 };
             }
-            response.current_week.daily_data[date].total_hours += quantity_in_hours;
-            response.current_week.daily_data[date].total_amount += total;
+            response.current_week.daily_data[key].total_hours += quantity_in_hours;
+            response.current_week.daily_data[key].total_amount += total;
         }
     });
 
@@ -449,8 +450,42 @@ function setEndOfDay(date: Date): void {
  * @returns A boolean indicating whether the date is within the range.
  */
 function isDateInRange(dateStr: string, startDate: Date, endDate: Date): boolean {
-    const date = new Date(dateStr);
+    // Parse as local date-only to avoid timezone skew (e.g., 'YYYY-MM-DD' treated as UTC)
+    const date = parseDateOnly(dateStr);
     return date >= startDate && date <= endDate;
+}
+
+/**
+ * Returns 'YYYY-MM-DD' for inputs like 'YYYY-MM-DD' or ISO strings; falls back to formatted date.
+ */
+function toDayKey(input: string): string {
+    const m = input.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    const d = new Date(input);
+    if (!isNaN(d.getTime())) return formatDateForClio(d);
+    return input;
+}
+
+/**
+ * Parse a date-only string ('YYYY-MM-DD' or ISO) into a local midnight Date.
+ */
+function parseDateOnly(s: string): Date {
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+        const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        setStartOfDay(d);
+        return d;
+    }
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+        // Normalize to start of the parsed day (local)
+        setStartOfDay(d);
+        return d;
+    }
+    // Fallback: now (won't match range but avoids NaN comparisons)
+    const now = new Date();
+    setStartOfDay(now);
+    return now;
 }
 
 /**
