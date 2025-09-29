@@ -627,6 +627,7 @@ let cachedRecovered: number | null = null;
 let cachedRecoveredError: string | null = null;
 let cachedPrevRecovered: number | null = null;
 let cachedPrevRecoveredError: string | null = null;
+let cachedMetricsUserKey: string | null = null;
 
 let cachedAllMatters: Matter[] | null = null; // Force refresh after database cleanup - cleared at 2025-09-21
 let cachedAllMattersError: string | null = null;
@@ -1024,8 +1025,22 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: prov
     }
   }, [userData]);
 
-  // Clear cached time/fee metrics when switching users
+  // Clear cached time/fee metrics only when the signed-in user actually changes
   useEffect(() => {
+    const rawEmail = (userData?.[0]?.Email || '').toLowerCase().trim();
+    const rawInitials = (userData?.[0]?.Initials || '').toUpperCase().trim();
+    const nextUserKey = rawEmail || rawInitials ? `${rawEmail}|${rawInitials}` : null;
+
+    if (!nextUserKey) {
+      cachedMetricsUserKey = null;
+      return;
+    }
+
+    if (cachedMetricsUserKey === nextUserKey) {
+      return;
+    }
+
+    cachedMetricsUserKey = nextUserKey;
     cachedWipClio = null;
     cachedWipClioError = null;
     cachedRecovered = null;

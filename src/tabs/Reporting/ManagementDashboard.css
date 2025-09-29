@@ -1,12 +1,21 @@
 .management-dashboard-container {
   min-height: 100vh;
-  padding: 24px;
+  padding: 12px 14px;
   font-family: 'Raleway', sans-serif;
-  color: #333;
-  background: #f5f7fa;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.management-dashboard-container.light-theme {
+  color: #061733;
+  background: #f0f2f5;
+}
+
+.management-dashboard-container.dark-theme {
+  color: #f3f4f6;
+  background: #0f172a;
 }
 
 .animate-dashboard {
@@ -37,25 +46,31 @@
 .filter-section {
   width: 100%;
   animation: slideInFromLeft 0.6s ease-out forwards;
+  gap: 8px;
+  display: flex;
+  flex-direction: column;
 }
 
 .date-filter-wrapper {
   display: flex;
   align-items: stretch;
-  gap: 20px;
+  gap: 8px;
   position: relative;
   z-index: 2;
+  flex-wrap: wrap;
 }
 
 .date-pickers {
   flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
 }
 
 .date-range-buttons {
   flex: 1;
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 6px;
   width: 100%;
 }
 
@@ -66,7 +81,6 @@
 .date-range-buttons .ms-Button {
   flex: 1 1 auto;
   min-width: 0;
-  border-radius: 0;
 }
 
 .date-range-buttons .ms-Button.unselected {
@@ -95,103 +109,153 @@
 
 .team-slicer-buttons {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 6px;
   position: relative;
-  overflow-x: auto;
-  white-space: nowrap;
-  padding-top: 20px;
-  margin-top: -15px;
+  padding-top: 4px;
+  margin-top: 0;
 }
 
-.team-slicer-buttons .ms-Button--primary {
-  transition: all 0.2s ease;
-  min-width: 0;
+.team-slicer-buttons .ms-Button {
+  min-width: 64px;
   padding: 0 8px;
-  flex: 1 1 auto;
-  border-radius: 0;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex: 0 0 auto;
 }
 
-.team-slicer-buttons .ms-Button--primary.unselected {
-  background: #e9ecef;
-  color: #333;
+.management-dashboard-container.light-theme .team-slicer-buttons .ms-Button {
+  background: transparent;
+  color: #0d2f60;
 }
 
-.team-slicer-buttons .ms-Button--primary.unselected:hover {
-  background: #dee2e6;
+.management-dashboard-container.light-theme .team-slicer-buttons .ms-Button:disabled {
+  opacity: 0.55;
+  color: #6b7280;
 }
 
-.team-slicer-buttons .ms-Button--primary.selected {
-  background: #3690ce;
-  color: #fff;
+.management-dashboard-container.dark-theme .team-slicer-buttons .ms-Button {
+  background: rgba(148, 163, 184, 0.16);
+  color: #e2e8f0;
 }
 
-.team-slicer-buttons .ms-Button--primary.selected:hover {
-  background: #3690ce;
+.management-dashboard-container.dark-theme .team-slicer-buttons .ms-Button:disabled {
+  opacity: 0.45;
 }
 
 /* Metrics Table Section */
 .metrics-table {
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
   overflow: hidden;
   width: 100%;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.management-dashboard-container.light-theme .metrics-table {
+  background: #ffffff;
+}
+
+.management-dashboard-container.dark-theme .metrics-table {
+  background: rgba(15, 23, 42, 0.88);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 .metrics-table-header {
   display: grid;
-  grid-template-columns: 100px repeat(9, 1fr);
-  background: var(--darkBlue);
-  color: #fff;
-  padding: 15px 20px;
-  font-size: 13px;
+  grid-template-columns: 160px repeat(5, 1fr);
+  padding: 10px 12px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.35px;
+}
+
+.management-dashboard-container.light-theme .metrics-table-header {
+  background: linear-gradient(135deg, #061733 0%, #0d2f60 100%);
+  color: #ffffff;
+}
+
+.management-dashboard-container.dark-theme .metrics-table-header {
+  background: rgba(6, 23, 51, 0.85);
+  color: #e2e8f0;
 }
 
 .metrics-table-row {
   display: grid;
-  grid-template-columns: 100px repeat(9, 1fr);
-  background: #ffffff;
-  padding: 15px 20px;
-  font-size: 14px;
-  color: #333;
-  transition: background 0.3s ease;
+  grid-template-columns: 160px repeat(5, 1fr);
+  padding: 10px 12px;
+  font-size: 13px;
+  transition: background 0.3s ease, color 0.3s ease;
   opacity: 0;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
 }
 
-.metrics-table-row:last-child {
+.management-dashboard-container.light-theme .metrics-table-row {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+}
+
+.management-dashboard-container.light-theme .metrics-table-row:hover {
+  background: rgba(237, 242, 247, 0.8);
+}
+
+.management-dashboard-container.dark-theme .metrics-table-row {
+  background: rgba(30, 41, 59, 0.75);
+  color: #e2e8f0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.9);
+}
+
+.management-dashboard-container.dark-theme .metrics-table-row:hover {
+  background: rgba(30, 41, 59, 0.85);
+}
+
+.management-dashboard-container.light-theme .metrics-table-row:last-child {
   border-bottom: none;
-  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
+  background: linear-gradient(135deg, #f8f9fa 0%, #edf1f7 100%);
   font-weight: 700;
-  color: #222;
+  color: #111827;
 }
 
-.metrics-table-row:hover {
-  background: #f8f9fa;
+.management-dashboard-container.dark-theme .metrics-table-row:last-child {
+  border-bottom: none;
+  background: rgba(15, 23, 42, 0.92);
+  font-weight: 700;
+  color: #ffffff;
 }
 
-.metrics-table-row:last-child:hover {
-  background: linear-gradient(135deg, #f1f3f5 0%, #eceff1 100%);
+.management-dashboard-container.light-theme .metrics-table-row:last-child:hover {
+  background: linear-gradient(135deg, #edf1f7 0%, #e4ebf5 100%);
+}
+
+.management-dashboard-container.dark-theme .metrics-table-row:last-child:hover {
+  background: rgba(15, 23, 42, 0.92);
 }
 
 .metrics-table-row span {
   display: flex;
   align-items: center;
-  padding: 5px 0;
+  padding: 2px 0;
 }
 
-.metrics-table-row span:first-child {
+
+.management-dashboard-container.light-theme .metrics-table-row span:first-child {
   font-weight: 600;
-  color: var(--highlight);
-  font-size: 15px;
+  color: #3690ce;
+  font-size: 14px;
 }
 
-.metrics-table-row:last-child span:first-child {
-  color: #222;
+.management-dashboard-container.dark-theme .metrics-table-row span:first-child {
+  font-weight: 600;
+  color: #87f3f3;
+  font-size: 14px;
+}
+
+.management-dashboard-container.light-theme .metrics-table-row:last-child span:first-child {
+  color: #111827;
+}
+
+.management-dashboard-container.dark-theme .metrics-table-row:last-child span:first-child {
+  color: #f8fafc;
 }
 
 .animate-table-row {

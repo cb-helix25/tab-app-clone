@@ -1,23 +1,19 @@
-import React, { useState, useEffect } from 'react';
-// invisible change
+import React, { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import {
   DatePicker,
+  DayOfWeek,
   DefaultButton,
-  PrimaryButton,
-  Stack,
+  IButtonStyles,
   IDatePickerStyles,
-  Modal,
-  DetailsList,
-  IColumn,
-  DetailsListLayoutMode,
-  IconButton,
+  PrimaryButton,
   Spinner,
+  Stack,
 } from '@fluentui/react';
-import { Enquiry, Matter, TeamData, UserData, POID } from '../../app/functionality/types';
-import MetricCard from './MetricCard';
+import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
+import type { Enquiry, Matter, POID, TeamData, UserData } from '../../app/functionality/types';
 import './ManagementDashboard.css';
-import { sectionClass } from './componentTokens';
 
 interface RecoveredFee {
   payment_date: string;
@@ -29,6 +25,7 @@ export interface WIP {
   created_at: string;
   total?: number;
   quantity_in_hours?: number;
+  user_id?: number;
 }
 
 interface ManagementDashboardProps {
@@ -44,911 +41,583 @@ interface ManagementDashboardProps {
   isFetching?: boolean;
 }
 
-interface TableRow {
-  initial: string;
-  wipHours: string;
-  wipPounds: string;
-  collected: string;
-  enquiries: number;
-  matters: number;
-  idSubmissions: number;
+type RangeKey = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'all';
+
+interface RangeOption {
+  key: RangeKey;
+  label: string;
 }
 
-const formatHours = (hours: number): string => {
-  const whole = Math.floor(hours);
-  const fraction = hours - whole;
-  const minutes = Math.round(fraction * 60);
-  return `${whole}h ${minutes}m`;
-};
+interface MemberMetrics {
+  initials: string;
+  displayName: string;
+  enquiries: number;
+  matters: number;
+  wipHours: number;
+  wipValue: number;
+  collected: number;
+}
 
-const formatCurrency = (amount: number): string => {
-  if (amount < 10000) {
-    return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  } else if (amount < 100000) {
-    return `£${(amount / 1000).toFixed(1)}k`;
-  } else {
-    return `£${(amount / 1000).toFixed(2)}k`;
-  }
-};
+const RANGE_OPTIONS: RangeOption[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: 'This Week' },
+  { key: 'month', label: 'This Month' },
+  { key: 'quarter', label: 'This Quarter' },
+  { key: 'year', label: 'This Year' },
+  { key: 'all', label: 'All Time' },
+];
 
-const normalizeName = (name: string): string => {
-  return name.replace(/[^a-zA-Z]/g, '').toLowerCase();
-};
+const getDatePickerStyles = (isDarkMode: boolean): Partial<IDatePickerStyles> => {
+  const baseBorder = isDarkMode ? 'rgba(148, 163, 184, 0.32)' : 'rgba(13, 47, 96, 0.2)';
+  const hoverBorder = isDarkMode ? 'rgba(135, 176, 255, 0.6)' : 'rgba(13, 47, 96, 0.32)';
+  const focusBorder = isDarkMode ? '#87f3f3' : colours.highlight;
+  const backgroundColour = isDarkMode ? 'rgba(15, 23, 42, 0.85)' : 'rgba(248, 250, 252, 0.95)';
 
-const debounce = (func: (...args: any[]) => void, wait: number) => {
-  let timeout: NodeJS.Timeout;
-  return (...args: any[]) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-};
-
-// Format timestamp: show only time if same day, otherwise full date-time
-const formatTimestamp = (timestamp: number): string => {
-  const now = new Date();
-  const refreshDate = new Date(timestamp);
-  const isSameDay =
-    now.getFullYear() === refreshDate.getFullYear() &&
-    now.getMonth() === refreshDate.getMonth() &&
-    now.getDate() === refreshDate.getDate();
-  return isSameDay
-    ? refreshDate.toLocaleTimeString('en-GB')
-    : refreshDate.toLocaleString('en-GB');
-};
-
-// Format countdown to next refresh (e.g., "4:32")
-const formatCountdown = (remainingMs: number): string => {
-  const totalSeconds = Math.floor(remainingMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-};
-
-const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
-  enquiries: propEnquiries,
-  allMatters: propAllMatters,
-  wip: propWip,
-  recoveredFees: propRecoveredFees,
-  teamData: propTeamData,
-  userData: propUserData,
-  poidData: propPoidData,
-  triggerRefresh,
-  lastRefreshTimestamp = Date.now(),
-  isFetching = false,
-}) => {
-  const enquiries = propEnquiries ?? null;
-  const allMatters = propAllMatters ?? null;
-  const wip = propWip ?? null;
-  const recoveredFees = propRecoveredFees ?? null;
-  const teamData = propTeamData ?? null;
-  const userData = propUserData ?? null;
-  const poidData = propPoidData ?? null;
-
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date('2025-03-01'));
-  const [endDate, setEndDate] = useState<Date | undefined>(new Date('2025-03-31'));
-  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
-  const [selectedDateRange, setSelectedDateRange] = useState<string | null>(null);
-  const [isDatePickerUsed, setIsDatePickerUsed] = useState<boolean>(false);
-  const [sortKey, setSortKey] = useState<keyof TableRow>('initial');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [modalTitle, setModalTitle] = useState<string>('');
-  const [modalData, setModalData] = useState<any[]>([]);
-  const [refreshBaseTime, setRefreshBaseTime] = useState<number>(Date.now()); // Base time for countdown
-  const [currentTime, setCurrentTime] = useState<number>(Date.now()); // Real-time clock
-
-  const allColumns = ['wipHours', 'wipPounds', 'collected', 'enquiries', 'matters', 'idSubmissions'] as const;
-  const columnLabels: { [key in typeof allColumns[number]]: string } = {
-    wipHours: 'WIP (h)',
-    wipPounds: 'WIP (£)',
-    collected: 'Collected',
-    enquiries: 'Enquiries',
-    matters: 'Matters',
-    idSubmissions: 'ID Submissions',
-  };
-  const [visibleColumns, setVisibleColumns] = useState<typeof allColumns[number][]>([...allColumns]);
-
-  // Auto-refresh every 5 minutes (300,000 ms) and update countdown
-  useEffect(() => {
-    if (!triggerRefresh) return;
-
-    const FIVE_MINUTES = 300000; // 5 minutes in ms
-    let intervalId: NodeJS.Timeout;
-
-    const startAutoRefresh = () => {
-      intervalId = setInterval(() => {
-        const elapsed = Date.now() - refreshBaseTime;
-        if (elapsed >= FIVE_MINUTES && !isFetching) {
-          triggerRefresh();
-          setRefreshBaseTime(Date.now()); // Reset base time after refresh
-        }
-        setCurrentTime(Date.now()); // Update current time for countdown
-      }, 1000); // Check every second
-    };
-
-    startAutoRefresh();
-
-    return () => clearInterval(intervalId);
-  }, [triggerRefresh, refreshBaseTime, isFetching]);
-
-  // Manual refresh handler
-  const handleManualRefresh = () => {
-    if (triggerRefresh) {
-      triggerRefresh();
-      setRefreshBaseTime(Date.now()); // Reset base time for next 5-minute cycle
-    }
-  };
-
-  // Calculate remaining time until next refresh
-  const nextRefreshCountdown = Math.max(300000 - (currentTime - refreshBaseTime), 0);
-
-  const solicitorTeamMembers = React.useMemo(() => {
-    return (
-      teamData?.filter(
-        (team) => team.Initials && team["Role"] !== 'Non-solicitor'
-      ) || []
-    );
-  }, [teamData]);
-
-  const filteredTeamMembers = React.useMemo(() => {
-    if (selectedTeams.length === 0 || selectedTeams.length === solicitorTeamMembers.length) {
-      return solicitorTeamMembers;
-    }
-    return solicitorTeamMembers.filter((team) => selectedTeams.includes(team.Initials!));
-  }, [solicitorTeamMembers, selectedTeams]);
-
-  const solicitorClioIDs = React.useMemo(
-    () => new Set(filteredTeamMembers.map((tm) => String(tm["Clio ID"] || ""))),
-    [filteredTeamMembers]
-  );
-
-  const solicitorEmails = React.useMemo(
-    () => new Set(filteredTeamMembers.map((tm) => tm.Email?.toLowerCase()).filter(Boolean)),
-    [filteredTeamMembers]
-  );
-
-  const solicitorNormalizedNames = React.useMemo(
-    () => filteredTeamMembers.map((tm) => normalizeName(tm["Full Name"] || "")),
-    [filteredTeamMembers]
-  );
-
-  const filteredWip = React.useMemo(() => {
-    return (
-      wip?.filter((w) => {
-        const createdAtDate = new Date(w.created_at);
-        const createdAtDateOnly = new Date(
-          createdAtDate.getFullYear(),
-          createdAtDate.getMonth(),
-          createdAtDate.getDate()
-        );
-        const startDateOnly = startDate
-          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-          : new Date();
-        const endDateOnly = endDate
-          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
-          : new Date();
-        return (
-          createdAtDateOnly >= startDateOnly &&
-          createdAtDateOnly <= endDateOnly &&
-          solicitorClioIDs.has(String((w as any).user?.id))
-        );
-      }) || []
-    );
-  }, [wip, startDate, endDate, solicitorClioIDs]);
-
-  const filteredRecoveredFees = React.useMemo(() => {
-    return (
-      recoveredFees?.filter((rf) => {
-        const paymentDate = new Date(rf.payment_date);
-        const paymentDateOnly = new Date(
-          paymentDate.getFullYear(),
-          paymentDate.getMonth(),
-          paymentDate.getDate()
-        );
-        const startDateOnly = startDate
-          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-          : new Date();
-        const endDateOnly = endDate
-          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
-          : new Date();
-        return (
-          paymentDateOnly >= startDateOnly &&
-          paymentDateOnly <= endDateOnly &&
-          solicitorClioIDs.has(String(rf.user_id))
-        );
-      }) || []
-    );
-  }, [recoveredFees, startDate, endDate, solicitorClioIDs]);
-
-  const filteredEnquiries = React.useMemo(() => {
-    return (
-      enquiries?.filter((e) => {
-        const touchpointDate = new Date(e.Touchpoint_Date as string);
-        const touchpointDateOnly = new Date(
-          touchpointDate.getFullYear(),
-          touchpointDate.getMonth(),
-          touchpointDate.getDate()
-        );
-        const startDateOnly = startDate
-          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-          : new Date();
-        const endDateOnly = endDate
-          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
-          : new Date();
-        return (
-          touchpointDateOnly >= startDateOnly &&
-          touchpointDateOnly <= endDateOnly &&
-          e.Point_of_Contact &&
-          solicitorEmails.has(e.Point_of_Contact.toLowerCase())
-        );
-      }) || []
-    );
-  }, [enquiries, startDate, endDate, solicitorEmails]);
-
-  const filteredMatters = React.useMemo(() => {
-    const mappings: { [key: string]: string } = {
-      "Samuel Packwood": "Sam Packwood",
-      "Bianca ODonnell": "Bianca O'Donnell",
-    };
-    return (
-      allMatters?.filter((m) => {
-        const openDate = new Date((m as any)["Open Date"]);
-        const openDateOnly = new Date(
-          openDate.getFullYear(),
-          openDate.getMonth(),
-          openDate.getDate()
-        );
-        const startDateOnly = startDate
-          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-          : new Date();
-        const endDateOnly = endDate
-          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
-          : new Date();
-        let solicitor = (m as any)["Originating Solicitor"] || "";
-        if (solicitor in mappings) solicitor = mappings[solicitor];
-        const normalizedSolicitor = normalizeName(solicitor);
-        return (
-          openDateOnly >= startDateOnly &&
-          openDateOnly <= endDateOnly &&
-          solicitorNormalizedNames.includes(normalizedSolicitor)
-        );
-      }) || []
-    );
-  }, [allMatters, startDate, endDate, solicitorNormalizedNames]);
-
-  const filteredPoidData = React.useMemo(() => {
-    return (
-      poidData?.filter((p) => {
-        const submissionDate = new Date(p.submission_date as string);
-        const submissionDateOnly = new Date(
-          submissionDate.getFullYear(),
-          submissionDate.getMonth(),
-          submissionDate.getDate()
-        );
-        const startDateOnly = startDate
-          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-          : new Date();
-        const endDateOnly = endDate
-          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
-          : new Date();
-        return submissionDateOnly >= startDateOnly && submissionDateOnly <= endDateOnly;
-      }) || []
-    );
-  }, [poidData, startDate, endDate]);
-
-  const getTeamWipHours = (clioId: string): number =>
-    filteredWip
-      .filter((w) => String((w as any).user?.id) === clioId)
-      .reduce((sum, w) => sum + (w.quantity_in_hours || 0), 0) || 0;
-
-  const getTeamWipPounds = (clioId: string): number =>
-    filteredWip
-      .filter((w) => String((w as any).user?.id) === clioId)
-      .reduce((sum, w) => sum + (w.total || 0), 0) || 0;
-
-  const getTeamCollected = (clioId: string): number =>
-    filteredRecoveredFees
-      .filter((rf) => String(rf.user_id) === clioId)
-      .reduce((sum, rf) => sum + rf.payment_allocated, 0) || 0;
-
-  const getTeamEnquiries = (email: string): number =>
-    filteredEnquiries.filter(
-      (e) => e.Point_of_Contact?.toLowerCase() === email.toLowerCase()
-    ).length || 0;
-
-  const getTeamMatters = (fullName: string): number => {
-    const mappings: { [key: string]: string } = {
-      "Samuel Packwood": "Sam Packwood",
-      "Bianca ODonnell": "Bianca O'Donnell",
-    };
-    return (
-      filteredMatters.filter((m) => {
-        let solicitor = (m as any)["Originating Solicitor"] || "";
-        if (solicitor in mappings) solicitor = mappings[solicitor];
-        return normalizeName(solicitor) === normalizeName(fullName);
-      }).length || 0
-    );
-  };
-
-  const totalWipHoursOverall = React.useMemo(() => {
-    return filteredWip.reduce((sum, w) => sum + (w.quantity_in_hours || 0), 0) || 0;
-  }, [filteredWip]);
-
-  const totalWipPoundsOverall = React.useMemo(() => {
-    return filteredWip.reduce((sum, w) => sum + (w.total || 0), 0) || 0;
-  }, [filteredWip]);
-
-  const totalCollectedOverall = React.useMemo(() => {
-    return filteredRecoveredFees.reduce((sum, rf) => sum + rf.payment_allocated, 0) || 0;
-  }, [filteredRecoveredFees]);
-
-  const totalEnquiriesOverall = React.useMemo(() => {
-    return filteredEnquiries.length || 0;
-  }, [filteredEnquiries]);
-
-  const totalMattersOverall = React.useMemo(() => {
-    return filteredMatters.length || 0;
-  }, [filteredMatters]);
-
-  const totalIdSubmissionsOverall = React.useMemo(() => {
-    return filteredPoidData.length || 0;
-  }, [filteredPoidData]);
-
-  const tableData = React.useMemo(() => {
-    return filteredTeamMembers
-      .map((team) => {
-        const clioId = String(team["Clio ID"] || "");
-        const email = team.Email || "";
-        const fullName = team["Full Name"] || "";
-
-        const wipHoursNum = getTeamWipHours(clioId);
-        const wipPoundsNum = getTeamWipPounds(clioId);
-        const collectedNum = getTeamCollected(clioId);
-        const enquiriesNum = getTeamEnquiries(email);
-        const mattersNum = getTeamMatters(fullName);
-
-        const hasData =
-          wipHoursNum !== 0 ||
-          wipPoundsNum !== 0 ||
-          collectedNum !== 0 ||
-          enquiriesNum !== 0 ||
-          mattersNum !== 0;
-
-        if (!hasData) return null;
-
-        return {
-          initial: team.Initials!,
-          wipHours: formatHours(wipHoursNum),
-          wipPounds: formatCurrency(wipPoundsNum),
-          collected: formatCurrency(collectedNum),
-          enquiries: enquiriesNum,
-          matters: mattersNum,
-          idSubmissions: totalIdSubmissionsOverall,
-        } as TableRow;
-      })
-      .filter((row): row is TableRow => row !== null);
-  }, [
-    filteredTeamMembers,
-    filteredWip,
-    filteredRecoveredFees,
-    filteredEnquiries,
-    filteredMatters,
-    totalIdSubmissionsOverall,
-  ]);
-
-  const totalRow: TableRow = {
-    initial: 'TOTAL',
-    wipHours: formatHours(totalWipHoursOverall),
-    wipPounds: formatCurrency(totalWipPoundsOverall),
-    collected: formatCurrency(totalCollectedOverall),
-    enquiries: totalEnquiriesOverall,
-    matters: totalMattersOverall,
-    idSubmissions: totalIdSubmissionsOverall,
-  };
-
-  const finalTableData = React.useMemo(() => [...tableData, totalRow], [tableData, totalRow]);
-
-  const sortedTableData = React.useMemo(() => {
-    const parseHours = (formatted: string): number => {
-      const match = formatted.match(/(\d+)h\s*(\d+)m/);
-      return match ? parseInt(match[1], 10) + parseInt(match[2], 10) / 60 : 0;
-    };
-    const parseCurrency = (formatted: string): number => {
-      let val = formatted.replace(/[^0-9.]/g, '');
-      return formatted.includes('k') ? parseFloat(val) * 1000 : parseFloat(val);
-    };
-
-    const dataWithoutTotal = finalTableData.filter((row) => row.initial !== 'TOTAL');
-    const total = finalTableData.find((row) => row.initial === 'TOTAL')!;
-    return [
-      ...dataWithoutTotal.sort((a, b) => {
-        let aVal: string | number, bVal: string | number;
-        switch (sortKey) {
-          case 'initial':
-            aVal = a.initial.toLowerCase();
-            bVal = b.initial.toLowerCase();
-            break;
-          case 'wipHours':
-            aVal = parseHours(a.wipHours);
-            bVal = parseHours(b.wipHours);
-            break;
-          case 'wipPounds':
-          case 'collected':
-            aVal = parseCurrency(a[sortKey]);
-            bVal = parseCurrency(b[sortKey]);
-            break;
-          case 'enquiries':
-          case 'matters':
-          case 'idSubmissions':
-            aVal = a[sortKey];
-            bVal = b[sortKey];
-            break;
-          default:
-            aVal = a.initial.toLowerCase();
-            bVal = b.initial.toLowerCase();
-            break;
-        }
-        return aVal < bVal ? (sortDirection === 'asc' ? -1 : 1) : aVal > bVal ? (sortDirection === 'asc' ? 1 : -1) : 0;
-      }),
-      total,
-    ];
-  }, [finalTableData, sortKey, sortDirection]);
-
-  const toggleColumn = (colKey: typeof allColumns[number]) => {
-    setVisibleColumns((prev) =>
-      prev.includes(colKey) ? prev.filter((item) => item !== colKey) : [...prev, colKey]
-    );
-  };
-
-  const onHeaderClick = (key: keyof TableRow) => {
-    if (sortKey === key) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDirection('asc');
-    }
-  };
-
-  const toggleTeamSelection = (initial: string) => {
-    setSelectedTeams((prev) => {
-      const activeInitials = solicitorTeamMembers.map((tm) => tm.Initials!);
-      if (initial === 'All') {
-        return prev.length === activeInitials.length ? [] : [...activeInitials];
-      }
-      return prev.includes(initial) ? prev.filter((i) => i !== initial) : [...prev, initial];
-    });
-  };
-
-  const setPredefinedRange = (
-    days: number | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'yearToDate'
-  ) => {
-    const today = new Date();
-    let newStartDate: Date;
-    let newEndDate: Date = today;
-    switch (days) {
-      case 'yesterday':
-        newStartDate = new Date(today);
-        newStartDate.setDate(today.getDate() - 1);
-        newEndDate = newStartDate;
-        break;
-      case 0:
-        newStartDate = new Date(today);
-        newEndDate = newStartDate;
-        break;
-      case 'thisWeek':
-        newStartDate = new Date(today);
-        newStartDate.setDate(today.getDate() - today.getDay());
-        newEndDate = new Date(today);
-        break;
-      case 'lastWeek':
-        newStartDate = new Date(today);
-        newStartDate.setDate(today.getDate() - today.getDay() - 7);
-        newEndDate = new Date(today);
-        newEndDate.setDate(today.getDate() - today.getDay() - 1);
-        break;
-      case 'thisMonth':
-        newStartDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        newEndDate = new Date(today);
-        break;
-      case 'lastMonth':
-        newStartDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        newEndDate = new Date(today.getFullYear(), today.getMonth(), 0);
-        break;
-      case 'yearToDate':
-        newStartDate = new Date(today.getFullYear(), 3, 1);
-        if (today.getMonth() < 3) newStartDate.setFullYear(today.getFullYear() - 1);
-        newEndDate = new Date(today);
-        break;
-      default:
-        newStartDate = new Date(today);
-        newStartDate.setDate(today.getDate() - (days as number));
-        newEndDate = new Date(today);
-        break;
-    }
-    setIsDatePickerUsed(false);
-    setStartDate(newStartDate);
-    setEndDate(newEndDate);
-    setSelectedDateRange(days.toString());
-  };
-
-  const handleDatePickerChange = (setter: (date: Date | undefined) => void) => {
-    const debouncedSetter = debounce((date: Date | null | undefined) => {
-      setIsDatePickerUsed(true);
-      setter(date || undefined);
-    }, 300);
-    return debouncedSetter;
-  };
-
-  useEffect(() => {
-    if (isDatePickerUsed) setSelectedDateRange(null);
-  }, [startDate, endDate, isDatePickerUsed]);
-
-  const openModalForMetric = (team: TeamData, colKey: typeof allColumns[number]) => {
-    if (team.Initials === 'TOTAL') return;
-    const clioId = String(team["Clio ID"] || "");
-    const email = team.Email || "";
-    const fullName = team["Full Name"] || "";
-    let records: any[] = [];
-    if (colKey === 'wipHours' || colKey === 'wipPounds') {
-      records = filteredWip.filter((w) => String((w as any).user?.id) === clioId);
-    } else if (colKey === 'collected') {
-      records = filteredRecoveredFees.filter((rf) => String(rf.user_id) === clioId);
-    } else if (colKey === 'enquiries') {
-      records = filteredEnquiries.filter(
-        (e) => e.Point_of_Contact?.toLowerCase() === email.toLowerCase()
-      );
-    } else if (colKey === 'matters') {
-      records = filteredMatters.filter((m) => {
-        let solicitor: string = (m as any)["Originating Solicitor"] || "";
-        const mappings: { [key: string]: string } = {
-          "Samuel Packwood": "Sam Packwood",
-          "Bianca ODonnell": "Bianca O'Donnell",
-        };
-        if (solicitor in mappings) solicitor = mappings[solicitor];
-        return normalizeName(solicitor) === normalizeName(fullName);
-      });
-    }
-    setModalTitle(`${columnLabels[colKey]} Details for ${team.Initials}`);
-    setModalData(records);
-    setModalVisible(true);
-  };
-
-  const getDetailsListColumns = (data: any[]): IColumn[] => {
-    if (data.length === 0) return [];
-    return Object.keys(data[0]).map((key) => ({
-      key,
-      name: key,
-      fieldName: key,
-      minWidth: 50,
-      maxWidth: 200,
-      isResizable: true,
-      onRender: (item: any) => {
-        const val = item[key];
-        return typeof val === 'object' ? JSON.stringify(val) : val;
-      },
-    }));
-  };
-
-  const datePickerStyles: Partial<IDatePickerStyles> = {
-    root: { marginRight: 16, width: 140 },
+  return {
+    root: { maxWidth: 210 },
     textField: {
-      width: '100%',
-      borderRadius: '0',
-      background: colours.light.inputBackground,
-      border: `1px solid ${colours.light.border}`,
-      selectors: {
-        '& .ms-TextField-fieldGroup': {
-          border: 'none',
-          background: 'transparent',
-          borderRadius: '0',
-          display: 'flex',
-          alignItems: 'center',
-          height: '32px',
-        },
-        '& .ms-TextField-field': {
-          fontSize: '14px',
-          color: colours.light.text,
-          padding: '0 12px',
-          height: '100%',
-          lineHeight: '32px',
-        },
-        '&:hover': { borderColor: colours.light.highlight },
-        '&:focus-within': {
-          borderColor: colours.light.highlight,
-          boxShadow: '0 0 4px rgba(54, 144, 206, 0.3)',
-        },
+      root: {
+        fontFamily: 'Raleway, sans-serif',
+      },
+      fieldGroup: {
+        height: 34,
+        borderRadius: 999,
+        border: `1px solid ${baseBorder}`,
+        background: backgroundColour,
+        padding: '0 12px',
+        boxShadow: 'none',
+        transition: 'background 0.2s ease, border-color 0.2s ease',
+      },
+      fieldGroupHovered: {
+        border: `1px solid ${hoverBorder}`,
+        background: isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(240, 244, 248, 0.95)',
+      },
+      fieldGroupFocused: {
+        border: `1px solid ${focusBorder}`,
+        background: isDarkMode ? 'rgba(15, 23, 42, 0.96)' : 'rgba(236, 244, 251, 0.96)',
+      },
+      field: {
+        fontSize: 13,
+        color: isDarkMode ? colours.dark.text : colours.light.text,
+        fontFamily: 'Raleway, sans-serif',
       },
     },
     icon: {
-      color: colours.light.iconColor,
-      fontSize: '16px',
-      right: '8px',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      height: 'auto',
+      color: isDarkMode ? colours.highlight : colours.missedBlue,
+    },
+    callout: {
+      fontSize: 13,
+      borderRadius: 10,
+      boxShadow: isDarkMode ? '0 6px 14px rgba(0, 0, 0, 0.32)' : '0 4px 12px rgba(15, 23, 42, 0.12)',
+    },
+    wrapper: { borderRadius: 10 },
+  };
+};
+
+const getRangeButtonStyles = (isDarkMode: boolean, active: boolean): IButtonStyles => {
+  const activeBackground = colours.highlight;
+  const inactiveBackground = isDarkMode ? 'rgba(148, 163, 184, 0.16)' : 'transparent';
+
+  return {
+    root: {
+      borderRadius: 999,
+      border: active
+        ? `1px solid ${isDarkMode ? 'rgba(135, 176, 255, 0.5)' : 'rgba(13, 47, 96, 0.32)'}`
+        : `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.28)' : 'rgba(13, 47, 96, 0.18)'}`,
+  padding: '0 12px',
+  minHeight: 30,
+      fontWeight: 600,
+      fontSize: 13,
+      color: active ? '#ffffff' : (isDarkMode ? '#E2E8F0' : colours.missedBlue),
+      background: active ? activeBackground : inactiveBackground,
+      boxShadow: 'none',
+      fontFamily: 'Raleway, sans-serif',
+    },
+    rootHovered: {
+      background: active ? '#2f7cb3' : (isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(54, 144, 206, 0.12)'),
+    },
+    rootPressed: {
+      background: active ? '#266795' : (isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(54, 144, 206, 0.16)'),
     },
   };
+};
 
-  const activeTeamInitials = React.useMemo(
-    () => solicitorTeamMembers.map((team) => team.Initials!),
-    [solicitorTeamMembers]
+const getTeamButtonStyles = (isDarkMode: boolean, active: boolean): IButtonStyles => {
+  const activeBackground = colours.highlight;
+  const inactiveBackground = isDarkMode ? 'rgba(15, 23, 42, 0.8)' : 'transparent';
+
+  return {
+    root: {
+      borderRadius: 999,
+      minHeight: 30,
+  padding: '0 8px',
+      fontWeight: 600,
+      fontSize: 12,
+      border: active
+        ? `1px solid ${isDarkMode ? 'rgba(135, 176, 255, 0.5)' : 'rgba(13, 47, 96, 0.28)'}`
+        : `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(13, 47, 96, 0.16)'}`,
+      background: active ? activeBackground : inactiveBackground,
+      color: active ? '#ffffff' : (isDarkMode ? '#E2E8F0' : colours.missedBlue),
+      boxShadow: 'none',
+      fontFamily: 'Raleway, sans-serif',
+    },
+    rootHovered: {
+      background: active ? '#2f7cb3' : (isDarkMode ? 'rgba(15, 23, 42, 0.86)' : 'rgba(54, 144, 206, 0.1)'),
+    },
+    rootPressed: {
+      background: active ? '#266795' : (isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(54, 144, 206, 0.14)'),
+    },
+  };
+};
+
+const summaryChipStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  padding: '8px 12px',
+  borderRadius: 8,
+  background: isDarkMode ? 'rgba(15, 23, 42, 0.72)' : '#ffffff',
+  border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.25)' : '#e2e8f0'}`,
+  boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)',
+  minWidth: 100,
+  rowGap: 4,
+});
+
+const computeRange = (range: RangeKey): { start: Date; end: Date } => {
+  const now = new Date();
+  const end = new Date(now);
+  const start = new Date(now);
+
+  switch (range) {
+    case 'today':
+      start.setHours(0, 0, 0, 0);
+      break;
+    case 'week': {
+      const day = now.getDay();
+      const diff = (day + 6) % 7; // Monday as start
+      start.setDate(now.getDate() - diff);
+      start.setHours(0, 0, 0, 0);
+      break;
+    }
+    case 'month':
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      break;
+    case 'quarter': {
+      const quarterStart = Math.floor(now.getMonth() / 3) * 3;
+      start.setMonth(quarterStart, 1);
+      start.setHours(0, 0, 0, 0);
+      break;
+    }
+    case 'year':
+      start.setMonth(0, 1);
+      start.setHours(0, 0, 0, 0);
+      break;
+    case 'all':
+    default:
+      return { start: new Date(0), end };
+  }
+
+  return { start, end };
+};
+
+const parseDateValue = (input: unknown): Date | null => {
+  if (typeof input !== 'string' || input.trim().length === 0) {
+    return null;
+  }
+  const trimmed = input.trim();
+  const normalised = trimmed.includes('/') && !trimmed.includes('T')
+    ? (() => {
+      const parts = trimmed.split('/');
+      if (parts.length !== 3) {
+        return trimmed;
+      }
+      const [day, month, year] = parts;
+      return `${year.length === 2 ? `20${year}` : year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    })()
+    : trimmed;
+  const candidate = new Date(normalised);
+  return Number.isNaN(candidate.getTime()) ? null : candidate;
+};
+
+const safeNumber = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+  }
+  return 0;
+};
+
+const formatDateForPicker = (date?: Date | null): string => {
+  if (!date) {
+    return '';
+  }
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const parseDatePickerInput = (value?: string | null): Date | null => (
+  value ? parseDateValue(value) : null
+);
+
+const matchesInitials = (value: unknown, initials: string): boolean => {
+  if (!initials || typeof value !== 'string') {
+    return false;
+  }
+  return value.toLowerCase().includes(initials.toLowerCase());
+};
+
+const displayName = (record?: TeamData | null): string => {
+  if (!record) {
+    return 'Unknown';
+  }
+  return (
+    record['Nickname']
+    || record['Full Name']
+    || record['First']
+    || record['Last']
+    || record['Initials']
+    || 'Unknown'
+  );
+};
+
+const formatHours = (hours: number): string => {
+  if (hours <= 0) {
+    return '0h';
+  }
+  const whole = Math.floor(hours);
+  const minutes = Math.round((hours - whole) * 60);
+  return minutes > 0 ? `${whole}h ${minutes}m` : `${whole}h`;
+};
+
+const formatCurrency = (amount: number): string => {
+  if (amount === 0) {
+    return '£0';
+  }
+  if (Math.abs(amount) < 1000) {
+    return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  }
+  if (Math.abs(amount) < 1000000) {
+    return `£${(amount / 1000).toFixed(1)}k`;
+  }
+  return `£${(amount / 1000000).toFixed(2)}m`;
+};
+
+const formatDateTag = (date: Date | null): string => {
+  if (!date) {
+    return 'n/a';
+  }
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+};
+
+const enquiriesHandledBy = (enquiry: Enquiry, initials: string): boolean => (
+  matchesInitials(enquiry.Point_of_Contact, initials)
+  || matchesInitials(enquiry.Call_Taker, initials)
+);
+
+const matterOwnedBy = (matter: Matter, initials: string): boolean => (
+  matchesInitials(matter.ResponsibleSolicitor, initials)
+  || matchesInitials(matter.OriginatingSolicitor, initials)
+);
+
+const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
+  enquiries: rawEnquiries,
+  allMatters: rawMatters,
+  wip: rawWip,
+  recoveredFees: rawFees,
+  teamData: rawTeam,
+  userData: rawUsers,
+  triggerRefresh,
+  lastRefreshTimestamp,
+  isFetching = false,
+}) => {
+  const { isDarkMode } = useTheme();
+  const [{ start: rangeStart, end: rangeEnd }, setRangeState] = useState(() => computeRange('month'));
+  const [rangeKey, setRangeKey] = useState<RangeKey>('month');
+  const [startDate, setStartDate] = useState<Date | undefined>(() => rangeStart);
+  const [endDate, setEndDate] = useState<Date | undefined>(() => rangeEnd);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+
+  useEffect(() => {
+    const next = computeRange(rangeKey);
+    setRangeState(next);
+    setStartDate(next.start);
+    setEndDate(next.end);
+  }, [rangeKey]);
+
+  const enquiries = rawEnquiries ?? [];
+  const matters = rawMatters ?? [];
+  const wip = rawWip ?? [];
+  const fees = rawFees ?? [];
+  const team = rawTeam ?? [];
+
+  const activeStart = startDate ?? rangeStart;
+  const activeEnd = endDate ?? rangeEnd;
+
+  const withinRange = (value: Date | null): boolean => {
+    if (!value) {
+      return false;
+    }
+    const endOfDay = new Date(activeEnd);
+    endOfDay.setHours(23, 59, 59, 999);
+    return value >= activeStart && value <= endOfDay;
+  };
+
+  const filteredEnquiries = useMemo(() => (
+    enquiries.filter((entry) => withinRange(parseDateValue(entry.Touchpoint_Date)))
+  ), [enquiries, activeStart, activeEnd]);
+
+  const filteredMatters = useMemo(() => (
+    matters.filter((entry) => withinRange(parseDateValue(entry.OpenDate ?? entry.CloseDate ?? '')))
+  ), [matters, activeStart, activeEnd]);
+
+  const filteredWip = useMemo(() => (
+    wip.filter((entry) => withinRange(parseDateValue(entry.created_at)))
+  ), [wip, activeStart, activeEnd]);
+
+  const filteredFees = useMemo(() => (
+    fees.filter((entry) => withinRange(parseDateValue(entry.payment_date)))
+  ), [fees, activeStart, activeEnd]);
+
+  const teamMembers = useMemo(() => (
+    team
+      .filter((member) => {
+        const statusValueRaw = typeof member.status === 'string'
+          ? member.status
+          : typeof (member as Record<string, unknown>)['Status'] === 'string'
+            ? String((member as Record<string, unknown>)['Status'])
+            : undefined;
+        const isActive = statusValueRaw ? statusValueRaw.toLowerCase() === 'active' : false;
+        return Boolean(member['Initials']) && isActive;
+      })
+      .map((member) => ({
+        initials: member['Initials'] ?? '',
+        record: member,
+        display: displayName(member),
+        clioId: member['Clio ID'] ? String(member['Clio ID']) : undefined,
+      }))
+      .sort((a, b) => a.display.localeCompare(b.display))
+  ), [team]);
+
+  const visibleMembers = selectedTeams.length > 0
+    ? teamMembers.filter((member) => selectedTeams.includes(member.initials))
+    : teamMembers;
+
+  const metricsByMember: MemberMetrics[] = useMemo(() => (
+    visibleMembers.map((member) => {
+      const enquiriesForMember = filteredEnquiries.filter((enquiry) => enquiriesHandledBy(enquiry, member.initials));
+      const mattersForMember = filteredMatters.filter((matterRecord) => matterOwnedBy(matterRecord, member.initials));
+      const wipForMember = filteredWip.filter((record) => {
+        const matchId = member.clioId && record.user_id !== undefined
+          ? String(record.user_id) === member.clioId
+          : false;
+        return matchId;
+      });
+      const feesForMember = filteredFees.filter((record) => (
+        member.clioId ? String(record.user_id ?? '') === member.clioId : false
+      ));
+      return {
+        initials: member.initials,
+        displayName: member.display,
+        enquiries: enquiriesForMember.length,
+        matters: mattersForMember.length,
+        wipHours: wipForMember.reduce((total, record) => total + safeNumber(record.quantity_in_hours), 0),
+        wipValue: wipForMember.reduce((total, record) => total + safeNumber(record.total), 0),
+        collected: feesForMember.reduce((total, record) => total + safeNumber(record.payment_allocated), 0),
+      } as MemberMetrics;
+    })
+  ), [visibleMembers, filteredEnquiries, filteredMatters, filteredWip, filteredFees]);
+
+  const totals = metricsByMember.reduce(
+    (acc, row) => ({
+      enquiries: acc.enquiries + row.enquiries,
+      matters: acc.matters + row.matters,
+      wipHours: acc.wipHours + row.wipHours,
+      wipValue: acc.wipValue + row.wipValue,
+      collected: acc.collected + row.collected,
+    }),
+    { enquiries: 0, matters: 0, wipHours: 0, wipValue: 0, collected: 0 },
   );
 
-  const hiddenColumns = allColumns.filter((col) => !visibleColumns.includes(col));
+  const summaryTotals = {
+    enquiries: filteredEnquiries.length,
+    matters: filteredMatters.length,
+    wipHours: filteredWip.reduce((total, record) => total + safeNumber(record.quantity_in_hours), 0),
+    wipValue: filteredWip.reduce((total, record) => total + safeNumber(record.total), 0),
+    collected: filteredFees.reduce((total, record) => total + safeNumber(record.payment_allocated), 0),
+  };
+
+  const handleRangeSelect = (key: RangeKey) => {
+    setRangeKey(key);
+  };
+
+  const toggleTeamSelection = (initials: string) => {
+    setSelectedTeams((prev) => (
+      prev.includes(initials)
+        ? prev.filter((item) => item !== initials)
+        : [...prev, initials]
+    ));
+  };
+
+  const dashboardThemeClass = isDarkMode ? 'dark-theme' : 'light-theme';
+  const allTeamsSelected = selectedTeams.length === 0 || selectedTeams.length === teamMembers.length;
+
+  const handleSelectAllTeams = () => {
+    if (allTeamsSelected) {
+      return;
+    }
+    setSelectedTeams([]);
+  };
 
   return (
-    <div className="management-dashboard-container animate-dashboard">
-      <div className={`filter-section ${sectionClass}`}>
+    <div className={`management-dashboard-container animate-dashboard ${dashboardThemeClass}`}>
+      <div className="filter-section">
         <div className="date-filter-wrapper">
           <div className="date-pickers">
-            <Stack horizontal tokens={{ childrenGap: 16 }}>
-              <DatePicker
-                value={startDate}
-                onSelectDate={handleDatePickerChange(setStartDate)}
-                styles={datePickerStyles}
-                formatDate={(date) => date?.toLocaleDateString('en-GB') || ''}
-                placeholder="Start Date"
-              />
-              <DatePicker
-                value={endDate}
-                onSelectDate={handleDatePickerChange(setEndDate)}
-                styles={datePickerStyles}
-                formatDate={(date) => date?.toLocaleDateString('en-GB') || ''}
-                placeholder="End Date"
-              />
-            </Stack>
+            <DatePicker
+              label="From"
+              styles={getDatePickerStyles(isDarkMode)}
+              value={startDate}
+              onSelectDate={(date) => setStartDate(date ?? undefined)}
+              allowTextInput
+              firstDayOfWeek={DayOfWeek.Monday}
+              formatDate={formatDateForPicker}
+              parseDateFromString={parseDatePickerInput}
+            />
+            <DatePicker
+              label="To"
+              styles={getDatePickerStyles(isDarkMode)}
+              value={endDate}
+              onSelectDate={(date) => setEndDate(date ?? undefined)}
+              allowTextInput
+              firstDayOfWeek={DayOfWeek.Monday}
+              formatDate={formatDateForPicker}
+              parseDateFromString={parseDatePickerInput}
+            />
           </div>
-          <div className="vertical-separator" />
           <div className="date-range-buttons">
-            <Stack horizontal tokens={{ childrenGap: 10 }}>
-              <DefaultButton
-                text="Yesterday"
-                onClick={() => setPredefinedRange('yesterday')}
-                className={selectedDateRange === 'yesterday' ? 'selected' : 'unselected'}
-              />
-              <DefaultButton
-                text="Today"
-                onClick={() => setPredefinedRange(0)}
-                className={selectedDateRange === '0' ? 'selected' : 'unselected'}
-              />
-              <DefaultButton
-                text="This Week"
-                onClick={() => setPredefinedRange('thisWeek')}
-                className={selectedDateRange === 'thisWeek' ? 'selected' : 'unselected'}
-              />
-              <DefaultButton
-                text="Last Week"
-                onClick={() => setPredefinedRange('lastWeek')}
-                className={selectedDateRange === 'lastWeek' ? 'selected' : 'unselected'}
-              />
-              <DefaultButton
-                text="This Month"
-                onClick={() => setPredefinedRange('thisMonth')}
-                className={selectedDateRange === 'thisMonth' ? 'selected' : 'unselected'}
-              />
-              <DefaultButton
-                text="Last Month"
-                onClick={() => setPredefinedRange('lastMonth')}
-                className={selectedDateRange === 'lastMonth' ? 'selected' : 'unselected'}
-              />
-              <DefaultButton
-                text="Last 90 Days"
-                onClick={() => setPredefinedRange(90)}
-                className={selectedDateRange === '90' ? 'selected' : 'unselected'}
-              />
-              <DefaultButton
-                text="Year to Date"
-                onClick={() => setPredefinedRange('yearToDate')}
-                className={selectedDateRange === 'yearToDate' ? 'selected' : 'unselected'}
-              />
-              <DefaultButton
-                text="Last 365 Days"
-                onClick={() => setPredefinedRange(365)}
-                className={selectedDateRange === '365' ? 'selected' : 'unselected'}
-              />
+            <Stack horizontal tokens={{ childrenGap: 6 }}>
+              {RANGE_OPTIONS.map(({ key, label }) => (
+                <DefaultButton
+                  key={key}
+                  text={label}
+                  onClick={() => handleRangeSelect(key)}
+                  styles={getRangeButtonStyles(isDarkMode, rangeKey === key)}
+                />
+              ))}
             </Stack>
           </div>
         </div>
         <div className="team-slicer-buttons">
-          <PrimaryButton
-            text="All"
-            onClick={() => toggleTeamSelection('All')}
-            className={selectedTeams.length === activeTeamInitials.length ? 'selected' : 'unselected'}
+          <DefaultButton
+            text="All team"
+            onClick={handleSelectAllTeams}
+            disabled={allTeamsSelected}
+            styles={getTeamButtonStyles(isDarkMode, allTeamsSelected)}
           />
-          {activeTeamInitials.map((initial) => (
-            <PrimaryButton
-              key={initial}
-              text={initial}
-              onClick={() => toggleTeamSelection(initial)}
-              className={selectedTeams.includes(initial) ? 'selected' : 'unselected'}
+          {teamMembers.map((member) => (
+            <DefaultButton
+              key={member.initials}
+              text={member.initials}
+              onClick={() => toggleTeamSelection(member.initials)}
+              styles={getTeamButtonStyles(isDarkMode, selectedTeams.includes(member.initials))}
             />
           ))}
-          <PrimaryButton
-            text="Refresh Now"
-            onClick={handleManualRefresh}
-            style={{ marginLeft: '10px' }}
-          />
         </div>
-        <div
-          style={{
-            marginTop: '10px',
-            textAlign: 'center',
-            fontSize: '14px',
-            color: colours.light.text,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '10px',
-          }}
-        >
-          <span>Last refreshed: {formatTimestamp(lastRefreshTimestamp)}</span>
-          <span>Next refresh in: {formatCountdown(nextRefreshCountdown)}</span>
-          {isFetching && (
-            <Spinner
-              size={1} // Small spinner
-              styles={{ root: { marginLeft: '10px' } }}
-            />
-          )}
+    </div>
+
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div style={summaryChipStyle(isDarkMode)}>
+          <span style={{ fontSize: 12, opacity: 0.65 }}>Enquiries</span>
+          <span style={{ fontSize: 20, fontWeight: 700 }}>{summaryTotals.enquiries.toLocaleString('en-GB')}</span>
+        </div>
+        <div style={summaryChipStyle(isDarkMode)}>
+          <span style={{ fontSize: 12, opacity: 0.65 }}>Matters</span>
+          <span style={{ fontSize: 20, fontWeight: 700 }}>{summaryTotals.matters.toLocaleString('en-GB')}</span>
+        </div>
+        <div style={summaryChipStyle(isDarkMode)}>
+          <span style={{ fontSize: 12, opacity: 0.65 }}>WIP Hours</span>
+          <span style={{ fontSize: 20, fontWeight: 700 }}>{formatHours(summaryTotals.wipHours)}</span>
+        </div>
+        <div style={summaryChipStyle(isDarkMode)}>
+          <span style={{ fontSize: 12, opacity: 0.65 }}>WIP (£)</span>
+          <span style={{ fontSize: 20, fontWeight: 700 }}>{formatCurrency(summaryTotals.wipValue)}</span>
+        </div>
+        <div style={summaryChipStyle(isDarkMode)}>
+          <span style={{ fontSize: 12, opacity: 0.65 }}>Collected</span>
+          <span style={{ fontSize: 20, fontWeight: 700 }}>{formatCurrency(summaryTotals.collected)}</span>
+        </div>
+        <div style={summaryChipStyle(isDarkMode)}>
+          <span style={{ fontSize: 12, opacity: 0.65 }}>Last Refresh</span>
+          <span style={{ fontSize: 20, fontWeight: 700 }}>
+            {lastRefreshTimestamp ? formatDateTag(new Date(lastRefreshTimestamp)) : 'Pending'}
+          </span>
         </div>
       </div>
 
-      <div
-        className="metrics-cards"
-        style={{
-          display: 'flex',
-          gap: '20px',
-          marginBottom: '20px',
-          marginTop: '20px',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          width: '100%',
-        }}
-      >
-        <MetricCard title="WIP (h)" value={formatHours(totalWipHoursOverall)} style={{ flex: '1', minWidth: '200px' }} />
-        <MetricCard title="WIP (£)" value={formatCurrency(totalWipPoundsOverall)} style={{ flex: '1', minWidth: '200px' }} />
-        <MetricCard
-          title="Collected"
-          value={formatCurrency(totalCollectedOverall)}
-          subtitle={`${startDate?.toLocaleDateString('en-GB')} - ${endDate?.toLocaleDateString('en-GB')}`}
-          style={{ flex: '1', minWidth: '200px' }}
-        />
-        <MetricCard title="Enquiries" value={totalEnquiriesOverall} style={{ flex: '1', minWidth: '200px' }} />
-        <MetricCard title="Matters" value={totalMattersOverall} style={{ flex: '1', minWidth: '200px' }} />
-        <MetricCard title="ID Submissions" value={totalIdSubmissionsOverall} style={{ flex: '1', minWidth: '200px' }} />
-      </div>
+      {isFetching && (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Spinner label="Refreshing data" />
+        </div>
+      )}
 
-      <div
-        className={`metrics-table-section ${sectionClass}`}
-        style={{
-          marginTop: '-8px',
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-        {hiddenColumns.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              gap: '8px',
-              padding: '8px',
-              background: colours.highlightBlue,
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderRadius: '0',
-              marginBottom: '16px',
-            }}
-          >
-            {hiddenColumns.map((col) => (
-              <div
-                key={col}
-                onClick={() => toggleColumn(col)}
-                style={{
-                  padding: '4px 8px',
-                  background: colours.highlightBlue,
-                  borderRadius: '0',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '1em',
-                  color: colours.light.text,
-                }}
-              >
-                {columnLabels[col]}
-              </div>
-            ))}
+      <div className="metrics-table">
+        <div className="metrics-table-header">
+          <span>Team</span>
+          <span>Enquiries</span>
+          <span>Matters</span>
+          <span>WIP (h)</span>
+          <span>WIP (£)</span>
+          <span>Collected</span>
+        </div>
+        {metricsByMember.length === 0 && (
+          <div className="metrics-table-row animate-table-row">
+            <span>No team members selected</span>
+            <span>0</span>
+            <span>0</span>
+            <span>0h</span>
+            <span>£0</span>
+            <span>£0</span>
           </div>
         )}
-
-        <div
-          className="metrics-card-header-row"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: colours.light.sectionBackground,
-            padding: '12px',
-            borderRadius: '0',
-            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
-          }}
-        >
-          <div
-            style={{ flex: '1', fontWeight: 'bold', fontSize: '1.2em', cursor: 'pointer' }}
-            onClick={() => onHeaderClick('initial')}
-          >
-            Person {sortKey === 'initial' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+        {metricsByMember.map((row, index) => (
+          <div key={row.initials} className="metrics-table-row animate-table-row" style={{ animationDelay: `${index * 0.05}s` }}>
+            <span>{row.displayName}</span>
+            <span>{row.enquiries.toLocaleString('en-GB')}</span>
+            <span>{row.matters.toLocaleString('en-GB')}</span>
+            <span>{formatHours(row.wipHours)}</span>
+            <span>{formatCurrency(row.wipValue)}</span>
+            <span>{formatCurrency(row.collected)}</span>
           </div>
-          {visibleColumns.map((colKey) => (
-            <div
-              key={colKey}
-              style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
-              onClick={() => onHeaderClick(colKey)}
-            >
-              <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
-                {columnLabels[colKey]} {sortKey === colKey ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="metrics-card-table" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {sortedTableData.map((row) => (
-            <div
-              key={row.initial}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '12px',
-                border: `1px solid ${colours.light.border}`,
-                borderRadius: '0',
-                cursor: row.initial === 'TOTAL' ? 'default' : 'pointer',
-              }}
-            >
-              <div style={{ flex: '1', fontWeight: 'bold', fontSize: '1.2em' }}>{row.initial}</div>
-              {allColumns.map(
-                (colKey) =>
-                  visibleColumns.includes(colKey) && (
-                    <div
-                      key={colKey}
-                      style={{ flex: '1', textAlign: 'center' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (row.initial === 'TOTAL') return;
-                        const team = filteredTeamMembers.find((tm) => tm.Initials === row.initial);
-                        if (team) openModalForMetric(team, colKey);
-                      }}
-                    >
-                      <div style={{ fontSize: '1.2em' }}>{row[colKey]}</div>
-                    </div>
-                  )
-              )}
-            </div>
-          ))}
+        ))}
+        <div className="metrics-table-row animate-table-row" style={{ animationDelay: `${metricsByMember.length * 0.05}s` }}>
+          <span>Total</span>
+          <span>{totals.enquiries.toLocaleString('en-GB')}</span>
+          <span>{totals.matters.toLocaleString('en-GB')}</span>
+          <span>{formatHours(totals.wipHours)}</span>
+          <span>{formatCurrency(totals.wipValue)}</span>
+          <span>{formatCurrency(totals.collected)}</span>
         </div>
       </div>
 
-      <Modal
-        isOpen={modalVisible}
-        onDismiss={() => setModalVisible(false)}
-        isBlocking={false}
-        containerClassName="modal-container"
-      >
-        <div style={{ padding: '20px', background: colours.light.sectionBackground }}>
-          <h2>{modalTitle}</h2>
-          <IconButton
-            iconProps={{ iconName: 'Cancel' }}
-            onClick={() => setModalVisible(false)}
-            styles={{ root: { float: 'right' } }}
+      {triggerRefresh && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <PrimaryButton
+            text={isFetching ? 'Refreshing…' : 'Refresh datasets'}
+            onClick={triggerRefresh}
+            disabled={isFetching}
+            styles={{
+              root: {
+                borderRadius: 10,
+                minWidth: 0,
+                padding: '0 14px',
+              },
+            }}
           />
-          {modalData.length > 0 ? (
-            <DetailsList
-              items={modalData}
-              columns={getDetailsListColumns(modalData)}
-              setKey="set"
-              layoutMode={DetailsListLayoutMode.fixedColumns}
-              isHeaderVisible={true}
-            />
-          ) : (
-            <p>No records found.</p>
-          )}
         </div>
-      </Modal>
+      )}
     </div>
   );
 };

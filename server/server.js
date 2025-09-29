@@ -27,7 +27,6 @@ const clioContactsRouter = require('./routes/clioContacts');
 const clioMattersRouter = require('./routes/clioMatters');
 const clioClientQueryRouter = require('./routes/clio-client-query');
 const getMattersRouter = require('./routes/getMatters');
-const getAllMattersRouter = require('./routes/getAllMatters');
 const riskAssessmentsRouter = require('./routes/riskAssessments');
 const bundleRouter = require('./routes/bundle');
 const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
@@ -99,7 +98,6 @@ app.use('/api/clio-contacts', clioContactsRouter);
 app.use('/api/clio-matters', clioMattersRouter);
 app.use('/api/clio-client-query', clioClientQueryRouter);
 app.use('/api/getMatters', getMattersRouter);
-app.use('/api/getAllMatters', getAllMattersRouter);
 // app.use('/api/ccl', cclRouter);
 // app.use('/ccls', express.static(CCL_DIR));
 

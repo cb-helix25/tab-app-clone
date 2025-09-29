@@ -1,119 +1,426 @@
-import React, { useState, useEffect } from 'react';
-// invisible change
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
+import { DefaultButton, PrimaryButton, type IButtonStyles } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
-import {
-  UserData,
-  TeamData,
-  Enquiry,
-  Matter,
-  POID,
-  Transaction,
-  OutstandingClientBalancesResponse,
-} from '../../app/functionality/types';
-import { WIP } from './ManagementDashboard';
-import * as microsoftTeams from '@microsoft/teams-js';
-import { isInTeams } from '../../app/functionality/isInTeams';
-import { sharedDecisionButtonStyles, sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
-import ReportCard from './ReportCard';
+import { useTheme } from '../../app/functionality/ThemeContext';
+import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
+import type { Enquiry, Matter, POID, TeamData, UserData } from '../../app/functionality/types';
+import ManagementDashboard, { WIP } from './ManagementDashboard';
 import HomePreview from './HomePreview';
-import ManagementDashboard from './ManagementDashboard';
-import MattersReport from './MattersReport';
-import { Icon } from '@fluentui/react';
-import './ReportingHome.css';
-import ReportingSectionCard from './components/ReportingSectionCard';
-import AnnualLeaveReport, { AnnualLeaveRecord } from './AnnualLeaveReport';
-import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 
-const API_BASE_URL = getProxyBaseUrl();
+interface RecoveredFee {
+  payment_date: string;
+  payment_allocated: number;
+  user_id: number;
+}
+
+interface DatasetMap {
+  userData: UserData[] | null;
+  teamData: TeamData[] | null;
+  enquiries: Enquiry[] | null;
+  allMatters: Matter[] | null;
+  wip: WIP[] | null;
+  recoveredFees: RecoveredFee[] | null;
+  poidData: POID[] | null;
+}
 
 const DATASETS = [
-  { key: 'userData', name: 'User Data', type: 'UserData[]', duration: 1000 },
-  { key: 'teamData', name: 'Team Data', type: 'TeamData[]', duration: 1000 },
-  { key: 'enquiries', name: 'Enquiries', type: 'Enquiry[]', duration: 3000 },
-  { key: 'allMatters', name: 'All Matters', type: 'Matter[]', duration: 2500 },
-  { key: 'poidData', name: 'POID 6 Years', type: 'POID[]', duration: 1500 },
-  { key: 'transactions', name: 'Transactions', type: 'Transaction[]', duration: 2000 },
-  { key: 'outstandingBalances', name: 'Outstanding Balances', type: 'OutstandingClientBalancesResponse', duration: 3000 },
-  { key: 'wip', name: 'WIP', type: 'WIP[]', duration: 2000 },
-  { key: 'recoveredFees', name: 'Recovered Fees', type: 'CollectedTimeData[]', duration: 2000 },
-  { key: 'annualLeave', name: 'Annual Leave', type: 'AnnualLeaveRecord[]', duration: 2000 }, // <-- ADD THIS
+  { key: 'userData', name: 'People' },
+  { key: 'teamData', name: 'Teams' },
+  { key: 'enquiries', name: 'Enquiries' },
+  { key: 'allMatters', name: 'Matters' },
+  { key: 'wip', name: 'WIP' },
+  { key: 'recoveredFees', name: 'Collected Fees' },
+  { key: 'poidData', name: 'ID Submissions' },
 ] as const;
 
-const TOTAL_FETCH_DURATION = 20000;
-const DATASET_FETCH_DURATION = 15000;
-const WRAPPING_UP_DURATION = TOTAL_FETCH_DURATION - DATASET_FETCH_DURATION;
+type DatasetDefinition = typeof DATASETS[number];
+type DatasetKey = DatasetDefinition['key'];
+type DatasetStatusValue = 'idle' | 'loading' | 'ready' | 'error';
 
-let cachedData: { [key: string]: any } = {
+interface DatasetMeta {
+  status: DatasetStatusValue;
+  updatedAt: number | null;
+}
+
+type DatasetStatus = Record<DatasetKey, DatasetMeta>;
+
+interface AvailableReport {
+  key: string;
+  name: string;
+  status: string;
+  action?: 'dashboard';
+}
+
+const AVAILABLE_REPORTS: AvailableReport[] = [
+  {
+    key: 'management',
+    name: 'Management dashboard',
+    status: 'Live today',
+    action: 'dashboard',
+  },
+  {
+    key: 'enquiries',
+    name: 'Enquiries activity report',
+    status: 'Enquiries tab',
+  },
+  {
+    key: 'annualLeave',
+    name: 'Annual leave report',
+    status: 'Annual Leave tab',
+  },
+  {
+    key: 'matters',
+    name: 'Matters snapshot',
+    status: 'Matters tab',
+  },
+];
+
+const MANAGEMENT_DATASET_KEYS = DATASETS.map((dataset) => dataset.key);
+const REPORTING_ENDPOINT = '/api/reporting/management-datasets';
+
+const EMPTY_DATASET: DatasetMap = {
   userData: null,
   teamData: null,
   enquiries: null,
   allMatters: null,
-  poidData: null,
-  transactions: null,
-  outstandingBalances: null,
   wip: null,
   recoveredFees: null,
-  annualLeave: null,
+  poidData: null,
 };
-let hasFetchedInitially = false;
+
+let cachedData: DatasetMap = { ...EMPTY_DATASET };
+let cachedTimestamp: number | null = null;
+
+const LIGHT_BACKGROUND_COLOUR = colours.light.background;
+const DARK_BACKGROUND_COLOUR = colours.dark.background;
+const LIGHT_SURFACE_COLOUR = colours.light.sectionBackground;
+const DARK_SURFACE_COLOUR = colours.dark.sectionBackground;
+
+const STATUS_BADGE_COLOURS: Record<DatasetStatusValue, { lightBg: string; darkBg: string; dot: string; label: string }> = {
+  ready: {
+    lightBg: 'rgba(34, 197, 94, 0.16)',
+    darkBg: 'rgba(34, 197, 94, 0.28)',
+    dot: '#22c55e',
+    label: 'Ready',
+  },
+  loading: {
+    lightBg: 'rgba(59, 130, 246, 0.18)',
+    darkBg: 'rgba(59, 130, 246, 0.32)',
+    dot: '#60a5fa',
+    label: 'Refreshing',
+  },
+  error: {
+    lightBg: 'rgba(248, 113, 113, 0.18)',
+    darkBg: 'rgba(248, 113, 113, 0.32)',
+    dot: '#f87171',
+    label: 'Error',
+  },
+  idle: {
+    lightBg: 'rgba(148, 163, 184, 0.16)',
+    darkBg: 'rgba(148, 163, 184, 0.28)',
+    dot: 'rgba(148, 163, 184, 0.7)',
+    label: 'Not loaded',
+  },
+};
+
+const surfaceShadow = (isDarkMode: boolean): string => (
+  isDarkMode ? '0 2px 10px rgba(0, 0, 0, 0.22)' : '0 2px 8px rgba(15, 23, 42, 0.06)'
+);
+
+const subtleStroke = (isDarkMode: boolean): string => (
+  isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(15, 23, 42, 0.06)'
+);
+
+const containerStyle = (isDarkMode: boolean): CSSProperties => ({
+  minHeight: '100vh',
+  width: '100%',
+  padding: '26px 30px 40px',
+  background: isDarkMode ? colours.dark.background : colours.light.background,
+  color: isDarkMode ? colours.dark.text : colours.light.text,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 18,
+  transition: 'background 0.3s ease, color 0.3s ease',
+  fontFamily: 'Raleway, sans-serif',
+});
+
+const sectionSurfaceStyle = (isDarkMode: boolean, overrides: CSSProperties = {}): CSSProperties => ({
+  background: isDarkMode ? 'rgba(15, 23, 42, 0.88)' : '#FFFFFF',
+  borderRadius: 12,
+  border: `1px solid ${subtleStroke(isDarkMode)}`,
+  boxShadow: surfaceShadow(isDarkMode),
+  padding: '20px 22px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  ...overrides,
+});
+
+const heroSurfaceStyle = (isDarkMode: boolean): CSSProperties => (
+  sectionSurfaceStyle(isDarkMode, { gap: 14, padding: '22px 24px' })
+);
+
+const reportsListStyle = (): CSSProperties => ({
+  listStyle: 'none',
+  margin: 0,
+  padding: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+});
+
+const reportRowStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  padding: '12px 14px',
+  borderRadius: 10,
+  border: `1px solid ${subtleStroke(isDarkMode)}`,
+  background: isDarkMode ? 'rgba(17, 24, 39, 0.72)' : 'rgba(255, 255, 255, 0.95)',
+});
+
+const reportRowHeaderStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'baseline',
+  justifyContent: 'space-between',
+  gap: 12,
+  color: isDarkMode ? colours.dark.text : colours.light.text,
+});
+
+const reportNameStyle: CSSProperties = {
+  fontSize: 15,
+  fontWeight: 600,
+};
+
+const reportStatusStyle = (isDarkMode: boolean): CSSProperties => ({
+  fontSize: 12,
+  fontWeight: 600,
+  color: isDarkMode ? colours.dark.subText : colours.highlight,
+});
+
+const dataFeedListStyle = (): CSSProperties => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+});
+
+const feedRowStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  borderRadius: 8,
+  padding: '8px 12px',
+  background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+  border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
+  gap: 12,
+});
+
+const feedLabelGroupStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+};
+
+const feedLabelStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+};
+
+const feedMetaStyle: CSSProperties = {
+  fontSize: 12,
+  opacity: 0.65,
+};
+
+const statusPillStyle = (
+  palette: { lightBg: string; darkBg: string; dot: string; label: string },
+  isDarkMode: boolean,
+): CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '4px 10px',
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 600,
+  background: isDarkMode ? palette.darkBg : palette.lightBg,
+  color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+  boxShadow: 'none',
+});
+
+const statusDotStyle = (colour: string): CSSProperties => ({
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  background: colour,
+});
+
+const sectionTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 16,
+  fontWeight: 600,
+  fontFamily: 'Raleway, sans-serif',
+};
+
+const heroMetaRowStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+  fontSize: 12,
+};
+
+const fullScreenWrapperStyle = (isDarkMode: boolean): CSSProperties => ({
+  minHeight: '100vh',
+  padding: '24px 28px',
+  background: isDarkMode ? DARK_BACKGROUND_COLOUR : LIGHT_BACKGROUND_COLOUR,
+  color: isDarkMode ? colours.dark.text : colours.light.text,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  transition: 'background 0.3s ease, color 0.3s ease',
+});
+
+const primaryButtonStyles = (isDarkMode: boolean): IButtonStyles => ({
+  root: {
+    borderRadius: 12,
+    padding: '0 20px',
+    height: 38,
+    background: colours.highlight,
+    color: '#ffffff',
+    fontWeight: 600,
+    boxShadow: 'none',
+    transition: 'background 0.2s ease',
+    fontFamily: 'Raleway, sans-serif',
+  },
+  rootHovered: {
+    background: '#2f7cb3',
+  },
+  rootPressed: {
+    background: '#266795',
+  },
+});
+
+const subtleButtonStyles = (isDarkMode: boolean): IButtonStyles => ({
+  root: {
+    borderRadius: 12,
+    padding: '0 18px',
+    height: 38,
+    background: isDarkMode ? 'rgba(148, 163, 184, 0.16)' : 'transparent',
+    color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+    border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.32)' : 'rgba(13, 47, 96, 0.22)'}`,
+    fontWeight: 600,
+    boxShadow: 'none',
+    transition: 'background 0.2s ease',
+    fontFamily: 'Raleway, sans-serif',
+  },
+  rootHovered: {
+    background: isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(54, 144, 206, 0.12)',
+  },
+  rootPressed: {
+    background: isDarkMode ? 'rgba(148, 163, 184, 0.32)' : 'rgba(54, 144, 206, 0.18)',
+  },
+});
+
+const dashboardNavigatorStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+});
+
+const dashboardNavigatorTitleStyle = (isDarkMode: boolean): CSSProperties => ({
+  fontSize: 14,
+  fontWeight: 600,
+  fontFamily: 'Raleway, sans-serif',
+  color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+});
+
+const dashboardNavigatorButtonStyles = (isDarkMode: boolean): IButtonStyles => ({
+  root: {
+    borderRadius: 999,
+    height: 32,
+    padding: '0 12px',
+    background: isDarkMode ? 'rgba(15, 23, 42, 0.7)' : 'rgba(248, 250, 252, 0.95)',
+    border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.32)' : 'rgba(13, 47, 96, 0.18)'}`,
+    color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+    fontWeight: 600,
+    fontFamily: 'Raleway, sans-serif',
+    boxShadow: 'none',
+  },
+  rootHovered: {
+    background: isDarkMode ? 'rgba(15, 23, 42, 0.78)' : 'rgba(236, 244, 251, 0.96)',
+  },
+  rootPressed: {
+    background: isDarkMode ? 'rgba(15, 23, 42, 0.85)' : 'rgba(222, 235, 249, 0.96)',
+  },
+  icon: {
+    color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+  },
+  label: {
+    fontSize: 12,
+  },
+});
+
+const formatRelativeTime = (timestamp: number): string => {
+  const diff = Date.now() - timestamp;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) {
+    const minutes = Math.round(diff / 60000);
+    return `${minutes} min${minutes > 1 ? 's' : ''} ago`;
+  }
+  if (diff < 86400000) {
+    const hours = Math.round(diff / 3600000);
+    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  }
+  return new Date(timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const formatTimestamp = (timestamp: number): string => (
+  new Date(timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+);
 
 interface ReportingHomeProps {
   userData?: UserData[] | null;
   teamData?: TeamData[] | null;
 }
 
-const GET_ANNUAL_LEAVE_ALL_PATH = process.env.REACT_APP_GET_ANNUAL_LEAVE_ALL_PATH;
-const GET_ANNUAL_LEAVE_ALL_CODE = process.env.REACT_APP_GET_ANNUAL_LEAVE_ALL_CODE;
-// Use new integrated server route instead of Azure Function
-const getAnnualLeaveUrl = `${API_BASE_URL}/api/attendance/annual-leave-all`;
-
-const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, teamData }) => {
-  const [selectedReport, setSelectedReport] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedDatasets, setSelectedDatasets] = useState<string[]>(DATASETS.map((d) => d.key));
-  const [fetchedUserData, setFetchedUserData] = useState<UserData[] | null>(cachedData.userData);
-  const [fetchedTeamData, setFetchedTeamData] = useState<TeamData[] | null>(cachedData.teamData);
-  const [enquiries, setEnquiries] = useState<Enquiry[] | null>(cachedData.enquiries);
-  const [allMatters, setAllMatters] = useState<Matter[] | null>(cachedData.allMatters);
-  const [poidData, setPoidData] = useState<POID[] | null>(cachedData.poidData);
-  const [transactions, setTransactions] = useState<Transaction[] | null>(cachedData.transactions);
-  const [outstandingBalances, setOutstandingBalances] = useState<OutstandingClientBalancesResponse | null>(cachedData.outstandingBalances);
-  const [wip, setWip] = useState<WIP[] | null | undefined>(cachedData.wip);
-  const [recoveredFees, setRecoveredFees] = useState<any>(cachedData.recoveredFees);
-  const [fetchStatus, setFetchStatus] = useState<{ [key: string]: 'idle' | 'fetching' | 'success' | 'error' }>(
-    Object.fromEntries(DATASETS.map(d => [d.key, 'idle']))
-  );
-  const [fetchProgress, setFetchProgress] = useState<{ [key: string]: number }>(
-    Object.fromEntries(DATASETS.map(d => [d.key, 0]))
-  );
-  const [isWrappingUp, setIsWrappingUp] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [entraId, setEntraId] = useState<string | null>(null);
-  const [previewDataset, setPreviewDataset] = useState<string | null>(null);
-  const [showSelectionModal, setShowSelectionModal] = useState(false);
-  const [isDataSectionOpen, setIsDataSectionOpen] = useState(true);
-  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState<number>(Date.now());
+/**
+ * Streamlined reporting landing page that centres on the Management Dashboard experience.
+ */
+const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, teamData: propTeamData }) => {
+  const { isDarkMode } = useTheme();
+  const { setContent } = useNavigatorActions();
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [activeView, setActiveView] = useState<'overview' | 'dashboard'>('overview');
+  const handleBackToOverview = useCallback(() => {
+    setActiveView('overview');
+  }, [setActiveView]);
+  const [datasetData, setDatasetData] = useState<DatasetMap>(() => ({
+    userData: propUserData ?? cachedData.userData,
+    teamData: propTeamData ?? cachedData.teamData,
+    enquiries: cachedData.enquiries,
+    allMatters: cachedData.allMatters,
+    wip: cachedData.wip,
+    recoveredFees: cachedData.recoveredFees,
+    poidData: cachedData.poidData,
+  }));
+  const [datasetStatus, setDatasetStatus] = useState<DatasetStatus>(() => {
+    const record: Partial<DatasetStatus> = {};
+    DATASETS.forEach((dataset) => {
+      const value = dataset.key === 'userData' && propUserData !== undefined
+        ? propUserData
+        : dataset.key === 'teamData' && propTeamData !== undefined
+          ? propTeamData
+          : cachedData[dataset.key];
+      const hasValue = Array.isArray(value) ? value.length > 0 : Boolean(value);
+      record[dataset.key] = { status: hasValue ? 'ready' : 'idle', updatedAt: cachedTimestamp };
+    });
+    return record as DatasetStatus;
+  });
+  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState<number | null>(cachedTimestamp);
   const [isFetching, setIsFetching] = useState<boolean>(false);
-  const [annualLeave, setAnnualLeave] = useState<AnnualLeaveRecord[] | null>(cachedData.annualLeave);
-
-
-  const decisionButtonRootStyles = sharedDecisionButtonStyles.root as React.CSSProperties;
-  const defaultButtonRootStyles = sharedDefaultButtonStyles.root as React.CSSProperties;
-
-  const datePickerStyles: Partial<any> = {
-    root: { marginRight: 8, width: '100%' },
-    textField: {
-      width: '100%',
-      height: '40px',
-      borderRadius: '0',
-      backgroundColor: colours.secondaryButtonBackground,
-      border: 'none',
-      padding: '6px 12px',
-      fontSize: '14px',
-      color: '#000000',
-      transition: 'background 0.3s ease, box-shadow 0.3s ease',
-    },
-  };
+  const [error, setError] = useState<string | null>(null);
+  const [hasBootstrapped, setHasBootstrapped] = useState<boolean>(() => Boolean(cachedTimestamp || propUserData || propTeamData));
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -121,677 +428,321 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   }, []);
 
   useEffect(() => {
-    const initializeTeams = async () => {
-      if (isInTeams()) {
-        try {
-          await microsoftTeams.app.initialize();
-          const context = await microsoftTeams.app.getContext();
-          const userObjectId = context.user?.id;
-          if (userObjectId) {
-            setEntraId(userObjectId);
-            console.log('Teams context EntraID:', userObjectId);
-          } else {
-            setError('Unable to retrieve user ID from Teams context.');
-          }
-        } catch (err) {
-          setError('Failed to initialize Teams context: ' + (err instanceof Error ? err.message : 'Unknown error'));
-          console.error('Teams initialization error:', err);
-        }
-      } else {
-        console.warn('Running outside Teams - skipping Teams initialization');
-      }
-    };
-    initializeTeams();
-  }, []);
-
-  useEffect(() => {
-    if (entraId && !hasFetchedInitially) {
-      const allCached = DATASETS.every((dataset) => cachedData[dataset.key] !== null);
-      if (!allCached) {
-        console.log('Initial fetch with EntraID:', entraId);
-        fetchReportDatasets(DATASETS.map((d) => d.key));
-      } else {
-        console.log('Using cached data');
-        hasFetchedInitially = true;
-      }
+    if (activeView === 'dashboard') {
+      setContent(
+        <div style={dashboardNavigatorStyle(isDarkMode)}>
+          <DefaultButton
+            text="Back to overview"
+            iconProps={{ iconName: 'Back' }}
+            onClick={handleBackToOverview}
+            styles={dashboardNavigatorButtonStyles(isDarkMode)}
+          />
+          <span style={dashboardNavigatorTitleStyle(isDarkMode)}>Management dashboard</span>
+        </div>,
+      );
+    } else {
+      setContent(null);
     }
-  }, [entraId]);
 
-  useEffect(() => {
-    setFetchedUserData(cachedData.userData);
-    setFetchedTeamData(cachedData.teamData);
-    setEnquiries(cachedData.enquiries);
-    setAllMatters(cachedData.allMatters);
-    setPoidData(cachedData.poidData);
-    setTransactions(cachedData.transactions);
-    setOutstandingBalances(cachedData.outstandingBalances);
-    setWip(cachedData.wip);
-    setRecoveredFees(cachedData.recoveredFees);
-  }, []);
+    return () => {
+      setContent(null);
+    };
+  }, [activeView, handleBackToOverview, isDarkMode, setContent]);
 
-
-  const fetchAnnualLeave = async () => {
-  try {
-    const response = await fetch(getAnnualLeaveUrl, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error(`Failed to fetch annual leave: ${response.status}`);
-    const data = await response.json();
-    // The response shape is { all_data: [...] }
-    cachedData.annualLeave = data.all_data ?? [];
-    setAnnualLeave(data.all_data ?? []);
-  } catch (error) {
-    console.error('Failed to fetch annual leave:', error);
-    setAnnualLeave([]);
-    cachedData.annualLeave = [];
-  }
-};
-
-
-
-  const fetchReportDatasets = async (datasets: string[]) => {
-    setShowSelectionModal(false);
+  const refreshDatasets = useCallback(async () => {
     setIsFetching(true);
-    datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'fetching' })));
-    datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
     setError(null);
-    setIsWrappingUp(false);
 
-    if (!entraId) {
-      setError("Missing Entra ID. Cannot fetch data without user context.");
-      datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'error' })));
-      console.log('No entraId available for fetch');
-      setTimeout(() => {
-        datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' })));
-        setIsFetching(false);
-      }, 2000);
-      return;
-    }
-
-    const simulateFetchProgress = async () => {
-      const completionPromises: Promise<void>[] = [];
-      const progressIntervals: NodeJS.Timeout[] = [];
-
-      datasets.forEach(datasetKey => {
-        const dataset = DATASETS.find(d => d.key === datasetKey);
-        if (!dataset) return;
-
-        const duration = dataset.duration;
-
-        const completionPromise = new Promise<void>(resolve => {
-          setTimeout(() => {
-            setFetchStatus(prev => ({ ...prev, [datasetKey]: 'success' }));
-            setFetchProgress(prev => ({ ...prev, [datasetKey]: 100 }));
-            resolve();
-          }, duration);
-        });
-        completionPromises.push(completionPromise);
-
-        const interval = setInterval(() => {
-          setFetchProgress(prev => {
-            const currentProgress = prev[datasetKey];
-            if (currentProgress >= 100) {
-              clearInterval(interval);
-              return prev;
-            }
-            const increase = Math.random() * 15 + 1;
-            const newProgress = Math.min(currentProgress + increase, 99);
-            return { ...prev, [datasetKey]: newProgress };
-          });
-        }, 200);
-        progressIntervals.push(interval);
+    setDatasetStatus((prev) => {
+      const next: DatasetStatus = { ...prev };
+      MANAGEMENT_DATASET_KEYS.forEach((key) => {
+        const previousMeta = prev[key];
+        next[key] = { status: 'loading', updatedAt: previousMeta?.updatedAt ?? null };
       });
-
-      await Promise.all(completionPromises);
-      progressIntervals.forEach(interval => clearInterval(interval));
-      setIsWrappingUp(true);
-
-      const elapsed = Date.now() - startTime;
-      const remainingDatasetTime = DATASET_FETCH_DURATION - elapsed;
-      if (remainingDatasetTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, remainingDatasetTime));
-      }
-    };
-
-    const startTime = Date.now();
-    const progressPromise = simulateFetchProgress();
+      return next;
+    });
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/${process.env.REACT_APP_GENERATE_REPORT_DATASET_PATH}?code=${process.env.REACT_APP_GENERATE_REPORT_DATASET_CODE}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ datasets, entraId }),
-        }
-      );
-
-      if (!response.ok) throw new Error(`Failed to fetch datasets: ${response.status}`);
-
-      const data = await response.json();
-
-      if (datasets.includes('userData') && data.userData) {
-        cachedData.userData = data.userData;
-        setFetchedUserData(cachedData.userData);
-      }
-      if (datasets.includes('teamData') && data.teamData) {
-        cachedData.teamData = data.teamData;
-        setFetchedTeamData(cachedData.teamData);
-      }
-      if (datasets.includes('enquiries') && data.enquiries) {
-        cachedData.enquiries = data.enquiries;
-        setEnquiries(cachedData.enquiries);
-      }
-      if (datasets.includes('allMatters') && data.allMatters) {
-        cachedData.allMatters = data.allMatters;
-        setAllMatters(cachedData.allMatters);
-      }
-      if (datasets.includes('poidData') && data.poidData) {
-        cachedData.poidData = data.poidData;
-        setPoidData(cachedData.poidData);
-      }
-      if (datasets.includes('transactions') && data.transactions) {
-        cachedData.transactions = data.transactions;
-        setTransactions(cachedData.transactions);
-      }
-      if (datasets.includes('outstandingBalances') && data.outstandingBalances) {
-        cachedData.outstandingBalances = data.outstandingBalances;
-        setOutstandingBalances(cachedData.outstandingBalances);
-      }
-      if (datasets.includes('wip') && data.wip) {
-        cachedData.wip = data.wip;
-        setWip(cachedData.wip);
-      }
-      if (datasets.includes('recoveredFees') && data.recoveredFees) {
-        cachedData.recoveredFees = data.recoveredFees;
-        setRecoveredFees(cachedData.recoveredFees);
-      }
-
-      // Add this for annual leave
-      if (datasets.includes('annualLeave')) {
-        await fetchAnnualLeave();
-      }
-
-      DATASETS.forEach(d => {
-        if (datasets.includes(d.key) && !data[d.key]) {
-          setFetchStatus(prev => ({ ...prev, [d.key]: 'idle' }));
-        }
+      const params = new URLSearchParams();
+      params.set('datasets', MANAGEMENT_DATASET_KEYS.join(','));
+      const response = await fetch(`${REPORTING_ENDPOINT}?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
       });
 
-      if (!hasFetchedInitially) hasFetchedInitially = true;
-
-      await progressPromise;
-
-      const fetchDuration = Date.now() - startTime;
-      if (fetchDuration < TOTAL_FETCH_DURATION) {
-        const remainingTime = TOTAL_FETCH_DURATION - fetchDuration;
-        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      if (!response.ok) {
+        throw new Error(`Failed to fetch datasets: ${response.status}`);
       }
-      setIsWrappingUp(false);
-      datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' })));
-      datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
-      setLastRefreshTimestamp(Date.now());
+
+      const payload = (await response.json()) as Partial<DatasetMap> & { errors?: Record<string, string> };
+      const nextData: DatasetMap = {
+        userData: payload.userData ?? cachedData.userData,
+        teamData: payload.teamData ?? cachedData.teamData,
+        enquiries: payload.enquiries ?? cachedData.enquiries,
+        allMatters: payload.allMatters ?? cachedData.allMatters,
+        wip: payload.wip ?? cachedData.wip,
+        recoveredFees: payload.recoveredFees ?? cachedData.recoveredFees,
+        poidData: payload.poidData ?? cachedData.poidData,
+      };
+
+      const now = Date.now();
+      cachedData = nextData;
+      cachedTimestamp = now;
+
+      setDatasetData(nextData);
+      setDatasetStatus((prev) => {
+        const next: DatasetStatus = { ...prev };
+        MANAGEMENT_DATASET_KEYS.forEach((key) => {
+          const value = nextData[key];
+          const hasValue = Array.isArray(value) ? value.length > 0 : Boolean(value);
+          next[key] = { status: hasValue ? 'ready' : 'ready', updatedAt: now };
+        });
+        return next;
+      });
+      setLastRefreshTimestamp(now);
+
+      if (payload.errors && Object.keys(payload.errors).length > 0) {
+        setError('Some datasets were unavailable.');
+      }
+    } catch (fetchError) {
+      console.error('Failed to refresh reporting datasets:', fetchError);
+      setError(fetchError instanceof Error ? fetchError.message : 'Unknown error');
+      setDatasetStatus((prev) => {
+        const next: DatasetStatus = { ...prev };
+        MANAGEMENT_DATASET_KEYS.forEach((key) => {
+          const previous = prev[key];
+          next[key] = { status: 'error', updatedAt: previous?.updatedAt ?? null };
+        });
+        return next;
+      });
+    } finally {
       setIsFetching(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'error' })));
-      console.log('Fetch error:', err);
-      await progressPromise;
-      setIsWrappingUp(false);
-      setTimeout(() => {
-        datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' })));
-        setIsFetching(false);
-      }, 2000);
-      datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
     }
-  };
+  }, []);
 
-  const triggerRefresh = () => {
-    fetchReportDatasets(selectedDatasets);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedDatasets.length === DATASETS.length) {
-      setSelectedDatasets([]);
-    } else {
-      setSelectedDatasets(DATASETS.map((d) => d.key));
+  useEffect(() => {
+    if (hasBootstrapped) {
+      return;
     }
-  };
+    refreshDatasets();
+    setHasBootstrapped(true);
+  }, [hasBootstrapped, refreshDatasets]);
 
-  const handleDatasetToggle = (key: string) => {
-    setSelectedDatasets((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
-  };
-
-  const togglePreview = (name: string) => {
-    setPreviewDataset(previewDataset === name ? null : name);
-  };
-
-  const handleGoTo = (title: string) => {
-    setSelectedReport(title);
-  };
-
-  const getPreviewContent = (name: string) => {
-    const dataMap: { [key: string]: any } = {
-      'User Data': fetchedUserData,
-      'Team Data': fetchedTeamData,
-      'Enquiries': enquiries,
-      'All Matters': allMatters,
-      'POID 6 Years': poidData,
-      'Transactions': transactions,
-      'Outstanding Balances': outstandingBalances?.data,
-      'WIP': wip,
-      'Recovered Fees': recoveredFees,
-      // ADD THIS:
-      'Annual Leave': annualLeave,
-    };
-    const data = dataMap[name];
-    if (!data) return 'No data available';
-
-    if (Array.isArray(data)) {
-      const previewItems = data.slice(0, 10);
-      return (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {previewItems.map((item, index) => (
-            <li key={index} style={{ marginBottom: '12px', fontSize: '14px', color: '#333' }}>
-              <pre style={{ margin: 0 }}>{JSON.stringify(item, null, 2)}</pre>
-            </li>
-          ))}
-          {data.length > 10 && <li style={{ fontStyle: 'italic' }}>...and {data.length - 10} more</li>}
-        </ul>
-      );
+  useEffect(() => {
+    if (propUserData !== undefined) {
+      setDatasetData((prev) => {
+        if (prev.userData === propUserData) {
+          return prev;
+        }
+        const next = { ...prev, userData: propUserData ?? null };
+        cachedData = { ...cachedData, userData: propUserData ?? null };
+        return next;
+      });
     }
-    return <pre style={{ fontSize: '14px', color: '#333', margin: 0 }}>{JSON.stringify(data, null, 2)}</pre>;
-  };
+  }, [propUserData]);
 
-  const isDatasetReady = (key: string) => !!cachedData[key];
+  useEffect(() => {
+    if (propTeamData !== undefined) {
+      setDatasetData((prev) => {
+        if (prev.teamData === propTeamData) {
+          return prev;
+        }
+        const next = { ...prev, teamData: propTeamData ?? null };
+        cachedData = { ...cachedData, teamData: propTeamData ?? null };
+        return next;
+      });
+    }
+  }, [propTeamData]);
 
-  const dateOptions: Intl.DateTimeFormatOptions = {
+  const datasetSummaries = useMemo(() => (
+    DATASETS.map((dataset) => {
+      const value = datasetData[dataset.key];
+      const meta = datasetStatus[dataset.key];
+      const hasValue = Array.isArray(value) ? value.length > 0 : Boolean(value);
+      const status: DatasetStatusValue = hasValue ? 'ready' : meta.status;
+      const count = Array.isArray(value) ? value.length : hasValue ? 1 : 0;
+      return {
+        definition: dataset,
+        status,
+        updatedAt: meta.updatedAt,
+        count,
+      };
+    })
+  ), [datasetData, datasetStatus]);
+
+  const readyCount = datasetSummaries.filter((summary) => summary.status === 'ready').length;
+  const formattedDate = currentTime.toLocaleDateString('en-GB', {
     weekday: 'long',
-    year: 'numeric',
-    month: 'long',
     day: 'numeric',
-  };
-  const formattedDate = currentTime.toLocaleDateString('en-GB', dateOptions);
+    month: 'long',
+    year: 'numeric',
+  });
   const formattedTime = currentTime.toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
   });
 
-  const reportSections = [
-    { title: 'Management Dashboard', description: 'Key metrics and team performance', path: '/management-dashboard', icon: 'Search', isReady: true },
-    { title: 'Annual Leave', description: 'Annual leave statistics and history', path: '/annual-leave', icon: 'Airplane', isReady: true },
-    { title: 'Enquiries', description: 'Enquiry trends and details', path: '/enquiries', icon: 'People', isReady: false },
-    { title: 'Matters', description: 'Matter status and analysis', path: '/matters', icon: 'Folder', isReady: true },
-    { title: 'Tasks', description: 'Task completion and workload', path: '/tasks', icon: 'CheckList', isReady: false },
+  const heroSubtitle = isFetching
+    ? 'Refreshing'
+    : lastRefreshTimestamp
+      ? `Updated ${formatRelativeTime(lastRefreshTimestamp)}`
+      : 'Not refreshed yet';
+
+  const heroMetaItems = [
+    `${formattedDate} • ${formattedTime}`,
+    heroSubtitle,
+    `${readyCount}/${datasetSummaries.length} data feeds`,
   ];
 
-const availableData = [
-  { name: 'User Data', available: !!fetchedUserData, details: fetchedUserData ? `${fetchedUserData.length} record(s)` : 'Not fetched' },
-  { name: 'Team Data', available: !!fetchedTeamData, details: fetchedTeamData ? `${fetchedTeamData.length} record(s)` : 'Not fetched' },
-  { name: 'Enquiries', available: !!enquiries, details: enquiries ? `${enquiries.length} record(s)` : 'Not fetched' },
-  { name: 'All Matters', available: !!allMatters, details: allMatters ? `${allMatters.length} record(s)` : 'Not fetched' },
-  { name: 'POID 6 Years', available: !!poidData, details: poidData ? `${poidData.length} record(s)` : 'Not fetched' },
-  { name: 'Transactions', available: !!transactions, details: transactions ? `${transactions.length} record(s)` : 'Not fetched' },
-  {
-    name: 'Outstanding Balances',
-    available: !!outstandingBalances,
-    details: outstandingBalances?.data ? `${outstandingBalances.data.length} record(s)` : 'Not fetched',
-  },
-  { name: 'WIP', available: !!wip, details: wip ? `${Array.isArray(wip) ? wip.length + ' record(s)' : 'Available'}` : 'Not fetched' },
-  { name: 'Recovered Fees', available: !!recoveredFees, details: recoveredFees ? `${recoveredFees.length} record(s)` : 'Not fetched' },
-  // ADD THIS:
-  { name: 'Annual Leave', available: !!annualLeave, details: annualLeave ? `${annualLeave.length} record(s)` : 'Not fetched' },
-];
-
-  if (selectedReport === 'Management Dashboard') {
+  if (activeView === 'dashboard') {
     return (
-      <div style={{ width: '100%', backgroundColor: colours.light.background, minHeight: '100vh' }}>
-        <div className="back-arrow" onClick={() => setSelectedReport(null)}>
-          <span>← Back</span>
-        </div>
+      <div style={fullScreenWrapperStyle(isDarkMode)}>
         <ManagementDashboard
-          enquiries={enquiries}
-          allMatters={allMatters}
-          wip={wip}
-          recoveredFees={recoveredFees}
-          teamData={fetchedTeamData}
-          userData={fetchedUserData}
-          poidData={poidData}
-          triggerRefresh={triggerRefresh}
-          lastRefreshTimestamp={lastRefreshTimestamp}
+          enquiries={datasetData.enquiries}
+          allMatters={datasetData.allMatters}
+          wip={datasetData.wip}
+          recoveredFees={datasetData.recoveredFees}
+          teamData={datasetData.teamData}
+          userData={datasetData.userData}
+          poidData={datasetData.poidData}
+          triggerRefresh={refreshDatasets}
+          lastRefreshTimestamp={lastRefreshTimestamp ?? undefined}
           isFetching={isFetching}
         />
       </div>
     );
   }
 
-  if (selectedReport === 'Annual Leave') {
-    return (
-      <div style={{ width: '100%', backgroundColor: colours.light.background, minHeight: '100vh' }}>
-        <div className="back-arrow" onClick={() => setSelectedReport(null)}>
-          <span>← Back</span>
-        </div>
-        <AnnualLeaveReport data={annualLeave || []} teamData={fetchedTeamData || []} />
-      </div>
-    );
-  }
-
-  if (selectedReport === 'Matters') {
-    return (
-      <div style={{ width: '100%', backgroundColor: colours.light.background, minHeight: '100vh' }}>
-        <div className="back-arrow" onClick={() => setSelectedReport(null)}>
-          <span>← Back</span>
-        </div>
-        <MattersReport
-          matters={allMatters || []}
-          isLoading={!allMatters}
-          error={null}
-          userData={fetchedUserData}
-          teamData={fetchedTeamData}
-          outstandingBalances={outstandingBalances}
-          poidData={poidData || []}
-          setPoidData={setPoidData}
-          transactions={transactions || []}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="reporting-home-container" style={{ backgroundColor: colours.light.background, padding: '24px 32px', maxWidth: 1600, margin: '0 auto' }}>
-      {/* Minimal inline notice (removed heavy disclaimer chrome) */}
-      <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 8 }}>Restricted: Luke • Jonathan • Alex</div>
-
-      {previewDataset && (
-        <div className="data-preview-popup" style={{
-          position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: 'white', padding: '20px', borderRadius: '0', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
-          zIndex: 1001, maxWidth: '600px', width: '90%', maxHeight: '70vh', overflowY: 'auto'
-        }}>
-          <h3 style={{ margin: '0 0 15px', fontSize: '18px', color: '#333' }}>{previewDataset} Preview</h3>
-          {getPreviewContent(previewDataset)}
-          <button
-            className="decision-button"
-            onClick={() => setPreviewDataset(null)}
-            style={decisionButtonRootStyles}
+    <div className="reporting-home-container" style={containerStyle(isDarkMode)}>
+      <section style={heroSurfaceStyle(isDarkMode)}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span
+            style={{
+              alignSelf: 'flex-start',
+              padding: '4px 10px',
+              borderRadius: 999,
+              fontSize: 11,
+              letterSpacing: 0.4,
+              textTransform: 'uppercase',
+              background: isDarkMode ? 'rgba(148, 163, 184, 0.18)' : 'rgba(37, 99, 235, 0.12)',
+              color: isDarkMode ? colours.light.text : colours.missedBlue,
+              fontWeight: 600,
+              fontFamily: 'Raleway, sans-serif',
+            }}
           >
-            Close
-          </button>
+            Restricted access
+          </span>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, fontFamily: 'Raleway, sans-serif' }}>Reporting workspace</h1>
         </div>
-      )}
-
-      {showSelectionModal && (
-        <div className="selection-modal" style={{
-          position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: 'white', padding: '20px', borderRadius: '0', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
-          zIndex: 1000, maxWidth: '500px', width: '90%'
-        }}>
-          <h3 style={{ margin: '0 0 15px', fontSize: '18px', color: '#333' }}>Select Datasets to Refresh</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px', color: '#555' }}>
-              <input
-                type="checkbox"
-                checked={selectedDatasets.length === DATASETS.length}
-                onChange={toggleSelectAll}
-                style={{ marginRight: '5px' }}
-              />
-              Select All
-            </label>
-            {DATASETS.map((dataset) => (
-              <label key={dataset.key} style={{ display: 'flex', alignItems: 'center', fontSize: '14px', color: '#555' }}>
-                <input
-                  type="checkbox"
-                  checked={selectedDatasets.includes(dataset.key)}
-                  onChange={() => handleDatasetToggle(dataset.key)}
-                  style={{ marginRight: '5px' }}
-                />
-                {dataset.name}
-              </label>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button
-              className="decision-button"
-              onClick={() => fetchReportDatasets(selectedDatasets)}
-              disabled={selectedDatasets.length === 0 || Object.values(fetchStatus).some(status => status === 'fetching')}
-              style={decisionButtonRootStyles}
-            >
-              Refresh
-            </button>
-            <button
-              className="default-button"
-              onClick={() => setShowSelectionModal(false)}
-              style={defaultButtonRootStyles}
-            >
-              Cancel
-            </button>
-          </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <PrimaryButton
+            text={isFetching ? 'Preparing…' : 'Open management dashboard'}
+            onClick={() => setActiveView('dashboard')}
+            styles={primaryButtonStyles(isDarkMode)}
+            disabled={isFetching}
+          />
+          <DefaultButton
+            text={isFetching ? 'Refreshing…' : 'Refresh data'}
+            onClick={refreshDatasets}
+            styles={subtleButtonStyles(isDarkMode)}
+            disabled={isFetching}
+          />
         </div>
-      )}
+        <div style={heroMetaRowStyle}>
+          {heroMetaItems.map((item) => (
+            <span
+              key={item}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 10px',
+                borderRadius: 999,
+                background: isDarkMode ? 'rgba(30, 41, 59, 0.6)' : 'rgba(255, 255, 255, 0.9)',
+                border: `1px solid ${subtleStroke(isDarkMode)}`,
+                boxShadow: 'none',
+                color: isDarkMode ? '#E2E8F0' : colours.missedBlue,
+              }}
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+        {error && (
+          <div style={{
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: isDarkMode ? 'rgba(248, 113, 113, 0.22)' : 'rgba(248, 113, 113, 0.18)',
+            color: isDarkMode ? '#fecaca' : '#b91c1c',
+            fontSize: 12,
+            boxShadow: surfaceShadow(isDarkMode),
+            border: `1px solid ${isDarkMode ? 'rgba(248, 113, 113, 0.32)' : 'rgba(248, 113, 113, 0.32)'}`,
+          }}>
+            {error}
+          </div>
+        )}
+      </section>
 
-      {(Object.values(fetchStatus).some(status => status === 'fetching' || status === 'success' || status === 'error') || isWrappingUp) && (
-        <div className="fetch-status-overlay" style={{
-          position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: 'rgba(255, 255, 255, 0.95)', padding: '20px', borderRadius: '0', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
-          zIndex: 999, maxWidth: '600px', width: '90%'
-        }}>
-          <h3 style={{ margin: '0 0 15px', fontSize: '18px', color: '#333' }}>Fetching Data</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
-            {DATASETS.map((dataset) => (
-              <div
-                key={dataset.key}
-                className="fetch-status-item"
-                style={{
-                  flex: '1 1 180px',
-                  padding: '10px',
-                  background: fetchStatus[dataset.key] === 'success' ? '#e6ffe6' : fetchStatus[dataset.key] === 'error' ? '#ffe6e6' : '#f9f9f9',
-                  borderRadius: '0',
-                  textAlign: 'center',
-                  display: fetchStatus[dataset.key] === 'idle' ? 'none' : 'block',
-                }}
-              >
-                <span
-                  className={`status-indicator ${fetchStatus[dataset.key]}`}
-                  style={{
-                    display: 'inline-block',
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    marginRight: '8px',
-                    background: fetchStatus[dataset.key] === 'success' ? '#28a745' : fetchStatus[dataset.key] === 'fetching' ? '#ccc' : '#dc3545',
-                    animation: fetchStatus[dataset.key] === 'fetching' ? 'pulse 1s infinite' : 'none',
-                  }}
-                />
-                <span style={{ fontSize: '14px', color: '#333' }}>
-                  {fetchStatus[dataset.key] === 'fetching'
-                    ? `Fetching ${dataset.name} (${Math.round(fetchProgress[dataset.key])}%)`
-                    : fetchStatus[dataset.key] === 'success'
-                      ? `${dataset.name} Updated`
-                      : `${dataset.name} Failed`}
+      <section style={sectionSurfaceStyle(isDarkMode)}>
+        <h2 style={sectionTitleStyle}>Available today</h2>
+        <ul style={reportsListStyle()}>
+          {AVAILABLE_REPORTS.map((report) => (
+            <li key={report.key} style={reportRowStyle(isDarkMode)}>
+              <div style={reportRowHeaderStyle(isDarkMode)}>
+                <span style={reportNameStyle}>{report.name}</span>
+                <span style={reportStatusStyle(isDarkMode)}>{report.status}</span>
+              </div>
+              {report.action === 'dashboard' && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <PrimaryButton
+                    text={isFetching ? 'Preparing…' : 'Open dashboard'}
+                    onClick={() => setActiveView('dashboard')}
+                    styles={primaryButtonStyles(isDarkMode)}
+                    disabled={isFetching}
+                  />
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section style={sectionSurfaceStyle(isDarkMode)}>
+        <h2 style={sectionTitleStyle}>Data feeds powering the dashboard</h2>
+        <div style={dataFeedListStyle()}>
+          {datasetSummaries.map(({ definition, status, updatedAt, count }) => {
+            const palette = STATUS_BADGE_COLOURS[status];
+            const details: string[] = [count > 0 ? `${count.toLocaleString()} record${count === 1 ? '' : 's'}` : 'No data'];
+            if (updatedAt) {
+              details.push(formatTimestamp(updatedAt));
+            }
+            return (
+              <div key={definition.key} style={feedRowStyle(isDarkMode)}>
+                <div style={feedLabelGroupStyle}>
+                  <span style={feedLabelStyle}>{definition.name}</span>
+                  <span style={feedMetaStyle}>{details.join(' • ')}</span>
+                </div>
+                <span style={statusPillStyle(palette, isDarkMode)}>
+                  <span style={statusDotStyle(palette.dot)} />
+                  {palette.label}
                 </span>
               </div>
-            ))}
-            {isWrappingUp && (
-              <div
-                className="fetch-status-item"
-                style={{
-                  flex: '1 1 180px',
-                  padding: '10px',
-                  background: '#f9f9f9',
-                  borderRadius: '0',
-                  textAlign: 'center',
-                }}
-              >
-                <span
-                  className="status-indicator fetching"
-                  style={{
-                    display: 'inline-block',
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    marginRight: '8px',
-                    background: '#ccc',
-                    animation: 'pulse 1s infinite',
-                  }}
-                />
-                <span style={{ fontSize: '14px', color: '#333' }}>Wrapping things up</span>
-              </div>
-            )}
-          </div>
-          {error && <p style={{ color: '#dc3545', fontSize: '14px', marginTop: '10px' }}>{error}</p>}
+            );
+          })}
         </div>
-      )}
+      </section>
 
-      <main className="page-content animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-        <ReportingSectionCard
-          title="Reporting Overview"
-          subtitle={`${formattedDate} • ${formattedTime}`}
-          animationDelay={0}
-        >
-          <HomePreview
-            enquiries={enquiries}
-            allMatters={allMatters}
-            wip={wip}
-            recoveredFees={recoveredFees}
-          />
-        </ReportingSectionCard>
-
-        <ReportingSectionCard
-          title="Reports"
-          animationDelay={0.1}
-        >
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: 20,
-            width: '100%'
-          }}>
-            {reportSections.map((report, index) => (
-              <ReportCard
-                key={report.title}
-                report={report}
-                onGoTo={report.isReady ? handleGoTo : () => {}}
-                animationDelay={index * 0.12}
-              />
-            ))}
-          </div>
-        </ReportingSectionCard>
-
-        <ReportingSectionCard
-          title="Available Data"
-          actions={
-            <button
-              className="refresh-button"
-              onClick={() => setShowSelectionModal(true)}
-              disabled={Object.values(fetchStatus).some(status => status === 'fetching')}
-              style={{ height: 36 }}
-            >Refresh</button>
-          }
-          animationDelay={0.2}
-        >
-          <ul className="data-access-grid" style={{ margin: 0 }}>
-            {availableData.map((data, index) => (
-              <li key={data.name} className="data-access-item animate-data-item" style={{ animationDelay: `${index * 0.05}s` }}>
-                <span className={`indicator ${data.available ? 'available' : 'unavailable'}`} />
-                <div className="data-access-content">
-                  <h3>{data.name}</h3>
-                  <div className="data-access-body">
-                    <p>{data.details}</p>
-                    {isDatasetReady(DATASETS.find(d => d.name === data.name)!.key) && (
-                      <div className="data-access-actions">
-                        <button
-                          className="launch-report-link"
-                          onClick={() => togglePreview(data.name)}
-                        >
-                          Preview Sample
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </ReportingSectionCard>
-      </main>
-
-      <div style={{ fontSize: 11, opacity: 0.5, marginTop: 40, textAlign: 'center' }}>Reporting Module • v1.0</div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulse {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.2); opacity: 0.7; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes statusFade {
-          from { opacity: 1; transform: scale(1); }
-          to { opacity: 0; transform: scale(1.05); }
-        }
-        .decision-button {
-          padding: 6px 12px;
-          border-radius: 0;
-          background-color: ${colours.highlight};
-          border: none;
-          height: 40px;
-          font-size: 14px;
-          font-weight: normal;
-          color: #ffffff;
-          transition: background 0.3s ease, box-shadow 0.3s ease;
-          outline: none;
-          cursor: pointer;
-        }
-        .decision-button:hover {
-          background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), ${colours.highlight} !important;
-          box-shadow: 0 0 8px rgba(0,0,0,0.2) !important;
-        }
-        .decision-button:active {
-          background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 100%), ${colours.highlight} !important;
-          box-shadow: 0 0 8px rgba(0,0,0,0.3) !important;
-        }
-        .decision-button:focus {
-          background-color: ${colours.highlight} !important;
-          outline: none !important;
-          border: none !important;
-        }
-        .decision-button:disabled {
-          background-color: #ccc !important;
-          cursor: not-allowed;
-        }
-        .default-button {
-          padding: 6px 12px;
-          border-radius: 0;
-          background-color: ${colours.secondaryButtonBackground};
-          border: none;
-          height: 40px;
-          font-size: 14px;
-          font-weight: normal;
-          color: #000000;
-          transition: background 0.3s ease, box-shadow 0.3s ease;
-          outline: none;
-          cursor: pointer;
-        }
-        .default-button:hover {
-          background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%), ${colours.secondaryButtonBackground} !important;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
-        }
-        .default-button:active {
-          background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), ${colours.secondaryButtonBackground} !important;
-          box-shadow: 0 0 8px rgba(0,0,0,0.2) !important;
-        }
-        .default-button:focus {
-          background-color: ${colours.secondaryButtonBackground} !important;
-          outline: none !important;
-          border: none !important;
-        }
-      `}</style>
+      <section style={sectionSurfaceStyle(isDarkMode)}>
+        <h2 style={sectionTitleStyle}>Quick metrics snapshot</h2>
+        <HomePreview
+          enquiries={datasetData.enquiries}
+          allMatters={datasetData.allMatters}
+          wip={datasetData.wip}
+          recoveredFees={datasetData.recoveredFees}
+        />
+      </section>
     </div>
   );
 };

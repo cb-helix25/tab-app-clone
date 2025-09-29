@@ -50,6 +50,7 @@ const fileMapRouter = require('./routes/fileMap');
 const opsRouter = require('./routes/ops');
 const sendEmailRouter = require('./routes/sendEmail');
 const attendanceRouter = require('./routes/attendance');
+const reportingRouter = require('./routes/reporting');
 
 const app = express();
 // Enable gzip compression if available
@@ -137,6 +138,7 @@ app.use('/api/team-lookup', teamLookupRouter);
 app.use('/api/team-data', teamDataRouter);
 app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api/file-map', fileMapRouter);
+app.use('/api/reporting', reportingRouter);
 
 // IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
 app.use('/api/attendance', attendanceRouter);

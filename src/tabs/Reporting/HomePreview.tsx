@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-// invisible change
+import type { CSSProperties } from 'react';
 import { colours } from '../../app/styles/colours';
 import { WIP } from './ManagementDashboard';
-import { Icon, Text, DefaultButton } from '@fluentui/react';
-import { mergeStyles } from '@fluentui/react/lib/Styling';
+import { Icon, Text, DefaultButton, type IButtonStyles } from '@fluentui/react';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { Enquiry, Matter } from '../../app/functionality/types';
 import './HomePreview.css';
@@ -20,9 +19,121 @@ interface HomePreviewProps {
   recoveredFees: RecoveredFee[] | null;
 }
 
+type RangeKey = 'today' | 'thisWeek' | 'thisMonth' | 'all';
+
+const baseShadow = (isDarkMode: boolean): string => (
+  isDarkMode ? '0 2px 8px rgba(0, 0, 0, 0.24)' : '0 2px 6px rgba(15, 23, 42, 0.08)'
+);
+
+const softBorder = (isDarkMode: boolean): string => (
+  isDarkMode ? 'rgba(148, 163, 184, 0.28)' : 'rgba(15, 23, 42, 0.08)'
+);
+
+const sectionContainerStyle = (isDarkMode: boolean): CSSProperties => ({
+  background: isDarkMode ? 'rgba(15, 23, 42, 0.86)' : '#FFFFFF',
+  borderRadius: 14,
+  border: `1px solid ${softBorder(isDarkMode)}`,
+  boxShadow: baseShadow(isDarkMode),
+  padding: '22px 24px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 18,
+  fontFamily: 'Raleway, sans-serif',
+});
+
+const headerRowStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 16,
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  color: isDarkMode ? colours.light.text : colours.dark.text,
+  fontFamily: 'Raleway, sans-serif',
+});
+
+const headerTitleStyle = (isDarkMode: boolean): CSSProperties => ({
+  fontSize: 20,
+  fontWeight: 700,
+  margin: 0,
+  color: isDarkMode ? colours.light.text : colours.dark.text,
+  fontFamily: 'Raleway, sans-serif',
+});
+
+const rangeButtonsRowStyle: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+};
+
+const rangeButtonStyles = (isDarkMode: boolean, isActive: boolean): IButtonStyles => ({
+  root: {
+    borderRadius: 999,
+    padding: '0 14px',
+    height: 32,
+    background: isActive
+      ? colours.highlight
+      : isDarkMode
+        ? 'rgba(148, 163, 184, 0.18)'
+        : 'rgba(54, 144, 206, 0.12)',
+    color: isActive ? '#FFFFFF' : isDarkMode ? '#E2E8F0' : colours.missedBlue,
+    border: isActive
+      ? '1px solid rgba(13, 47, 96, 0.42)'
+      : `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.28)' : 'rgba(13, 47, 96, 0.18)'}`,
+    fontWeight: 600,
+    boxShadow: 'none',
+    transition: 'background 0.2s ease',
+    fontFamily: 'Raleway, sans-serif',
+  },
+  rootHovered: {
+    background: isActive
+      ? '#2f7cb3'
+      : isDarkMode
+        ? 'rgba(148, 163, 184, 0.24)'
+        : 'rgba(54, 144, 206, 0.18)',
+  },
+  rootPressed: {
+    background: isActive
+      ? '#266795'
+      : isDarkMode
+        ? 'rgba(148, 163, 184, 0.3)'
+        : 'rgba(54, 144, 206, 0.24)',
+  },
+});
+
+const metricsGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+  gap: 16,
+  width: '100%',
+};
+
+const metricCardStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '16px 14px',
+  borderRadius: 12,
+  border: `1px solid ${softBorder(isDarkMode)}`,
+  background: isDarkMode ? 'rgba(15, 23, 42, 0.7)' : 'rgba(248, 250, 252, 0.92)',
+  boxShadow: 'none',
+  gap: 12,
+});
+
+const iconStyle = (isDarkMode: boolean): CSSProperties => ({
+  fontSize: 32,
+  color: isDarkMode ? colours.highlight : colours.highlight,
+});
+
+const cardContentStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  gap: 4,
+};
+
 const HomePreview: React.FC<HomePreviewProps> = ({ enquiries, allMatters, wip, recoveredFees }) => {
   const { isDarkMode } = useTheme();
-  const [selectedRange, setSelectedRange] = useState<'today' | 'thisWeek' | 'thisMonth' | 'all'>('all');
+  const [selectedRange, setSelectedRange] = useState<RangeKey>('all');
 
   const parseAndFormatDate = (dateStr: string | undefined): string => {
     if (!dateStr) return 'N/A';
@@ -120,13 +231,6 @@ const HomePreview: React.FC<HomePreviewProps> = ({ enquiries, allMatters, wip, r
     ? `${parseAndFormatDate(filteredRecoveredFees.reduce((min, r) => new Date(r.payment_date) < new Date(min.payment_date) ? r : min, filteredRecoveredFees[0]).payment_date)} - ${parseAndFormatDate(filteredRecoveredFees.reduce((max, r) => new Date(r.payment_date) > new Date(max.payment_date) ? r : max, filteredRecoveredFees[0]).payment_date)}`
     : 'N/A';
 
-  const sectionStyle = mergeStyles({ backgroundColor: isDarkMode ? colours.dark.background : '#ffffff', borderRadius: '0', boxShadow: isDarkMode ? '0 4px 16px rgba(255, 255, 255, 0.1)' : '0 4px 16px rgba(0, 0, 0, 0.1)', padding: '20px', fontFamily: 'Raleway, sans-serif', marginBottom: '40px' });
-  const headerStyle = mergeStyles({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' });
-  const metricsGridStyle = mergeStyles({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', width: '100%' });
-  const metricCardStyle = mergeStyles({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', minHeight: '100px' });
-  const iconStyle = mergeStyles({ fontSize: '32px', color: colours.highlight, marginRight: '10px' });
-  const contentStyle = mergeStyles({ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' });
-
   const metricCards = [
     { icon: 'People', title: 'Total Enquiries', value: enquiriesCount.toLocaleString(), range: enquiriesRange },
     { icon: 'Folder', title: 'Total Matters', value: mattersCount.toLocaleString(), range: mattersRange },
@@ -135,26 +239,55 @@ const HomePreview: React.FC<HomePreviewProps> = ({ enquiries, allMatters, wip, r
     { icon: 'Money', title: 'Collected', value: formatCurrency(collectedTotal), range: collectedRange },
   ];
 
+  const rangeOptions: Array<{ key: RangeKey; label: string }> = [
+    { key: 'today', label: 'Today' },
+    { key: 'thisWeek', label: 'This Week' },
+    { key: 'thisMonth', label: 'This Month' },
+    { key: 'all', label: 'All Time' },
+  ];
+
   return (
-    <section className={`home-preview-section ${sectionStyle}`}>
-      <div className={headerStyle}>
-        <h2 style={{ fontSize: '20px', color: '#333', margin: 0 }}>Key Insights</h2>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <DefaultButton text="Today" onClick={() => setSelectedRange('today')} className={selectedRange === 'today' ? 'selected' : 'unselected'} />
-          <DefaultButton text="This Week" onClick={() => setSelectedRange('thisWeek')} className={selectedRange === 'thisWeek' ? 'selected' : 'unselected'} />
-          <DefaultButton text="This Month" onClick={() => setSelectedRange('thisMonth')} className={selectedRange === 'thisMonth' ? 'selected' : 'unselected'} />
-          <DefaultButton text="All Time" onClick={() => setSelectedRange('all')} className={selectedRange === 'all' ? 'selected' : 'unselected'} />
+    <section
+      className="home-preview-section"
+      style={sectionContainerStyle(isDarkMode)}
+    >
+      <div style={headerRowStyle(isDarkMode)}>
+        <h2 style={headerTitleStyle(isDarkMode)}>Key Insights</h2>
+        <div style={rangeButtonsRowStyle}>
+          {rangeOptions.map((option) => (
+            <DefaultButton
+              key={option.key}
+              text={option.label}
+              onClick={() => setSelectedRange(option.key)}
+              styles={rangeButtonStyles(isDarkMode, selectedRange === option.key)}
+            />
+          ))}
         </div>
       </div>
-      <div className={metricsGridStyle}>
+      <div style={metricsGridStyle}>
         {metricCards.map((card) => (
-          <div key={card.title} className={`metric-card ${metricCardStyle}`}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <Icon iconName={card.icon} className={iconStyle} />
-              <div className={contentStyle}>
-                <Text variant="large" styles={{ root: { fontWeight: 600, color: '#333', fontFamily: 'Raleway, sans-serif' } }}>{card.title}</Text>
-                <Text variant="xxLarge" styles={{ root: { fontWeight: 800, color: '#000', fontFamily: 'Raleway, sans-serif' } }}>{card.value}</Text>
-                <Text variant="small" styles={{ root: { color: colours.greyText, fontFamily: 'Raleway, sans-serif' } }}>{card.range}</Text>
+          <div key={card.title} className="metric-card" style={metricCardStyle(isDarkMode)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Icon iconName={card.icon} style={iconStyle(isDarkMode)} />
+              <div style={cardContentStyle}>
+                <Text
+                  variant="large"
+                  styles={{ root: { fontWeight: 600, color: isDarkMode ? '#E2E8F0' : colours.dark.text, fontFamily: 'Raleway, sans-serif' } }}
+                >
+                  {card.title}
+                </Text>
+                <Text
+                  variant="xxLarge"
+                  styles={{ root: { fontWeight: 800, color: isDarkMode ? '#FFFFFF' : '#0F172A', fontFamily: 'Raleway, sans-serif' } }}
+                >
+                  {card.value}
+                </Text>
+                <Text
+                  variant="small"
+                  styles={{ root: { color: isDarkMode ? 'rgba(226, 232, 240, 0.7)' : colours.greyText, fontFamily: 'Raleway, sans-serif' } }}
+                >
+                  {card.range}
+                </Text>
               </div>
             </div>
           </div>
