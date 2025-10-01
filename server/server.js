@@ -47,7 +47,6 @@ const pitchTeamRouter = require('./routes/pitchTeam');
 const sendEmailRouter = require('./routes/sendEmail');
 const attendanceRouter = require('./routes/attendance');
 const reportingRouter = require('./routes/reporting');
-console.log('📋 Attendance router imported');
 // const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 // Initialize ops log (loads recent entries and ensures log dir)
@@ -108,7 +107,6 @@ app.use('/api/enquiry-emails', enquiryEmailsRouter);
 
 // Update enquiry endpoint - moved to enquiries-unified/update
 // app.post('/api/update-enquiry', require('../api/update-enquiry'));
-console.log('🔧 REGISTERING UPDATE DEAL ROUTE: POST /api/update-deal');
 app.post('/api/update-deal', require('./routes/updateDeal'));
 app.use('/api/pitches', pitchesRouter);
 app.use('/api/matters', mattersRouter);
@@ -126,7 +124,6 @@ app.use('/api/reporting', reportingRouter);
 
 // IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
 app.use('/api/attendance', attendanceRouter);
-console.log('📋 Attendance routes registered at /api/attendance');
 
 // Proxy routes to Azure Functions
 app.use('/', proxyToAzureFunctionsRouter);

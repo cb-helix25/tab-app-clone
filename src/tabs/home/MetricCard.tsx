@@ -393,9 +393,20 @@ const MetricCard: React.FC<MetricCardProps> = ({
                   ) : (
                     <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: isDarkMode ? colours.dark.text : colours.light.text })}>£{displayMoneyComponent}</Text>
                   );
+                  const showPrevMonth = prevMoney !== undefined && prevMoney > 0;
                   return (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                       {valueEl}
+                      {showPrevMonth && (
+                        <Text className={mergeStyles({ 
+                          fontSize: '11px', 
+                          fontWeight: '500', 
+                          color: colours.greyText,
+                          marginTop: '4px',
+                        })}>
+                          Last month: £{prevMoney > 1000 ? (prevMoney / 1000).toFixed(1) + 'k' : prevMoney.toLocaleString()}
+                        </Text>
+                      )}
                     </div>
                   );
                 }

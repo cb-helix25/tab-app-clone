@@ -1,4 +1,17 @@
-const sql = require('mssql');
+const { createQueryRunner, DEFAULT_SQL_RETRIES } = require('./sqlHelpers');
+
+const getTeamConnectionString = () => {
+  const conn = process.env.TEAM_SQL_CONNECTION_STRING || process.env.SQL_CONNECTION_STRING;
+  if (!conn) {
+    throw new Error('No SQL connection string found in TEAM_SQL_CONNECTION_STRING or SQL_CONNECTION_STRING');
+  }
+  return conn;
+};
+
+const runTeamQuery = createQueryRunner({
+  getConnectionString: getTeamConnectionString,
+  defaultRetries: Number(process.env.SQL_TEAM_MAX_RETRIES || DEFAULT_SQL_RETRIES)
+});
 
 let cache = null;
 let cacheTs = 0;
@@ -26,19 +39,10 @@ const DEFAULT_TEAM_QUERY = `
 `;
 
 async function fetchFromDb() {
-  const conn = process.env.TEAM_SQL_CONNECTION_STRING || process.env.SQL_CONNECTION_STRING;
   const query = process.env.TEAM_SQL_QUERY || DEFAULT_TEAM_QUERY;
-  
-  if (!conn) {
-    throw new Error('No SQL connection string found in TEAM_SQL_CONNECTION_STRING or SQL_CONNECTION_STRING');
-  }
-  
-    // Fetching team data from SQL
-  
-  let pool;
+
   try {
-    pool = await sql.connect(conn);
-    const result = await pool.request().query(query);
+    const result = await runTeamQuery((request) => request.query(query));
     
     if (!result.recordset || !Array.isArray(result.recordset)) {
       throw new Error('Query returned no valid recordset');
@@ -52,15 +56,6 @@ async function fetchFromDb() {
     // eslint-disable-next-line no-console
     console.error('[teamData] Database query failed:', error.message);
     throw new Error(`Database query failed: ${error.message}`);
-  } finally {
-    if (pool) {
-      try {
-        await pool.close();
-      } catch (closeError) {
-        // eslint-disable-next-line no-console
-        console.warn('[teamData] Error closing database pool:', closeError.message);
-      }
-    }
   }
 }
 

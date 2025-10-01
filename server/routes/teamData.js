@@ -11,7 +11,6 @@ router.get('/', async (_req, res) => {
   }
 
   try {
-    console.log('\ud83d\udd0d Fetching team data from SQL...');
     const rows = await withRequest(connectionString, async (request) => {
       const result = await request.query(`
         SELECT 
@@ -36,10 +35,9 @@ router.get('/', async (_req, res) => {
       return Array.isArray(result.recordset) ? result.recordset : [];
     }, 2);
 
-    console.log(`\u2705 Retrieved ${rows.length} team members from database`);
     const active = rows.filter((m) => String(m.status || '').toLowerCase() === 'active').length;
     const inactive = rows.filter((m) => String(m.status || '').toLowerCase() === 'inactive').length;
-    console.log(`\ud83d\udcca Active: ${active}, Inactive: ${inactive}`);
+    console.info('[teamData] Summary', { active, inactive });
     return res.json(rows);
   } catch (error) {
     console.error('\u274c Team data fetch error:', error);

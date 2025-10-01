@@ -2,7 +2,6 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env.local'), override: false });
 
 const express = require('express');
-const sql = require('mssql');
 const router = express.Router();
 
 // Import our copied Tiller integration utilities
@@ -10,6 +9,16 @@ const { submitVerification } = require('../utils/tillerApi');
 const { insertIDVerification } = require('../utils/idVerificationDb');
 
 const { getTeamData } = require('../utils/teamData');
+const { sql, getPool } = require('../utils/db');
+const {
+  createEnvBasedQueryRunner,
+  DEFAULT_SQL_RETRIES,
+  isTransientSqlError
+} = require('../utils/sqlHelpers');
+
+const runInstructionQuery = createEnvBasedQueryRunner('INSTRUCTIONS_SQL_CONNECTION_STRING', {
+  defaultRetries: Number(process.env.SQL_INSTRUCTIONS_MAX_RETRIES || DEFAULT_SQL_RETRIES)
+});
 
 /**
  * Convert Helix contact name or initials to email address
@@ -52,76 +61,68 @@ function getContactEmail(contactName, teamData) {
  */
 router.post('/', async (req, res) => {
   const { instructionRef } = req.body;
-  
+
   if (!instructionRef) {
     return res.status(400).json({ error: 'Missing instructionRef' });
   }
 
   console.log(`[verify-id] Starting ID verification for ${instructionRef}`);
 
-  let pool;
   try {
-    // Use the INSTRUCTIONS_SQL_CONNECTION_STRING from .env (same as instructions router)
-    const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
-    if (!connectionString) {
-      throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
-    }
+    const instructionResult = await runInstructionQuery((request, s) =>
+      request
+        .input('ref', s.NVarChar, instructionRef)
+        .query(`
+          SELECT 
+            i.InstructionRef,
+            i.ClientId,
+            i.Email,
+            i.FirstName,
+            i.LastName,
+            i.CompanyName,
+            i.Title,
+            i.Gender,
+            i.DOB,
+            i.Phone,
+            i.PassportNumber,
+            i.DriversLicenseNumber,
+            i.HouseNumber,
+            i.Street,
+            i.City,
+            i.County,
+            i.Postcode,
+            i.Country,
+            i.CountryCode
+          FROM Instructions i 
+          WHERE i.InstructionRef = @ref
+        `)
+    );
 
-  // Use a dedicated pool to avoid interfering with/global pool connected to other DBs
-  pool = await new sql.ConnectionPool(connectionString).connect();
-
-    // Fetch instruction data needed for Tiller API
-    const result = await pool.request()
-      .input('ref', sql.NVarChar, instructionRef)
-      .query(`
-        SELECT 
-          i.InstructionRef,
-          i.ClientId,
-          i.Email,
-          i.FirstName,
-          i.LastName,
-          i.CompanyName,
-          i.Title,
-          i.Gender,
-          i.DOB,
-          i.Phone,
-          i.PassportNumber,
-          i.DriversLicenseNumber,
-          i.HouseNumber,
-          i.Street,
-          i.City,
-          i.County,
-          i.Postcode,
-          i.Country,
-          i.CountryCode
-        FROM Instructions i 
-        WHERE i.InstructionRef = @ref
-      `);
-
-    if (result.recordset.length === 0) {
+    if (!instructionResult.recordset?.length) {
       return res.status(404).json({ error: 'Instruction not found' });
     }
 
-    const instructionData = result.recordset[0];
-    
-    // Check if ID verification already exists and is completed
-    const existingResult = await pool.request()
-      .input('ref', sql.NVarChar, instructionRef)
-      .query(`
-        SELECT TOP 1 EIDStatus, EIDOverallResult 
-        FROM IDVerifications 
-        WHERE InstructionRef = @ref 
-        ORDER BY EIDCheckedDate DESC
-      `);
+    const instructionData = instructionResult.recordset[0];
 
-    if (existingResult.recordset.length > 0) {
+    const existingResult = await runInstructionQuery((request, s) =>
+      request
+        .input('ref', s.NVarChar, instructionRef)
+        .query(`
+          SELECT TOP 1 EIDStatus, EIDOverallResult 
+          FROM IDVerifications 
+          WHERE InstructionRef = @ref 
+          ORDER BY EIDCheckedDate DESC
+        `)
+    );
+
+    if (existingResult.recordset?.length) {
       const existing = existingResult.recordset[0];
       const status = existing.EIDStatus?.toLowerCase();
       const result = existing.EIDOverallResult?.toLowerCase();
-      
+
       if (status === 'verified' || result === 'passed' || result === 'approved') {
-        return res.status(200).json({ 
-          success: true, 
+        return res.status(200).json({
+          success: true,
           message: 'ID verification already completed',
           status: 'already_verified'
         });
@@ -129,23 +130,24 @@ router.post('/', async (req, res) => {
     }
 
     console.log(`[verify-id] Calling Tiller API for ${instructionRef}`);
-    
-    // Call Tiller API with our copied utility
+
     const tillerResponse = await submitVerification(instructionData);
-    
+
     console.log(`[verify-id] Tiller verification response received for ${instructionRef}`);
     console.log(`[verify-id] Response:`, JSON.stringify(tillerResponse, null, 2));
-    
-    console.log(`[verify-id] Tiller API response received for ${instructionRef}`);
-    // Save response to database
+
     let riskData = null;
     try {
-      riskData = await insertIDVerification(instructionData.InstructionRef, instructionData.Email, tillerResponse, pool, instructionData.ClientId);
+      riskData = await insertIDVerification(
+        instructionData.InstructionRef,
+        instructionData.Email,
+        tillerResponse,
+        instructionData.ClientId
+      );
       console.log(`[verify-id] ID verification saved to database for ${instructionRef}`);
       console.log(`[verify-id] Risk data:`, JSON.stringify(riskData));
     } catch (err) {
       console.error(`[verify-id] Failed to save Tiller response for ${instructionRef}:`, err.message);
-      // Continue - we got the verification but failed to save it
     }
 
     return res.status(200).json({
@@ -158,17 +160,17 @@ router.post('/', async (req, res) => {
       pep: riskData?.pep,
       address: riskData?.address
     });
-
   } catch (error) {
-    console.error(`[verify-id] Error processing verification for ${instructionRef}:`, error);
-    return res.status(500).json({ 
+    const transient = isTransientSqlError(error);
+    console.error(
+      `[verify-id] Error processing verification for ${instructionRef}${transient ? ' (transient)' : ''}:`,
+      error
+    );
+    return res.status(transient ? 503 : 500).json({
       error: 'Failed to process ID verification',
-      details: error.message 
+      details: error.message,
+      transient
     });
-  } finally {
-    if (pool) {
-      await pool.close();
-    }
   }
 });
 
@@ -178,24 +180,14 @@ router.post('/', async (req, res) => {
  */
 router.get('/:instructionRef/details', async (req, res) => {
   const { instructionRef } = req.params;
-  
+
   if (!instructionRef) {
     return res.status(400).json({ error: 'Missing instructionRef' });
   }
 
   console.log(`[verify-id] Getting verification details for ${instructionRef}`);
 
-  let pool;
   try {
-    const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
-    if (!connectionString) {
-      throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
-    }
-
-  // Dedicated pool per request to ensure correct DB
-  pool = await new sql.ConnectionPool(connectionString).connect();
-
-    // Query to get instruction and verification details
     const query = `
       SELECT 
         i.InstructionRef,
@@ -206,66 +198,57 @@ router.get('/:instructionRef/details', async (req, res) => {
         v.EIDRawResponse,
         v.EIDCheckedDate
       FROM Instructions i
-  LEFT JOIN IDVerifications v ON i.InstructionRef = v.InstructionRef
-  WHERE i.InstructionRef = @instructionRef
-  ORDER BY v.EIDCheckedDate DESC, v.EIDCheckedTime DESC
+      LEFT JOIN IDVerifications v ON i.InstructionRef = v.InstructionRef
+      WHERE i.InstructionRef = @instructionRef
+      ORDER BY v.EIDCheckedDate DESC, v.EIDCheckedTime DESC
     `;
 
-    const request = pool.request();
-    request.input('instructionRef', sql.VarChar(50), instructionRef);
-    
-    const result = await request.query(query);
-    
-    if (result.recordset.length === 0) {
+    const result = await runInstructionQuery((request, s) =>
+      request.input('instructionRef', s.VarChar(50), instructionRef).query(query)
+    );
+
+    if (!result.recordset?.length) {
       return res.status(404).json({ error: 'Instruction not found' });
     }
 
     const record = result.recordset[0];
-    
-    // Parse the raw response to determine actual status
+
     let rawResponse = null;
     try {
       const parsed = record.EIDRawResponse ? JSON.parse(record.EIDRawResponse) : null;
-      // Normalise: our insert path may store an array wrapper; prefer first element
-      rawResponse = Array.isArray(parsed) ? (parsed[0] || null) : parsed;
+      rawResponse = Array.isArray(parsed) ? parsed[0] || null : parsed;
     } catch (parseError) {
       console.error('Failed to parse EIDRawResponse:', parseError);
     }
 
-    // Determine actual verification results from raw response
-  let overallResult = record.EIDOverallResult || 'unknown';
-  let pepResult = 'unknown';  
-  let addressResult = 'unknown';
+    let overallResult = record.EIDOverallResult || 'unknown';
+    let pepResult = 'unknown';
+    let addressResult = 'unknown';
 
     if (rawResponse) {
-      // Extract actual results from Tiller response
       overallResult = rawResponse.overallResult?.result || rawResponse.result || overallResult;
 
       const checks = Array.isArray(rawResponse.checkStatuses) ? rawResponse.checkStatuses : [];
+      const norm = (value) => (typeof value === 'string' ? value.toLowerCase() : '');
 
-      // Normalise helper
-      const norm = (s) => (typeof s === 'string' ? s.toLowerCase() : '');
-
-      // Find PEP & Sanctions check result (handle naming variants)
       const pepCheck = checks.find((c) => {
         const title = norm(c?.sourceResults?.title || c?.sourceResults?.rule);
         return title.includes('pep') || title.includes('sanction');
       });
-      if (pepCheck && pepCheck.result) {
-        pepResult = pepCheck.result.result || pepResult;
+      if (pepCheck?.result?.result) {
+        pepResult = pepCheck.result.result;
       }
 
-      // Find Address Verification check result (handle naming variants)
       const addressCheck = checks.find((c) => {
         const title = norm(c?.sourceResults?.title || c?.sourceResults?.rule);
         return title.includes('address');
       });
-      if (addressCheck && addressCheck.result) {
-        addressResult = addressCheck.result.result || addressResult;
+      if (addressCheck?.result?.result) {
+        addressResult = addressCheck.result.result;
       }
     }
 
-    const responseData = {
+    res.json({
       instructionRef: record.InstructionRef,
       firstName: record.FirstName || '',
       surname: record.LastName || '',
@@ -276,20 +259,15 @@ router.get('/:instructionRef/details', async (req, res) => {
       addressResult,
       rawResponse: record.EIDRawResponse,
       checkedDate: record.EIDCheckedDate
-    };
-
-    res.json(responseData);
-
-  } catch (error) {
-    console.error('[verify-id] Error fetching verification details:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      details: error.message
     });
-  } finally {
-    if (pool) {
-      await pool.close();
-    }
+  } catch (error) {
+    const transient = isTransientSqlError(error);
+    console.error('[verify-id] Error fetching verification details:', error);
+    res.status(transient ? 503 : 500).json({
+      error: 'Internal server error',
+      details: error.message,
+      transient
+    });
   }
 });
 
@@ -299,24 +277,14 @@ router.get('/:instructionRef/details', async (req, res) => {
  */
 router.post('/:instructionRef/request-documents', async (req, res) => {
   const { instructionRef } = req.params;
-  
+
   if (!instructionRef) {
     return res.status(400).json({ error: 'Missing instructionRef' });
   }
 
   console.log(`[verify-id] Requesting documents for ${instructionRef}`);
 
-  let pool;
   try {
-    const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
-    if (!connectionString) {
-      throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
-    }
-
-  // Dedicated pool per request to ensure correct DB
-  pool = await new sql.ConnectionPool(connectionString).connect();
-
-    // Get the instruction details and current verification status
     const getInstructionQuery = `
       SELECT 
         i.InstructionRef,
@@ -332,76 +300,64 @@ router.post('/:instructionRef/request-documents', async (req, res) => {
       WHERE i.InstructionRef = @instructionRef
     `;
 
-    let request = pool.request();
-    request.input('instructionRef', sql.VarChar(50), instructionRef);
-    
-    const instructionResult = await request.query(getInstructionQuery);
-    
-    if (instructionResult.recordset.length === 0) {
+    const instructionResult = await runInstructionQuery((request, s) =>
+      request.input('instructionRef', s.VarChar(50), instructionRef).query(getInstructionQuery)
+    );
+
+    if (!instructionResult.recordset?.length) {
       return res.status(404).json({ error: 'Instruction not found' });
     }
 
     const instruction = instructionResult.recordset[0];
-    const clientName = `${instruction.FirstName || ''} ${instruction.LastName || ''}`.trim();
     const clientFirstName = instruction.FirstName || 'Client';
 
-    // Check if documents have already been requested
     if (instruction.EIDOverallResult === 'Documents Requested') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Documents have already been requested for this instruction',
         alreadyRequested: true
       });
     }
 
-    // Determine the sending contact
     const sendingContact = instruction.HelixContact || instruction.PitchedBy;
     if (!sendingContact) {
       return res.status(400).json({ error: 'No Helix contact found for this instruction' });
     }
 
-    // Send document request email
     try {
       await sendDocumentRequestEmail(instructionRef, instruction.Email, clientFirstName, sendingContact);
-      
-      // Update the verification status to indicate documents have been requested
-      const updateQuery = `
-        UPDATE IDVerifications 
-        SET 
-          EIDOverallResult = 'Documents Requested'
-        WHERE InstructionRef = @instructionRef
-      `;
 
-      request = pool.request();
-      request.input('instructionRef', sql.VarChar(50), instructionRef);
-      
-      await request.query(updateQuery);
-      
+      await runInstructionQuery((request, s) =>
+        request
+          .input('instructionRef', s.VarChar(50), instructionRef)
+          .query(`
+            UPDATE IDVerifications 
+            SET EIDOverallResult = 'Documents Requested'
+            WHERE InstructionRef = @instructionRef
+          `)
+      );
+
       res.json({
         success: true,
         message: 'Document request email sent successfully',
         instructionRef,
         emailSent: true,
-        recipient: 'lz@helix-law.com' // Test delivery address
+        recipient: 'lz@helix-law.com'
       });
-      
     } catch (emailError) {
       console.error('Failed to send document request email:', emailError);
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to send email',
-        details: emailError.message 
+        details: emailError.message
       });
     }
-
   } catch (error) {
+    const transient = isTransientSqlError(error);
     console.error('[verify-id] Error requesting documents:', error);
-    res.status(500).json({ 
+    res.status(transient ? 503 : 500).json({
       error: 'Internal server error',
-      details: error.message
+      details: error.message,
+      transient
     });
-  } finally {
-    if (pool) {
-      await pool.close();
-    }
   }
 });
 
@@ -418,17 +374,7 @@ router.post('/:instructionRef/approve', async (req, res) => {
 
   console.log(`[verify-id] Approving verification for ${instructionRef}`);
 
-  let pool;
   try {
-    const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
-    if (!connectionString) {
-      throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
-    }
-
-  // Dedicated pool per request to ensure correct DB
-  pool = await new sql.ConnectionPool(connectionString).connect();
-
-    // Get the instruction details first
     const getInstructionQuery = `
       SELECT 
         i.InstructionRef,
@@ -442,18 +388,16 @@ router.post('/:instructionRef/approve', async (req, res) => {
       WHERE i.InstructionRef = @instructionRef
     `;
 
-    let request = pool.request();
-    request.input('instructionRef', sql.VarChar(50), instructionRef);
+    const instructionResult = await runInstructionQuery((request, s) =>
+      request.input('instructionRef', s.VarChar(50), instructionRef).query(getInstructionQuery)
+    );
     
-    const instructionResult = await request.query(getInstructionQuery);
-    
-    if (instructionResult.recordset.length === 0) {
+    if (!instructionResult.recordset?.length) {
       return res.status(404).json({ error: 'Instruction not found' });
     }
 
     const instruction = instructionResult.recordset[0];
 
-    // Update the verification status
     const updateQuery = `
       UPDATE IDVerifications 
       SET 
@@ -461,12 +405,10 @@ router.post('/:instructionRef/approve', async (req, res) => {
       WHERE InstructionRef = @instructionRef
     `;
 
-    request = pool.request();
-    request.input('instructionRef', sql.VarChar(50), instructionRef);
-    
-    await request.query(updateQuery);
+    await runInstructionQuery((request, s) =>
+      request.input('instructionRef', s.VarChar(50), instructionRef).query(updateQuery)
+    );
 
-    // Also update the Instructions table stage if needed
     const updateInstructionQuery = `
       UPDATE Instructions 
       SET 
@@ -474,13 +416,10 @@ router.post('/:instructionRef/approve', async (req, res) => {
       WHERE InstructionRef = @instructionRef
     `;
 
-    request = pool.request();
-    request.input('instructionRef', sql.VarChar(50), instructionRef);
-    
-    await request.query(updateInstructionQuery);
+    await runInstructionQuery((request, s) =>
+      request.input('instructionRef', s.VarChar(50), instructionRef).query(updateInstructionQuery)
+    );
 
-    // Send notification email to client
-    const clientName = `${instruction.FirstName || ''} ${instruction.LastName || ''}`.trim();
     const clientFirstName = instruction.FirstName || 'Client';
     const sendingContact = instruction.HelixContact || instruction.PitchedBy || 'System';
     
@@ -499,15 +438,13 @@ router.post('/:instructionRef/approve', async (req, res) => {
     });
 
   } catch (error) {
+    const transient = isTransientSqlError(error);
     console.error('[verify-id] Error approving verification:', error);
-    res.status(500).json({ 
+    res.status(transient ? 503 : 500).json({ 
       error: 'Internal server error',
-      details: error.message
+      details: error.message,
+      transient
     });
-  } finally {
-    if (pool) {
-      await pool.close();
-    }
   }
 });
 
@@ -994,15 +931,13 @@ router.post('/:instructionRef/test-state', async (req, res) => {
 
   console.log(`[verify-id] Switching test state to '${state}' for ${instructionRef}`);
 
-  let pool;
   try {
     const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
     if (!connectionString) {
       throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
     }
 
-  // Dedicated pool per request to ensure correct DB
-  pool = await new sql.ConnectionPool(connectionString).connect();
+    const pool = await getPool(connectionString);
 
     // Map state to database values
     let eidOverallResult;
@@ -1068,10 +1003,6 @@ router.post('/:instructionRef/test-state', async (req, res) => {
       error: 'Internal server error',
       details: error.message
     });
-  } finally {
-    if (pool) {
-      await pool.close();
-    }
   }
 });
 
@@ -1093,15 +1024,13 @@ router.post('/:instructionRef/draft-request', async (req, res) => {
 
   console.log(`[verify-id] Sending draft document request for ${instructionRef}`);
 
-  let pool;
   try {
     const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
     if (!connectionString) {
       throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
     }
 
-  // Dedicated pool per request to ensure correct DB
-  pool = await new sql.ConnectionPool(connectionString).connect();
+    const pool = await getPool(connectionString);
 
     // Get the instruction details
     const getInstructionQuery = `
@@ -1162,10 +1091,6 @@ router.post('/:instructionRef/draft-request', async (req, res) => {
       error: 'Internal server error',
       details: error.message
     });
-  } finally {
-    if (pool) {
-      await pool.close();
-    }
   }
 });
 

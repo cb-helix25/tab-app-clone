@@ -1,5 +1,5 @@
 const express = require('express');
-const sql = require('mssql');
+const { withRequest, sql } = require('../utils/db');
 const router = express.Router();
 
 // Route: GET /api/enquiries-unified
@@ -23,80 +23,58 @@ router.get('/', async (req, res) => {
 
   // Connecting to databases
     
-    // Create connection pools for both databases
-    const mainPool = new sql.ConnectionPool(mainConnectionString);
-    const instructionsPool = new sql.ConnectionPool(instructionsConnectionString);
-    
-    // Connect to both databases in parallel
-    await Promise.all([
-      mainPool.connect(),
-      instructionsPool.connect()
-    ]);
-    
-  // Connected to databases, querying tables
-    
-    // Query main enquiries table (helix-core-data)
-    const mainEnquiriesQuery = `
-      SELECT 
-        ID,
-        ID as id,
-        Date_Created as datetime,
-        Tags as stage,
-        Value as claim,
-        Point_of_Contact as poc,
-        Area_of_Work as pitch,
-        Area_of_Work as aow,
-        Type_of_Work as tow,
-        Method_of_Contact as moc,
-        Contact_Referrer as rep,
-        First_Name,
-        First_Name as first,
-        Last_Name,
-        Last_Name as last,
-        Email as email,
-        Phone_Number as phone,
-        Value as value,
-        Initial_first_call_notes as notes,
-        Gift_Rank as rank,
-        Rating as rating,
-        ID as acid,
-        ID as card_id,
-        Ultimate_Source as source,
-        Referral_URL as url,
-        Contact_Referrer as contact_referrer,
-        Referring_Company as company_referrer,
-        GCLID as gclid,
-        'main' as db_source
-      FROM enquiries
-      ORDER BY Date_Created DESC
-    `;
+    // Sequential database queries to avoid overwhelming connections
+    const mainEnquiries = await withRequest(mainConnectionString, async (request) => {
+      const result = await request.query(`
+        SELECT 
+          ID,
+          ID as id,
+          Date_Created as datetime,
+          Tags as stage,
+          Value as claim,
+          Point_of_Contact as poc,
+          Area_of_Work as pitch,
+          Area_of_Work as aow,
+          Type_of_Work as tow,
+          Method_of_Contact as moc,
+          Contact_Referrer as rep,
+          First_Name,
+          First_Name as first,
+          Last_Name,
+          Last_Name as last,
+          Email as email,
+          Phone_Number as phone,
+          Value as value,
+          Initial_first_call_notes as notes,
+          Gift_Rank as rank,
+          Rating as rating,
+          ID as acid,
+          ID as card_id,
+          Ultimate_Source as source,
+          Referral_URL as url,
+          Contact_Referrer as contact_referrer,
+          Referring_Company as company_referrer,
+          GCLID as gclid,
+          'main' as db_source
+        FROM enquiries
+        ORDER BY Date_Created DESC
+      `);
+      return Array.isArray(result.recordset) ? result.recordset : [];
+    });
 
-    // Query instructions database for any additional enquiry data
-    // Use a safer query that handles unknown table structure
-    const instructionsEnquiriesQuery = `
-      SELECT TOP 10
-        *
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_TYPE = 'BASE TABLE'
-    `;
+    // Instructions database query (currently disabled due to connection issues)
+    const instructionsEnquiries = []; // Empty for now to prevent timeout issues
+    
+    // TODO: Enable instructions query when database connection is stable
+    // const instructionsEnquiries = await withRequest(instructionsConnectionString, async (request) => {
+    //   // Instructions query would go here
+    //   return [];
+    // });
 
-    // Execute both queries in parallel
-    const [mainResult, instructionsResult] = await Promise.all([
-      mainPool.request().query(mainEnquiriesQuery),
-      // Temporarily disable instructions query due to schema issues
-      Promise.resolve({ recordset: [] })
-      // instructionsPool.request().query(instructionsEnquiriesQuery).catch(err => {
-      //   console.warn('⚠️ Instructions enquiries query failed (non-blocking):', err.message);
-      //   return { recordset: [] }; // Return empty result if this query fails
-      // })
-    ]);
-    
-  // Enquiries counts fetched
-    
     // Merge results from both databases
     const allEnquiries = [
-      ...mainResult.recordset,
-      ...instructionsResult.recordset
+      ...mainEnquiries,
+      ...instructionsEnquiries
     ];
 
     // Remove duplicates based on id (ProspectId)
@@ -121,17 +99,13 @@ router.get('/', async (req, res) => {
       enquiries: uniqueEnquiries,
       count: uniqueEnquiries.length,
       sources: {
-        main: mainResult.recordset.length,
-        instructions: instructionsResult.recordset.length,
+        main: mainEnquiries.length,
+        instructions: instructionsEnquiries.length,
         unique: uniqueEnquiries.length
       }
     });
     
-    // Close both connections
-    await Promise.all([
-      mainPool.close(),
-      instructionsPool.close()
-    ]);
+    // Connection cleanup handled automatically by withRequest utility
     
   } catch (err) {
     console.warn('❌ Error fetching unified enquiries from databases:', err.message);
@@ -153,8 +127,6 @@ router.get('/', async (req, res) => {
 // Route: POST /api/enquiries-unified/update
 // Update enquiry fields in both database schemas
 router.post('/update', async (req, res) => {
-  console.log('📝 UPDATE ENQUIRY ROUTE CALLED');
-  
   const { ID, ...updates } = req.body;
   
   if (!ID) {
@@ -165,9 +137,6 @@ router.post('/update', async (req, res) => {
     return res.status(400).json({ error: 'No updates provided' });
   }
 
-  console.log('🔍 Updating enquiry:', ID);
-  console.log('📝 Updates:', updates);
-
   try {
     // Connection string for main database (helix-core-data) only
     const mainConnectionString = process.env.SQL_CONNECTION_STRING;
@@ -177,72 +146,60 @@ router.post('/update', async (req, res) => {
       return res.status(500).json({ error: 'Database configuration missing' });
     }
 
-    // Create connection pool for main database only
-    const mainPool = new sql.ConnectionPool(mainConnectionString);
-    
-    // Connect to main database
-    await mainPool.connect();
-    console.log('✅ Connected to main database');
-
-    // Check if enquiry exists in main database
+    // Check if enquiry exists in main database using withRequest utility
     const checkMainQuery = `SELECT COUNT(*) as count FROM enquiries WHERE ID = @id`;
     
-    const mainRequest = mainPool.request();
-    mainRequest.input('id', sql.VarChar(50), ID);
-    const mainResult = await mainRequest.query(checkMainQuery);
+    const mainResult = await withRequest(mainConnectionString, async (request) => {
+      request.input('id', sql.VarChar(50), ID);
+      return await request.query(checkMainQuery);
+    });
     
     const mainCount = mainResult.recordset[0]?.count || 0;
     
-    console.log('📊 Enquiry location check:', { mainCount });
 
     if (mainCount === 0) {
-      await mainPool.close();
       return res.status(404).json({ error: 'Enquiry not found' });
     }
 
     // Update in main database (helix-core-data) only
-    console.log('📝 Updating main enquiries table');
     
-    const setClause = [];
-    const updateRequest = mainPool.request();
-    updateRequest.input('id', sql.VarChar(50), ID);
-    
-    // Map updates to main schema
-    if (updates.First_Name !== undefined) {
-      setClause.push('First_Name = @firstName');
-      updateRequest.input('firstName', sql.VarChar(100), updates.First_Name);
-    }
-    if (updates.Last_Name !== undefined) {
-      setClause.push('Last_Name = @lastName');
-      updateRequest.input('lastName', sql.VarChar(100), updates.Last_Name);
-    }
-    if (updates.Email !== undefined) {
-      setClause.push('Email = @email');
-      updateRequest.input('email', sql.VarChar(255), updates.Email);
-    }
-    if (updates.Value !== undefined) {
-      setClause.push('Value = @value');
-      updateRequest.input('value', sql.VarChar(100), updates.Value);
-    }
-    if (updates.Initial_first_call_notes !== undefined) {
-      setClause.push('Initial_first_call_notes = @notes');
-      updateRequest.input('notes', sql.Text, updates.Initial_first_call_notes);
-    }
-    if (updates.Area_of_Work !== undefined) {
-      setClause.push('Area_of_Work = @areaOfWork');
-      updateRequest.input('areaOfWork', sql.VarChar(100), updates.Area_of_Work);
-    }
+    const updateResult = await withRequest(mainConnectionString, async (request) => {
+      const setClause = [];
+      request.input('id', sql.VarChar(50), ID);
+      
+      // Map updates to main schema
+      if (updates.First_Name !== undefined) {
+        setClause.push('First_Name = @firstName');
+        request.input('firstName', sql.VarChar(100), updates.First_Name);
+      }
+      if (updates.Last_Name !== undefined) {
+        setClause.push('Last_Name = @lastName');
+        request.input('lastName', sql.VarChar(100), updates.Last_Name);
+      }
+      if (updates.Email !== undefined) {
+        setClause.push('Email = @email');
+        request.input('email', sql.VarChar(255), updates.Email);
+      }
+      if (updates.Value !== undefined) {
+        setClause.push('Value = @value');
+        request.input('value', sql.VarChar(100), updates.Value);
+      }
+      if (updates.Initial_first_call_notes !== undefined) {
+        setClause.push('Initial_first_call_notes = @notes');
+        request.input('notes', sql.Text, updates.Initial_first_call_notes);
+      }
+      if (updates.Area_of_Work !== undefined) {
+        setClause.push('Area_of_Work = @areaOfWork');
+        request.input('areaOfWork', sql.VarChar(100), updates.Area_of_Work);
+      }
 
-    if (setClause.length > 0) {
-      const updateQuery = `UPDATE enquiries SET ${setClause.join(', ')} WHERE ID = @id`;
-      console.log('🔧 Main update query:', updateQuery);
-      await updateRequest.query(updateQuery);
-    }
+      if (setClause.length > 0) {
+        const updateQuery = `UPDATE enquiries SET ${setClause.join(', ')} WHERE ID = @id`;
+        return await request.query(updateQuery);
+      }
+      return null;
+    });
 
-    // Close connection
-    await mainPool.close();
-
-    console.log('✅ Enquiry updated successfully in main database');
     res.status(200).json({ 
       success: true, 
       message: 'Enquiry updated successfully',

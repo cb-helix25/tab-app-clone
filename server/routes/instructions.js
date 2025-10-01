@@ -1,7 +1,6 @@
 const express = require('express');
-const { getSecret } = require('../utils/getSecret');
 const sql = require('mssql');
-const { getPool } = require('../utils/db');
+const { withRequest } = require('../utils/db');
 const router = express.Router();
 
 // Database connection (shared pool)
@@ -10,6 +9,64 @@ const getInstrConnStr = () => {
   if (!cs) throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
   return cs;
 };
+
+const TRANSIENT_SQL_CODES = new Set(['ESOCKET', 'ECONNCLOSED', 'ECONNRESET', 'ETIMEDOUT', 'ETIMEOUT']);
+const DEFAULT_MAX_RETRIES = Number(process.env.SQL_INSTRUCTIONS_MAX_RETRIES || 4);
+
+const instructionsQuery = (executor, retries = DEFAULT_MAX_RETRIES) =>
+  withRequest(getInstrConnStr(), executor, retries);
+
+const groupByKey = (rows, key) => {
+  const map = new Map();
+  for (const row of rows || []) {
+    const value = row[key];
+    if (!map.has(value)) {
+      map.set(value, []);
+    }
+    map.get(value).push(row);
+  }
+  return map;
+};
+
+const createInClause = (values, prefix) => {
+  const clauseParts = values.map((_, index) => `@${prefix}${index}`);
+  const clause = clauseParts.join(', ');
+  const bind = (request, type) => {
+    values.forEach((value, index) => {
+      request.input(`${prefix}${index}`, type, value);
+    });
+  };
+  return { clause, bind };
+};
+
+const isTransientSqlError = (error) => {
+  const code = error?.code || error?.originalError?.code || error?.cause?.code;
+  if (code && TRANSIENT_SQL_CODES.has(String(code))) {
+    return true;
+  }
+  const message = error?.message || error?.originalError?.message || '';
+  return typeof message === 'string' && /ECONNRESET|ECONNCLOSED|ETIMEOUT|ETIMEDOUT/i.test(message);
+};
+
+const buildTransientFallback = (requestId, detail) => ({
+  error: 'Failed to fetch instruction data from database',
+  detail,
+  instructions: [],
+  deals: [],
+  deal: null,
+  instruction: null,
+  idVerifications: [],
+  documents: [],
+  count: 0,
+  computedServerSide: true,
+  directDatabase: true,
+  requestId,
+  timestamp: new Date().toISOString(),
+  transient: true
+});
+
+const runQuery = (builder, retries) =>
+  instructionsQuery((request, s) => builder(request, s), retries);
 
 // Generate unique request ID for logging
 function generateRequestId() {
@@ -22,11 +79,9 @@ router.get('/test-db', async (req, res) => {
   // Testing direct database connection
 
   try {
-    const pool = await getPool(getInstrConnStr());
-    
-    // Test query - get a few deals to verify connection
-    const result = await pool.request()
-      .query('SELECT TOP 3 DealId, ProspectId, ServiceDescription, InstructionRef FROM Deals ORDER BY DealId DESC');
+    const result = await runQuery((request) =>
+      request.query('SELECT TOP 3 DealId, ProspectId, ServiceDescription, InstructionRef FROM Deals ORDER BY DealId DESC')
+    );
 
     res.json({
       status: 'success',
@@ -79,38 +134,55 @@ router.get('/', async (req, res) => {
     try {
       const dealId = parseInt(req.query.dealId);
       const updates = JSON.parse(req.query.updates || '{}');
-      
-      const config = await getDbConfig();
-      const pool = new sql.ConnectionPool(config);
-      await pool.connect();
-      
-      // Build dynamic update query
+      if (!Number.isFinite(dealId)) {
+        return res.status(400).json({ error: 'Invalid deal id', requestId });
+      }
+
       const updateParts = [];
-      const request = pool.request().input('dealId', sql.Int, dealId);
-      
+      const inputs = [];
+
       if (updates.ServiceDescription !== undefined) {
         updateParts.push('ServiceDescription = @serviceDescription');
-        request.input('serviceDescription', sql.NVarChar, updates.ServiceDescription);
+        inputs.push({ name: 'serviceDescription', type: sql.NVarChar, value: updates.ServiceDescription });
       }
-      
+
       if (updates.Amount !== undefined) {
         updateParts.push('Amount = @amount');
-        request.input('amount', sql.Decimal(18, 2), updates.Amount);
+        inputs.push({ name: 'amount', type: sql.Decimal(18, 2), value: updates.Amount });
       }
-      
-      // Do not assume UpdatedAt column exists
-      
+
+      if (updateParts.length === 0) {
+        return res.status(400).json({ error: 'No fields provided to update', requestId });
+      }
+
       const updateQuery = `UPDATE Deals SET ${updateParts.join(', ')} WHERE DealId = @dealId`;
-      // Executing update
-      
-      const result = await request.query(updateQuery);
-      
-      if (result.rowsAffected[0] === 0) {
+
+      const result = await runQuery((request, s) => {
+        request.input('dealId', s.Int, dealId);
+        inputs.forEach(({ name, type, value }) => request.input(name, type, value));
+        return request.query(updateQuery);
+      });
+
+      if (!result?.rowsAffected?.[0]) {
         return res.status(404).json({ error: 'Deal not found', requestId });
       }
-      
-      // Deal updated successfully
-      return res.json({ success: true, updated: true, dealId, requestId });
+
+      const updatedDeal = await runQuery((request, s) =>
+        request.input('dealId', s.Int, dealId)
+          .query(`
+            SELECT DealId, ServiceDescription, Amount, UpdatedAt 
+            FROM Deals 
+            WHERE DealId = @dealId
+          `)
+      );
+
+      return res.json({
+        success: true,
+        updated: true,
+        dealId,
+        deal: updatedDeal.recordset?.[0] || null,
+        requestId
+      });
       
     } catch (error) {
       console.error(`[${requestId}] ❌ Update error`, error);
@@ -119,8 +191,6 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    const pool = await getPool(getInstrConnStr());
-
     const initials = req.query.initials;
     const prospectId = req.query.prospectId && Number(req.query.prospectId);
     const instructionRef = req.query.instructionRef;
@@ -131,232 +201,250 @@ router.get('/', async (req, res) => {
     // ─── Deals pitched by this user with related data ────────────────────
     let deals = [];
     if (initials) {
-      const dealsResult = await pool.request()
-        .input('initials', sql.NVarChar, initials)
-        .query('SELECT * FROM Deals WHERE PitchedBy=@initials ORDER BY DealId DESC');
+      const dealsResult = await runQuery((request, s) =>
+        request.input('initials', s.NVarChar, initials)
+          .query('SELECT * FROM Deals WHERE PitchedBy=@initials ORDER BY DealId DESC')
+      );
       deals = dealsResult.recordset || [];
     } else {
-      const dealsResult = await pool.request()
-        .query('SELECT * FROM Deals ORDER BY DealId DESC');
+      const dealsResult = await runQuery((request) =>
+        request.query('SELECT * FROM Deals ORDER BY DealId DESC')
+      );
       deals = dealsResult.recordset || [];
-    }
-
-    // Deals count
-
-    for (const d of deals) {
-      const jointRes = await pool.request()
-        .input('dealId', sql.Int, d.DealId)
-        .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
-      d.jointClients = jointRes.recordset || [];
-
-      if (d.InstructionRef) {
-        const instRes = await pool.request()
-          .input('ref', sql.NVarChar, d.InstructionRef)
-          .query('SELECT * FROM Instructions WHERE InstructionRef=@ref');
-        const inst = instRes.recordset[0] || null;
-        if (inst) {
-          const docRes = await pool.request()
-            .input('ref', sql.NVarChar, d.InstructionRef)
-            .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
-          inst.documents = docRes.recordset || [];
-
-          const riskRes = await pool.request()
-            .input('ref', sql.NVarChar, d.InstructionRef)
-            .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
-          inst.idVerifications = riskRes.recordset || [];
-
-          const riskAssessRes = await pool.request()
-            .input('ref', sql.NVarChar, d.InstructionRef)
-            .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
-          inst.riskAssessments = riskAssessRes.recordset || [];
-          d.instruction = inst;
-        }
-      }
     }
 
     // ─── Single deal by ID when requested ───────────────────────────────
     let deal = null;
     if (dealId != null) {
-      const dealRes = await pool.request()
-        .input('dealId', sql.Int, dealId)
-        .query('SELECT * FROM Deals WHERE DealId=@dealId');
+      const dealRes = await runQuery((request, s) =>
+        request.input('dealId', s.Int, dealId)
+          .query('SELECT * FROM Deals WHERE DealId=@dealId')
+      );
       deal = dealRes.recordset[0] || null;
-      if (deal) {
-        const jointRes = await pool.request()
-          .input('dealId', sql.Int, dealId)
-          .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
-        deal.jointClients = jointRes.recordset || [];
-
-        if (deal.InstructionRef) {
-          const instRes = await pool.request()
-            .input('ref', sql.NVarChar, deal.InstructionRef)
-            .query('SELECT * FROM Instructions WHERE InstructionRef=@ref');
-          const inst = instRes.recordset[0] || null;
-          if (inst) {
-            const docRes = await pool.request()
-              .input('ref', sql.NVarChar, deal.InstructionRef)
-              .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
-            inst.documents = docRes.recordset || [];
-
-            const riskRes = await pool.request()
-              .input('ref', sql.NVarChar, deal.InstructionRef)
-              .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
-            inst.idVerifications = riskRes.recordset || [];
-
-            const riskAssessRes = await pool.request()
-              .input('ref', sql.NVarChar, deal.InstructionRef)
-              .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
-            inst.riskAssessments = riskAssessRes.recordset || [];
-            deal.instruction = inst;
-          }
-        }
-      }
     }
 
     // ─── Instructions for this user ──────────────────────────────────────
     let instructions = [];
-    const allIdVerifications = [];
     if (initials) {
-      const instrResult = await pool.request()
-        .input('initials', sql.NVarChar, initials)
-        .query('SELECT * FROM Instructions WHERE HelixContact=@initials ORDER BY InstructionRef DESC');
+      const instrResult = await runQuery((request, s) =>
+        request.input('initials', s.NVarChar, initials)
+          .query('SELECT * FROM Instructions WHERE HelixContact=@initials ORDER BY InstructionRef DESC')
+      );
       instructions = instrResult.recordset || [];
     } else {
-      const instrResult = await pool.request()
-        .query('SELECT * FROM Instructions ORDER BY InstructionRef DESC');
+      const instrResult = await runQuery((request) =>
+        request.query('SELECT * FROM Instructions ORDER BY InstructionRef DESC')
+      );
       instructions = instrResult.recordset || [];
     }
 
-    // Instructions count
-
-    for (const inst of instructions) {
-      const docRes = await pool.request()
-        .input('ref', sql.NVarChar, inst.InstructionRef)
-        .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
-      inst.documents = docRes.recordset || [];
-
-      const riskRes = await pool.request()
-        .input('ref', sql.NVarChar, inst.InstructionRef)
-        .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
-      inst.idVerifications = riskRes.recordset || [];
-
-      const riskAssessRes = await pool.request()
-        .input('ref', sql.NVarChar, inst.InstructionRef)
-        .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
-      inst.riskAssessments = riskAssessRes.recordset || [];
-      allIdVerifications.push(...inst.idVerifications);
-
-      // Fetch matter data to populate MatterId
-      const matterRes = await pool.request()
-        .input('ref', sql.NVarChar, inst.InstructionRef)
-        .query('SELECT MatterID, DisplayNumber FROM Matters WHERE InstructionRef=@ref ORDER BY OpenDate DESC');
-      const matter = matterRes.recordset[0];
-      if (matter) {
-        inst.MatterId = matter.MatterID;
-        inst.DisplayNumber = matter.DisplayNumber;
-        inst.matters = [matter]; // Also provide as array for compatibility
-      }
-
-      const dealRes = await pool.request()
-        .input('ref', sql.NVarChar, inst.InstructionRef)
-        .query('SELECT * FROM Deals WHERE InstructionRef=@ref');
-      const d = dealRes.recordset[0];
-      if (d) {
-        const jointRes = await pool.request()
-          .input('dealId', sql.Int, d.DealId)
-          .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
-        d.jointClients = jointRes.recordset || [];
-        inst.deal = d;
-      }
-
-      // Fetch payment data
-      const paymentRes = await pool.request()
-        .input('ref', sql.NVarChar, inst.InstructionRef)
-        .query('SELECT * FROM Payments WHERE instruction_ref=@ref ORDER BY created_at DESC');
-      inst.payments = paymentRes.recordset || [];
-    }
-
-    // ─── Single instruction by reference when requested ─────────────────
     let instruction = null;
     if (instructionRef) {
-      const instRes = await pool.request()
-        .input('ref', sql.NVarChar, instructionRef)
-        .query('SELECT * FROM Instructions WHERE InstructionRef=@ref');
+      const instRes = await runQuery((request, s) =>
+        request.input('ref', s.NVarChar, instructionRef)
+          .query('SELECT * FROM Instructions WHERE InstructionRef=@ref')
+      );
       instruction = instRes.recordset[0] || null;
+    }
 
-      if (instruction) {
-        const docRes = await pool.request()
-          .input('ref', sql.NVarChar, instructionRef)
-          .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
-        instruction.documents = docRes.recordset || [];
+    const instructionRefsSet = new Set();
+    const dealIdsSet = new Set();
 
-        const riskRes = await pool.request()
-          .input('ref', sql.NVarChar, instructionRef)
-          .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
-        instruction.idVerifications = riskRes.recordset || [];
-
-        const riskAssessRes = await pool.request()
-          .input('ref', sql.NVarChar, instructionRef)
-          .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
-        instruction.riskAssessments = riskAssessRes.recordset || [];
-
-        // Fetch matter data to populate MatterId
-        const matterRes = await pool.request()
-          .input('ref', sql.NVarChar, instructionRef)
-          .query('SELECT MatterID, DisplayNumber FROM Matters WHERE InstructionRef=@ref ORDER BY OpenDate DESC');
-        const matter = matterRes.recordset[0];
-        if (matter) {
-          instruction.MatterId = matter.MatterID;
-          instruction.DisplayNumber = matter.DisplayNumber;
-          instruction.matters = [matter]; // Also provide as array for compatibility
-        }
-
-        const dealRes = await pool.request()
-          .input('ref', sql.NVarChar, instructionRef)
-          .query('SELECT * FROM Deals WHERE InstructionRef=@ref');
-        const d = dealRes.recordset[0];
-        if (d) {
-          const jointRes = await pool.request()
-            .input('dealId', sql.Int, d.DealId)
-            .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
-          d.jointClients = jointRes.recordset || [];
-          instruction.deal = d;
-        }
-
-        // Fetch payment data
-        const paymentRes = await pool.request()
-          .input('ref', sql.NVarChar, instructionRef)
-          .query('SELECT * FROM Payments WHERE instruction_ref=@ref ORDER BY created_at DESC');
-        instruction.payments = paymentRes.recordset || [];
+    const trackInstructionRef = (ref) => {
+      if (ref) {
+        instructionRefsSet.add(ref);
       }
+    };
+
+    const trackDealId = (id) => {
+      if (Number.isFinite(id)) {
+        dealIdsSet.add(id);
+      }
+    };
+
+    deals.forEach((dealItem) => {
+      trackInstructionRef(dealItem.InstructionRef);
+      trackDealId(dealItem.DealId);
+    });
+
+    if (deal) {
+      trackInstructionRef(deal.InstructionRef);
+      trackDealId(deal.DealId);
+    }
+
+    instructions.forEach((inst) => trackInstructionRef(inst.InstructionRef));
+
+    if (instructionRef) {
+      trackInstructionRef(instructionRef);
+    }
+
+    const instructionRefs = Array.from(instructionRefsSet);
+    const dealIds = Array.from(dealIdsSet);
+    const emptyRecordset = { recordset: [] };
+
+    const [
+      documentsResult,
+      idVerificationsResult,
+      riskAssessmentsResult,
+      paymentsResult,
+      mattersResult,
+      dealsForInstructionsResult,
+      jointClientsResult
+    ] = await Promise.all([
+      instructionRefs.length
+        ? runQuery((request, s) => {
+            const { clause, bind } = createInClause(instructionRefs, 'docRef');
+            bind(request, s.NVarChar);
+            return request.query(`SELECT * FROM Documents WHERE InstructionRef IN (${clause}) ORDER BY DocumentId`);
+          })
+        : Promise.resolve(emptyRecordset),
+      instructionRefs.length
+        ? runQuery((request, s) => {
+            const { clause, bind } = createInClause(instructionRefs, 'idRef');
+            bind(request, s.NVarChar);
+            return request.query(`SELECT * FROM IDVerifications WHERE InstructionRef IN (${clause}) ORDER BY InternalId DESC`);
+          })
+        : Promise.resolve(emptyRecordset),
+      instructionRefs.length
+        ? runQuery((request, s) => {
+            const { clause, bind } = createInClause(instructionRefs, 'riskRef');
+            bind(request, s.NVarChar);
+            return request.query(`SELECT * FROM RiskAssessment WHERE InstructionRef IN (${clause}) ORDER BY ComplianceDate DESC`);
+          })
+        : Promise.resolve(emptyRecordset),
+      instructionRefs.length
+        ? runQuery((request, s) => {
+            const { clause, bind } = createInClause(instructionRefs, 'payRef');
+            bind(request, s.NVarChar);
+            return request.query(`SELECT * FROM Payments WHERE instruction_ref IN (${clause}) ORDER BY created_at DESC`);
+          })
+        : Promise.resolve(emptyRecordset),
+      instructionRefs.length
+        ? runQuery((request, s) => {
+            const { clause, bind } = createInClause(instructionRefs, 'matterRef');
+            bind(request, s.NVarChar);
+            return request.query(`SELECT * FROM Matters WHERE InstructionRef IN (${clause}) ORDER BY OpenDate DESC`);
+          })
+        : Promise.resolve(emptyRecordset),
+      instructionRefs.length
+        ? runQuery((request, s) => {
+            const { clause, bind } = createInClause(instructionRefs, 'dealRef');
+            bind(request, s.NVarChar);
+            return request.query(`SELECT * FROM Deals WHERE InstructionRef IN (${clause})`);
+          })
+        : Promise.resolve(emptyRecordset),
+      dealIds.length
+        ? runQuery((request, s) => {
+            const { clause, bind } = createInClause(dealIds, 'jointDeal');
+            bind(request, s.Int);
+            return request.query(`SELECT * FROM DealJointClients WHERE DealId IN (${clause}) ORDER BY DealJointClientId`);
+          })
+        : Promise.resolve(emptyRecordset)
+    ]);
+
+    const documentsByRef = groupByKey(documentsResult.recordset, 'InstructionRef');
+    const idVerificationsByRef = groupByKey(idVerificationsResult.recordset, 'InstructionRef');
+    const riskAssessmentsByRef = groupByKey(riskAssessmentsResult.recordset, 'InstructionRef');
+    const paymentsByRef = groupByKey(paymentsResult.recordset, 'instruction_ref');
+    const mattersByRef = groupByKey(mattersResult.recordset, 'InstructionRef');
+    const jointClientsByDeal = groupByKey(jointClientsResult.recordset, 'DealId');
+
+    const dealsCatalog = new Map();
+    for (const dealItem of deals) {
+      if (Number.isFinite(dealItem.DealId)) {
+        dealsCatalog.set(dealItem.DealId, dealItem);
+      }
+    }
+    if (deal && Number.isFinite(deal.DealId)) {
+      dealsCatalog.set(deal.DealId, deal);
+    }
+    for (const fetchedDeal of dealsForInstructionsResult.recordset || []) {
+      if (Number.isFinite(fetchedDeal.DealId) && !dealsCatalog.has(fetchedDeal.DealId)) {
+        dealsCatalog.set(fetchedDeal.DealId, fetchedDeal);
+      }
+    }
+
+    const enrichDeal = (dealItem) => {
+      if (!dealItem || !Number.isFinite(dealItem.DealId)) {
+        return;
+      }
+      dealItem.jointClients = jointClientsByDeal.get(dealItem.DealId) || [];
+    };
+
+    dealsCatalog.forEach(enrichDeal);
+
+    if (deal && Number.isFinite(deal.DealId)) {
+      deal = dealsCatalog.get(deal.DealId) || deal;
+    }
+
+    const dealsByInstruction = groupByKey(Array.from(dealsCatalog.values()), 'InstructionRef');
+
+    const attachInstructionAggregates = (inst) => {
+      if (!inst || !inst.InstructionRef) {
+        return;
+      }
+      const ref = inst.InstructionRef;
+      inst.documents = documentsByRef.get(ref) || [];
+      inst.idVerifications = idVerificationsByRef.get(ref) || [];
+      inst.riskAssessments = riskAssessmentsByRef.get(ref) || [];
+      inst.payments = paymentsByRef.get(ref) || [];
+      const matters = mattersByRef.get(ref) || [];
+      if (matters.length) {
+        inst.MatterId = inst.MatterId ?? matters[0].MatterID;
+        inst.DisplayNumber = inst.DisplayNumber ?? matters[0].DisplayNumber;
+        inst.matters = matters;
+      } else {
+        inst.matters = inst.matters || [];
+      }
+      const relatedDeals = dealsByInstruction.get(ref) || [];
+      if (relatedDeals.length) {
+        const primaryDeal = relatedDeals[0];
+        enrichDeal(primaryDeal);
+        inst.deal = primaryDeal;
+      } else if (!inst.deal) {
+        inst.deal = null;
+      }
+    };
+
+    const allIdVerifications = [];
+
+    instructions.forEach((inst) => {
+      attachInstructionAggregates(inst);
+      allIdVerifications.push(...inst.idVerifications);
+    });
+
+    if (instruction) {
+      const existingInstruction = instructions.find((inst) => inst.InstructionRef === instruction.InstructionRef);
+      if (existingInstruction) {
+        instruction = existingInstruction;
+      }
+      attachInstructionAggregates(instruction);
+    }
+
+    if (deal && Number.isFinite(deal.DealId)) {
+      enrichDeal(deal);
     }
 
     // ─── ID verifications by ProspectId or instruction refs ─────────────
     let idVerifications = [];
     if (prospectId != null) {
-      const riskRes = await pool.request()
-        .input('pid', sql.Int, prospectId)
-        .query('SELECT * FROM IDVerifications WHERE ProspectId=@pid ORDER BY InternalId DESC');
+      const riskRes = await runQuery((request, s) =>
+        request.input('pid', s.Int, prospectId)
+          .query('SELECT * FROM IDVerifications WHERE ProspectId=@pid ORDER BY InternalId DESC')
+      );
       idVerifications = riskRes.recordset || [];
     } else if (initials) {
       idVerifications = allIdVerifications;
     } else {
-      const riskRes = await pool.request()
-        .query('SELECT * FROM IDVerifications ORDER BY InternalId DESC');
-      idVerifications = riskRes.recordset || [];
+      idVerifications = idVerificationsResult.recordset || [];
     }
 
     // ─── Documents by instruction ref when requested ────────────────────
     let documents = [];
     if (instructionRef && !instruction) {
-      const docRes = await pool.request()
-        .input('ref', sql.NVarChar, instructionRef)
-        .query('SELECT * FROM Documents WHERE InstructionRef=@ref ORDER BY DocumentId');
-      documents = docRes.recordset || [];
+      documents = documentsByRef.get(instructionRef) || [];
     } else if (!instructionRef) {
-      const docRes = await pool.request()
-        .query('SELECT * FROM Documents ORDER BY DocumentId');
-      documents = docRes.recordset || [];
+      documents = documentsResult.recordset || [];
     }
 
     // Instruction data fetched
@@ -416,7 +504,16 @@ router.get('/', async (req, res) => {
     res.json(transformedData);
 
   } catch (error) {
-    console.error(`[${requestId}] Direct database instruction fetch failed`, error);
+    const transient = isTransientSqlError(error);
+    console.error(
+      `[${requestId}] Direct database instruction fetch failed${transient ? ' (transient)' : ''}`,
+      error
+    );
+    if (transient) {
+      res.status(503).json(buildTransientFallback(requestId, error.message));
+      return;
+    }
+
     res.status(500).json({
       error: 'Failed to fetch instruction data from database',
       detail: error.message,
@@ -449,20 +546,14 @@ router.put('/deals/:dealId', async (req, res) => {
   }
 
   try {
-    const pool = await getPool(getInstrConnStr());
-    
     // Build dynamic update query based on provided fields
     const updates = [];
-    const request = pool.request().input('dealId', sql.Int, dealId);
-    
     if (ServiceDescription !== undefined) {
       updates.push('ServiceDescription = @serviceDescription');
-      request.input('serviceDescription', sql.NVarChar, ServiceDescription);
     }
     
     if (Amount !== undefined) {
       updates.push('Amount = @amount');
-      request.input('amount', sql.Decimal(18, 2), Amount);
     }
     
     // Add updated timestamp
@@ -474,11 +565,18 @@ router.put('/deals/:dealId', async (req, res) => {
       WHERE DealId = @dealId
     `;
     
-    // Executing update query
+    const result = await runQuery((request, s) => {
+      request.input('dealId', s.Int, dealId);
+      if (ServiceDescription !== undefined) {
+        request.input('serviceDescription', s.NVarChar, ServiceDescription);
+      }
+      if (Amount !== undefined) {
+        request.input('amount', s.Decimal(18, 2), Amount);
+      }
+      return request.query(updateQuery);
+    });
     
-    const result = await request.query(updateQuery);
-    
-    if (result.rowsAffected[0] === 0) {
+    if (!result.rowsAffected?.[0]) {
       return res.status(404).json({ error: 'Deal not found', requestId });
     }
     
@@ -489,9 +587,10 @@ router.put('/deals/:dealId', async (req, res) => {
       WHERE DealId = @dealId
     `;
     
-    const updatedResult = await pool.request()
-      .input('dealId', sql.Int, dealId)
-      .query(updatedDealQuery);
+    const updatedResult = await runQuery((request, s) =>
+      request.input('dealId', s.Int, dealId)
+        .query(updatedDealQuery)
+    );
     
     
     res.json({
@@ -501,8 +600,14 @@ router.put('/deals/:dealId', async (req, res) => {
     });
     
   } catch (error) {
-    console.error(`[${requestId}] ❌ Error updating deal`, error);
-    res.status(500).json({ error: 'Failed to update deal', details: error.message, requestId });
+    const transient = isTransientSqlError(error);
+    console.error(`[${requestId}] ❌ Error updating deal${transient ? ' (transient)' : ''}`, error);
+    res.status(transient ? 503 : 500).json({
+      error: 'Failed to update deal',
+      details: error.message,
+      transient,
+      requestId
+    });
   }
 });
 

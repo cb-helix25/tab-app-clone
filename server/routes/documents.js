@@ -6,46 +6,17 @@ const {
     BlobSASPermissions,
     generateBlobSASQueryParameters,
 } = require('@azure/storage-blob');
-const sql = require('mssql');
+const { withRequest, sql } = require('../utils/db');
 
 const router = express.Router();
 
-// Database connection configuration
-let dbConfig = null;
-
-async function getDbConfig() {
-  if (dbConfig) return dbConfig;
-  
-  // Use the INSTRUCTIONS_SQL_CONNECTION_STRING from .env
-  const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
-  if (!connectionString) {
-    throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
-  }
-  
-  // Parse connection string into config object
-  const params = new URLSearchParams(connectionString.split(';').join('&'));
-  const server = params.get('Server').replace('tcp:', '').split(',')[0];
-  const database = params.get('Initial Catalog');
-  const user = params.get('User ID');
-  const password = params.get('Password');
-  
-  dbConfig = {
-    server,
-    database, 
-    user,
-    password,
-    options: {
-      encrypt: true,
-      trustServerCertificate: false,
-      enableArithAbort: true
+function getInstructionsConnectionString() {
+    const connectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
+    if (!connectionString) {
+        throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
     }
-  };
-  
-  return dbConfig;
+    return connectionString;
 }
-
-// Database connection pool
-let pool;
 
 // Blob service client (reused)
 let blobServiceClient = null;
@@ -129,16 +100,6 @@ async function generateBlobSasUrl(containerName, blobName, filename, minutes = 1
     }
 }
 
-// Initialize database connection
-async function initializeDatabase() {
-    if (!pool) {
-        const config = await getDbConfig();
-        pool = new sql.ConnectionPool(config);
-        await pool.connect();
-    }
-    return pool;
-}
-
 /**
  * Get documents for a specific instruction
  */
@@ -146,54 +107,89 @@ router.get('/:instructionRef', async (req, res) => {
     try {
         const { instructionRef } = req.params;
         
-        // Initialize database connection
-        await initializeDatabase();
+        if (!instructionRef || instructionRef.trim() === '') {
+            return res.status(400).json({ error: 'Invalid instruction reference' });
+        }
         
-        // Query documents from database
-        const result = await pool.request()
-            .input('instructionRef', instructionRef)
-            .query(`
-                SELECT DocumentId, InstructionRef, FileName, BlobUrl, FileSizeBytes, 
-                       UploadedBy, UploadedAt
-                FROM Documents 
-                WHERE InstructionRef = @instructionRef
-                ORDER BY UploadedAt DESC
-            `);
-                // Precompute preview URLs; for Office docs we prefer a short-lived SAS URL so Office Online can fetch it
-                const officeExts = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
-                const docsOut = [];
-                for (const doc of result.recordset) {
-                    const fileName = doc.FileName || '';
-                    const ext = (fileName.split('.').pop() || '').toLowerCase();
+        console.log(`📄 Fetching documents for instruction: ${instructionRef}`);
+        
+        const connectionString = getInstructionsConnectionString();
 
-                    let previewUrl = `/api/documents/preview/${instructionRef}/${doc.DocumentId}`; // default proxy
+        const documents = await withRequest(connectionString, async (request) => {
+            console.log(`🔍 Executing SQL query for instructionRef: ${instructionRef}`);
+            const { recordset } = await request
+                .input('instructionRef', sql.NVarChar, instructionRef)
+                .query(`
+                    SELECT DocumentId, InstructionRef, FileName, BlobUrl, FileSizeBytes,
+                           UploadedBy, UploadedAt
+                    FROM Documents
+                    WHERE InstructionRef = @instructionRef
+                    ORDER BY UploadedAt DESC
+                `);
+            console.log(`📊 Found ${recordset?.length || 0} documents for ${instructionRef}`);
+            return Array.isArray(recordset) ? recordset : [];
+        });
 
-                    if (officeExts.has(ext) && doc.BlobUrl) {
-                        try {
-                            const urlObj = new URL(doc.BlobUrl);
-                            const parts = urlObj.pathname.split('/');
-                            const container = parts[1];
-                            const blob = decodeURIComponent(parts.slice(2).join('/'));
-                            const sasUrl = await generateBlobSasUrl(container, blob, fileName, 15);
-                            if (sasUrl) {
-                                // Use SAS URL as the preview base; client will wrap with Office viewer
-                                previewUrl = sasUrl;
-                            }
-                        } catch { /* fallback to proxy */ }
+        // If no documents found, return empty array with 200 status instead of error
+        if (!documents || documents.length === 0) {
+            console.log(`📭 No documents found for ${instructionRef}`);
+            return res.json([]);
+        }
+
+        // Precompute preview URLs; for Office docs we prefer a short-lived SAS URL so Office Online can fetch it
+        const officeExts = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
+        const docsOut = [];
+        for (const doc of documents) {
+            const fileName = doc.FileName || '';
+            const ext = (fileName.split('.').pop() || '').toLowerCase();
+
+            let previewUrl = `/api/documents/preview/${instructionRef}/${doc.DocumentId}`; // default proxy
+
+            if (officeExts.has(ext) && doc.BlobUrl) {
+                try {
+                    const urlObj = new URL(doc.BlobUrl);
+                    const parts = urlObj.pathname.split('/');
+                    const container = parts[1];
+                    const blob = decodeURIComponent(parts.slice(2).join('/'));
+                    const sasUrl = await generateBlobSasUrl(container, blob, fileName, 15);
+                    if (sasUrl) {
+                        // Use SAS URL as the preview base; client will wrap with Office viewer
+                        previewUrl = sasUrl;
                     }
+                } catch { /* fallback to proxy */ }
+            }
 
-                    docsOut.push({
-                        ...doc,
-                        previewUrl, // used by client for iframe or Office viewer src
-                        directUrl: doc.BlobUrl,
-                        authWarning: 'Preview uses short-lived access; link expires soon.'
-                    });
-                }
+            docsOut.push({
+                ...doc,
+                previewUrl, // used by client for iframe or Office viewer src
+                directUrl: doc.BlobUrl,
+                authWarning: 'Preview uses short-lived access; link expires soon.'
+            });
+        }
 
-                res.json(docsOut);
+        console.log(`✅ Returning ${docsOut.length} documents for ${instructionRef}`);
+        res.json(docsOut);
         
     } catch (error) {
-        console.error('Error fetching documents:', error);
+        console.error(`❌ Error fetching documents for ${req.params.instructionRef}:`, error);
+        
+        // Return 404 for common "not found" type errors instead of 500
+        if (error.message && (
+            error.message.includes('Invalid object name') ||
+            error.message.includes('Cannot resolve') ||
+            error.message.includes('does not exist')
+        )) {
+            console.log(`📭 Documents table/instruction not found for ${req.params.instructionRef}, returning 404`);
+            return res.status(404).json({ error: 'Documents not found' });
+        }
+        
+        // For connection errors, return 503 Service Unavailable
+        if (error.code === 'ESOCKET' || error.code === 'ECONNRESET' || error.message?.includes('Connection')) {
+            console.log(`🔌 Database connection error for ${req.params.instructionRef}, returning 503`);
+            return res.status(503).json({ error: 'Database temporarily unavailable' });
+        }
+        
+        // Default to 500 for unexpected errors
         res.status(500).json({ error: 'Failed to fetch documents' });
     }
 });
@@ -202,27 +198,33 @@ router.get('/:instructionRef', async (req, res) => {
  * Proxy document preview with Azure authentication
  */
 router.get('/preview/:instructionRef/:documentId', async (req, res) => {
+    let blobUrlForFallback;
     try {
         const { instructionRef, documentId } = req.params;
-        
-        // Initialize database connection
-        await initializeDatabase();
-        
-        // Get document details from database
-        const result = await pool.request()
-            .input('instructionRef', instructionRef)
-            .input('documentId', documentId)
-            .query(`
-                SELECT BlobUrl, FileName 
-                FROM Documents 
-                WHERE InstructionRef = @instructionRef AND DocumentId = @documentId
-            `);
-        
-        if (result.recordset.length === 0) {
+        const connectionString = getInstructionsConnectionString();
+        const docId = Number(documentId);
+
+        if (!Number.isFinite(docId)) {
+            return res.status(400).json({ error: 'Invalid document id' });
+        }
+
+        const document = await withRequest(connectionString, async (request) => {
+            const { recordset } = await request
+                .input('instructionRef', sql.NVarChar, instructionRef)
+                .input('documentId', sql.Int, docId)
+                .query(`
+                    SELECT BlobUrl, FileName
+                    FROM Documents
+                    WHERE InstructionRef = @instructionRef AND DocumentId = @documentId
+                `);
+            return recordset[0] || null;
+        });
+
+        if (!document) {
             return res.status(404).json({ error: 'Document not found' });
         }
-        
-        const { BlobUrl, FileName } = result.recordset[0];
+        const { BlobUrl, FileName } = document;
+        blobUrlForFallback = BlobUrl;
         
         // Try different authentication approaches
         const blobServiceClient = getBlobServiceClient();
@@ -259,17 +261,17 @@ router.get('/preview/:instructionRef/:documentId', async (req, res) => {
         console.error('Error proxying document:', error);
         
         // Handle specific Azure errors
-        if (error.code === 'AuthenticationFailed') {
+        if (blobUrlForFallback && error.code === 'AuthenticationFailed') {
             console.warn('Authentication failed for blob storage, falling back to direct URL');
-            return res.redirect(BlobUrl);
+            return res.redirect(blobUrlForFallback);
         }
-        if (error.code === 'AuthorizationFailed') {
+        if (blobUrlForFallback && error.code === 'AuthorizationFailed') {
             console.warn('Authorization failed for blob storage, falling back to direct URL');  
-            return res.redirect(BlobUrl);
+            return res.redirect(blobUrlForFallback);
         }
-        if (error.message && error.message.includes('PublicAccessNotPermitted')) {
+        if (blobUrlForFallback && error.message && error.message.includes('PublicAccessNotPermitted')) {
             console.warn('Public access not permitted, falling back to direct URL');
-            return res.redirect(BlobUrl);
+            return res.redirect(blobUrlForFallback);
         }
         
         res.status(500).json({ error: 'Failed to retrieve document' });

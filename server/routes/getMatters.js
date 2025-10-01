@@ -1,5 +1,5 @@
 const express = require('express');
-const sql = require('mssql');
+const { withRequest, sql } = require('../utils/db');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 
@@ -73,26 +73,16 @@ async function fetchMattersFromDb() {
     }
 
     const conn = await resolveSqlConnectionString();
-    let pool;
-    try {
-        pool = await new sql.ConnectionPool(conn).connect();
-        const result = await pool.request().query('SELECT * FROM [dbo].[Matters]');
+    const matters = await withRequest(conn, async (request) => {
+        const result = await request.query('SELECT * FROM [dbo].[Matters]');
         if (!result.recordset || !Array.isArray(result.recordset)) {
             throw new Error('Query returned no valid recordset');
         }
-        mattersCache = { data: result.recordset, ts: now };
         return result.recordset;
-    } catch (error) {
-        throw new Error(`Database query failed: ${error.message}`);
-    } finally {
-        if (pool) {
-            try {
-                await pool.close();
-            } catch {
-                // ignore close errors
-            }
-        }
-    }
+    });
+    
+    mattersCache = { data: matters, ts: now };
+    return matters;
 }
 
 // GET /api/getMatters?fullName=...&limit=...

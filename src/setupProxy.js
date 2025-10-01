@@ -29,7 +29,6 @@ module.exports = function(app) {
   // Azure Functions routes (port 7072 - api folder TypeScript functions)
   const azureFunctionRoutes = [
     '/getSnippetEdits',
-    '/getAttendance',
     '/getWIPClio',
     '/getRecovered',
     '/getPOID6Years',
@@ -37,7 +36,6 @@ module.exports = function(app) {
     '/getTransactions',
     '/getOutstandingClientBalances',
     '/getSnippetBlocks',
-    '/getAnnualLeave',
     '/insertAttendance',
     '/insertNotableCaseInfo',
     '/insertDeal'  // Added for deal capture

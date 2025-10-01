@@ -4,6 +4,7 @@ import { Stack, Text, Spinner, MessageBar, MessageBarType, DefaultButton, IButto
 import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import { Transaction, Matter } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
+import { debugLog, debugWarn } from '../../utils/debug';
 
 // Button styles
 const selectionStyles: IButtonStyles = {
@@ -138,7 +139,7 @@ const TransactionApprovalPopup: React.FC<TransactionApprovalPopupProps> = ({
       }
 
       const result = await response.json();
-      console.log("Update successful:", result);
+      debugLog("Update successful:", result);
       setSubmitStatus('success');
 
       // Update the transaction status in the parent component
@@ -150,7 +151,7 @@ const TransactionApprovalPopup: React.FC<TransactionApprovalPopupProps> = ({
         onCancel(); // Close the panel after 2 seconds
       }, 2000);
     } catch (error) {
-      console.error("Error updating transaction:", error);
+      debugWarn("Error updating transaction:", error);
       setSubmitStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Unknown error occurred');
       setIsLoading(false); // Allow retry on error

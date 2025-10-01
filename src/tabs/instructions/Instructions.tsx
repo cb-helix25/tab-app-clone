@@ -58,6 +58,7 @@ import FilterBanner from '../../components/filter/FilterBanner';
 // ToggleSwitch removed in favor of premium SegmentedControl for scope/layout
 import IDVerificationReviewModal from '../../components/modals/IDVerificationReviewModal';
 import { fetchVerificationDetails, approveVerification } from '../../services/verificationAPI';
+import { debugLog, debugWarn } from '../../utils/debug';
 
 interface InstructionsProps {
   userInitials: string;
@@ -178,7 +179,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     try {
       localStorage.setItem('clientNameCache', JSON.stringify(Array.from(cache.entries())));
     } catch (error) {
-      console.warn('Failed to save client name cache to localStorage');
+      debugWarn('Failed to save client name cache to localStorage');
     }
   }, []);
 
@@ -188,7 +189,7 @@ const Instructions: React.FC<InstructionsProps> = ({
    */
   const fetchUnifiedEnquiries = async () => {
     try {
-      console.log('🔗 Fetching unified enquiries for name mapping...');
+      debugLog('🔗 Fetching unified enquiries for name mapping...');
       
       // Check if we already have cached data in sessionStorage
       const cached = sessionStorage.getItem('unifiedEnquiries');
@@ -196,7 +197,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       const oneHour = 60 * 60 * 1000; // Extended to 1 hour for better performance
       
       if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneHour)) {
-        console.log('📦 Using cached unified enquiries data');
+        debugLog('📦 Using cached unified enquiries data');
         const cachedData = JSON.parse(cached);
         setUnifiedEnquiries(cachedData);
         return;
@@ -207,25 +208,49 @@ const Instructions: React.FC<InstructionsProps> = ({
         const response = await fetch('/api/enquiries-unified');
         if (response.ok) {
           const data = await response.json();
-          console.log(`✅ Fetched ${data.count} unified enquiries from both databases`);
-          console.log('🔍 Sample unified enquiries data:', data.enquiries?.slice(0, 3));
-          console.log('🔍 Looking for prospect 27671:', data.enquiries?.find((e: any) => 
+          debugLog(`✅ Fetched ${data.count} unified enquiries from both databases`);
+          debugLog('🔍 Sample unified enquiries data:', data.enquiries?.slice(0, 3));
+          debugLog('🔍 Looking for prospect 27671:', data.enquiries?.find((e: any) => 
             e.ID === '27671' || e.id === '27671' || e.acid === '27671' || e.card_id === '27671'
           ));
           const enquiries = data.enquiries || [];
           setUnifiedEnquiries(enquiries);
           
-          // Cache the results
-          sessionStorage.setItem('unifiedEnquiries', JSON.stringify(enquiries));
-          sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
+          // Cache the results - wrap in try/catch to handle QuotaExceededError
+          try {
+            sessionStorage.setItem('unifiedEnquiries', JSON.stringify(enquiries));
+            sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
+          } catch (cacheError: any) {
+            if (cacheError.name === 'QuotaExceededError') {
+              debugWarn('⚠️ SessionStorage quota exceeded, skipping unified enquiries cache');
+              // Try to clear old cache and retry with reduced data
+              try {
+                sessionStorage.removeItem('unifiedEnquiries');
+                sessionStorage.removeItem('unifiedEnquiriesTime');
+                // Store only essential fields for name lookup
+                const reducedEnquiries = enquiries.map((e: any) => ({
+                  ID: e.ID || e.id,
+                  First_Name: e.First_Name || e.first,
+                  Last_Name: e.Last_Name || e.last
+                }));
+                sessionStorage.setItem('unifiedEnquiries', JSON.stringify(reducedEnquiries));
+                sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
+                debugLog('✅ Cached reduced enquiries dataset');
+              } catch (retryError) {
+                debugWarn('⚠️ Could not cache even reduced dataset, proceeding without cache');
+              }
+            } else {
+              debugWarn('⚠️ Unexpected caching error:', cacheError);
+            }
+          }
           return;
         } else {
-          console.log(`❌ Unified route failed with status: ${response.status} ${response.statusText}`);
+          debugLog(`❌ Unified route failed with status: ${response.status} ${response.statusText}`);
           const errorText = await response.text();
-          console.log(`❌ Error details:`, errorText);
+          debugLog(`❌ Error details:`, errorText);
         }
       } catch (err) {
-        console.log('📝 Unified route not available yet, falling back to direct queries...', err);
+        debugLog('📝 Unified route not available yet, falling back to direct queries...', err);
       }
 
       // Fallback: Fetch from both sources directly
@@ -236,7 +261,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         fetch('/api/instructions').then(res => res.ok ? res.json() : { instructions: [] })
       ]);
 
-      console.log(`📊 Fallback data: ${mainEnquiries.enquiries?.length || 0} main enquiries, ${instructionsData.instructions?.length || 0} instructions`);
+      debugLog(`📊 Fallback data: ${mainEnquiries.enquiries?.length || 0} main enquiries, ${instructionsData.instructions?.length || 0} instructions`);
 
       // Combine data sources for name mapping
       const combinedEnquiries = [
@@ -259,13 +284,21 @@ const Instructions: React.FC<InstructionsProps> = ({
         }).filter((item: any) => item.acid && (item.first || item.last))
       ];
 
-      console.log(`✅ Combined ${combinedEnquiries.length} enquiries for name mapping (${mainEnquiries.enquiries?.length || 0} from main + ${instructionsData.instructions?.filter((i: any) => i.deal?.ProspectId || i.ProspectId).length || 0} from instructions)`);
+      debugLog(`✅ Combined ${combinedEnquiries.length} enquiries for name mapping (${mainEnquiries.enquiries?.length || 0} from main + ${instructionsData.instructions?.filter((i: any) => i.deal?.ProspectId || i.ProspectId).length || 0} from instructions)`);
       
       setUnifiedEnquiries(combinedEnquiries);
       
-      // Cache the fallback results too
-      sessionStorage.setItem('unifiedEnquiries', JSON.stringify(combinedEnquiries));
-      sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
+      // Cache the fallback results too - wrap in try/catch to handle QuotaExceededError
+      try {
+        sessionStorage.setItem('unifiedEnquiries', JSON.stringify(combinedEnquiries));
+        sessionStorage.setItem('unifiedEnquiriesTime', Date.now().toString());
+      } catch (cacheError: any) {
+        if (cacheError.name === 'QuotaExceededError') {
+          debugWarn('⚠️ SessionStorage quota exceeded, skipping fallback cache');
+        } else {
+          debugWarn('⚠️ Unexpected fallback caching error:', cacheError);
+        }
+      }
       
     } catch (error) {
       console.error('❌ Error fetching unified enquiries:', error);
@@ -293,7 +326,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       }
     });
     
-    console.log(`📇 Built enquiry lookup index with ${map.size} entries`);
+    debugLog(`📇 Built enquiry lookup index with ${map.size} entries`);
     return map;
   }, [unifiedEnquiries]);
 
@@ -347,8 +380,8 @@ const Instructions: React.FC<InstructionsProps> = ({
     const enquiryResult = enquiryLookupMap.get(prospectIdStr);
     
     if (prospectIdStr === '27671') {
-      console.log('🔍 Fast lookup for 27671 in index:', enquiryLookupMap.has(prospectIdStr));
-      console.log('🔍 Found enquiry for 27671:', enquiryResult);
+      debugLog('🔍 Fast lookup for 27671 in index:', enquiryLookupMap.has(prospectIdStr));
+      debugLog('🔍 Found enquiry for 27671:', enquiryResult);
     }
 
     let result = enquiryResult || (cached || { firstName: '', lastName: '' }); // Fallback to cached if available
@@ -504,7 +537,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Handle deal editing
   const handleDealEdit = useCallback(async (dealId: number, updates: { ServiceDescription?: string; Amount?: number }) => {
     try {
-      console.log('Updating deal:', dealId, updates);
+      debugLog('Updating deal:', dealId, updates);
       
       // Call the API endpoint to update the deal
       const response = await fetch('/api/update-deal', {
@@ -519,7 +552,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       }
       
       const result = await response.json();
-      console.log('Deal updated successfully:', result);
+      debugLog('Deal updated successfully:', result);
       
       // Update local state with the updated deal
       setInstructionData(prev => 
@@ -670,7 +703,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   
   // Get effective instruction data based on admin mode and user filtering
   const effectiveInstructionData = useMemo(() => {
-    console.log('🔄 effectiveInstructionData calculation:', {
+    debugLog('🔄 effectiveInstructionData calculation:', {
       isAdmin,
       showAllInstructions,
       instructionDataLength: instructionData.length,
@@ -684,7 +717,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     // If user wants to see all data and allInstructionData is available, use it
     if (showAllInstructions && allInstructionData.length > 0) {
       result = allInstructionData;
-      console.log('🔄 User viewing ALL instructions (including Other/Unsure)');
+      debugLog('🔄 User viewing ALL instructions (including Other/Unsure)');
     } else {
       // Default: Filter to show only current user's instructions (for both admin and non-admin)
       // If instructionData is empty but allInstructionData has data, filter from allInstructionData
@@ -698,7 +731,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           
           // Log the first few items to see the data structure
           if (sourceData.indexOf(instruction) < 3) {
-            console.log('🔍 Sample instruction structure:', {
+            debugLog('🔍 Sample instruction structure:', {
               prospectId: instruction.prospectId,
               Email: instruction.Email,
               Lead: instruction.Lead,
@@ -774,7 +807,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           const shouldInclude = belongsToUser || isOtherUnsure;
           
           if (shouldInclude) {
-            console.log('✅ Instruction included:', {
+            debugLog('✅ Instruction included:', {
               prospectId: instruction.prospectId,
               userEmail,
               userInitials,
@@ -793,7 +826,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           
           return shouldInclude;
         });
-        console.log('🔄 Filtered to user instructions:', {
+        debugLog('🔄 Filtered to user instructions:', {
           sourceData: sourceData.length > 0 ? 'instructionData' : 'allInstructionData',
           sourceLength: sourceData.length,
           filteredLength: result.length
@@ -801,10 +834,10 @@ const Instructions: React.FC<InstructionsProps> = ({
       } else {
         result = sourceData;
       }
-      console.log(`🔄 User viewing OWN instructions (filtered)`);
+      debugLog(`🔄 User viewing OWN instructions (filtered)`);
     }
     
-    console.log('🔄 effectiveInstructionData updated:', {
+    debugLog('🔄 effectiveInstructionData updated:', {
       isAdmin,
       showAllInstructions,
       currentUserEmail: currentUser?.Email,
@@ -1613,10 +1646,10 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
 
   // Debug logging for input data
   React.useEffect(() => {
-    console.log('Debug - effectiveInstructionData:', effectiveInstructionData.length, 'prospects');
+    debugLog('Debug - effectiveInstructionData:', effectiveInstructionData.length, 'prospects');
     const allDeals = effectiveInstructionData.flatMap(p => p.deals ?? []);
-    console.log('Debug - Total deals in data:', allDeals.length);
-    console.log('Debug - Sample deals:', allDeals.slice(0, 3).map(d => ({
+    debugLog('Debug - Total deals in data:', allDeals.length);
+    debugLog('Debug - Sample deals:', allDeals.slice(0, 3).map(d => ({
       dealId: d.DealId,
       instructionRef: d.InstructionRef,
       status: d.Status,
@@ -1627,9 +1660,9 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
   // Debug logging for pitches
   React.useEffect(() => {
     const pitchedItems = overviewItems.filter(item => !item.instruction && item.deal);
-    console.log('Debug - Total overview items:', overviewItems.length);
-    console.log('Debug - Pitched deals (no instruction):', pitchedItems.length);
-    console.log('Debug - Pitched deals details:', pitchedItems.map(item => ({
+    debugLog('Debug - Total overview items:', overviewItems.length);
+    debugLog('Debug - Pitched deals (no instruction):', pitchedItems.length);
+    debugLog('Debug - Pitched deals details:', pitchedItems.map(item => ({
       dealId: item.deal?.DealId,
       status: item.deal?.Status,
       acid: item.deal?.ACID || item.deal?.acid || item.deal?.Acid,
@@ -2591,7 +2624,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
       ? inst.idVerifications[0] // Most recent (ordered by InternalId DESC)
       : null;
     
-    console.log(`🔍 Enhanced EID Check for ${instructionRef}:`, {
+    debugLog(`🔍 Enhanced EID Check for ${instructionRef}:`, {
       stage: inst.stage,
       hasIdVerifications: !!(inst.idVerifications && inst.idVerifications.length > 0),
       idVerificationCount: inst.idVerifications ? inst.idVerifications.length : 0,
@@ -2623,16 +2656,16 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
       const dbResult = idVerification.EIDOverallResult.toLowerCase();
       if (dbResult === 'review') {
         verifyIdStatus = 'review';
-        console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: review`);
+        debugLog(`✅ Status determined from DB IDVerifications.EIDOverallResult: review`);
       } else if (dbResult === 'passed' || dbResult === 'complete' || dbResult === 'verified') {
         verifyIdStatus = 'complete';
-        console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: complete (${dbResult})`);
+        debugLog(`✅ Status determined from DB IDVerifications.EIDOverallResult: complete (${dbResult})`);
       } else if (dbResult === 'failed' || dbResult === 'rejected' || dbResult === 'fail') {
         verifyIdStatus = 'review'; // Failed results should open review modal
-        console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: review (failed status: ${dbResult})`);
+        debugLog(`✅ Status determined from DB IDVerifications.EIDOverallResult: review (failed status: ${dbResult})`);
       } else {
         verifyIdStatus = 'review'; // Default for unknown results
-        console.log(`✅ Status determined from DB IDVerifications.EIDOverallResult: review (fallback for ${dbResult})`);
+        debugLog(`✅ Status determined from DB IDVerifications.EIDOverallResult: review (fallback for ${dbResult})`);
       }
     }
     // Priority 2: Check Tiller API overall result if available
@@ -2649,13 +2682,13 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
     // Priority 3: Check legacy database EID result fields
     else if (eidResult === 'review' || altEidResult === 'review') {
       verifyIdStatus = 'review';
-      console.log(`✅ Status determined from legacy DB EIDResult: review (${eidResult || altEidResult})`);
+      debugLog(`✅ Status determined from legacy DB EIDResult: review (${eidResult || altEidResult})`);
     } else if (eidResult === 'failed' || eidResult === 'rejected' || eidResult === 'fail' || altEidResult === 'failed' || altEidResult === 'rejected' || altEidResult === 'fail') {
       verifyIdStatus = 'review'; // Failed results should open review modal  
-      console.log(`✅ Status determined from legacy DB EIDResult: review (failed status: ${eidResult || altEidResult})`);
+      debugLog(`✅ Status determined from legacy DB EIDResult: review (failed status: ${eidResult || altEidResult})`);
     } else if (poidPassed || eidResult === 'passed' || altEidResult === 'passed') {
       verifyIdStatus = 'complete';
-      console.log(`✅ Status determined from legacy DB EIDResult: complete (${eidResult || altEidResult})`);
+      debugLog(`✅ Status determined from legacy DB EIDResult: complete (${eidResult || altEidResult})`);
     }
     // Priority 4: Check stage and other indicators
     else if (stageComplete) {
@@ -2665,25 +2698,25 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
         console.log(`✅ Status determined from pending state: review`);
       } else {
         verifyIdStatus = 'review'; // Stage complete but unclear result
-        console.log(`✅ Status determined from stage complete fallback: review`);
+        debugLog(`✅ Status determined from stage complete fallback: review`);
       }
     } else if ((!eid && !eids?.length) || eidStatus === 'pending') {
       verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
-      console.log(`✅ Status determined from no data: ${verifyIdStatus}`);
+      debugLog(`✅ Status determined from no data: ${verifyIdStatus}`);
     } else if (poidPassed) {
       verifyIdStatus = 'complete';
-      console.log(`✅ Status determined from poidPassed: complete`);
+      debugLog(`✅ Status determined from poidPassed: complete`);
     } else {
       verifyIdStatus = 'review';
-      console.log(`✅ Status determined from fallback: review`);
+      debugLog(`✅ Status determined from fallback: review`);
     }
 
-    console.log(`ID verification status for ${instructionRef}: ${verifyIdStatus}`);
+    debugLog(`ID verification status for ${instructionRef}: ${verifyIdStatus}`);
 
     // IMPORTANT: Handle review and complete statuses immediately - NO API CALLS
     if (verifyIdStatus === 'review') {
       // Red ID - already requires review, open modal directly
-      console.log('🔴 RED ID detected - Opening review modal directly (NO API CALL)');
+      debugLog('🔴 RED ID detected - Opening review modal directly (NO API CALL)');
       try {
         const details = await fetchVerificationDetails(instructionRef);
         setReviewModalDetails(details);
@@ -2697,7 +2730,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
     
     if (verifyIdStatus === 'complete') {
       // Green ID - already completed, open review modal to show details
-      console.log('🟢 GREEN ID detected - Opening review modal to show completion details');
+      debugLog('🟢 GREEN ID detected - Opening review modal to show completion details');
       try {
         const details = await fetchVerificationDetails(instructionRef);
         setReviewModalDetails(details);
@@ -2710,7 +2743,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
     }
 
     // Only reach here if status is 'pending' or 'received' - these need API calls
-    console.log(`🟡 PENDING/RECEIVED ID detected - Making API call for ${instructionRef}`);
+    debugLog(`🟡 PENDING/RECEIVED ID detected - Making API call for ${instructionRef}`);
 
     // Set loading state
     setIdVerificationLoading(prev => new Set(prev).add(instructionRef));
@@ -2737,15 +2770,15 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
           alert('ID verification already completed for this instruction.');
         } else {
           // Verification submitted successfully
-          console.log('ID verification submitted successfully');
-          console.log('Admin Log - Response:', result.response);
-          console.log('Admin Log - Parse Results:', result.parseResults);
+          debugLog('ID verification submitted successfully');
+          debugLog('Admin Log - Response:', result.response);
+          debugLog('Admin Log - Parse Results:', result.parseResults);
           
           // Show appropriate feedback based on results
           const overallResult = result.overall || 'pending';
           if (overallResult === 'review') {
             // Results require review - open modal for manual approval
-            console.log('Opening review modal for verification results');
+            debugLog('Opening review modal for verification results');
             try {
               const details = await fetchVerificationDetails(instructionRef);
               setReviewModalDetails(details);
@@ -2795,7 +2828,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
           ...prospect,
           instructions: prospect.instructions.map((instruction: any) => {
             if (instruction.InstructionRef === instructionRef) {
-              console.log('Updating instruction:', instructionRef, 'from', instruction.EIDOverallResult, 'to Verified');
+              debugLog('Updating instruction:', instructionRef, 'from', instruction.EIDOverallResult, 'to Verified');
               return { ...instruction, EIDOverallResult: 'Verified', stage: 'proof-of-id-complete' };
             }
             return instruction;
@@ -3265,11 +3298,11 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                           onRiskClick={() => handleRiskAssessment(item)}
                           onSelect={() => {
                             // TODO: Implement pitch selection logic
-                            console.log('Pitch selected:', item.deal?.DealId);
+                            debugLog('Pitch selected:', item.deal?.DealId);
                           }}
                           onToggle={() => {
                             // TODO: Implement pitch toggle logic
-                            console.log('Pitch toggled:', item.deal?.DealId);
+                            debugLog('Pitch toggled:', item.deal?.DealId);
                           }}
                           onProofOfIdClick={() => {
                             // Not applicable for pitches
@@ -5057,7 +5090,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
           // The email sending is handled within the modal
         }}
         onOverride={async (instructionRef: string) => {
-          console.log('Override verification for:', instructionRef);
+          debugLog('Override verification for:', instructionRef);
           // Close modal and potentially refresh data
           setShowReviewModal(false);
           setReviewModalDetails(null);

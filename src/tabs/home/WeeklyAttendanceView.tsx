@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { debugLog } from '../../utils/debug';
 import { Icon, Text, DefaultButton } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { colours } from '../../app/styles/colours';
@@ -131,7 +132,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
   onOpenModal,
   onDayUpdate
 }) => {
-  console.log('WeeklyAttendanceView received data:', {
+  debugLog('WeeklyAttendanceView received data:', {
     attendanceRecordsCount: attendanceRecords?.length,
     teamDataCount: teamData?.length,
     sampleAttendanceRecord: attendanceRecords?.[0],
@@ -204,7 +205,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
       
       // Debug log
       if (overlaps) {
-        console.log(`DEBUG: ${initials} is on leave for week ${weekOffset}:`, {
+  debugLog(`DEBUG: ${initials} is on leave for week ${weekOffset}:`, {
           leaveStart: leaveStart.toDateString(),
           leaveEnd: leaveEnd.toDateString(),
           weekStart: startOfWeek.toDateString(),
@@ -272,7 +273,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
       || '';
     
     // Debug: Check what data we actually have
-    console.log(`DEBUG: getDailyAttendance for ${member.Initials || member.First}:`, {
+  debugLog(`DEBUG: getDailyAttendance for ${member.Initials || member.First}:`, {
       weekOffset,
       attendanceKey,
       attendanceDays,
@@ -363,7 +364,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
         || (member as any).Status 
         || '';
       
-      console.log('processedTeamData debug - ONE TIME ONLY:', {
+  debugLog('processedTeamData debug - ONE TIME ONLY:', {
         memberInitials: member.Initials,
         attendanceRecord,
         attendanceDays,
@@ -374,8 +375,8 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
       
       // Only log once by checking if this is the first member
       if (member.Initials === teamData[0]?.Initials) {
-        console.log('FULL ATTENDANCE RECORDS:', attendanceRecords);
-        console.log('FULL TEAM DATA:', teamData);
+  debugLog('FULL ATTENDANCE RECORDS:', attendanceRecords);
+  debugLog('FULL TEAM DATA:', teamData);
       }
       
       const leaveStatusCurrentWeek = getLeaveStatusForWeek(member.Initials, 0);
@@ -666,7 +667,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     const mondayBasedIndex = dayIndex === 0 ? -1 : dayIndex - 1;
     
     // Debug info
-    console.log(`DEBUG: getTodayAttendance for ${member.Initials || member.First}:`, {
+  debugLog(`DEBUG: getTodayAttendance for ${member.Initials || member.First}:`, {
       today: today.toDateString(),
       dayIndex,
       mondayBasedIndex,
@@ -681,7 +682,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     const currentWeekAttendance = getDailyAttendance(member, 0);
     const todayStatus = currentWeekAttendance[mondayBasedIndex] || member.status || 'home';
     
-    console.log(`DEBUG: Today status for ${member.Initials || member.First}:`, {
+  debugLog(`DEBUG: Today status for ${member.Initials || member.First}:`, {
       currentWeekAttendance,
       mondayBasedIndex,
       todayStatus

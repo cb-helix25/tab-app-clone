@@ -12,6 +12,7 @@ import React, {
   Suspense,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { debugLog, debugWarn } from '../../utils/debug';
 import {
   mergeStyles,
   Text,
@@ -32,7 +33,6 @@ import {
   Toggle,
   keyframes,
 } from '@fluentui/react';
-import { debugLog } from '../../utils/debug';
 import { FaCheck } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 // Removed legacy MetricCard usage
@@ -462,7 +462,7 @@ const flattenObject = (obj: any, prefix = ''): { key: string; value: any }[] => 
 
 const transformContext = (contextObj: any): { key: string; value: string }[] => {
   if (!contextObj || typeof contextObj !== 'object') {
-    console.warn('Invalid context object:', contextObj);
+    debugWarn('Invalid context object:', contextObj);
     return [];
   }
   const flattened = flattenObject(contextObj);
@@ -706,6 +706,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: prov
   const inTeams = isInTeams();
   const useLocalData =
     process.env.REACT_APP_USE_LOCAL_DATA === 'true';
+  
+  // Component mounted successfully
 
   const [attendanceTeam, setAttendanceTeam] = useState<any[]>([]);
   // Transform teamData into our lite TeamMember type
@@ -801,6 +803,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: prov
   // ADDED: Store user initials so they don't reset on remount
   const storedUserInitials = useRef<string | null>(null); // ADDED
   const attendanceRef = useRef<{ focusTable: () => void; setWeek: (week: 'current' | 'next') => void }>(null); // Add this line
+  const recoveredFeesInitialized = useRef<boolean>(false); // Prevent infinite loop
 
   // State declarations...
   const [enquiriesToday, setEnquiriesToday] = useState<number>(0);
@@ -889,7 +892,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: prov
     const timeout = setTimeout(() => {
       if (isActionsLoading) {
         /* eslint-disable no-console */
-        console.warn('[ImmediateActions] Hard timeout reached, forcing isActionsLoading = false');
+        debugWarn('[ImmediateActions] Hard timeout reached, forcing isActionsLoading = false');
         /* eslint-enable no-console */
         setIsActionsLoading(false);
       }
@@ -1051,6 +1054,101 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: prov
     setRecoveredData(null);
     setPrevRecoveredData(null);
   }, [userData]);
+
+  // Separate effect to fetch recovered fees
+  useEffect(() => {
+    // Prevent multiple executions
+    if (recoveredFeesInitialized.current) return;
+    
+    const fetchRecoveredFees = async () => {
+      if (!userData?.[0]) return;
+      
+      const currentUserData = userData[0];
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isLuke = currentUserData?.Email?.toLowerCase().includes('luke') || currentUserData?.Initials === 'LW';
+      const isLZ = currentUserData?.Initials === 'LZ';
+      
+      // Use Alex's Clio ID for localhost/Luke/LZ
+      let userClioId = currentUserData?.['Clio ID'] ? String(currentUserData['Clio ID']) : null;
+      
+      if ((isLocalhost || isLuke || isLZ) && teamData) {
+        const alex = teamData.find((t: any) => t.Initials === 'AC' || t.First === 'Alex');
+        if (alex && alex['Clio ID']) {
+          userClioId = String(alex['Clio ID']);
+        }
+      }
+      
+      if (!userClioId) {
+        return;
+      }
+      
+      try {
+        const url = new URL('/api/reporting/management-datasets', window.location.origin);
+        url.searchParams.set('datasets', 'recoveredFees');
+        url.searchParams.set('bypassCache', 'true');
+        
+        const resp = await fetch(url.toString(), { 
+          method: 'GET', 
+          credentials: 'include', 
+          headers: { Accept: 'application/json' } 
+        });
+        
+        if (!resp.ok) {
+          console.error('❌ Failed to fetch recovered fees:', resp.status, resp.statusText);
+          return;
+        }
+        
+        const data = await resp.json();
+        
+        if (!data.recoveredFees || !Array.isArray(data.recoveredFees)) {
+          return;
+        }
+        
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+        
+        // Filter for current month
+        const currentMonthFees = data.recoveredFees.filter((fee: any) => {
+          if (String(fee.user_id) !== userClioId) return false;
+          if (!fee.payment_date) return false;
+          const paymentDate = new Date(fee.payment_date);
+          return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
+        });
+        
+        // Filter for last month
+        const lastMonthFees = data.recoveredFees.filter((fee: any) => {
+          if (String(fee.user_id) !== userClioId) return false;
+          if (!fee.payment_date) return false;
+          const paymentDate = new Date(fee.payment_date);
+          return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
+        });
+        
+        const currentTotal = currentMonthFees.reduce((sum: number, fee: any) => sum + (Number(fee.payment_allocated) || 0), 0);
+        const lastTotal = lastMonthFees.reduce((sum: number, fee: any) => sum + (Number(fee.payment_allocated) || 0), 0);
+        
+        cachedRecovered = currentTotal;
+        cachedPrevRecovered = lastTotal;
+        setRecoveredData(currentTotal);
+        setPrevRecoveredData(lastTotal);
+        recoveredFeesInitialized.current = true; // Mark as initialized
+        
+      } catch (error) {
+        console.error('❌ Error fetching recovered fees:', error);
+      }
+    };
+    
+    // Only fetch if we don't have cached data
+    if (cachedRecovered === null) {
+      fetchRecoveredFees();
+    } else {
+      recoveredFeesInitialized.current = true;
+      setRecoveredData(cachedRecovered);
+      setPrevRecoveredData(cachedPrevRecovered ?? 0);
+    }
+  }, [userData?.[0]?.['Clio ID'], userData?.[0]?.Initials]);
 
   // Use app-provided normalized matters when available; otherwise normalize local allMatters
   const normalizedMatters = useMemo<NormalizedMatter[]>(() => {
@@ -1487,7 +1585,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
             }
           } else {
             // Handle null/undefined response by setting empty arrays
-            console.warn('No annual leave data returned from API');
+            debugWarn('No annual leave data returned from API');
             setAnnualLeaveRecords([]);
             setFutureLeaveRecords([]);
           }
@@ -1507,43 +1605,161 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
 
   // Prefer reporting route for current-week WIP (backend merges DB and Clio); do not call Clio from client
   useEffect(() => {
+    debugLog('🎯 WIP useEffect triggered', { 
+      entraId: userData?.[0]?.EntraID, 
+      clioId: userData?.[0]?.['Clio ID'],
+      hasCachedWip: !!cachedWipClio,
+      useLocalData
+    });
+    
     const loadFromReporting = async () => {
+      debugLog('🔄 loadFromReporting called');
       try {
         setIsLoadingWipClio(true);
-        // Fetch management datasets including wipClioCurrentWeek merged by backend; bypass cache for freshness
+        // Fetch management datasets including wipClioCurrentWeek and recoveredFees; bypass cache for freshness
         const url = new URL('/api/reporting/management-datasets', window.location.origin);
-        url.searchParams.set('datasets', 'wip,wipClioCurrentWeek');
+        url.searchParams.set('datasets', 'wipClioCurrentWeek,recoveredFees');
+        debugLog('📡 Fetching URL:', url.toString());
+        
+        // Pass current user's Entra ID for user-specific Clio data fetching
+        const currentUserData = userData?.[0];
+        let entraId = currentUserData?.EntraID;
+        
+        // Fallback for local development or Luke/LZ: use Alex's (AC) data for visible metrics
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isLuke = currentUserData?.Email?.toLowerCase().includes('luke') || currentUserData?.Initials === 'LW';
+        const isLZ = currentUserData?.Initials === 'LZ';
+        
+        if ((isLocalhost || isLuke || isLZ) && teamData) {
+          const alex = teamData.find((t: any) => t.Initials === 'AC' || t.First === 'Alex' || t.Email?.toLowerCase().includes('alex'));
+          if (alex && alex['Entra ID']) {
+            entraId = alex['Entra ID'];
+            debugLog('🔧 Dev mode: Using Alex\'s data for visible metrics', { originalUser: currentUserData?.Email, fallbackTo: alex.Email });
+          }
+        }
+        
+        if (entraId) {
+          url.searchParams.set('entraId', entraId);
+          debugLog('🔍 Requesting WIP data for user:', { entraId, email: currentUserData?.Email });
+        }
         url.searchParams.set('bypassCache', 'true');
         const resp = await fetch(url.toString(), { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
         if (resp.ok && (resp.headers.get('content-type') || '').toLowerCase().includes('application/json')) {
           const data = await resp.json();
-          const merged = data.wipCurrentAndLastWeek || data.wipClioCurrentWeek;
+          // Debug the actual response structure
+          debugLog('🔍 API Response:', { 
+            hasWipClio: !!data.wipClioCurrentWeek,
+            hasRecoveredFees: !!data.recoveredFees,
+            dataKeys: Object.keys(data)
+          });
+          
+          // Extract the wipClioCurrentWeek data directly
+          const merged = data.wipClioCurrentWeek;
           if (merged && merged.current_week && merged.last_week) {
             cachedWipClio = merged as any;
             setWipClioData(cachedWipClio);
             setWipClioError(null);
             setIsLoadingWipClio(false);
+            debugLog('✅ WIP data loaded successfully');
+          } else {
+            debugWarn('⚠️ WIP data structure invalid:', { merged, hasCurrentWeek: !!merged?.current_week, hasLastWeek: !!merged?.last_week });
+          }
+          
+          // Process recovered fees for current user
+          if (data.recoveredFees && Array.isArray(data.recoveredFees)) {
+            // Use same fallback logic as WIP data - if localhost/Luke/LZ, use Alex's Clio ID
+            let userClioId = currentUserData?.['Clio ID'] ? String(currentUserData['Clio ID']) : null;
+            
+            // Always use Alex's data for localhost/Luke/LZ for consistent dev experience
+            if ((isLocalhost || isLuke || isLZ) && teamData) {
+              const alex = teamData.find((t: any) => t.Initials === 'AC' || t.First === 'Alex');
+              if (alex && alex['Clio ID']) {
+                userClioId = String(alex['Clio ID']);
+                debugLog('🔧 Dev mode: Using Alex\'s Clio ID for fees', { originalClioId: currentUserData?.['Clio ID'], alexClioId: userClioId });
+              }
+            }
+            
+            debugLog('💰 Processing recovered fees:', { totalRecords: data.recoveredFees.length, userClioId });
+            
+            if (userClioId) {
+              const now = new Date();
+              const currentMonth = now.getMonth();
+              const currentYear = now.getFullYear();
+              const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+              const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+              
+              // Filter for current month
+              const currentMonthFees = data.recoveredFees.filter((fee: any) => {
+                if (String(fee.user_id) !== userClioId) return false;
+                if (!fee.payment_date) return false;
+                const paymentDate = new Date(fee.payment_date);
+                return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
+              });
+              
+              // Filter for last month
+              const lastMonthFees = data.recoveredFees.filter((fee: any) => {
+                if (String(fee.user_id) !== userClioId) return false;
+                if (!fee.payment_date) return false;
+                const paymentDate = new Date(fee.payment_date);
+                return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
+              });
+              
+              const currentTotal = currentMonthFees.reduce((sum: number, fee: any) => sum + (Number(fee.payment_allocated) || 0), 0);
+              const lastTotal = lastMonthFees.reduce((sum: number, fee: any) => sum + (Number(fee.payment_allocated) || 0), 0);
+              
+              debugLog('💰 Fees recovered calculated:', { 
+                currentMonth: currentTotal, 
+                lastMonth: lastTotal,
+                currentMonthRecords: currentMonthFees.length,
+                lastMonthRecords: lastMonthFees.length,
+                sampleCurrentMonth: currentMonthFees.slice(0, 2)
+              });
+              
+              // Cache the recovered fees data
+              cachedRecovered = currentTotal;
+              cachedPrevRecovered = lastTotal;
+              
+              setRecoveredData(currentTotal);
+              setPrevRecoveredData(lastTotal);
+            }
             return;
           }
         }
       } catch (e) {
-        // swallow and fall back
+        debugWarn('❌ Error loading WIP/Fees data:', e);
       }
+      // If no data returned, ensure we clear loading state to let UI render placeholders
+      setIsLoadingWipClio(false);
     };
 
     // Use cache if already set
     if (cachedWipClio || cachedWipClioError) {
+      debugLog('📦 Using cached WIP data');
       setWipClioData(cachedWipClio);
       setWipClioError(cachedWipClioError);
       setIsLoadingWipClio(false);
+      // Also restore cached recovered fees if available
+      if (cachedRecovered !== null) {
+        debugLog('💰 Restoring cached recovered fees:', { current: cachedRecovered, prev: cachedPrevRecovered });
+        setRecoveredData(cachedRecovered);
+        setPrevRecoveredData(cachedPrevRecovered ?? 0);
+      }
     } else if (useLocalData) {
+      debugLog('📂 Using local WIP data');
       cachedWipClio = localWipClio as any;
       setWipClioData(cachedWipClio);
       setIsLoadingWipClio(false);
     } else {
-      loadFromReporting();
+      debugLog('🌐 Fetching fresh WIP data from server');
+      // Add a hard timeout to avoid blocking TimeMetricsV2 if backend is slow
+      const timeout = setTimeout(() => {
+        if (isLoadingWipClio && !cachedWipClio) {
+          setIsLoadingWipClio(false);
+        }
+      }, 8000);
+      loadFromReporting().finally(() => clearTimeout(timeout));
     }
-  }, [userData]);
+  }, [userData?.[0]?.EntraID, userData?.[0]?.['Clio ID']]);
 
   // Home no longer fetches matters itself; it receives normalized matters from App.
   // Keep the effect boundary to clear local cache if that logic remains elsewhere.
@@ -1562,13 +1778,13 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     const currentCacheVersion = 'v2-2025-09-21-db-cleanup';
     
     if (lastCacheVersion !== currentCacheVersion) {
-      console.log('🔄 Invalidating matters cache due to database changes');
+      debugLog('🔄 Invalidating matters cache due to database changes');
       cachedAllMatters = null;
       cachedAllMattersError = null;
       localStorage.setItem('matters-cache-version', currentCacheVersion);
     }
     
-    console.log('🔍 Matters loading path check:', {
+    debugLog('🔍 Matters loading path check:', {
       hasCachedMatters: !!cachedAllMatters,
       hasCachedError: !!cachedAllMattersError,
       useLocalData,
@@ -1577,11 +1793,11 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     
     // Respect cached values if present otherwise rely on top-level provider
     if (cachedAllMatters || cachedAllMattersError) {
-      console.log('📦 Using cached matters:', cachedAllMatters?.length || 0);
+      debugLog('📦 Using cached matters:', cachedAllMatters?.length || 0);
       setAllMatters(cachedAllMatters || []);
       setAllMattersError(cachedAllMattersError);
     } else if (useLocalData) {
-      console.log('🏠 Using local mock data');
+      debugLog('🏠 Using local mock data');
       const mappedMatters: Matter[] = (localMatters as any) as Matter[];
       cachedAllMatters = mappedMatters;
       setAllMatters(mappedMatters);
@@ -2008,7 +2224,7 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
     // Optional local fallback for testing
     const fallbackLocal = process.env.REACT_APP_ATTENDANCE_FALLBACK_LOCAL === 'true';
     if (fallbackLocal) {
-      console.warn('⚠️ Falling back to local attendance update');
+      debugWarn('⚠️ Falling back to local attendance update');
       const newRecord: AttendanceRecord = {
         Attendance_ID: 0,
         Entry_ID: 0,
@@ -2118,26 +2334,26 @@ const officeAttendanceButtonText = currentUserConfirmed
 
   // IMPORTANT: For outstanding balances, use the actual current user's name
   // (metricsName is an alias used for time/fees metrics demos and can skew ownership).
-  const userResponsibleName = (userData?.[0]?.FullName || userData?.[0]?.["Full Name"] || '').trim() || metricsName;
+  let userResponsibleName = (userData?.[0]?.FullName || userData?.[0]?.["Full Name"] || '').trim() || metricsName;
+  
+  // Override for localhost/Luke to use Alex Cook's data
+  const userInitialsForBalance = userData?.[0]?.Initials || '';
+  if (window.location.hostname === 'localhost' || userInitialsForBalance === 'LZ') {
+    userResponsibleName = 'Alex Cook';
+  }
   
   const userMatterIDs = useMemo(() => {
-    if (!allMatters || allMatters.length === 0) return [];
-    return allMatters
+    if (!normalizedMatters || normalizedMatters.length === 0) return [];
+    return normalizedMatters
       .filter((matter) =>
-        normalizeName(matter.ResponsibleSolicitor) === normalizeName(userResponsibleName)
+        normalizeName(matter.responsibleSolicitor) === normalizeName(userResponsibleName)
       )
       .map((matter) => {
-        // Support multiple ID field variants and ignore non-numeric values
-        const rawId =
-          (matter as any).UniqueID ||
-          (matter as any).MatterID ||
-          (matter as any).matterId ||
-          (matter as any).id;
-        const numericId = Number(rawId);
+        const numericId = Number(matter.matterId);
         return isNaN(numericId) ? null : numericId;
       })
       .filter((id): id is number => id !== null);
-  }, [allMatters, userResponsibleName]);
+  }, [normalizedMatters, userResponsibleName]);
 
   const myOutstandingBalances = useMemo(() => {
     if (!outstandingBalancesData?.data || userMatterIDs.length === 0) return [];
@@ -2310,7 +2526,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           { title: 'Time Today', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
-          { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
+          { title: 'Fees Recovered This Month', isMoneyOnly: true, money: recoveredData ?? 0, prevMoney: prevRecoveredData ?? 0 },
       // Use computed outstandingTotal even when WIP data hasn't loaded
       { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0 },
           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
@@ -2365,17 +2581,36 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       lastWeekDate
     );
 
+    debugLog('📊 Average calculations:', {
+      currentAvg,
+      prevAvg,
+      startOfCurrentWeek: startOfCurrentWeek.toISOString(),
+      today: today.toISOString(),
+      formattedToday,
+      currentWeekDataKeys: Object.keys(wipClioData.current_week?.daily_data || {}),
+      todayData: wipClioData.current_week?.daily_data?.[formattedToday]
+    });
+
 
     let totalTimeThisWeek = 0;
     if (wipClioData.current_week && wipClioData.current_week.daily_data) {
       Object.values(wipClioData.current_week.daily_data).forEach((dayData: any) => {
         totalTimeThisWeek += dayData.total_hours || 0;
       });
+      debugLog('📊 Current week time calculation:', {
+        dailyDataKeys: Object.keys(wipClioData.current_week.daily_data),
+        dailyDataSample: Object.entries(wipClioData.current_week.daily_data).slice(0, 3),
+        totalTimeThisWeek
+      });
     }
     let totalTimeLastWeek = 0;
     if (wipClioData.last_week && wipClioData.last_week.daily_data) {
       Object.values(wipClioData.last_week.daily_data).forEach((dayData: any) => {
         totalTimeLastWeek += dayData.total_hours || 0;
+      });
+      debugLog('📊 Last week time calculation:', {
+        dailyDataKeys: Object.keys(wipClioData.last_week.daily_data),
+        totalTimeLastWeek
       });
     }
 
@@ -2445,13 +2680,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       {
         title: 'Fees Recovered This Month',
         isMoneyOnly: true,
-        money: recoveredData ? recoveredData : 0,
-        prevMoney: prevRecoveredData ? prevRecoveredData : 0,
+        money: recoveredData ?? 0,
+        prevMoney: prevRecoveredData ?? 0,
       },
       {
         title: 'Outstanding Office Balances',
         isMoneyOnly: true,
         money: outstandingTotal ?? 0,
+        // No prevMoney - this is a current snapshot with no historical comparison
       },
       {
         title: 'Enquiries Today',
@@ -2499,6 +2735,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     outstandingBalancesData, // ADDED
     userMatterIDs,           // ADDED
   ]);
+  
   const timeMetrics = metricsData.slice(0, 5);
   // Removed enquiryMetrics; conversion summary now handled by TimeMetricsV2 props
 
@@ -3016,7 +3253,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     setBespokePanelTitle(titleText);
     setBespokePanelDescription(descriptionText);
     const iconComponent = getQuickActionIcon(action.icon);
-    console.log('Setting panel icon for action:', action, 'icon component:', iconComponent);
+    debugLog('Setting panel icon for action:', action, 'icon component:', iconComponent);
     setBespokePanelIcon(iconComponent);
     setIsBespokePanelOpen(true);
   }, [
@@ -3093,7 +3330,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           icon,
           disabled,
           onClick: disabled 
-            ? () => console.log('CCL action disabled in production') 
+            ? () => debugLog('CCL action disabled in production') 
             : () => handleActionClick({ title: actionType, icon }),
           category: instructionCategoryFor(actionType),
         });
@@ -3339,7 +3576,7 @@ const noActionsClass = mergeStyles({
 
 // Extract matters opened dynamically from metricsData to avoid stale index assumptions
 const mattersOpenedCount = React.useMemo(() => {
-  const item = metricsData.find(m => (m as any).title?.toLowerCase().startsWith('matters opened')) as any;
+  const item = (metricsData as any[]).find((m: any) => m.title?.toLowerCase().startsWith('matters opened'));
   return item && typeof item.count === 'number' ? item.count : 0;
 }, [metricsData]);
 const conversionRate = enquiriesMonthToDate
@@ -3371,7 +3608,7 @@ const conversionRate = enquiriesMonthToDate
       {/* Modern Time Metrics V2 - directly on page background */}
       <div style={{ paddingTop: '16px' }}>
         <TimeMetricsV2 
-          metrics={timeMetrics} 
+          metrics={timeMetrics}
           enquiryMetrics={[
           { title: 'Enquiries Today', count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },

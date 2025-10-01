@@ -146,6 +146,11 @@ interface EnquiryLineItemProps {
    * Used for transitional UI (e.g., pulsing claim indicator) before full component split.
    */
   isNewSource?: boolean;
+  /**
+   * Promotion status for this enquiry. When present, render a compact pill showing
+   * "Pitched" (blue) or "Instructed" (green). This replaces any generic claimed label.
+   */
+  promotionStatus?: 'pitch' | 'instruction' | null;
 }
 
 const formatCurrency = (value: string): string => {
@@ -188,6 +193,7 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
   isLast,
   userAOW,
   isNewSource = false,
+  promotionStatus = null,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -818,6 +824,25 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
             }}>
               ID {enquiry.ID}
             </span>
+            {promotionStatus && (
+              <span style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '2px 6px',
+                borderRadius: 4,
+                backgroundColor: promotionStatus === 'instruction'
+                  ? (isDarkMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(232, 245, 232, 0.6)')
+                  : (isDarkMode ? 'rgba(33, 150, 243, 0.15)' : 'rgba(227, 242, 253, 0.6)'),
+                color: promotionStatus === 'instruction'
+                  ? (isDarkMode ? 'rgba(76, 175, 80, 0.85)' : 'rgba(46, 125, 50, 0.8)')
+                  : (isDarkMode ? 'rgba(33, 150, 243, 0.85)' : 'rgba(21, 101, 192, 0.85)'),
+                textTransform: 'uppercase' as const,
+                letterSpacing: 0.5,
+                opacity: 0.9
+              }}>
+                {promotionStatus === 'instruction' ? 'Instructed' : 'Pitched'}
+              </span>
+            )}
           </div>
           {enquiry.Company && (
             <div className={companyStyle} style={{ 

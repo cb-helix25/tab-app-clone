@@ -1,28 +1,38 @@
-const sql = require('mssql');
+const { createEnvBasedQueryRunner } = require('./sqlHelpers');
 
-async function insertIDVerification(instructionRef, email, response, pool, prospectId = null) {
-  console.log('📝 Saving ID verification response to database');
-  console.log('📄 Raw response:', JSON.stringify(response, null, 2));
+const runInstructionQuery = createEnvBasedQueryRunner('INSTRUCTIONS_SQL_CONNECTION_STRING');
+
+const isVerboseLoggingEnabled = process.env.LOG_VERBOSE === 'true';
+
+const logVerbose = (...args) => {
+  if (isVerboseLoggingEnabled) {
+    console.debug('[idVerificationDb]', ...args);
+  }
+};
+
+async function insertIDVerification(instructionRef, email, response, prospectId = null) {
+  console.info('[idVerificationDb] Saving ID verification response');
+  logVerbose('Raw response:', JSON.stringify(response, null, 2));
   
   const now = new Date();
   
   // Handle case where response is an array (from our API)
   const responseData = Array.isArray(response) ? response[0] : response;
-  console.log('📊 Response data after array check:', JSON.stringify(responseData, null, 2));
-  console.log('🔑 Response data keys:', Object.keys(responseData || {}));
-  console.log('🔍 Has checkStatuses?', !!responseData?.checkStatuses);
-  console.log('🔍 Has checks?', !!responseData?.checks);
-  console.log('🔍 Has overallResult?', !!responseData?.overallResult);
+  logVerbose('Response data after array check:', JSON.stringify(responseData, null, 2));
+  logVerbose('Response data keys:', Object.keys(responseData || {}));
+  logVerbose('Has checkStatuses?', !!responseData?.checkStatuses);
+  logVerbose('Has checks?', !!responseData?.checks);
+  logVerbose('Has overallResult?', !!responseData?.overallResult);
   
   // Use correlationId from Tiller response as the checkId
   const correlation = responseData.correlationId || responseData.checkId || responseData.id || `manual-${Date.now()}`;
-  console.log('🔑 Using correlation ID:', correlation);
+  logVerbose('Using correlation ID:', correlation);
   
   const payload = JSON.stringify(response);
   
   // Parse response for database fields
   const status = responseData.overallStatus?.status || 'Completed';
-  console.log('📈 Status:', status);
+  logVerbose('Status:', status);
   
   const expiry = response.expiryDate ? new Date(response.expiryDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year from now
   
@@ -31,38 +41,38 @@ async function insertIDVerification(instructionRef, email, response, pool, prosp
   let pep = 'pending';
   let address = 'pending';
   
-  console.log('🔍 Checking overallResult:', responseData.overallResult);
+  logVerbose('Checking overallResult:', responseData.overallResult);
   if (responseData.overallResult?.result) {
     overall = responseData.overallResult.result.toLowerCase();
-    console.log('✅ Found overall result:', overall);
+    logVerbose('Found overall result:', overall);
   }
   
   // Debug: Log the exact structure we're checking
-  console.log('🔍 CheckStatuses type:', typeof responseData.checkStatuses);
-  console.log('🔍 CheckStatuses is array:', Array.isArray(responseData.checkStatuses));
+  logVerbose('CheckStatuses type:', typeof responseData.checkStatuses);
+  logVerbose('CheckStatuses is array:', Array.isArray(responseData.checkStatuses));
   if (responseData.checkStatuses) {
-    console.log('🔍 CheckStatuses length:', responseData.checkStatuses.length);
-    console.log('🔍 First checkStatus keys:', Object.keys(responseData.checkStatuses[0] || {}));
+    logVerbose('CheckStatuses length:', responseData.checkStatuses.length);
+    logVerbose('First checkStatus keys:', Object.keys(responseData.checkStatuses[0] || {}));
   }
   
   // Check for checkStatuses instead of checks (correct Tiller API structure)
   if (responseData.checkStatuses && Array.isArray(responseData.checkStatuses)) {
-    console.log('🔍 Processing checkStatuses array:', responseData.checkStatuses.length);
+    logVerbose('Processing checkStatuses array:', responseData.checkStatuses.length);
     responseData.checkStatuses.forEach((checkStatus, index) => {
-      console.log(`📋 Processing check ${index + 1} - Type: ${checkStatus.checkTypeId}, Title: ${checkStatus.sourceResults?.title}`);
-      console.log(`📋 Check result object:`, JSON.stringify(checkStatus.result, null, 2));
+      logVerbose(`Processing check ${index + 1} - Type: ${checkStatus.checkTypeId}, Title: ${checkStatus.sourceResults?.title}`);
+      logVerbose('Check result object:', JSON.stringify(checkStatus.result, null, 2));
       
       if (checkStatus.checkTypeId === 1) { // Address verification check
         address = (checkStatus.result?.result || 'pending').toLowerCase();
-        console.log('🏠 Address result:', address);
+        logVerbose('Address result:', address);
       } else if (checkStatus.checkTypeId === 2) { // PEP & Sanctions check
         pep = (checkStatus.result?.result || 'pending').toLowerCase();
-        console.log('👤 PEP result:', pep);
+        logVerbose('PEP result:', pep);
       }
     });
   } else if (responseData.checks && Array.isArray(responseData.checks)) {
     // Legacy fallback for old structure
-    console.log('🔍 Processing legacy checks array:', responseData.checks.length);
+    logVerbose('Processing legacy checks array:', responseData.checks.length);
     responseData.checks.forEach(check => {
       if (check.checkTypeId === 1) { // Identity check
         overall = check.result?.result || overall;
@@ -82,25 +92,26 @@ async function insertIDVerification(instructionRef, email, response, pool, prosp
     });
   }
   
-  console.log(`📊 Final parsed verification: overall=${overall}, pep=${pep}, address=${address}, correlation=${correlation}`);
+  logVerbose(`Final parsed verification: overall=${overall}, pep=${pep}, address=${address}, correlation=${correlation}`);
   
   try {
-    const result = await pool.request()
-      .input('InstructionRef', sql.NVarChar, instructionRef)
-      .input('ProspectId', sql.Int, prospectId) // Use provided prospectId
-      .input('ClientEmail', sql.NVarChar, email)
-      .input('IsLeadClient', sql.Bit, true)
-      .input('EIDCheckId', sql.NVarChar, correlation)
-      .input('EIDRawResponse', sql.NVarChar, payload)
-      .input('EIDCheckedDate', sql.Date, now)
-      .input('EIDCheckedTime', sql.Time, now)
-      .input('EIDStatus', sql.VarChar, status)
-      .input('EIDProvider', sql.VarChar, 'tiller')
-      .input('CheckExpiry', sql.Date, expiry)
-      .input('EIDOverallResult', sql.NVarChar, overall)
-      .input('PEPAndSanctionsCheckResult', sql.NVarChar, pep)
-      .input('AddressVerificationResult', sql.NVarChar, address)
-      .query(`
+    const result = await runInstructionQuery((request, s) =>
+      request
+        .input('InstructionRef', s.NVarChar, instructionRef)
+        .input('ProspectId', s.Int, prospectId)
+        .input('ClientEmail', s.NVarChar, email)
+        .input('IsLeadClient', s.Bit, true)
+        .input('EIDCheckId', s.NVarChar, correlation)
+        .input('EIDRawResponse', s.NVarChar, payload)
+        .input('EIDCheckedDate', s.Date, now)
+        .input('EIDCheckedTime', s.Time, now)
+        .input('EIDStatus', s.VarChar, status)
+        .input('EIDProvider', s.VarChar, 'tiller')
+        .input('CheckExpiry', s.Date, expiry)
+        .input('EIDOverallResult', s.NVarChar, overall)
+        .input('PEPAndSanctionsCheckResult', s.NVarChar, pep)
+        .input('AddressVerificationResult', s.NVarChar, address)
+        .query(`
         INSERT INTO [dbo].[IDVerifications] (
             InstructionRef,
             ProspectId,
@@ -132,9 +143,10 @@ async function insertIDVerification(instructionRef, email, response, pool, prosp
             @PEPAndSanctionsCheckResult,
             @AddressVerificationResult
         )
-      `);
+      `)
+    );
     
-    console.log('✅ ID verification saved to database');
+    console.info('[idVerificationDb] ID verification saved', { instructionRef, correlation });
     
     return {
       success: true,

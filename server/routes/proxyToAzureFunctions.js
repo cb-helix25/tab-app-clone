@@ -132,9 +132,50 @@ async function proxyToAzureFunction(req, res, functionName, port = 7072, method 
     }
 }
 
+// Back-compat shim: redirect legacy annual leave function path to Express route
+router.post('/getAnnualLeave', (req, res) => {
+    try {
+        // Preserve method and body using 307 Temporary Redirect
+        res.redirect(307, '/api/attendance/getAnnualLeave');
+    } catch (e) {
+        console.error('Failed to redirect /getAnnualLeave to /api/attendance/getAnnualLeave', e);
+        res.status(500).json({ error: 'Redirect failed' });
+    }
+});
+
+// Back-compat: redirect legacy attendance function path to Express route
+router.post('/getAttendance', (req, res) => {
+    try {
+        res.redirect(307, '/api/attendance/getAttendance');
+    } catch (e) {
+        console.error('Failed to redirect /getAttendance to /api/attendance/getAttendance', e);
+        res.status(500).json({ error: 'Redirect failed' });
+    }
+});
+
+// Back-compat: redirect legacy matters endpoints to Express routes
+router.get('/getMatters', (req, res) => {
+    try { res.redirect(307, '/api/getMatters'); } catch (e) {
+        console.error('Failed to redirect GET /getMatters', e); res.status(500).json({ error: 'Redirect failed' }); }
+});
+router.post('/getMatters', (req, res) => {
+    try { res.redirect(307, '/api/getMatters'); } catch (e) {
+        console.error('Failed to redirect POST /getMatters', e); res.status(500).json({ error: 'Redirect failed' }); }
+});
+router.get('/getAllMatters', (req, res) => {
+    try { res.redirect(307, '/api/getAllMatters'); } catch (e) {
+        console.error('Failed to redirect GET /getAllMatters', e); res.status(500).json({ error: 'Redirect failed' }); }
+});
+
+// Back-compat: redirect legacy sendEmail to centralized Express route
+router.post('/sendEmail', (req, res) => {
+    try { res.redirect(307, '/api/sendEmail'); } catch (e) {
+        console.error('Failed to redirect /sendEmail to /api/sendEmail', e); res.status(500).json({ error: 'Redirect failed' }); }
+});
+
 // API Functions (port 7072) - These are the TypeScript functions
 router.get('/getSnippetEdits', (req, res) => proxyToAzureFunction(req, res, 'getSnippetEdits', 7072, 'GET'));
-// router.post('/getAttendance', (req, res) => proxyToAzureFunction(req, res, 'getAttendance', 7072, 'POST')); // DISABLED - using server route instead
+// getAttendance handled by Express redirect above
 router.post('/getWIPClio', (req, res) => proxyToAzureFunction(req, res, 'getWIPClio', 7072, 'POST'));
 router.post('/getRecovered', (req, res) => proxyToAzureFunction(req, res, 'getRecovered', 7072, 'POST'));
 router.get('/getPOID6Years', (req, res) => proxyToAzureFunction(req, res, 'getPOID6years', 7072, 'GET'));
@@ -142,13 +183,11 @@ router.get('/getFutureBookings', (req, res) => proxyToAzureFunction(req, res, 'g
 router.get('/getTransactions', (req, res) => proxyToAzureFunction(req, res, 'getTransactions', 7072, 'GET'));
 router.get('/getOutstandingClientBalances', (req, res) => proxyToAzureFunction(req, res, 'getOutstandingClientBalances', 7072, 'GET'));
 router.get('/getSnippetBlocks', (req, res) => proxyToAzureFunction(req, res, 'getSnippetBlocks', 7072, 'GET'));
-router.post('/getAnnualLeave', (req, res) => proxyToAzureFunction(req, res, 'getAnnualLeave', 7072, 'POST'));
+// Removed: legacy function proxy for getAnnualLeave (use Express attendance route instead)
 
 // Additional API functions that might be needed
 router.post('/getEnquiries', (req, res) => proxyToAzureFunction(req, res, 'getEnquiries', 7072, 'POST'));
-router.post('/getMatters', (req, res) => proxyToAzureFunction(req, res, 'getMatters', 7072, 'POST'));
-router.get('/getMatters', (req, res) => proxyToAzureFunction(req, res, 'getMatters', 7072, 'GET'));
-router.get('/getAllMatters', (req, res) => proxyToAzureFunction(req, res, 'getAllMatters', 7072, 'GET'));
+// getMatters and getAllMatters handled by Express redirects above
 router.get('/getUserData', (req, res) => proxyToAzureFunction(req, res, 'getUserData', 7072, 'GET'));
 router.get('/getTeamData', (req, res) => proxyToAzureFunction(req, res, 'getTeamData', 7072, 'GET'));
 router.get('/getRoadmap', (req, res) => proxyToAzureFunction(req, res, 'getRoadmap', 7072, 'GET'));
@@ -162,7 +201,7 @@ router.post('/fetchEnquiriesData', (req, res) => proxyToAzureFunction(req, res, 
 router.get('/fetchSnippetEdits', (req, res) => proxyToAzureFunction(req, res, 'fetchSnippetEdits', 7071, 'GET'));
 router.post('/insertEnquiry', (req, res) => proxyToAzureFunction(req, res, 'insertEnquiry', 7071, 'POST'));
 router.post('/processEnquiry', (req, res) => proxyToAzureFunction(req, res, 'processEnquiry', 7071, 'POST'));
-router.post('/sendEmail', (req, res) => proxyToAzureFunction(req, res, 'sendEmail', 7071, 'POST'));
+// sendEmail handled by Express redirect above
 
 // Handle OPTIONS requests for CORS
 router.options('*', (req, res) => {

@@ -426,19 +426,29 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                 }}>
                   <Icon size={14} />
                 </div>
-                {trend !== 'neutral' && (
+                {prevValue > 0 && (
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    color: trendColor,
-                    fontSize: '12px',
+                    fontSize: '11px',
                     fontWeight: 500,
                   }}>
+                    <span style={{ color: isDarkMode ? '#9CA3AF' : '#6B7280' }}>
+                      Last:
+                    </span>
+                    <span style={{ color: trendColor, fontWeight: 600 }}>
+                      {isTimeMetric(metric) && metric.isMoneyOnly 
+                        ? formatCurrency(prevValue)
+                        : isTimeMetric(metric) && metric.isTimeMoney
+                        ? formatHours(prevValue)
+                        : prevValue.toFixed(0)}
+                    </span>
                     <FiTrendingUp 
                       size={12} 
                       style={{ 
-                        transform: trend === 'down' ? 'rotate(180deg)' : 'none' 
+                        transform: trend === 'down' ? 'rotate(180deg)' : 'none',
+                        color: trendColor,
                       }} 
                     />
                   </div>
@@ -633,6 +643,18 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                       enabled={enableAnimationThisMount}
                     />
                   </div>
+
+                  {/* Show previous month value for money-only metrics */}
+                  {isTimeMetric(metric) && metric.isMoneyOnly && prevValue > 0 && (
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      color: isDarkMode ? '#9CA3AF' : '#6B7280',
+                      marginBottom: '8px',
+                    }}>
+                      Last month: {formatCurrency(prevValue)}
+                    </div>
+                  )}
 
                   {isTimeMetric(metric) && metric.isTimeMoney && metric.money && (
                     <div style={{

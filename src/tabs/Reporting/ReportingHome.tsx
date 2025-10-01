@@ -13,7 +13,10 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import type { Enquiry, Matter, POID, TeamData, UserData } from '../../app/functionality/types';
 import ManagementDashboard, { WIP } from './ManagementDashboard';
+import AnnualLeaveReport, { AnnualLeaveRecord } from './AnnualLeaveReport';
+import { debugLog, debugWarn } from '../../utils/debug';
 import HomePreview from './HomePreview';
+import EnquiriesReport from './EnquiriesReport';
 
 interface RecoveredFee {
   payment_date: string;
@@ -29,6 +32,7 @@ interface DatasetMap {
   wip: WIP[] | null;
   recoveredFees: RecoveredFee[] | null;
   poidData: POID[] | null;
+  annualLeave: AnnualLeaveRecord[] | null;
 }
 
 const DATASETS = [
@@ -39,6 +43,7 @@ const DATASETS = [
   { key: 'wip', name: 'WIP' },
   { key: 'recoveredFees', name: 'Collected Fees' },
   { key: 'poidData', name: 'ID Submissions' },
+  { key: 'annualLeave', name: 'Annual Leave' },
 ] as const;
 
 type DatasetDefinition = typeof DATASETS[number];
@@ -56,7 +61,7 @@ interface AvailableReport {
   key: string;
   name: string;
   status: string;
-  action?: 'dashboard';
+  action?: 'dashboard' | 'annualLeave' | 'enquiries';
 }
 
 const AVAILABLE_REPORTS: AvailableReport[] = [
@@ -68,13 +73,15 @@ const AVAILABLE_REPORTS: AvailableReport[] = [
   },
   {
     key: 'enquiries',
-    name: 'Enquiries activity report',
-    status: 'Enquiries tab',
+    name: 'Enquiries report',
+    status: 'Live today',
+    action: 'enquiries',
   },
   {
     key: 'annualLeave',
     name: 'Annual leave report',
-    status: 'Annual Leave tab',
+    status: 'Live today',
+    action: 'annualLeave',
   },
   {
     key: 'matters',
@@ -94,6 +101,7 @@ const EMPTY_DATASET: DatasetMap = {
   wip: null,
   recoveredFees: null,
   poidData: null,
+  annualLeave: null,
 };
 
 let cachedData: DatasetMap = { ...EMPTY_DATASET };
@@ -515,7 +523,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigatorActions();
   const [currentTime, setCurrentTime] = useState(() => new Date());
-  const [activeView, setActiveView] = useState<'overview' | 'dashboard'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'dashboard' | 'annualLeave' | 'enquiries'>('overview');
   const handleBackToOverview = useCallback(() => {
     setActiveView('overview');
   }, [setActiveView]);
@@ -527,6 +535,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     wip: cachedData.wip,
     recoveredFees: cachedData.recoveredFees,
     poidData: cachedData.poidData,
+    annualLeave: cachedData.annualLeave,
   }));
   const [datasetStatus, setDatasetStatus] = useState<DatasetStatus>(() => {
     const record: Partial<DatasetStatus> = {};
@@ -553,7 +562,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   }, []);
 
   useEffect(() => {
-    if (activeView === 'dashboard') {
+  if (activeView === 'dashboard') {
       setContent(
         <div style={dashboardNavigatorStyle(isDarkMode)}>
           <DefaultButton
@@ -563,6 +572,30 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
             styles={dashboardNavigatorButtonStyles(isDarkMode)}
           />
           <span style={dashboardNavigatorTitleStyle(isDarkMode)}>Management dashboard</span>
+        </div>,
+      );
+  } else if (activeView === 'annualLeave') {
+      setContent(
+        <div style={dashboardNavigatorStyle(isDarkMode)}>
+          <DefaultButton
+            text="Back to overview"
+            iconProps={{ iconName: 'Back' }}
+            onClick={handleBackToOverview}
+            styles={dashboardNavigatorButtonStyles(isDarkMode)}
+          />
+          <span style={dashboardNavigatorTitleStyle(isDarkMode)}>Annual leave report</span>
+        </div>,
+      );
+    } else if (activeView === 'enquiries') {
+      setContent(
+        <div style={dashboardNavigatorStyle(isDarkMode)}>
+          <DefaultButton
+            text="Back to overview"
+            iconProps={{ iconName: 'Back' }}
+            onClick={handleBackToOverview}
+            styles={dashboardNavigatorButtonStyles(isDarkMode)}
+          />
+          <span style={dashboardNavigatorTitleStyle(isDarkMode)}>Enquiries report</span>
         </div>,
       );
     } else {
@@ -575,6 +608,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   }, [activeView, handleBackToOverview, isDarkMode, setContent]);
 
   const refreshDatasets = useCallback(async () => {
+    debugLog('ReportingHome: refreshDatasets called');
   setIsFetching(true);
     setError(null);
   setRefreshStartedAt(Date.now());
@@ -589,62 +623,113 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     });
 
     try {
-      const url = new URL(REPORTING_ENDPOINT, window.location.origin);
-      // Include current week Clio data in addition to standard datasets
-      const allDatasets = [...MANAGEMENT_DATASET_KEYS, 'wipClioCurrentWeek'];
-      url.searchParams.set('datasets', allDatasets.join(','));
-      
-      // Pass current user's Entra ID for Clio data fetching
-      const currentUserData = datasetData.userData || propUserData;
-      const entraId = currentUserData?.[0]?.EntraID;
-      if (entraId) {
-        url.searchParams.set('entraId', entraId);
+      // Fetch both management datasets and annual leave data in parallel
+      debugLog('ReportingHome: Starting parallel fetch calls...');
+      const [managementResponse, annualLeaveResponse] = await Promise.all([
+        (async () => {
+          const url = new URL(REPORTING_ENDPOINT, window.location.origin);
+          // Include current week Clio data in addition to standard datasets
+          // Exclude userData from fetch (we get it from props) and annualLeave (fetched separately)
+          const allDatasets = [
+            ...MANAGEMENT_DATASET_KEYS.filter(key => key !== 'annualLeave' && key !== 'userData'), 
+            'wipClioCurrentWeek'
+          ];
+          debugLog('ReportingHome: Requesting datasets:', allDatasets);
+          url.searchParams.set('datasets', allDatasets.join(','));
+          
+          // Management Dashboard needs all team data, not user-specific data
+          // Don't pass entraId to get team-wide WIP data instead of filtered user data
+          
+          // Force a fresh fetch when user clicks Refresh
+          url.searchParams.set('bypassCache', 'true');
+
+          return fetch(url.toString(), {
+            method: 'GET',
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+          });
+        })(),
+        // Fetch annual leave data
+        fetch('/api/attendance/annual-leave-all', {
+          method: 'GET',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        })
+      ]);
+
+      if (!managementResponse.ok) {
+        const text = await managementResponse.text().catch(() => '');
+        throw new Error(`Failed to fetch datasets: ${managementResponse.status} ${managementResponse.statusText}${text ? ` – ${text.slice(0, 160)}` : ''}`);
       }
-      
-      // Force a fresh fetch when user clicks Refresh
-      url.searchParams.set('bypassCache', 'true');
 
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        throw new Error(`Failed to fetch datasets: ${response.status} ${response.statusText}${text ? ` – ${text.slice(0, 160)}` : ''}`);
+      const managementContentType = managementResponse.headers.get('content-type') || '';
+      if (!managementContentType.toLowerCase().includes('application/json')) {
+        const body = await managementResponse.text().catch(() => '');
+        throw new Error(`Unexpected response (not JSON). Content-Type: ${managementContentType || 'unknown'} – ${body.slice(0, 160)}`);
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.toLowerCase().includes('application/json')) {
-        const body = await response.text().catch(() => '');
-        throw new Error(`Unexpected response (not JSON). Content-Type: ${contentType || 'unknown'} – ${body.slice(0, 160)}`);
-      }
-
-      const payload = (await response.json()) as Partial<DatasetMap> & { 
+      const managementPayload = (await managementResponse.json()) as Partial<DatasetMap> & { 
         errors?: Record<string, string>;
         wipClioCurrentWeek?: any;
         wipCurrentAndLastWeek?: any;
       };
 
+      // Handle annual leave response
+      let annualLeaveData: AnnualLeaveRecord[] = [];
+      if (annualLeaveResponse.ok) {
+        try {
+          const annualLeavePayload = await annualLeaveResponse.json();
+          if (annualLeavePayload.success && annualLeavePayload.all_data) {
+            annualLeaveData = annualLeavePayload.all_data.map((record: any) => ({
+              request_id: record.request_id,
+              fe: record.person,
+              start_date: record.start_date,
+              end_date: record.end_date,
+              reason: record.reason,
+              status: record.status,
+              days_taken: record.days_taken,
+              leave_type: record.leave_type,
+              rejection_notes: record.rejection_notes,
+              hearing_confirmation: record.hearing_confirmation,
+              hearing_details: record.hearing_details,
+            }));
+          }
+        } catch (annualLeaveError) {
+          debugWarn('Failed to parse annual leave data:', annualLeaveError);
+        }
+      }
+
       // Merge current week Clio data with historical WIP data
-      let mergedWip = payload.wip ?? cachedData.wip;
-      // Use ONLY wipClioCurrentWeek (team-wide array), not wipCurrentAndLastWeek (old single-user object)
-      const clioCurrentWeek = payload.wipClioCurrentWeek;
+      let mergedWip = managementPayload.wip ?? cachedData.wip;
+      // wipClioCurrentWeek now returns { current_week: { activities: [...] }, last_week: {...} }
+      const clioCurrentWeek = managementPayload.wipClioCurrentWeek;
       
-      if (clioCurrentWeek && mergedWip && Array.isArray(mergedWip) && Array.isArray(clioCurrentWeek)) {
-        // Server now returns team-wide WIP data directly, no conversion needed
-        mergedWip = [...mergedWip, ...clioCurrentWeek];
+      if (clioCurrentWeek?.current_week?.activities && Array.isArray(clioCurrentWeek.current_week.activities) && mergedWip && Array.isArray(mergedWip)) {
+        const clioWipEntries = clioCurrentWeek.current_week.activities;
+        
+        debugLog('📊 Merging Clio current week into WIP:', { 
+          clioEntries: clioWipEntries.length, 
+          historicalWip: mergedWip.length,
+          clioWipSample: clioWipEntries.slice(0, 3).map((e: any) => ({ 
+            date: e.date, 
+            user_id: e.user_id, 
+            hours: e.quantity_in_hours 
+          }))
+        });
+        
+        // Merge raw activities (with user_id preserved) into WIP array
+        mergedWip = [...mergedWip, ...clioWipEntries];
       }
 
       const nextData: DatasetMap = {
-        userData: payload.userData ?? cachedData.userData,
-        teamData: payload.teamData ?? cachedData.teamData,
-        enquiries: payload.enquiries ?? cachedData.enquiries,
-        allMatters: payload.allMatters ?? cachedData.allMatters,
+        userData: propUserData ?? cachedData.userData, // Use prop, not fetched data
+        teamData: managementPayload.teamData ?? cachedData.teamData,
+        enquiries: managementPayload.enquiries ?? cachedData.enquiries,
+        allMatters: managementPayload.allMatters ?? cachedData.allMatters,
         wip: mergedWip,
-        recoveredFees: payload.recoveredFees ?? cachedData.recoveredFees,
-        poidData: payload.poidData ?? cachedData.poidData,
+        recoveredFees: managementPayload.recoveredFees ?? cachedData.recoveredFees,
+        poidData: managementPayload.poidData ?? cachedData.poidData,
+        annualLeave: annualLeaveData,
       };
 
       const now = Date.now();
@@ -663,11 +748,11 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       });
       setLastRefreshTimestamp(now);
 
-      if (payload.errors && Object.keys(payload.errors).length > 0) {
+      if (managementPayload.errors && Object.keys(managementPayload.errors).length > 0) {
         setError('Some datasets were unavailable.');
       }
     } catch (fetchError) {
-      console.error('Failed to refresh reporting datasets:', fetchError);
+      debugWarn('Failed to refresh reporting datasets:', fetchError);
       setError(fetchError instanceof Error ? fetchError.message : 'Unknown error');
       setDatasetStatus((prev) => {
         const next: DatasetStatus = { ...prev };
@@ -684,9 +769,11 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   }, []);
 
   useEffect(() => {
+    debugLog('ReportingHome useEffect - hasBootstrapped:', hasBootstrapped);
     if (hasBootstrapped) {
       return;
     }
+    debugLog('ReportingHome: Starting data refresh...');
     refreshDatasets();
     setHasBootstrapped(true);
   }, [hasBootstrapped, refreshDatasets]);
@@ -786,10 +873,30 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
           teamData={datasetData.teamData}
           userData={datasetData.userData}
           poidData={datasetData.poidData}
+          annualLeave={datasetData.annualLeave}
           triggerRefresh={refreshDatasets}
           lastRefreshTimestamp={lastRefreshTimestamp ?? undefined}
           isFetching={isFetching}
         />
+      </div>
+    );
+  }
+
+  if (activeView === 'annualLeave') {
+    return (
+      <div style={fullScreenWrapperStyle(isDarkMode)}>
+        <AnnualLeaveReport
+          data={datasetData.annualLeave || []}
+          teamData={datasetData.teamData || []}
+        />
+      </div>
+    );
+  }
+
+  if (activeView === 'enquiries') {
+    return (
+      <div style={fullScreenWrapperStyle(isDarkMode)}>
+        <EnquiriesReport enquiries={datasetData.enquiries} />
       </div>
     );
   }
@@ -913,6 +1020,26 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
                   <PrimaryButton
                     text={isFetching ? 'Preparing…' : 'Open dashboard'}
                     onClick={() => setActiveView('dashboard')}
+                    styles={primaryButtonStyles(isDarkMode)}
+                    disabled={isFetching}
+                  />
+                </div>
+              )}
+              {report.action === 'annualLeave' && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <PrimaryButton
+                    text={isFetching ? 'Preparing…' : 'Open annual leave report'}
+                    onClick={() => setActiveView('annualLeave')}
+                    styles={primaryButtonStyles(isDarkMode)}
+                    disabled={isFetching}
+                  />
+                </div>
+              )}
+              {report.action === 'enquiries' && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <PrimaryButton
+                    text={isFetching ? 'Preparing…' : 'Open enquiries report'}
+                    onClick={() => setActiveView('enquiries')}
                     styles={primaryButtonStyles(isDarkMode)}
                     disabled={isFetching}
                   />

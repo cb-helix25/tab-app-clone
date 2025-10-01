@@ -1,5 +1,5 @@
 const express = require('express');
-const sql = require('mssql');
+const { withRequest, sql } = require('../utils/db');
 
 const router = express.Router();
 
@@ -11,18 +11,9 @@ let unifiedCache = {
 
 const UNIFIED_CACHE_TTL_MS = Number(process.env.UNIFIED_MATTERS_TTL_MS || 2 * 60 * 1000); // 2 minutes default
 
-// Direct DB helpers
-async function withPool(connectionString, fn) {
-  let pool;
-  try {
-    pool = await new sql.ConnectionPool(connectionString).connect();
-    return await fn(pool);
-  } finally {
-    if (pool) {
-      try { await pool.close(); } catch { /* ignore */ }
-    }
-  }
-}
+// Request throttling to prevent database overload
+let activeRequests = 0;
+const MAX_CONCURRENT_REQUESTS = 3; // Allow up to 3 concurrent requests
 
 function normalizeName(name) {
   if (!name) return '';
@@ -44,11 +35,24 @@ function normalizeName(name) {
 router.get('/', async (req, res) => {
   const now = Date.now();
   const bypassCache = String(req.query.bypassCache || '').toLowerCase() === 'true';
+  
   if (!bypassCache && unifiedCache.data && (now - unifiedCache.ts) < UNIFIED_CACHE_TTL_MS) {
     return res.json({ ...unifiedCache.data, cached: true });
   }
 
+  // Check request throttling
+  if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
+    return res.status(429).json({ 
+      error: 'Too many concurrent requests', 
+      details: 'Please try again in a moment',
+      cached: unifiedCache.data ? true : false,
+      ...(unifiedCache.data && { ...unifiedCache.data })
+    });
+  }
+
   try {
+    activeRequests++;
+    
     // Explicit, separate DB connection strings
     const legacyConn = process.env.SQL_CONNECTION_STRING_LEGACY || process.env.SQL_CONNECTION_STRING; // helix-core-data (legacy schema)
     const vnetConn = process.env.SQL_CONNECTION_STRING_VNET || process.env.INSTRUCTIONS_SQL_CONNECTION_STRING; // instructions DB (new schema)
@@ -60,32 +64,36 @@ router.get('/', async (req, res) => {
     const fullName = req.query.fullName ? String(req.query.fullName) : '';
     const norm = normalizeName(fullName);
 
-    const [legacyAll, vnetAll] = await Promise.all([
-      // Legacy: return ALL matters (no filter) from helix-core-data
-      withPool(legacyConn, async (pool) => {
-        const q = 'SELECT * FROM matters';
-        const r = await pool.request().query(q);
-        return Array.isArray(r.recordset) ? r.recordset : [];
-      }),
-      // VNet/new: optional server-side filter by name
-      withPool(vnetConn, async (pool) => {
+    // Sequential requests to avoid overwhelming the database
+    const legacyAll = await withRequest(legacyConn, async (request) => {
+      const q = 'SELECT * FROM matters';
+      const r = await request.query(q);
+      return Array.isArray(r.recordset) ? r.recordset : [];
+    });
+
+    // VNet/new: Handle instructions DB timeouts gracefully
+    let vnetAll = [];
+    try {
+      vnetAll = await withRequest(vnetConn, async (request) => {
         if (!norm) {
-          const r = await pool.request().query('SELECT * FROM Matters');
+          const r = await request.query('SELECT * FROM Matters');
           return Array.isArray(r.recordset) ? r.recordset : [];
         }
-        const reqSql = pool.request();
-        reqSql.input('name', sql.VarChar(200), norm);
-        reqSql.input('nameLike', sql.VarChar(210), `%${norm}%`);
+        request.input('name', sql.VarChar(200), norm);
+        request.input('nameLike', sql.VarChar(210), `%${norm}%`);
         const q = `
           SELECT * FROM Matters
           WHERE (
             LOWER(ResponsibleSolicitor) = @name OR LOWER(OriginatingSolicitor) = @name
             OR LOWER(ResponsibleSolicitor) LIKE @nameLike OR LOWER(OriginatingSolicitor) LIKE @nameLike
           )`;
-        const r = await reqSql.query(q);
+        const r = await request.query(q);
         return Array.isArray(r.recordset) ? r.recordset : [];
-      })
-    ]);
+      });
+    } catch (vnetError) {
+      // VNet database unavailable - continue with legacy data only
+      vnetAll = []; // Fallback to empty array
+    }
 
     const payload = {
       legacyAllCount: Array.isArray(legacyAll) ? legacyAll.length : 0,
@@ -100,7 +108,20 @@ router.get('/', async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.error('❌ /api/matters-unified failed:', err);
+    
+    // Handle throttling errors with 429 status
+    if (err.message.includes('Too many concurrent')) {
+      return res.status(429).json({ 
+        error: 'Too many concurrent requests', 
+        details: 'Please try again in a moment',
+        cached: unifiedCache.data ? true : false,
+        ...(unifiedCache.data && { ...unifiedCache.data })
+      });
+    }
+    
     return res.status(500).json({ error: 'Failed to fetch unified matters', details: String(err && err.message || err) });
+  } finally {
+    activeRequests--;
   }
 });
 

@@ -5,6 +5,21 @@ const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 const router = express.Router();
 
+const TRANSIENT_SQL_CODES = new Set(['ESOCKET', 'ECONNCLOSED', 'ECONNRESET', 'ETIMEDOUT', 'ETIMEOUT']);
+const DEFAULT_ATTENDANCE_RETRIES = Number(process.env.SQL_ATTENDANCE_MAX_RETRIES || 4);
+
+const isTransientSqlError = (error) => {
+  const code = error?.code || error?.originalError?.code || error?.cause?.code;
+  if (code && TRANSIENT_SQL_CODES.has(String(code))) {
+    return true;
+  }
+  const message = error?.message || error?.originalError?.message || '';
+  return typeof message === 'string' && /ECONNRESET|ECONNCLOSED|ETIMEOUT|ETIMEDOUT/i.test(message);
+};
+
+const attendanceQuery = (connectionString, executor, retries = DEFAULT_ATTENDANCE_RETRIES) =>
+  withRequest(connectionString, executor, retries);
+
 // Test route
 router.get('/test', (req, res) => {
   res.json({ success: true, message: 'Attendance router is working!' });
@@ -13,26 +28,24 @@ router.get('/test', (req, res) => {
 // Debug route to inspect team table schema
 router.get('/debug-team-schema', async (req, res) => {
   try {
-    const pool = await sql.connect(process.env.SQL_CONNECTION_STRING);
-    
     // Get column information for both team and attendance tables
-    const teamSchemaResult = await pool.request()
-      .query(`
+  const teamSchemaResult = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) =>
+      req.query(`
         SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE 
         FROM INFORMATION_SCHEMA.COLUMNS 
         WHERE TABLE_NAME = 'team'
         ORDER BY ORDINAL_POSITION
-      `);
+      `)
+    );
     
-    const attendanceSchemaResult = await pool.request()
-      .query(`
+  const attendanceSchemaResult = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) =>
+      req.query(`
         SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE 
         FROM INFORMATION_SCHEMA.COLUMNS 
         WHERE TABLE_NAME = 'Attendance'
         ORDER BY ORDINAL_POSITION
-      `);
-    
-    await pool.close();
+      `)
+    );
 
     res.json({
       success: true,
@@ -65,7 +78,7 @@ async function checkAnnualLeave() {
 
     // Get people currently on approved annual leave
     const today = new Date().toISOString().split('T')[0];
-    const leaveResult = await withRequest(projectDataConnStr, (req, sql) =>
+  const leaveResult = await attendanceQuery(projectDataConnStr, (req, sql) =>
       req.input('today', sql.Date, today)
         .query(`
         SELECT fe AS person
@@ -95,7 +108,7 @@ const getAttendanceHandler = async (req, res) => {
   try {
     
     // Get current attendance data from the correct attendance table
-    const result = await withRequest(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
+  const result = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
       SELECT 
         [First_Name] AS First,
         [Level],
@@ -110,7 +123,7 @@ const getAttendanceHandler = async (req, res) => {
     `));
 
     // Get team roster data from the correct team table
-    const teamResult = await withRequest(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
+  const teamResult = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
       SELECT 
         [First],
         [Initials],
@@ -189,8 +202,6 @@ router.post('/updateAttendance', async (req, res) => {
         error: 'Missing required fields: initials, weekStart, attendanceDays'
       });
     }
-
-    const pool = await sql.connect(process.env.SQL_CONNECTION_STRING);
     
     // Calculate week end date
     const weekEnd = new Date(weekStart);
@@ -209,78 +220,81 @@ router.post('/updateAttendance', async (req, res) => {
     const isoWeek = getISOWeek(new Date(weekStart));
 
     // Get user's full name from team data (or use existing if available)
-    const teamResult = await pool.request()
-      .input('initials', sql.VarChar(10), initials)
-      .query(`SELECT First FROM [dbo].[team] WHERE Initials = @initials`);
+  const teamResult = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req, sql) =>
+      req.input('initials', sql.VarChar(10), initials)
+        .query(`SELECT First FROM [dbo].[team] WHERE Initials = @initials`)
+    );
     
     const firstName = teamResult.recordset[0]?.First || 'Unknown';
 
     // Get or generate Entry_ID - check if record exists first
     let entryId;
-    const existingResult = await pool.request()
-      .input('initials', sql.VarChar(10), initials)
-      .input('weekStart', sql.Date, weekStart)
-      .query(`
-        SELECT Entry_ID FROM Attendance 
-        WHERE Initials = @initials AND Week_Start = @weekStart
-      `);
+  const existingResult = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req, sql) =>
+      req.input('initials', sql.VarChar(10), initials)
+        .input('weekStart', sql.Date, weekStart)
+        .query(`
+          SELECT Entry_ID FROM Attendance 
+          WHERE Initials = @initials AND Week_Start = @weekStart
+        `)
+    );
     
     if (existingResult.recordset.length > 0) {
       entryId = existingResult.recordset[0].Entry_ID;
     } else {
       // Generate new Entry_ID - get next available ID
-      const nextIdResult = await pool.request()
-        .query(`SELECT ISNULL(MAX(Entry_ID), 0) + 1 AS NextId FROM Attendance`);
+  const nextIdResult = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) =>
+        req.query(`SELECT ISNULL(MAX(Entry_ID), 0) + 1 AS NextId FROM Attendance`)
+      );
       entryId = nextIdResult.recordset[0].NextId;
     }
 
     // Upsert the attendance record with Entry_ID
-  const result = await pool.request()
-      .input('entryId', sql.Int, entryId)
-      .input('firstName', sql.VarChar(100), firstName)
-      .input('initials', sql.VarChar(10), initials)
-      .input('weekStart', sql.Date, weekStart)
-      .input('weekEnd', sql.Date, weekEndStr)
-      .input('isoWeek', sql.Int, isoWeek)
-  // Use MAX to accommodate any pattern length safely
-  .input('attendanceDays', sql.VarChar(sql.MAX), attendanceDays)
-      .query(`
-        MERGE Attendance AS target
-        USING (VALUES (@entryId, @firstName, @initials, @weekStart, @weekEnd, @isoWeek, @attendanceDays, GETDATE()))
-          AS source (Entry_ID, First_Name, Initials, Week_Start, Week_End, ISO_Week, Attendance_Days, Confirmed_At)
-        ON (target.Initials = source.Initials AND target.Week_Start = source.Week_Start)
-        WHEN MATCHED THEN
-          UPDATE SET 
-            Entry_ID = source.Entry_ID,
-            First_Name = source.First_Name,
-            Attendance_Days = source.Attendance_Days,
-            Confirmed_At = source.Confirmed_At
-        WHEN NOT MATCHED THEN
-          INSERT (Entry_ID, First_Name, Initials, Week_Start, Week_End, ISO_Week, Attendance_Days, Confirmed_At)
-          VALUES (source.Entry_ID, source.First_Name, source.Initials, source.Week_Start, source.Week_End, source.ISO_Week, source.Attendance_Days, source.Confirmed_At);
-      `);
+  const result = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req, sql) =>
+      req.input('entryId', sql.Int, entryId)
+        .input('firstName', sql.VarChar(100), firstName)
+        .input('initials', sql.VarChar(10), initials)
+        .input('weekStart', sql.Date, weekStart)
+        .input('weekEnd', sql.Date, weekEndStr)
+        .input('isoWeek', sql.Int, isoWeek)
+        // Use MAX to accommodate any pattern length safely
+        .input('attendanceDays', sql.VarChar(sql.MAX), attendanceDays)
+        .query(`
+          MERGE Attendance AS target
+          USING (VALUES (@entryId, @firstName, @initials, @weekStart, @weekEnd, @isoWeek, @attendanceDays, GETDATE()))
+            AS source (Entry_ID, First_Name, Initials, Week_Start, Week_End, ISO_Week, Attendance_Days, Confirmed_At)
+          ON (target.Initials = source.Initials AND target.Week_Start = source.Week_Start)
+          WHEN MATCHED THEN
+            UPDATE SET 
+              Entry_ID = source.Entry_ID,
+              First_Name = source.First_Name,
+              Attendance_Days = source.Attendance_Days,
+              Confirmed_At = source.Confirmed_At
+          WHEN NOT MATCHED THEN
+            INSERT (Entry_ID, First_Name, Initials, Week_Start, Week_End, ISO_Week, Attendance_Days, Confirmed_At)
+            VALUES (source.Entry_ID, source.First_Name, source.Initials, source.Week_Start, source.Week_End, source.ISO_Week, source.Attendance_Days, source.Confirmed_At);
+        `)
+    );
 
     // Get the updated record
-    const updatedResult = await pool.request()
-      .input('initials', sql.VarChar(10), initials)
-      .input('weekStart', sql.Date, weekStart)
-      .query(`
-        SELECT 
-          Attendance_ID,
-          Entry_ID,
-          First_Name,
-          Initials,
-          '' as Level,
-          Week_Start,
-          Week_End,
-          ISO_Week,
-          Attendance_Days,
-          Confirmed_At
-        FROM Attendance
-        WHERE Initials = @initials AND Week_Start = @weekStart
-      `);
-
-    await pool.close();
+  const updatedResult = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req, sql) =>
+      req.input('initials', sql.VarChar(10), initials)
+        .input('weekStart', sql.Date, weekStart)
+        .query(`
+          SELECT 
+            Attendance_ID,
+            Entry_ID,
+            First_Name,
+            Initials,
+            '' as Level,
+            Week_Start,
+            Week_End,
+            ISO_Week,
+            Attendance_Days,
+            Confirmed_At
+          FROM Attendance
+          WHERE Initials = @initials AND Week_Start = @weekStart
+        `)
+    );
 
     res.json({
       success: true,
@@ -399,7 +413,7 @@ router.post('/getAnnualLeave', async (req, res) => {
 
     // Queries using pooled connections (no global sql.connect)
     const [currentLeaveResult, futureLeaveResult, allLeaveResult, teamResult] = await Promise.all([
-      withRequest(projectDataConnStr, (reqSql, s) =>
+      attendanceQuery(projectDataConnStr, (reqSql, s) =>
         reqSql.input('today', s.Date, today).query(`
           SELECT 
             request_id,
@@ -419,7 +433,7 @@ router.post('/getAnnualLeave', async (req, res) => {
           ORDER BY fe
         `)
       ),
-      withRequest(projectDataConnStr, (reqSql, s) =>
+  attendanceQuery(projectDataConnStr, (reqSql, s) =>
         reqSql.input('today', s.Date, today).query(`
           SELECT 
             request_id,
@@ -439,7 +453,7 @@ router.post('/getAnnualLeave', async (req, res) => {
           ORDER BY start_date, fe
         `)
       ),
-      withRequest(projectDataConnStr, (reqSql) =>
+  attendanceQuery(projectDataConnStr, (reqSql) =>
         reqSql.query(`
           SELECT 
             request_id,
@@ -457,7 +471,7 @@ router.post('/getAnnualLeave', async (req, res) => {
           ORDER BY start_date DESC
         `)
       ),
-      withRequest(coreDataConnStr, (reqSql) =>
+  attendanceQuery(coreDataConnStr, (reqSql) =>
         reqSql.query(`
           SELECT Initials, AOW, holiday_entitlement 
           FROM [dbo].[team]
@@ -474,7 +488,7 @@ router.post('/getAnnualLeave', async (req, res) => {
       const fiscalStartStr = fiscalStart.toISOString().split('T')[0];
       const fiscalEndStr = new Date(fiscalStart.getFullYear() + 1, 2, 31).toISOString().split('T')[0];
 
-      const userLeaveResult = await withRequest(projectDataConnStr, (reqSql, s) =>
+  const userLeaveResult = await attendanceQuery(projectDataConnStr, (reqSql, s) =>
         reqSql
           .input('initials', s.VarChar(10), userInitials)
           .input('fiscalStart', s.Date, fiscalStartStr)
@@ -526,7 +540,22 @@ router.post('/getAnnualLeave', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching annual leave:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch annual leave data' });
+    const emptyUserDetails = { leaveEntries: [], totals: { standard: 0, unpaid: 0, sale: 0, rejected: 0 } };
+    const fallbackPayload = {
+      success: false,
+      error: 'Failed to fetch annual leave data',
+      annual_leave: [],
+      future_leave: [],
+      user_details: emptyUserDetails,
+      all_data: [],
+      team: []
+    };
+
+    if (isTransientSqlError(error)) {
+      return res.status(200).json({ ...fallbackPayload, transient: true });
+    }
+
+    res.status(500).json(fallbackPayload);
   }
 });
 
@@ -552,7 +581,6 @@ router.post('/annual-leave', async (req, res) => {
     }
 
     const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-    const pool = await sql.connect(projectDataConnStr);
 
     const insertedIds = [];
     
@@ -562,28 +590,27 @@ router.post('/annual-leave', async (req, res) => {
       const end = new Date(range.end_date);
       const computedDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       
-      const result = await pool.request()
-        .input('fe', sql.VarChar(50), fe)
-        .input('start_date', sql.Date, range.start_date)
-        .input('end_date', sql.Date, range.end_date)
-        .input('reason', sql.NVarChar(sql.MAX), reason || "No reason provided.")
-        .input('status', sql.VarChar(50), "requested")
-        .input('days_taken', sql.Float, computedDays)
-        .input('leave_type', sql.VarChar(50), leave_type)
-        .input('hearing_confirmation', sql.Bit, hearing_confirmation?.toLowerCase() === "yes" ? 1 : 0)
-        .input('hearing_details', sql.NVarChar(sql.MAX), hearing_details || "")
-        .query(`
-          INSERT INTO [dbo].[annualLeave] 
-            ([fe], [start_date], [end_date], [reason], [status], [days_taken], [leave_type], [hearing_confirmation], [hearing_details])
-          VALUES 
-            (@fe, @start_date, @end_date, @reason, @status, @days_taken, @leave_type, @hearing_confirmation, @hearing_details);
-          SELECT SCOPE_IDENTITY() AS InsertedId;
-        `);
+  const result = await attendanceQuery(projectDataConnStr, (req, sql) =>
+        req.input('fe', sql.VarChar(50), fe)
+          .input('start_date', sql.Date, range.start_date)
+          .input('end_date', sql.Date, range.end_date)
+          .input('reason', sql.NVarChar(sql.MAX), reason || "No reason provided.")
+          .input('status', sql.VarChar(50), "requested")
+          .input('days_taken', sql.Float, computedDays)
+          .input('leave_type', sql.VarChar(50), leave_type)
+          .input('hearing_confirmation', sql.Bit, hearing_confirmation?.toLowerCase() === "yes" ? 1 : 0)
+          .input('hearing_details', sql.NVarChar(sql.MAX), hearing_details || "")
+          .query(`
+            INSERT INTO [dbo].[annualLeave] 
+              ([fe], [start_date], [end_date], [reason], [status], [days_taken], [leave_type], [hearing_confirmation], [hearing_details])
+            VALUES 
+              (@fe, @start_date, @end_date, @reason, @status, @days_taken, @leave_type, @hearing_confirmation, @hearing_details);
+            SELECT SCOPE_IDENTITY() AS InsertedId;
+          `)
+      );
       
       insertedIds.push(result.recordset[0].InsertedId);
     }
-
-    await pool.close();
 
     res.status(201).json({
       success: true,
@@ -630,26 +657,25 @@ router.post('/updateAnnualLeave', async (req, res) => {
     }
 
     const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-    const pool = await sql.connect(projectDataConnStr);
 
     // Update the record
-    const updateResult = await pool.request()
-      .input('id', sql.Int, parseInt(id, 10))
-      .input('newStatus', sql.VarChar(50), newStatus)
-      .input('rejectionNotes', sql.NVarChar(sql.MAX), rejection_notes || "")
-      .query(`
-        UPDATE [dbo].[annualLeave]
-           SET [status] = @newStatus,
-               [rejection_notes] = CASE 
-                                     WHEN @newStatus = 'rejected' AND (@rejectionNotes IS NOT NULL AND @rejectionNotes <> '')
-                                     THEN @rejectionNotes 
-                                     ELSE [rejection_notes] 
-                                   END
-         WHERE [request_id] = @id;
-      `);
+  const updateResult = await attendanceQuery(projectDataConnStr, (req, sql) =>
+      req.input('id', sql.Int, parseInt(id, 10))
+        .input('newStatus', sql.VarChar(50), newStatus)
+        .input('rejectionNotes', sql.NVarChar(sql.MAX), rejection_notes || "")
+        .query(`
+          UPDATE [dbo].[annualLeave]
+             SET [status] = @newStatus,
+                 [rejection_notes] = CASE 
+                                       WHEN @newStatus = 'rejected' AND (@rejectionNotes IS NOT NULL AND @rejectionNotes <> '')
+                                       THEN @rejectionNotes 
+                                       ELSE [rejection_notes] 
+                                     END
+           WHERE [request_id] = @id;
+        `)
+    );
 
     if (updateResult.rowsAffected[0] === 0) {
-      await pool.close();
       return res.status(404).json({
         success: false,
         error: `No record found with ID ${id}, or the status transition is invalid.`
@@ -660,13 +686,14 @@ router.post('/updateAnnualLeave', async (req, res) => {
     if (newStatus.toLowerCase() === 'booked') {
       try {
         // Fetch the leave record details
-        const leaveResult = await pool.request()
-          .input('id', sql.Int, parseInt(id, 10))
-          .query(`
-            SELECT fe, start_date, end_date, ClioEntryId
-            FROM [dbo].[annualLeave]
-            WHERE request_id = @id
-          `);
+  const leaveResult = await attendanceQuery(projectDataConnStr, (req, sql) =>
+          req.input('id', sql.Int, parseInt(id, 10))
+            .query(`
+              SELECT fe, start_date, end_date, ClioEntryId
+              FROM [dbo].[annualLeave]
+              WHERE request_id = @id
+            `)
+        );
 
         const leaveRecord = leaveResult.recordset[0];
         
@@ -685,14 +712,15 @@ router.post('/updateAnnualLeave', async (req, res) => {
 
               // Update the SQL record with the Clio entry ID
               if (clioEntryId) {
-                await pool.request()
-                  .input('id', sql.Int, parseInt(id, 10))
-                  .input('clioEntryId', sql.Int, clioEntryId)
-                  .query(`
-                    UPDATE [dbo].[annualLeave]
-                       SET [ClioEntryId] = @clioEntryId
-                     WHERE [request_id] = @id;
-                  `);
+                await attendanceQuery(projectDataConnStr, (req, sql) =>
+                  req.input('id', sql.Int, parseInt(id, 10))
+                    .input('clioEntryId', sql.Int, clioEntryId)
+                    .query(`
+                      UPDATE [dbo].[annualLeave]
+                         SET [ClioEntryId] = @clioEntryId
+                       WHERE [request_id] = @id;
+                    `)
+                );
               }
             }
           }
@@ -702,8 +730,6 @@ router.post('/updateAnnualLeave', async (req, res) => {
         // Continue with the response even if Clio fails
       }
     }
-
-    await pool.close();
 
     res.json({
       success: true,
@@ -732,10 +758,9 @@ router.get('/annual-leave-all', async (req, res) => {
     }
 
     const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-    const pool = await sql.connect(projectDataConnStr);
     
-    const result = await pool.request()
-      .query(`
+  const result = await attendanceQuery(projectDataConnStr, (req) =>
+      req.query(`
         SELECT 
           request_id,
           fe AS person,
@@ -750,9 +775,8 @@ router.get('/annual-leave-all', async (req, res) => {
           hearing_details
         FROM annualLeave 
         ORDER BY start_date DESC
-      `);
-
-    await pool.close();
+      `)
+    );
 
     res.json({
       success: true,

@@ -328,7 +328,16 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry,
             <Text variant="medium" styles={{ root: { fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text, marginBottom: 8 } }}>All Enquiries ({enquiryCount})</Text>
             {enquiries.map((enquiry, idx) => (
               <div key={enquiry.ID} style={{ borderRadius: 4, overflow: 'hidden' }}>
-                <EnquiryLineItem enquiry={enquiry} onSelect={onSelect} onRate={onRate} onPitch={onPitch} teamData={teamData} isLast={idx === enquiries.length - 1} userAOW={undefined} />
+                <EnquiryLineItem 
+                  enquiry={enquiry} 
+                  onSelect={onSelect} 
+                  onRate={onRate} 
+                  onPitch={onPitch} 
+                  teamData={teamData} 
+                  isLast={idx === enquiries.length - 1} 
+                  userAOW={undefined}
+                  promotionStatus={getPromotionStatus ? getPromotionStatus(enquiry) : null}
+                />
               </div>
             ))}
           </Stack>

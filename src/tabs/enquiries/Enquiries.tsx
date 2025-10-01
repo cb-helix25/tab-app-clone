@@ -55,6 +55,7 @@ import { Context as TeamsContextType } from '@microsoft/teams-js';
 import AreaCountCard from './AreaCountCard';
 import 'rc-slider/assets/index.css';
 import Slider from 'rc-slider';
+import { debugLog, debugWarn } from '../../utils/debug';
 // Local types
 interface MonthlyCount {
   month: string;
@@ -165,11 +166,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   // Function to fetch all enquiries (unfiltered) for "All" mode
   const fetchAllEnquiries = useCallback(async () => {
     if (isLoadingAllData) {
-      console.log('🔄 Already loading all data, skipping fetch');
+      debugLog('🔄 Already loading all data, skipping fetch');
       return;
     }
     
-    console.log('🔄 Attempting to fetch all enquiries, hasFetched:', hasFetchedAllData.current);
+    debugLog('🔄 Attempting to fetch all enquiries, hasFetched:', hasFetchedAllData.current);
     
     try {
       setIsLoadingAllData(true);
@@ -179,15 +180,15 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   // Call unified server-side route for ALL environments to avoid legacy combined route
   const allDataUrl = '/api/enquiries-unified';
       
-      console.log('🌐 Fetching ALL enquiries (unified) from:', allDataUrl);
+      debugLog('🌐 Fetching ALL enquiries (unified) from:', allDataUrl);
       
       const response = await fetch(allDataUrl, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
       
-      console.log('📡 Response status:', response.status, response.statusText);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+      debugLog('📡 Response status:', response.status, response.statusText);
+      debugLog('📡 Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -196,7 +197,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       }
       
       const data = await response.json();
-      console.log('🔍 RAW RESPONSE from unified route:', {
+      debugLog('🔍 RAW RESPONSE from unified route:', {
         dataType: typeof data,
         isArray: Array.isArray(data),
         hasEnquiries: !!data.enquiries,
@@ -208,16 +209,16 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       let rawEnquiries: any[] = [];
       if (Array.isArray(data)) {
         rawEnquiries = data;
-        console.log('📦 Using data as direct array');
+        debugLog('📦 Using data as direct array');
       } else if (Array.isArray(data.enquiries)) {
         rawEnquiries = data.enquiries;
-        console.log('📦 Using data.enquiries array');
+        debugLog('📦 Using data.enquiries array');
       } else {
-        console.warn('⚠️ Unexpected data structure:', data);
+        debugWarn('⚠️ Unexpected data structure:', data);
       }
       
-      console.log('✅ Fetched all enquiries:', rawEnquiries.length);
-      console.log('📊 All enquiries POC breakdown:', rawEnquiries.reduce((acc: any, enq) => {
+      debugLog('✅ Fetched all enquiries:', rawEnquiries.length);
+      debugLog('📊 All enquiries POC breakdown:', rawEnquiries.reduce((acc: any, enq) => {
         const poc = enq.Point_of_Contact || enq.poc || 'unknown';
         acc[poc] = (acc[poc] || 0) + 1;
         return acc;
@@ -230,7 +231,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           return poc !== 'team@helix-law.com' && poc.trim() !== '';
         })
         .slice(0, 10);
-      console.log('🔍 PRODUCTION DEBUG - Sample claimed enquiries:', claimedSample.map(e => ({
+      debugLog('🔍 PRODUCTION DEBUG - Sample claimed enquiries:', claimedSample.map(e => ({
         ID: e.ID || e.id,
         POC: e.Point_of_Contact || e.poc,
         Area: e.Area_of_Work || e.aow,
@@ -259,9 +260,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         };
       });
       
-      console.log('🔄 Setting normalized data to state:', normalizedEnquiries.length);
-      console.log('🔍 Sample normalized enquiry:', normalizedEnquiries[0]);
-      console.log('🔍 Normalized enquiries POC distribution:', normalizedEnquiries.reduce((acc: any, enq) => {
+      debugLog('🔄 Setting normalized data to state:', normalizedEnquiries.length);
+      debugLog('🔍 Sample normalized enquiry:', normalizedEnquiries[0]);
+      debugLog('🔍 Normalized enquiries POC distribution:', normalizedEnquiries.reduce((acc: any, enq) => {
         const poc = enq.Point_of_Contact || 'unknown';
         acc[poc] = (acc[poc] || 0) + 1;
         return acc;
@@ -270,7 +271,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       setAllEnquiries(normalizedEnquiries);
       setDisplayEnquiries(normalizedEnquiries);
       
-      console.log('✅ State updated with normalized enquiries');
+      debugLog('✅ State updated with normalized enquiries');
       
       return normalizedEnquiries;
     } catch (error) {
@@ -323,7 +324,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     [userRec.First, userRec.Last].filter(Boolean).join(' ')
   )?.toString() || '';
   const isAdmin = isAdminUser(userData?.[0] || null);
-  console.log('🔍 ADMIN STATUS DEBUG:', {
+  debugLog('🔍 ADMIN STATUS DEBUG:', {
     userEmail: userData?.[0]?.Email,
     userInitials: userData?.[0]?.Initials,
     userName: userData?.[0]?.First,
@@ -358,7 +359,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   // Normalize all incoming enquiries once (unfiltered by toggle)
   useEffect(() => {
-    console.log('🔄 Prop useEffect triggered:', { 
+    debugLog('🔄 Prop useEffect triggered:', { 
       hasEnquiries: !!enquiries, 
       enquiriesLength: enquiries?.length || 0, 
       isAdmin, 
@@ -374,10 +375,10 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     
     // Don't override fetched data when admin is in "All" mode
     if (isAdmin && !showMineOnly) {
-      console.log('👤 Admin in All mode - keeping fetched dataset, not using prop data');
+      debugLog('👤 Admin in All mode - keeping fetched dataset, not using prop data');
       // If we already have fetched data, don't clear it
       if (displayEnquiries.length > 0) {
-        console.log('👤 Preserving existing fetched data:', displayEnquiries.length, 'enquiries');
+        debugLog('👤 Preserving existing fetched data:', displayEnquiries.length, 'enquiries');
         return;
       }
     }
@@ -429,7 +430,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     // If admin is in "All" mode and we have fetched unified data, show all data
     const userEmail = userData?.[0]?.Email?.toLowerCase() || '';
     if (isAdmin && !showMineOnly && hasFetchedAllData.current && allEnquiries.length > 1000) {
-      console.log('👑 Admin All mode - showing unified data:', allEnquiries.length);
+  debugLog('👑 Admin All mode - showing unified data:', allEnquiries.length);
       setDisplayEnquiries(allEnquiries);
       return;
     }
@@ -440,7 +441,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       
       // Debug logging for BR
       if (userEmail.includes('br@') || userEmail.includes('brendan')) {
-        console.log('🗄️ BR DEBUG - Data loading:', {
+        debugLog('🗄️ BR DEBUG - Data loading:', {
           totalAllEnquiries: allEnquiries.length,
           filteredCount: filtered.length,
           isLocalhost,
@@ -473,13 +474,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     const userEmail = userData?.[0]?.Email?.toLowerCase() || '';
     const isBRUser = userEmail.includes('br@') || userEmail.includes('brendan');
     
-    console.log('🔄 Toggle useEffect triggered:', { isAdmin, showMineOnly, userEmail, hasData: displayEnquiries.length });
+  debugLog('🔄 Toggle useEffect triggered:', { isAdmin, showMineOnly, userEmail, hasData: displayEnquiries.length });
     
     // When switching to "Mine" mode, ensure displayEnquiries has the full dataset for filtering
     // BUT don't reset fetch flag if we already have all data - this prevents infinite loops
     if (showMineOnly) {
       if (allEnquiries.length > 0) {
-        console.log('🔄 Mine mode - setting displayEnquiries to allEnquiries for filtering:', allEnquiries.length);
+        debugLog('🔄 Mine mode - setting displayEnquiries to allEnquiries for filtering:', allEnquiries.length);
         setDisplayEnquiries(allEnquiries);
       }
       // Don't reset hasFetchedAllData.current here - it causes infinite loops
@@ -488,16 +489,16 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     
     // Also reset if we previously fetched only new data (29 records) and need unified data
     if (displayEnquiries.length < 100 && allEnquiries.length < 100) {
-      console.log('🔄 Resetting fetch flag - previous fetch may have been incomplete');
+      debugLog('🔄 Resetting fetch flag - previous fetch may have been incomplete');
       hasFetchedAllData.current = false;
     }
     
     // If admin toggles to "All" and we don't have comprehensive data, fetch complete dataset
     if (isAdmin && !showMineOnly && !hasFetchedAllData.current) {
-      console.log('🔄 Admin switched to All mode - fetching complete dataset');
+      debugLog('🔄 Admin switched to All mode - fetching complete dataset');
       fetchAllEnquiries();
     } else if (isBRUser && !showMineOnly && displayEnquiries.length <= 1 && !hasFetchedAllData.current) {
-      console.log('🔄 BR switched to All mode but only has 1 enquiry - fetching complete dataset');
+      debugLog('🔄 BR switched to All mode but only has 1 enquiry - fetching complete dataset');
       fetchAllEnquiries();
     }
   }, [showMineOnly, userData, fetchAllEnquiries, isAdmin]); // Removed isLoadingAllData from deps
@@ -693,35 +694,35 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   // Auto-refresh functionality
   const handleManualRefresh = useCallback(async () => {
-    console.log('🔄 Manual refresh triggered');
-    console.log('isRefreshing:', isRefreshing);
-    console.log('onRefreshEnquiries available:', !!onRefreshEnquiries);
+  debugLog('🔄 Manual refresh triggered');
+  debugLog('isRefreshing:', isRefreshing);
+  debugLog('onRefreshEnquiries available:', !!onRefreshEnquiries);
     
     if (isRefreshing) {
-      console.log('❌ Already refreshing, skipping');
+      debugLog('❌ Already refreshing, skipping');
       return;
     }
     
     if (!onRefreshEnquiries) {
-      console.log('❌ No onRefreshEnquiries function provided');
+      debugLog('❌ No onRefreshEnquiries function provided');
       alert('Refresh function not available. Please check the parent component.');
       return;
     }
     
     setIsRefreshing(true);
-    console.log('✅ Starting refresh...');
+    debugLog('✅ Starting refresh...');
     
     try {
       await onRefreshEnquiries();
       setLastRefreshTime(new Date());
       setNextRefreshIn(30 * 60); // Reset to 30 minutes
-      console.log('✅ Refresh completed successfully');
+      debugLog('✅ Refresh completed successfully');
     } catch (error) {
       console.error('❌ Failed to refresh enquiries:', error);
       alert(`Refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsRefreshing(false);
-      console.log('🏁 Refresh process finished');
+      debugLog('🏁 Refresh process finished');
     }
   }, [isRefreshing, onRefreshEnquiries]);
 
@@ -823,7 +824,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       setAllEnquiries(prev => prev.map(updateEnquiry));
       setDisplayEnquiries(prev => prev.map(updateEnquiry));
       
-      console.log('✅ Enquiry updated successfully:', updatedEnquiry.ID, updates);
+  debugLog('✅ Enquiry updated successfully:', updatedEnquiry.ID, updates);
       
     } catch (error) {
       console.error('Failed to edit enquiry:', error);
@@ -861,7 +862,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       setAllEnquiries(prev => prev.map(updateEnquiry));
       setDisplayEnquiries(prev => prev.map(updateEnquiry));
       
-      console.log('✅ Enquiry area updated successfully:', enquiryId, 'to', newArea);
+  debugLog('✅ Enquiry area updated successfully:', enquiryId, 'to', newArea);
       
     } catch (error) {
       console.error('Failed to update enquiry area:', error);
@@ -899,7 +900,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       setAllEnquiries(prev => prev.map(updateEnquiry));
       setDisplayEnquiries(prev => prev.map(updateEnquiry));
       
-      console.log('✅ Enquiry updated successfully:', enquiryId, updates);
+  debugLog('✅ Enquiry updated successfully:', enquiryId, updates);
     } catch (error) {
       console.error('❌ Failed to update enquiry:', error);
       throw error;
@@ -953,7 +954,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
     // Debug logging for BR
     if (userEmail.includes('br@') || userEmail.includes('brendan')) {
-      console.log('🐛 BR DEBUG - Enquiries filtering:', {
+      debugLog('🐛 BR DEBUG - Enquiries filtering:', {
         originalUserEmail: userEmail,
         effectiveUserEmail,
         isLocalhost,
@@ -967,7 +968,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       const allPOCs = displayEnquiries.slice(0, 20).map(e => 
         (e.Point_of_Contact || (e as any).poc || '').toLowerCase()
       );
-      console.log('📧 All POCs in dataset (first 20):', allPOCs);
+  debugLog('📧 All POCs in dataset (first 20):', allPOCs);
       
       // Count by POC
       const pocCounts: Record<string, number> = {};
@@ -975,11 +976,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         const poc = (e.Point_of_Contact || (e as any).poc || '').toLowerCase();
         pocCounts[poc] = (pocCounts[poc] || 0) + 1;
       });
-      console.log('📊 POC counts:', pocCounts);
+  debugLog('📊 POC counts:', pocCounts);
     }
 
     // Add detailed logging for data flow debugging
-    console.log('🔍 Data Flow Debug:', {
+    debugLog('🔍 Data Flow Debug:', {
       activeState,
       showMineOnly,
       isAdmin,
@@ -992,7 +993,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
       if (showMineOnly || !isAdmin) {
-        console.log('🔍 Filtering for Mine Only - looking for:', effectiveUserEmail);
+  debugLog('🔍 Filtering for Mine Only - looking for:', effectiveUserEmail);
         
         // DEBUG: Show available claimed POCs first
         const claimedEnquiries = filtered.filter(enquiry => {
@@ -1007,25 +1008,25 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           return acc;
         }, {});
         
-        console.log('🔍 MINE DEBUG - Available claimed POCs:', claimedPOCs);
-        console.log('🔍 MINE DEBUG - Total claimed enquiries available:', claimedEnquiries.length);
-        console.log('🔍 MINE DEBUG - Looking for exact match:', effectiveUserEmail);
-        console.log('🔍 MINE DEBUG - User has claimed enquiries:', claimedPOCs[effectiveUserEmail] || 0);
+  debugLog('🔍 MINE DEBUG - Available claimed POCs:', claimedPOCs);
+  debugLog('🔍 MINE DEBUG - Total claimed enquiries available:', claimedEnquiries.length);
+  debugLog('🔍 MINE DEBUG - Looking for exact match:', effectiveUserEmail);
+  debugLog('🔍 MINE DEBUG - User has claimed enquiries:', claimedPOCs[effectiveUserEmail] || 0);
         
         filtered = filtered.filter(enquiry => {
           const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
           const matches = effectiveUserEmail ? poc === effectiveUserEmail : false;
           if (userEmail.includes('br@') || userEmail.includes('lz@')) {
-            console.log('📧 Enquiry POC:', poc, 'matches:', matches);
+            debugLog('📧 Enquiry POC:', poc, 'matches:', matches);
           }
           return matches;
         });
       } else {
-        console.log('🌍 Filtering for All Claimed enquiries (Admin Mode)');
-        console.log('📊 Total enquiries before filtering:', filtered.length);
-        console.log('📊 Unclaimed emails to exclude:', unclaimedEmails);
-        console.log('🔍 PRODUCTION DEBUG - Current user admin status:', isAdmin);
-        console.log('🔍 PRODUCTION DEBUG - Current showMineOnly setting:', showMineOnly);
+        debugLog('🌍 Filtering for All Claimed enquiries (Admin Mode)');
+        debugLog('📊 Total enquiries before filtering:', filtered.length);
+        debugLog('📊 Unclaimed emails to exclude:', unclaimedEmails);
+        debugLog('🔍 PRODUCTION DEBUG - Current user admin status:', isAdmin);
+        debugLog('🔍 PRODUCTION DEBUG - Current showMineOnly setting:', showMineOnly);
         
         // Show sample of data we're working with
         if (filtered.length > 0) {
@@ -1034,7 +1035,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             POC: e.Point_of_Contact || (e as any).poc,
             CallTaker: e.Call_Taker || (e as any).rep
           }));
-          console.log('📋 Sample enquiries:', samples);
+          debugLog('📋 Sample enquiries:', samples);
         }
         
         // For admin "All" mode, we want to show enquiries that have been claimed by ANYONE
@@ -1050,8 +1051,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           return isClaimed;
         });
         
-        console.log('📊 Total claimed enquiries after filtering:', filtered.length);
-        console.log('🔍 PRODUCTION DEBUG - Sample of filtered claimed enquiries:', filtered.slice(0, 5).map(e => ({
+        debugLog('📊 Total claimed enquiries after filtering:', filtered.length);
+        debugLog('🔍 PRODUCTION DEBUG - Sample of filtered claimed enquiries:', filtered.slice(0, 5).map(e => ({
           ID: e.ID,
           POC: e.Point_of_Contact || (e as any).poc,
           Area: e.Area_of_Work,
@@ -1131,7 +1132,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     
     // Final debug logging for BR
     if (userEmail.includes('br@') || userEmail.includes('brendan')) {
-      console.log('🎯 BR DEBUG - Final filtered results:', {
+      debugLog('🎯 BR DEBUG - Final filtered results:', {
         finalCount: filtered.length,
         activeState,
         showMineOnly,
@@ -1139,7 +1140,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         selectedAreas
       });
       if (filtered.length > 0) {
-        console.log('📋 Sample enquiry POCs:', filtered.slice(0, 5).map(e => e.Point_of_Contact || (e as any).poc));
+        debugLog('📋 Sample enquiry POCs:', filtered.slice(0, 5).map(e => e.Point_of_Contact || (e as any).poc));
       }
     }
     
@@ -1500,7 +1501,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
     // List mode: filter/search bar in Navigator (like Matters list state)
     if (!selectedEnquiry) {
-      console.log('🔄 Setting new FilterBanner content for Enquiries');
+      debugLog('🔄 Setting new FilterBanner content for Enquiries');
       setContent(
         <FilterBanner
           seamless

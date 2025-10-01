@@ -18,71 +18,66 @@ interface PersonAttendance {
 export async function getAttendanceHandler(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   context.log("Invocation started for getAttendance Azure Function.");
 
-  const kvUri = "https://helix-keys.vault.azure.net/";
-  const passwordSecretName = "sql-databaseserver-password";
-  const sqlServer = "helix-database-server.database.windows.net";
-  const coreDataDb = "helix-core-data";
+  // CORS headers per workspace guidelines
+  const corsHeaders = getCorsHeaders(req);
+  if (req.method === "OPTIONS") {
+    // Fast preflight
+    return { status: 204, headers: corsHeaders };
+  }
 
   try {
-    // 1) Retrieve SQL password from Azure Key Vault
-    const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
-    const passwordSecret = await secretClient.getSecret(passwordSecretName);
-    const password = passwordSecret.value || "";
-    context.log("Retrieved SQL password from Key Vault.");
+    // Build SQL config (env first, fallback to Key Vault for password)
+    const coreDataConfig = await getSqlConfig(context);
 
-    // 2) Parse SQL connection config for core-data only
-    const coreDataConfig = parseConnectionString(
-      `Server=${sqlServer};Database=${coreDataDb};User ID=helix-database-server;Password=${password};Encrypt=true;TrustServerCertificate=false;`,
-      context
-    );
+    // Dates: Previous, Current, Next weeks
+    const todayDate = new Date();
+    const currentWeekStart = getStartOfWeek(todayDate);
+    const currentWeekEnd = getEndOfWeek(currentWeekStart);
+    const currentWeekRange = formatWeekRange(currentWeekStart, currentWeekEnd);
 
-    // 3) Determine date ranges (Previous, Current, Next)
-    const todayDate = new Date(); // March 8, 2025
-    const currentWeekStart = getStartOfWeek(todayDate); // 2025-03-03
-    const currentWeekEnd = getEndOfWeek(currentWeekStart); // 2025-03-09
-    const currentWeekRange = formatWeekRange(currentWeekStart, currentWeekEnd); // "Monday, 03/03/2025 - Sunday, 09/03/2025"
-
-    const nextWeekStart = getNextWeekStart(currentWeekStart); // 2025-03-10
-    const nextWeekEnd = getEndOfWeek(nextWeekStart); // 2025-03-16
-    const nextWeekRange = formatWeekRange(nextWeekStart, nextWeekEnd); // "Monday, 10/03/2025 - Sunday, 16/03/2025"
+    const nextWeekStart = getNextWeekStart(currentWeekStart);
+    const nextWeekEnd = getEndOfWeek(nextWeekStart);
+    const nextWeekRange = formatWeekRange(nextWeekStart, nextWeekEnd);
 
     const previousWeekStart = new Date(currentWeekStart);
-    previousWeekStart.setDate(previousWeekStart.getDate() - 7); // 2025-02-24
-    const previousWeekEnd = getEndOfWeek(previousWeekStart); // 2025-03-02
-    const previousWeekRange = formatWeekRange(previousWeekStart, previousWeekEnd); // "Monday, 24/02/2025 - Sunday, 02/03/2025"
+    previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+    const previousWeekEnd = getEndOfWeek(previousWeekStart);
+    const previousWeekRange = formatWeekRange(previousWeekStart, previousWeekEnd);
 
     context.log(`Previous Week Range: ${previousWeekRange}`);
     context.log(`Current Week Range: ${currentWeekRange}`);
     context.log(`Next Week Range: ${nextWeekRange}`);
 
-    // 4) Query the attendance data from the new table
-    const attendees: PersonAttendance[] = await queryAttendance(
-      previousWeekRange,
-      currentWeekRange,
-      nextWeekRange,
-      previousWeekStart,  // Pass Date objects
-      currentWeekStart,
-      nextWeekStart,
-      coreDataConfig,
-      context
-    );
+    // Open ONE connection per invocation and reuse for both queries
+    const connection = new Connection(coreDataConfig);
+    await connectWithRetry(connection, context);
 
-    // 5) Query team data (unchanged)
-    const teamData = await queryTeamData(coreDataConfig, context);
+    try {
+      const attendees: PersonAttendance[] = await queryAttendance(
+        previousWeekRange,
+        currentWeekRange,
+        nextWeekRange,
+        previousWeekStart,
+        currentWeekStart,
+        nextWeekStart,
+        connection,
+        context
+      );
 
-    return {
-      status: 200,
-      body: JSON.stringify({
-        attendance: attendees,
-        team: teamData
-      })
-    };
+      const teamData = await queryTeamData(connection, context);
+
+      return {
+        status: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ attendance: attendees, team: teamData })
+      };
+    } finally {
+      // Always close the connection for this invocation
+      try { connection.close(); } catch { /* noop */ }
+    }
   } catch (error) {
     context.error("Error retrieving attendance data:", error);
-    return {
-      status: 500,
-      body: "Error retrieving attendance data."
-    };
+    return { status: 500, headers: corsHeaders, body: "Error retrieving attendance data." };
   } finally {
     context.log("Invocation completed for getAttendance Azure Function.");
   }
@@ -96,27 +91,11 @@ async function queryAttendance(
   previousWeekStart: Date,
   currentWeekStart: Date,
   nextWeekStart: Date,
-  config: any,
+  connection: Connection,
   context: InvocationContext
 ): Promise<PersonAttendance[]> {
   return new Promise((resolve, reject) => {
-    const connection = new Connection(config);
-
-    connection.on("error", (err) => {
-      context.error("SQL Connection Error (Attendance):", err);
-      reject("An error occurred with the SQL connection.");
-    });
-
-    connection.on("connect", (err) => {
-      if (err) {
-        context.error("SQL Connection Error (Attendance):", err);
-        reject("Failed to connect to SQL database.");
-        return;
-      }
-
-      context.log("Successfully connected to SQL database (Attendance).");
-
-      const query = `
+    const query = `
         SELECT 
           [First_Name] AS name,
           [Level],
@@ -133,139 +112,109 @@ async function queryAttendance(
           )
         ORDER BY [First_Name];
       `;
-      context.log("SQL Query (Attendance):", query);
+    context.log("SQL Query (Attendance):", query);
 
-      const sqlRequest = new SqlRequest(query, (err, rowCount) => {
-        if (err) {
-          context.error("SQL Query Execution Error (Attendance):", err);
-          reject("SQL query failed.");
-          connection.close();
-          return;
-        }
-        context.log(`SQL query executed successfully (Attendance). Rows returned: ${rowCount}`);
-      });
-
-      const attendanceMap: { [name: string]: PersonAttendance } = {};
-
-      sqlRequest.on("row", (columns) => {
-        const name = (columns.find(c => c.metadata.colName === "name")?.value as string) || "";
-        const level = (columns.find(c => c.metadata.colName === "Level")?.value as string) || "";
-        const weekStart = (columns.find(c => c.metadata.colName === "Week_Start")?.value as Date);
-        const weekEnd = (columns.find(c => c.metadata.colName === "Week_End")?.value as Date);
-        const iso = (columns.find(c => c.metadata.colName === "iso")?.value as number) || 0;
-        const attendance = (columns.find(c => c.metadata.colName === "attendance")?.value as string) || "";
-
-        const weekRange = formatWeekRange(weekStart, weekEnd);
-
-        if (!attendanceMap[name]) {
-          attendanceMap[name] = {
-            name,
-            level,
-            weeks: {}
-          };
-        }
-
-        // Combine attendance for the same week
-        if (!attendanceMap[name].weeks[weekRange]) {
-          attendanceMap[name].weeks[weekRange] = { iso, attendance };
-        } else {
-          const existing = attendanceMap[name].weeks[weekRange].attendance;
-          const combined = [existing, attendance]
-            .filter(Boolean)
-            .join(",")
-            .split(",")
-            .map(day => day.trim())
-            .filter((day, idx, arr) => day && arr.indexOf(day) === idx) // Remove duplicates
-            .join(",");
-          attendanceMap[name].weeks[weekRange].attendance = combined;
-        }
-      });
-
-      sqlRequest.on("requestCompleted", () => {
-        const results = Object.values(attendanceMap);
-        results.sort((a, b) => a.name.localeCompare(b.name));
-        context.log("Weekly Attendance Data:", results);
-        resolve(results);
-        connection.close();
-      });
-
-      const previousISO = getISOWeek(previousWeekStart); // 9
-      const currentISO = getISOWeek(currentWeekStart);   // 10
-      const nextISO = getISOWeek(nextWeekStart);         // 11
-
-      sqlRequest.addParameter("PreviousISO", TYPES.Int, previousISO);
-      sqlRequest.addParameter("CurrentISO", TYPES.Int, currentISO);
-      sqlRequest.addParameter("NextISO", TYPES.Int, nextISO);
-
-      context.log("Executing SQL query with parameters (Attendance):", {
-        PreviousISO: previousISO,
-        CurrentISO: currentISO,
-        NextISO: nextISO
-      });
-
-      connection.execSql(sqlRequest);
+    const sqlRequest = new SqlRequest(query, (err, rowCount) => {
+      if (err) {
+        context.error("SQL Query Execution Error (Attendance):", err);
+        reject("SQL query failed.");
+        return;
+      }
+      context.log(`SQL query executed successfully (Attendance). Rows returned: ${rowCount}`);
     });
 
-    connection.connect();
+    const attendanceMap: { [name: string]: PersonAttendance } = {};
+
+    sqlRequest.on("row", (columns) => {
+      const name = (columns.find(c => c.metadata.colName === "name")?.value as string) || "";
+      const level = (columns.find(c => c.metadata.colName === "Level")?.value as string) || "";
+      const weekStart = (columns.find(c => c.metadata.colName === "Week_Start")?.value as Date);
+      const weekEnd = (columns.find(c => c.metadata.colName === "Week_End")?.value as Date);
+      const iso = (columns.find(c => c.metadata.colName === "iso")?.value as number) || 0;
+      const attendance = (columns.find(c => c.metadata.colName === "attendance")?.value as string) || "";
+
+      const weekRange = formatWeekRange(weekStart, weekEnd);
+
+      if (!attendanceMap[name]) {
+        attendanceMap[name] = { name, level, weeks: {} };
+      }
+
+      // Combine attendance for the same week
+      if (!attendanceMap[name].weeks[weekRange]) {
+        attendanceMap[name].weeks[weekRange] = { iso, attendance };
+      } else {
+        const existing = attendanceMap[name].weeks[weekRange].attendance;
+        const combined = [existing, attendance]
+          .filter(Boolean)
+          .join(",")
+          .split(",")
+          .map(day => day.trim())
+          .filter((day, idx, arr) => day && arr.indexOf(day) === idx)
+          .join(",");
+        attendanceMap[name].weeks[weekRange].attendance = combined;
+      }
+    });
+
+    sqlRequest.on("requestCompleted", () => {
+      const results = Object.values(attendanceMap);
+      results.sort((a, b) => a.name.localeCompare(b.name));
+      context.log("Weekly Attendance Data:", results);
+      resolve(results);
+    });
+
+    const previousISO = getISOWeek(previousWeekStart);
+    const currentISO = getISOWeek(currentWeekStart);
+    const nextISO = getISOWeek(nextWeekStart);
+
+    sqlRequest.addParameter("PreviousISO", TYPES.Int, previousISO);
+    sqlRequest.addParameter("CurrentISO", TYPES.Int, currentISO);
+    sqlRequest.addParameter("NextISO", TYPES.Int, nextISO);
+
+    context.log("Executing SQL query with parameters (Attendance):", {
+      PreviousISO: previousISO,
+      CurrentISO: currentISO,
+      NextISO: nextISO
+    });
+
+    execSqlWithRetry(connection, sqlRequest, context).catch(reject);
   });
 }
 
-// Unchanged functions below (team query and utilities remain the same)
-async function queryTeamData(config: any, context: InvocationContext): Promise<{ First: string; Initials: string; ["Entra ID"]: string; Nickname?: string }[]> {
+// Team query using the same open connection
+async function queryTeamData(connection: Connection, context: InvocationContext): Promise<{ First: string; Initials: string; ["Entra ID"]: string; Nickname?: string }[]> {
   return new Promise((resolve, reject) => {
-    const connection = new Connection(config);
+    const query = `
+      SELECT [First], [Initials], [Entra ID], [Nickname]
+      FROM [dbo].[team]
+      WHERE [status] <> 'inactive';
+    `;
+    context.log("SQL Query (Team):", query);
 
-    connection.on("error", (err) => {
-      context.error("SQL Connection Error (Team):", err);
-      reject("An error occurred with the SQL connection.");
-    });
-
-    connection.on("connect", (err) => {
+    const sqlRequest = new SqlRequest(query, (err, rowCount) => {
       if (err) {
-        context.error("SQL Connection Error (Team):", err);
-        reject("Failed to connect to SQL database.");
+        context.error("SQL Query Execution Error (Team):", err);
+        reject("SQL query failed.");
         return;
       }
-
-      context.log("Successfully connected to SQL database (Team).");
-
-      const query = `
-        SELECT [First], [Initials], [Entra ID], [Nickname] 
-        FROM [dbo].[team] 
-        WHERE [status] <> 'inactive';
-      `;
-      context.log("SQL Query (Team):", query);
-
-      const sqlRequest = new SqlRequest(query, (err, rowCount) => {
-        if (err) {
-          context.error("SQL Query Execution Error (Team):", err);
-          reject("SQL query failed.");
-          connection.close();
-          return;
-        }
-        context.log(`SQL query executed successfully (Team). Rows returned: ${rowCount}`);
-      });
-
-      const teamData: { First: string; Initials: string; ["Entra ID"]: string; Nickname?: string }[] = [];
-
-      sqlRequest.on("row", (columns) => {
-        const obj: any = {};
-        columns.forEach((col) => {
-          obj[col.metadata.colName] = col.value;
-        });
-        teamData.push(obj);
-      });
-
-      sqlRequest.on("requestCompleted", () => {
-        context.log("Team Data Retrieved:", teamData);
-        resolve(teamData);
-        connection.close();
-      });
-
-      connection.execSql(sqlRequest);
+      context.log(`SQL query executed successfully (Team). Rows returned: ${rowCount}`);
     });
 
-    connection.connect();
+    const teamData: { First: string; Initials: string; ["Entra ID"]: string; Nickname?: string }[] = [];
+
+    sqlRequest.on("row", (columns) => {
+      const obj: Record<string, unknown> = {};
+      columns.forEach((col) => {
+        obj[col.metadata.colName] = col.value;
+      });
+      teamData.push(obj as { First: string; Initials: string; ["Entra ID"]: string; Nickname?: string });
+    });
+
+    sqlRequest.on("requestCompleted", () => {
+      context.log("Team Data Retrieved:", teamData);
+      resolve(teamData);
+    });
+
+    execSqlWithRetry(connection, sqlRequest, context).catch(reject);
   });
 }
 
@@ -279,7 +228,8 @@ function parseConnectionString(connectionString: string, context: InvocationCont
 
     switch (key.trim()) {
       case "Server":
-        config.server = value;
+        // Support optional tcp:hostname,1433 form
+        config.server = value.replace(/^tcp:/i, "").split(",")[0];
         break;
       case "Database":
         config.options = { ...config.options, database: value };
@@ -306,6 +256,14 @@ function parseConnectionString(connectionString: string, context: InvocationCont
         break;
     }
   });
+
+  // Sensible defaults to help with transient networking
+  config.options = {
+    requestTimeout: 30000,
+    connectTimeout: config.options?.connectTimeout ?? 15000,
+    rowCollectionOnRequestCompletion: false,
+    ...config.options,
+  };
 
   return config;
 }
@@ -349,7 +307,116 @@ function getISOWeek(date: Date): number {
 }
 
 export default app.http("getAttendance", {
-  methods: ["POST"],
+  methods: ["POST", "OPTIONS"],
   authLevel: "function",
   handler: getAttendanceHandler,
 });
+
+// Helpers
+function getCorsHeaders(req: HttpRequest): Record<string, string> {
+  const origin = req.headers.get("origin") || "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-functions-key",
+    "Vary": "Origin"
+  };
+}
+
+async function getSqlConfig(context: InvocationContext): Promise<any> {
+  // Prefer a full connection string if provided
+  const raw = process.env.SQL_CONNECTION_STRING;
+  if (raw && raw.trim().length > 0) {
+    return parseConnectionString(raw, context);
+  }
+
+  // Otherwise assemble from discrete env vars, with Key Vault fallback for password
+  const server = process.env.SQL_SERVER_FQDN || "helix-database-server.database.windows.net";
+  const database = process.env.SQL_DATABASE_NAME || "helix-core-data";
+  const user = process.env.SQL_USER_NAME || "helix-database-server";
+  const encrypt = (process.env.SQL_ENCRYPT || "true").toLowerCase() === "true";
+  const trust = (process.env.SQL_TRUST_SERVER_CERTIFICATE || "false").toLowerCase() === "true";
+
+  let password = process.env.SQL_PASSWORD || "";
+  if (!password) {
+    const kvUri = process.env.KEY_VAULT_URI || "https://helix-keys.vault.azure.net/";
+    const passwordSecretName = process.env.SQL_PASSWORD_SECRET_NAME || "sql-databaseserver-password";
+    const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
+    const passwordSecret = await secretClient.getSecret(passwordSecretName);
+    password = passwordSecret.value || "";
+    context.log("Retrieved SQL password from Key Vault.");
+  }
+
+  const cs = `Server=${server};Database=${database};User ID=${user};Password=${password};Encrypt=${encrypt};TrustServerCertificate=${trust};`;
+  return parseConnectionString(cs, context);
+}
+
+async function connectWithRetry(connection: Connection, context: InvocationContext, attempts = 3): Promise<void> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onError = (err: unknown) => { cleanup(); reject(err); };
+        const onConnect = (err?: Error) => {
+          if (err) { cleanup(); reject(err); return; }
+          cleanup(); resolve();
+        };
+        const cleanup = () => {
+          connection.off("error", onError as any);
+          connection.off("connect", onConnect as any);
+        };
+        connection.on("error", onError as any);
+        connection.on("connect", onConnect as any);
+        connection.connect();
+      });
+      return; // success
+    } catch (err) {
+      lastErr = err;
+      const delay = 150 * Math.pow(2, i);
+      context.warn?.(`SQL connect attempt ${i + 1} failed; retrying in ${delay}ms`);
+      await sleep(delay);
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("SQL connect failed");
+}
+
+async function execSqlWithRetry(connection: Connection, request: SqlRequest, context: InvocationContext, attempts = 2): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    let tryCount = 0;
+    const run = () => {
+      tryCount++;
+      connection.execSql(request);
+    };
+
+    const onError = (err: unknown) => {
+      // Only retry once on transient network errors
+      const msg = String((err as Error)?.message || "");
+      const transient = /ESOCKET|ECONNRESET|ETIMEDOUT/i.test(msg);
+      if (transient && tryCount < attempts) {
+        const delay = 200 * tryCount;
+        context.warn?.(`Transient SQL error; retrying in ${delay}ms`);
+        setTimeout(run, delay);
+      } else {
+        cleanup();
+        reject(err);
+      }
+    };
+
+    const onRequestCompleted = () => {
+      cleanup();
+      resolve();
+    };
+
+    const cleanup = () => {
+      request.off("error", onError as any);
+      request.off("requestCompleted", onRequestCompleted as any);
+    };
+
+    request.on("error", onError as any);
+    request.on("requestCompleted", onRequestCompleted as any);
+    run();
+  });
+}
+
+function sleep(ms: number): Promise<void> { return new Promise(res => setTimeout(res, ms)); }
