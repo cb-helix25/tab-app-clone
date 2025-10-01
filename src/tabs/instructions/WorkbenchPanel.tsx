@@ -562,10 +562,7 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
                           { label: 'Client Type', value: selectedInstruction.ClientType || selectedInstruction.EntityType || 'Individual' },
                           { label: 'ID Type', value: selectedInstruction.PassportNumber ? 'passport' : selectedInstruction.DriversLicenseNumber ? 'driving license' : selectedInstruction.NationalIdNumber ? 'national id' : 'Not specified' },
                           { label: 'Passport', value: selectedInstruction.PassportNumber },
-                          { label: 'Driving License', value: selectedInstruction.DriversLicenseNumber },
-                          { label: 'Client ID', value: selectedInstruction.ClientId || 'Not assigned' },
-                          { label: 'Related Client', value: selectedInstruction.RelatedClientId || 'None' },
-                          { label: 'Matter ID', value: selectedInstruction.MatterId }
+                          { label: 'Driving License', value: selectedInstruction.DriversLicenseNumber }
                         ].map((field) => (
                           <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{

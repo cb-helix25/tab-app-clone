@@ -65,14 +65,23 @@ router.get('/', async (req, res) => {
     const norm = normalizeName(fullName);
 
     // Sequential requests to avoid overwhelming the database
-    const legacyAll = await withRequest(legacyConn, async (request) => {
-      const q = 'SELECT * FROM matters';
-      const r = await request.query(q);
-      return Array.isArray(r.recordset) ? r.recordset : [];
-    });
+    let legacyAll = [];
+    let legacyError = null;
+    try {
+      legacyAll = await withRequest(legacyConn, async (request) => {
+        const q = 'SELECT * FROM matters';
+        const r = await request.query(q);
+        return Array.isArray(r.recordset) ? r.recordset : [];
+      });
+    } catch (err) {
+      legacyAll = [];
+      legacyError = err;
+      console.error('❌ Legacy matters query failed:', err?.message || err);
+    }
 
     // VNet/new: Handle instructions DB timeouts gracefully
     let vnetAll = [];
+    let vnetError = null;
     try {
       vnetAll = await withRequest(vnetConn, async (request) => {
         if (!norm) {
@@ -92,20 +101,48 @@ router.get('/', async (req, res) => {
       });
     } catch (vnetError) {
       // VNet database unavailable - continue with legacy data only
+      console.error('⚠️ VNet matters query fallback:', vnetError?.message || vnetError);
       vnetAll = []; // Fallback to empty array
     }
 
-    const payload = {
+    const responsePayload = {
       legacyAllCount: Array.isArray(legacyAll) ? legacyAll.length : 0,
       vnetAllCount: Array.isArray(vnetAll) ? vnetAll.length : 0,
       legacyAll,
       vnetAll,
       cached: false,
       ttlMs: UNIFIED_CACHE_TTL_MS,
+      errors: {},
     };
 
-    unifiedCache = { data: payload, ts: now };
-    return res.json(payload);
+    if (legacyError) {
+      responsePayload.errors.legacy = legacyError?.message || String(legacyError);
+    }
+    if (vnetError) {
+      responsePayload.errors.vnet = vnetError?.message || String(vnetError);
+    }
+
+    if (!legacyAll.length && !vnetAll.length && (legacyError || vnetError)) {
+      if (unifiedCache.data) {
+        return res.status(200).json({
+          ...unifiedCache.data,
+          cached: true,
+          stale: true,
+          errors: {
+            ...(unifiedCache.data.errors || {}),
+            ...(responsePayload.errors || {}),
+          },
+        });
+      }
+      const consolidatedError = legacyError || vnetError;
+      return res.status(502).json({
+        error: 'Failed to fetch unified matters',
+        details: consolidatedError?.message || String(consolidatedError),
+      });
+    }
+
+    unifiedCache = { data: responsePayload, ts: now };
+    return res.json(responsePayload);
   } catch (err) {
     console.error('❌ /api/matters-unified failed:', err);
     
@@ -116,6 +153,17 @@ router.get('/', async (req, res) => {
         details: 'Please try again in a moment',
         cached: unifiedCache.data ? true : false,
         ...(unifiedCache.data && { ...unifiedCache.data })
+      });
+    }
+    if (unifiedCache.data) {
+      return res.status(200).json({
+        ...unifiedCache.data,
+        cached: true,
+        stale: true,
+        errors: {
+          ...(unifiedCache.data.errors || {}),
+          runtime: err?.message || String(err),
+        },
       });
     }
     

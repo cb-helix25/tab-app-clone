@@ -363,6 +363,44 @@ export const processingActions: ProcessingAction[] = [
             if (matterId && matterIdCallback) matterIdCallback(matterId);
             return `Matter created with ID ${matterId}`;
         }
+    },
+    {
+        label: 'Instructions Database Synced',
+        icon: helixBlueMark,
+        run: async (formData, userInitials) => {
+            const instructionRef = formData.matter_details?.instruction_ref;
+            const clientId = clioContactIds[0]; // Use first contact ID (main client)
+            
+            if (!instructionRef) {
+                console.warn('No instruction reference available for sync');
+                return 'Skipped - no instruction reference';
+            }
+            
+            if (!clientId) {
+                console.warn('No client ID available for sync');
+                return 'Skipped - no client ID';
+            }
+            
+            const payload = {
+                instructionRef,
+                clientId,
+                matterId: matterId || null
+            };
+            
+            const resp = await instrumentedFetch('Instructions Database Synced', '/api/sync-instruction-client/link-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }, payload);
+            
+            if (!resp.ok) {
+                const errorText = await resp.text();
+                throw new Error(`Failed to sync Instructions database: ${errorText}`);
+            }
+            
+            const data = await resp.json();
+            return `Instructions table updated with Client ID ${clientId}${matterId ? ` and Matter ID ${matterId}` : ''}`;
+        }
     }
 ];
 

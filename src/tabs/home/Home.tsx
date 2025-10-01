@@ -13,6 +13,7 @@ import React, {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { debugLog, debugWarn } from '../../utils/debug';
+import { safeSetItem, safeGetItem, cleanupLocalStorage, logStorageUsage } from '../../utils/storageUtils';
 import {
   mergeStyles,
   Text,
@@ -1057,98 +1058,84 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: prov
 
   // Separate effect to fetch recovered fees
   useEffect(() => {
-    // Prevent multiple executions
     if (recoveredFeesInitialized.current) return;
-    
-    const fetchRecoveredFees = async () => {
+
+    const fetchRecoveredFeesSummary = async () => {
       if (!userData?.[0]) return;
-      
+
       const currentUserData = userData[0];
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const isLuke = currentUserData?.Email?.toLowerCase().includes('luke') || currentUserData?.Initials === 'LW';
       const isLZ = currentUserData?.Initials === 'LZ';
-      
-      // Use Alex's Clio ID for localhost/Luke/LZ
+
       let userClioId = currentUserData?.['Clio ID'] ? String(currentUserData['Clio ID']) : null;
-      
+      let userEntraId = currentUserData?.EntraID ? String(currentUserData.EntraID) : null;
+
       if ((isLocalhost || isLuke || isLZ) && teamData) {
         const alex = teamData.find((t: any) => t.Initials === 'AC' || t.First === 'Alex');
-        if (alex && alex['Clio ID']) {
-          userClioId = String(alex['Clio ID']);
+        if (alex) {
+          if (alex['Clio ID']) {
+            userClioId = String(alex['Clio ID']);
+          }
+          if (alex['Entra ID']) {
+            userEntraId = String(alex['Entra ID']);
+          }
         }
       }
-      
-      if (!userClioId) {
+
+      if (!userClioId && !userEntraId) {
         return;
       }
-      
+
       try {
         const url = new URL('/api/reporting/management-datasets', window.location.origin);
-        url.searchParams.set('datasets', 'recoveredFees');
-        url.searchParams.set('bypassCache', 'true');
-        
-        const resp = await fetch(url.toString(), { 
-          method: 'GET', 
-          credentials: 'include', 
-          headers: { Accept: 'application/json' } 
+        url.searchParams.set('datasets', 'recoveredFeesSummary');
+        if (userClioId) {
+          url.searchParams.set('clioId', userClioId);
+        }
+        if (userEntraId) {
+          url.searchParams.set('entraId', userEntraId);
+        }
+
+        const resp = await fetch(url.toString(), {
+          method: 'GET',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
         });
-        
+
         if (!resp.ok) {
-          console.error('❌ Failed to fetch recovered fees:', resp.status, resp.statusText);
+          console.error('❌ Failed to fetch recovered fees summary:', resp.status, resp.statusText);
           return;
         }
-        
+
         const data = await resp.json();
-        
-        if (!data.recoveredFees || !Array.isArray(data.recoveredFees)) {
+        const summary = data.recoveredFeesSummary;
+
+        if (!summary || typeof summary !== 'object') {
           return;
         }
-        
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-        
-        // Filter for current month
-        const currentMonthFees = data.recoveredFees.filter((fee: any) => {
-          if (String(fee.user_id) !== userClioId) return false;
-          if (!fee.payment_date) return false;
-          const paymentDate = new Date(fee.payment_date);
-          return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
-        });
-        
-        // Filter for last month
-        const lastMonthFees = data.recoveredFees.filter((fee: any) => {
-          if (String(fee.user_id) !== userClioId) return false;
-          if (!fee.payment_date) return false;
-          const paymentDate = new Date(fee.payment_date);
-          return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
-        });
-        
-        const currentTotal = currentMonthFees.reduce((sum: number, fee: any) => sum + (Number(fee.payment_allocated) || 0), 0);
-        const lastTotal = lastMonthFees.reduce((sum: number, fee: any) => sum + (Number(fee.payment_allocated) || 0), 0);
-        
+
+        const currentTotal = Number(summary.currentMonthTotal) || 0;
+        const lastTotal = Number(summary.previousMonthTotal) || 0;
+
         cachedRecovered = currentTotal;
         cachedPrevRecovered = lastTotal;
         setRecoveredData(currentTotal);
         setPrevRecoveredData(lastTotal);
-        recoveredFeesInitialized.current = true; // Mark as initialized
-        
+        recoveredFeesInitialized.current = true;
       } catch (error) {
-        console.error('❌ Error fetching recovered fees:', error);
+        console.error('❌ Error fetching recovered fees summary:', error);
       }
     };
-    
-    // Only fetch if we don't have cached data
+
     if (cachedRecovered === null) {
-      fetchRecoveredFees();
+      fetchRecoveredFeesSummary();
     } else {
       recoveredFeesInitialized.current = true;
       setRecoveredData(cachedRecovered);
       setPrevRecoveredData(cachedPrevRecovered ?? 0);
     }
-  }, [userData?.[0]?.['Clio ID'], userData?.[0]?.Initials]);
+  }, [teamData, userData?.[0]?.EntraID, userData?.[0]?.Initials, userData?.[0]?.['Clio ID']]);
 
   // Use app-provided normalized matters when available; otherwise normalize local allMatters
   const normalizedMatters = useMemo<NormalizedMatter[]>(() => {
@@ -1251,8 +1238,8 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
   }, []);
 
   useEffect(() => {
-    const storedFormsFavorites = localStorage.getItem('formsFavorites');
-    const storedResourcesFavorites = localStorage.getItem('resourcesFavorites');
+    const storedFormsFavorites = safeGetItem('formsFavorites');
+    const storedResourcesFavorites = safeGetItem('resourcesFavorites');
     if (storedFormsFavorites) {
       setFormsFavorites(JSON.parse(storedFormsFavorites));
     }
@@ -1616,9 +1603,9 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       debugLog('🔄 loadFromReporting called');
       try {
         setIsLoadingWipClio(true);
-        // Fetch management datasets including wipClioCurrentWeek and recoveredFees; bypass cache for freshness
+  // Fetch only the current-week WIP dataset; recovered fees handled separately
         const url = new URL('/api/reporting/management-datasets', window.location.origin);
-        url.searchParams.set('datasets', 'wipClioCurrentWeek,recoveredFees');
+  url.searchParams.set('datasets', 'wipClioCurrentWeek');
         debugLog('📡 Fetching URL:', url.toString());
         
         // Pass current user's Entra ID for user-specific Clio data fetching
@@ -1642,14 +1629,12 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
           url.searchParams.set('entraId', entraId);
           debugLog('🔍 Requesting WIP data for user:', { entraId, email: currentUserData?.Email });
         }
-        url.searchParams.set('bypassCache', 'true');
         const resp = await fetch(url.toString(), { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
         if (resp.ok && (resp.headers.get('content-type') || '').toLowerCase().includes('application/json')) {
           const data = await resp.json();
           // Debug the actual response structure
           debugLog('🔍 API Response:', { 
             hasWipClio: !!data.wipClioCurrentWeek,
-            hasRecoveredFees: !!data.recoveredFees,
             dataKeys: Object.keys(data)
           });
           
@@ -1665,68 +1650,9 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
             debugWarn('⚠️ WIP data structure invalid:', { merged, hasCurrentWeek: !!merged?.current_week, hasLastWeek: !!merged?.last_week });
           }
           
-          // Process recovered fees for current user
-          if (data.recoveredFees && Array.isArray(data.recoveredFees)) {
-            // Use same fallback logic as WIP data - if localhost/Luke/LZ, use Alex's Clio ID
-            let userClioId = currentUserData?.['Clio ID'] ? String(currentUserData['Clio ID']) : null;
-            
-            // Always use Alex's data for localhost/Luke/LZ for consistent dev experience
-            if ((isLocalhost || isLuke || isLZ) && teamData) {
-              const alex = teamData.find((t: any) => t.Initials === 'AC' || t.First === 'Alex');
-              if (alex && alex['Clio ID']) {
-                userClioId = String(alex['Clio ID']);
-                debugLog('🔧 Dev mode: Using Alex\'s Clio ID for fees', { originalClioId: currentUserData?.['Clio ID'], alexClioId: userClioId });
-              }
-            }
-            
-            debugLog('💰 Processing recovered fees:', { totalRecords: data.recoveredFees.length, userClioId });
-            
-            if (userClioId) {
-              const now = new Date();
-              const currentMonth = now.getMonth();
-              const currentYear = now.getFullYear();
-              const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-              const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-              
-              // Filter for current month
-              const currentMonthFees = data.recoveredFees.filter((fee: any) => {
-                if (String(fee.user_id) !== userClioId) return false;
-                if (!fee.payment_date) return false;
-                const paymentDate = new Date(fee.payment_date);
-                return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
-              });
-              
-              // Filter for last month
-              const lastMonthFees = data.recoveredFees.filter((fee: any) => {
-                if (String(fee.user_id) !== userClioId) return false;
-                if (!fee.payment_date) return false;
-                const paymentDate = new Date(fee.payment_date);
-                return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
-              });
-              
-              const currentTotal = currentMonthFees.reduce((sum: number, fee: any) => sum + (Number(fee.payment_allocated) || 0), 0);
-              const lastTotal = lastMonthFees.reduce((sum: number, fee: any) => sum + (Number(fee.payment_allocated) || 0), 0);
-              
-              debugLog('💰 Fees recovered calculated:', { 
-                currentMonth: currentTotal, 
-                lastMonth: lastTotal,
-                currentMonthRecords: currentMonthFees.length,
-                lastMonthRecords: lastMonthFees.length,
-                sampleCurrentMonth: currentMonthFees.slice(0, 2)
-              });
-              
-              // Cache the recovered fees data
-              cachedRecovered = currentTotal;
-              cachedPrevRecovered = lastTotal;
-              
-              setRecoveredData(currentTotal);
-              setPrevRecoveredData(lastTotal);
-            }
-            return;
-          }
         }
       } catch (e) {
-        debugWarn('❌ Error loading WIP/Fees data:', e);
+        debugWarn('❌ Error loading WIP data:', e);
       }
       // If no data returned, ensure we clear loading state to let UI render placeholders
       setIsLoadingWipClio(false);
@@ -1774,14 +1700,22 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
 
   useEffect(() => {
     // Check if cache should be invalidated due to database changes
-    const lastCacheVersion = localStorage.getItem('matters-cache-version');
+    const lastCacheVersion = safeGetItem('matters-cache-version');
     const currentCacheVersion = 'v2-2025-09-21-db-cleanup';
     
     if (lastCacheVersion !== currentCacheVersion) {
       debugLog('🔄 Invalidating matters cache due to database changes');
       cachedAllMatters = null;
       cachedAllMattersError = null;
-      localStorage.setItem('matters-cache-version', currentCacheVersion);
+      
+      // Log storage usage before attempting to set cache version
+      logStorageUsage();
+      
+      // Use safe storage with automatic cleanup if needed
+      const success = safeSetItem('matters-cache-version', currentCacheVersion);
+      if (!success) {
+        debugWarn('⚠️ Could not update cache version in localStorage');
+      }
     }
     
     debugLog('🔍 Matters loading path check:', {
@@ -1916,7 +1850,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
 
   useEffect(() => {
     // 1. Try loading from localStorage
-    const storedData = localStorage.getItem('outstandingBalancesData');
+    const storedData = safeGetItem('outstandingBalancesData');
     if (storedData) {
       const parsedData = JSON.parse(storedData);
       if (onOutstandingBalancesFetched) {
@@ -1975,7 +1909,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         const data = await fetchOutstandingBalances();
         if (data) {
           cachedOutstandingBalances = data; // Cache in-memory for subsequent calls
-          localStorage.setItem('outstandingBalancesData', JSON.stringify(data));
+          safeSetItem('outstandingBalancesData', JSON.stringify(data));
           if (onOutstandingBalancesFetched) {
             onOutstandingBalancesFetched(data);
           }
@@ -3179,7 +3113,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         break;
   case 'Open Matter':
         // Navigate directly to Instructions tab and trigger matter opening
-        localStorage.setItem('openMatterOpening', 'true');
+        safeSetItem('openMatterOpening', 'true');
         // Use a custom event to signal the navigation
         try {
           window.dispatchEvent(new CustomEvent('navigateToInstructions'));
@@ -3189,7 +3123,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         return; // Exit early, no panel needed
         break;
       case 'Resume Pitch':
-        localStorage.setItem('resumePitchBuilder', 'true');
+        safeSetItem('resumePitchBuilder', 'true');
         try {
           window.dispatchEvent(new CustomEvent('navigateToEnquiries'));
         } catch (error) {

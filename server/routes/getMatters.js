@@ -87,9 +87,9 @@ async function fetchMattersFromDb() {
 
 // GET /api/getMatters?fullName=...&limit=...
 router.get('/', async (req, res) => {
+    const { fullName, limit } = req.query || {};
     try {
         const matters = await fetchMattersFromDb();
-        const { fullName, limit } = req.query || {};
         let result = Array.isArray(matters) ? matters : [];
         if (fullName) {
             result = filterByFullName(result, String(fullName));
@@ -100,7 +100,25 @@ router.get('/', async (req, res) => {
         const cached = Boolean(mattersCache.data && (Date.now() - mattersCache.ts) < MATTERS_CACHE_TTL_MS);
         res.json({ matters: result, count: result.length, cached });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch matters from database', details: String(err.message || err) });
+        const cacheAge = Date.now() - (mattersCache.ts || 0);
+        if (mattersCache.data && cacheAge < (5 * 60 * 1000)) {
+            let cachedResult = Array.isArray(mattersCache.data) ? mattersCache.data : [];
+            if (fullName) {
+                cachedResult = filterByFullName(cachedResult, String(fullName));
+            }
+            if (limit && Number(limit) > 0) {
+                cachedResult = cachedResult.slice(0, Number(limit));
+            }
+            return res.status(200).json({
+                matters: cachedResult,
+                count: cachedResult.length,
+                cached: true,
+                stale: true,
+                error: 'Served cached matters due to database error',
+                details: String(err.message || err),
+            });
+        }
+        res.status(502).json({ error: 'Failed to fetch matters from database', details: String(err.message || err) });
     }
 });
 
@@ -119,7 +137,25 @@ router.post('/', async (req, res) => {
         const cached = Boolean(mattersCache.data && (Date.now() - mattersCache.ts) < MATTERS_CACHE_TTL_MS);
         res.json({ matters: result, count: result.length, cached });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch matters from database', details: String(err.message || err) });
+        const cacheAge = Date.now() - (mattersCache.ts || 0);
+        if (mattersCache.data && cacheAge < (5 * 60 * 1000)) {
+            let cachedResult = Array.isArray(mattersCache.data) ? mattersCache.data : [];
+            if (fullName) {
+                cachedResult = filterByFullName(cachedResult, String(fullName));
+            }
+            if (limit && Number(limit) > 0) {
+                cachedResult = cachedResult.slice(0, Number(limit));
+            }
+            return res.status(200).json({
+                matters: cachedResult,
+                count: cachedResult.length,
+                cached: true,
+                stale: true,
+                error: 'Served cached matters due to database error',
+                details: String(err.message || err),
+            });
+        }
+        res.status(502).json({ error: 'Failed to fetch matters from database', details: String(err.message || err) });
     }
 });
 

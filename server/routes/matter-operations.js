@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const sql = require('mssql');
+const { withRequest } = require('../utils/db');
 const { getSecret } = require('../utils/getSecret');
 
 /**
@@ -8,14 +9,11 @@ const { getSecret } = require('../utils/getSecret');
  * Handles matter creation, updates, client linking, and management
  */
 
-// Database connection configuration
-const dbConfig = {
-  server: 'instructions.database.windows.net',
-  database: 'instructions',
-  options: {
-    encrypt: true,
-    trustServerCertificate: false
-  }
+// Database connection configuration - use the same connection string as instructions
+const getInstrConnStr = () => {
+  const cs = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
+  if (!cs) throw new Error('INSTRUCTIONS_SQL_CONNECTION_STRING not found in environment');
+  return cs;
 };
 
 /**
@@ -25,31 +23,35 @@ router.get('/matter/:instructionRef', async (req, res) => {
   try {
     const { instructionRef } = req.params;
     
-    const pool = await sql.connect(dbConfig);
-    const result = await pool.request()
-      .input('instructionRef', sql.NVarChar, instructionRef)
-      .query(`
-        SELECT 
-          MatterID,
-          InstructionRef,
-          Status,
-          OpenDate,
-          CloseDate,
-          DisplayNumber,
-          ClientName,
-          ClientType,
-          Description,
-          PracticeArea,
-          ApproxValue,
-          ResponsibleSolicitor,
-          OriginatingSolicitor,
-          SupervisingPartner,
-          Source,
-          ClientID,
-          RelatedClientID
-        FROM matters 
-        WHERE InstructionRef = @instructionRef
-      `);
+    const result = await withRequest(getInstrConnStr(), async (request) => {
+      return await request
+        .input('instructionRef', sql.NVarChar, instructionRef)
+        .query(`
+          SELECT 
+            CASE WHEN MatterId IS NOT NULL THEN MatterId ELSE 'NO_MATTER' END as MatterID,
+            InstructionRef,
+            CASE WHEN MatterId IS NOT NULL THEN 'Open' ELSE 'Not Created' END as Status,
+            SubmissionDate as OpenDate,
+            NULL as CloseDate,
+            CASE WHEN MatterId IS NOT NULL THEN MatterId ELSE NULL END as DisplayNumber,
+            CASE 
+              WHEN ClientType = 'Company' THEN CompanyName
+              ELSE CONCAT(ISNULL(FirstName, ''), ' ', ISNULL(LastName, ''))
+            END as ClientName,
+            ClientType,
+            'Legal Services' as Description,
+            'General' as PracticeArea,
+            NULL as ApproxValue,
+            HelixContact as ResponsibleSolicitor,
+            HelixContact as OriginatingSolicitor,
+            'Partner' as SupervisingPartner,
+            'Direct' as Source,
+            ClientId as ClientID,
+            RelatedClientId as RelatedClientID
+          FROM Instructions 
+          WHERE InstructionRef = @instructionRef
+        `);
+    });
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Matter not found' });

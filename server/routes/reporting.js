@@ -17,6 +17,7 @@ const datasetFetchers = {
   allMatters: fetchAllMatters,
   wip: fetchWip,
   recoveredFees: fetchRecoveredFees,
+  recoveredFeesSummary: fetchRecoveredFeesSummary,
   poidData: fetchPoidData,
   wipClioCurrentWeek: fetchWipClioCurrentWeek,
   wipDbLastWeek: fetchWipDbLastWeek,
@@ -37,6 +38,10 @@ router.get('/management-datasets', async (req, res) => {
   const entraId = typeof req.query.entraId === 'string' && req.query.entraId.trim().length > 0
     ? req.query.entraId.trim()
     : null;
+  const clioIdCandidate = typeof req.query.clioId === 'string'
+    ? Number.parseInt(req.query.clioId, 10)
+    : null;
+  const clioId = Number.isNaN(clioIdCandidate ?? NaN) ? null : clioIdCandidate;
   const bypassCache = String(req.query.bypassCache || '').toLowerCase() === 'true';
 
   const cacheKey = `${entraId || 'anon'}|${requestedDatasets.join(',')}`;
@@ -54,7 +59,7 @@ router.get('/management-datasets', async (req, res) => {
       return;
     }
     try {
-      responsePayload[datasetKey] = await fetcher({ connectionString, entraId });
+  responsePayload[datasetKey] = await fetcher({ connectionString, entraId, clioId });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`Reporting dataset fetch failed for ${datasetKey}:`, message);
@@ -579,6 +584,80 @@ async function fetchRecoveredFees({ connectionString }) {
       }
       return row;
     });
+  });
+}
+
+async function fetchRecoveredFeesSummary({ connectionString, entraId, clioId }) {
+  let effectiveClioId = typeof clioId === 'number' ? clioId : null;
+
+  if (!effectiveClioId && entraId && connectionString) {
+    try {
+      const userData = await withRequest(connectionString, async (request, sqlClient) => {
+        request.input('entraId', sqlClient.NVarChar, entraId);
+        const result = await request.query(`
+          SELECT [Clio ID]
+          FROM [dbo].[team]
+          WHERE [Entra ID] = @entraId
+        `);
+        return Array.isArray(result.recordset) ? result.recordset : [];
+      });
+      const resolved = userData?.[0]?.['Clio ID'];
+      if (resolved != null) {
+        const parsed = Number(resolved);
+        if (!Number.isNaN(parsed)) {
+          effectiveClioId = parsed;
+        }
+      }
+    } catch (lookupError) {
+      console.warn('Failed to resolve Clio ID for recovered fees summary:', lookupError.message);
+    }
+  }
+
+  if (!effectiveClioId) {
+    return {
+      currentMonthTotal: 0,
+      previousMonthTotal: 0,
+    };
+  }
+
+  const now = new Date();
+  const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  currentStart.setHours(0, 0, 0, 0);
+  currentEnd.setHours(23, 59, 59, 999);
+
+  const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  previousStart.setHours(0, 0, 0, 0);
+  previousEnd.setHours(23, 59, 59, 999);
+
+  return withRequest(connectionString, async (request, sqlClient) => {
+    request.input('userId', sqlClient.Int, effectiveClioId);
+    request.input('prevStart', sqlClient.Date, formatDateOnly(previousStart));
+    request.input('prevEnd', sqlClient.Date, formatDateOnly(previousEnd));
+    request.input('currentStart', sqlClient.Date, formatDateOnly(currentStart));
+    request.input('currentEnd', sqlClient.Date, formatDateOnly(currentEnd));
+
+    const result = await request.query(`
+      SELECT
+        SUM(CASE WHEN payment_date BETWEEN @currentStart AND @currentEnd THEN payment_allocated ELSE 0 END) AS current_total,
+        SUM(CASE WHEN payment_date BETWEEN @prevStart AND @prevEnd THEN payment_allocated ELSE 0 END) AS prev_total
+      FROM [dbo].[collectedTime]
+      WHERE payment_date BETWEEN @prevStart AND @currentEnd
+        AND user_id = @userId
+    `);
+
+    const record = Array.isArray(result.recordset) && result.recordset.length > 0
+      ? result.recordset[0]
+      : { current_total: 0, prev_total: 0 };
+
+    const currentTotal = Number(record.current_total) || 0;
+    const previousTotal = Number(record.prev_total) || 0;
+
+    return {
+      currentMonthTotal: currentTotal,
+      previousMonthTotal: previousTotal,
+    };
   });
 }
 

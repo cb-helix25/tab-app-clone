@@ -14,6 +14,7 @@ import {
   DefaultButton,
   IconButton,
 } from "@fluentui/react";
+import DocumentPreviewModal from "../../components/DocumentPreviewModal";
 import {
   FaIdBadge,
   FaRegIdBadge,
@@ -107,7 +108,13 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
   const [forceNewMatter, setForceNewMatter] = useState(false);
   const [showCclDraftPage, setShowCclDraftPage] = useState(false);
+  
+  // Document Preview Modal State
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewDocument, setPreviewDocument] = useState<any>(null);
   const [isWorkbenchVisible, setIsWorkbenchVisible] = useState(false);
+  const [workbenchHeight, setWorkbenchHeight] = useState(500); // Default height in pixels
+  const [isResizing, setIsResizing] = useState(false);
   // On-brand toast feedback
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
@@ -135,6 +142,36 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showRiskDetails, setShowRiskDetails] = useState(false);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [showMatterDetails, setShowMatterDetails] = useState(false);
+  
+  // Workbench resize handlers
+  const handleMouseDown = useCallback(() => {
+    setIsResizing(true);
+    document.body.classList.add('workbench-resizing');
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return;
+    const newHeight = window.innerHeight - e.clientY;
+    // Constrain between 200px and 80% of viewport height
+    const constrainedHeight = Math.min(Math.max(newHeight, 200), window.innerHeight * 0.8);
+    setWorkbenchHeight(constrainedHeight);
+  }, [isResizing]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false);
+    document.body.classList.remove('workbench-resizing');
+  }, []);
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing, handleMouseMove, handleMouseUp]);
   
   // Utility function for file size formatting
   const formatBytes = (bytes: number, decimals = 2) => {
@@ -1097,9 +1134,7 @@ const workbenchPanelBackground = (isDarkMode: boolean): string => (
 );
 
 const workbenchHeaderBackground = (isDarkMode: boolean): string => (
-  isDarkMode
-    ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.32) 0%, rgba(37, 99, 235, 0.24) 100%)'
-    : 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%)'
+  colours.missedBlue
 );
 
 const workbenchCardBackground = (isDarkMode: boolean): string => (
@@ -1113,7 +1148,7 @@ const workbenchBorderColour = (isDarkMode: boolean): string => (
 );
 
 const workbenchMutedText = (isDarkMode: boolean): string => (
-  isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText
+  isDarkMode ? 'rgba(226, 232, 240, 0.72)' : '#64748b'
 );
 
 const workbenchButtonHover = (isDarkMode: boolean): string => (
@@ -2873,6 +2908,17 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
     }, 100);
   };
 
+  // Document Preview Handler
+  const handleDocumentPreview = (doc: any, instructionRef: string) => {
+    setPreviewDocument({ ...doc, InstructionRef: instructionRef });
+    setPreviewModalOpen(true);
+  };
+
+  const handleCloseDocumentPreview = () => {
+    setPreviewModalOpen(false);
+    setPreviewDocument(null);
+  };
+
   // Inline EID review: auto-load details for the selected instruction when available
   useEffect(() => {
     const load = async () => {
@@ -3337,7 +3383,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                         eid={(item as any).eid}
                         eids={(item as any).eids}
                         compliance={undefined}
-                        documents={item.documents}
+                        documents={item.instruction?.documents}
                         payments={(item as any).payments}
                         prospectId={item.prospectId}
                         documentCount={item.documentCount ?? 0}
@@ -3482,6 +3528,16 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
               }
               
+              body.workbench-resizing {
+                cursor: ns-resize !important;
+                user-select: none !important;
+              }
+              
+              body.workbench-resizing * {
+                cursor: ns-resize !important;
+                user-select: none !important;
+              }
+              
               .workbench-tab-button {
                 transition: all 0.2s ease;
               }
@@ -3538,16 +3594,53 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                 bottom: 0,
                 left: 0,
                 right: 0,
+                height: isWorkbenchVisible && selectedInstruction ? workbenchHeight : 'auto',
+                maxHeight: isWorkbenchVisible && selectedInstruction ? workbenchHeight : 'auto',
                 background: workbenchPanelBackground(isDarkMode),
                 borderTop: `1px solid ${workbenchBorderColour(isDarkMode)}`,
                 boxShadow: isDarkMode ? '0 -10px 24px rgba(2, 6, 23, 0.55)' : '0 -4px 12px rgba(15, 23, 42, 0.08)',
                 zIndex: 1000,
-                transition: 'all 0.3s ease',
-                backdropFilter: 'blur(8px)'
+                transition: isResizing ? 'none' : 'all 0.3s ease',
+                backdropFilter: 'blur(8px)',
+                display: 'flex',
+                flexDirection: 'column'
               }}
             >
+              {/* Resize Handle */}
+              {isWorkbenchVisible && selectedInstruction && (
+                <div
+                  onMouseDown={handleMouseDown}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '6px',
+                    cursor: 'ns-resize',
+                    background: 'transparent',
+                    zIndex: 1001,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'background 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDarkMode ? 'rgba(54, 144, 206, 0.2)' : 'rgba(54, 144, 206, 0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <div style={{
+                    width: '40px',
+                    height: '3px',
+                    background: isDarkMode ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.3)',
+                    borderRadius: '2px'
+                  }} />
+                </div>
+              )}
               {/* Unified bottom panel with animated swap */}
-          <div style={{ padding: '0' }}>
+          <div style={{ padding: '0', flex: isWorkbenchVisible && selectedInstruction ? '1 1 auto' : '0 0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 {/* Unified Header that changes content based on state */}
                 <div
                   onClick={selectedInstruction ? () => setIsWorkbenchVisible(!isWorkbenchVisible) : undefined}
@@ -3946,7 +4039,11 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                         animation: 'workbenchSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                         transform: 'translateY(0)',
                         opacity: 1,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        flex: '1 1 auto',
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: 'column'
                       }}
                     >
                   {/* Tab Navigation */}
@@ -3982,9 +4079,9 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                       { 
                         key: 'documents', 
                         label: 'Documents', 
-                        status: selectedOverviewItem?.documents?.length > 0 ? 'complete' : 'pending',
+                        status: selectedOverviewItem?.instruction?.documents?.length > 0 ? 'complete' : 'pending',
                         icon: <FaFileAlt size={12} />,
-                        isComplete: selectedOverviewItem?.documents?.length > 0
+                        isComplete: selectedOverviewItem?.instruction?.documents?.length > 0
                       },
                       { 
                         key: 'matter', 
@@ -4049,8 +4146,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                   {/* Tab Content Area */}
                   <div style={{
                     padding: '12px',
-                    minHeight: '150px',
-                    maxHeight: '35vh',
+                    flex: '1 1 auto',
                     overflowY: 'auto',
                     background: workbenchCardBackground(isDarkMode),
                     borderTop: `1px solid ${workbenchBorderColour(isDarkMode)}`,
@@ -4155,10 +4251,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                                 {[
                                   { label: 'ID Type', value: selectedInstruction.PassportNumber ? 'passport' : selectedInstruction.DriversLicenseNumber ? 'driving license' : selectedInstruction.NationalIdNumber ? 'national id' : 'Not specified' },
                                   { label: 'Passport', value: selectedInstruction.PassportNumber },
-                                  { label: 'Driving License', value: selectedInstruction.DriversLicenseNumber },
-                                  { label: 'Client ID', value: selectedInstruction.ClientId || 'Not assigned' },
-                                  { label: 'Related Client', value: selectedInstruction.RelatedClientId || 'None' },
-                                  { label: 'Matter ID', value: selectedInstruction.MatterId }
+                                  { label: 'Driving License', value: selectedInstruction.DriversLicenseNumber }
                                 ].map((field) => (
                                   <div key={field.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{
@@ -4443,10 +4536,11 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
 
                         {/* Technical Details - Expandable */}
                         <div style={{
+                          background: workbenchCardBackground(isDarkMode),
+                          borderRadius: '12px',
                           padding: '12px',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '6px',
-                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                          boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)',
                           marginTop: '16px'
                         }}>
                           <button
@@ -4512,12 +4606,24 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
                           {/* Risk Summary */}
                           <div style={{
+                            background: workbenchCardBackground(isDarkMode),
+                            borderRadius: '12px',
                             padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                            border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                            boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                           }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Risk Assessment Summary</h4>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: isDarkMode ? colours.dark.text : '#374151',
+                              marginBottom: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingBottom: '8px'
+                            }}>
+                              Risk Assessment Summary
+                            </div>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
                               <div><strong>Result:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.RiskAssessmentResult || 'Pending Assessment'}</span></div>
                               <div><strong>Risk Score:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.RiskScore ?? 'Not scored'}</span></div>
@@ -4530,12 +4636,24 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
 
                           {/* Client Risk Factors */}
                           <div style={{
+                            background: workbenchCardBackground(isDarkMode),
+                            borderRadius: '12px',
                             padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                            border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                            boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                           }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Client Risk Analysis</h4>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: isDarkMode ? colours.dark.text : '#374151',
+                              marginBottom: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingBottom: '8px'
+                            }}>
+                              Client Risk Analysis
+                            </div>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
                               <div><strong>Client Type:</strong> {selectedOverviewItem?.risk?.ClientType || 'Not specified'}</div>
                               <div><strong>Client Type Value:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.ClientType_Value ?? 'Not rated'}</span></div>
@@ -4546,12 +4664,24 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
 
                           {/* Funds Analysis */}
                           <div style={{
+                            background: workbenchCardBackground(isDarkMode),
+                            borderRadius: '12px',
                             padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                            border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                            boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                           }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Funds Analysis</h4>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: isDarkMode ? colours.dark.text : '#374151',
+                              marginBottom: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingBottom: '8px'
+                            }}>
+                              Funds Analysis
+                            </div>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
                               <div><strong>Source of Funds:</strong> {selectedOverviewItem?.risk?.SourceOfFunds || 'Not specified'}</div>
                               <div><strong>Source Value:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827', fontWeight: 600 }}>{selectedOverviewItem?.risk?.SourceOfFunds_Value ?? 'Not rated'}</span></div>
@@ -4563,12 +4693,24 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
 
                           {/* Compliance Checks */}
                           <div style={{
+                            background: workbenchCardBackground(isDarkMode),
+                            borderRadius: '12px',
                             padding: '16px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                            border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                            boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                           }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Compliance Factors</h4>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: isDarkMode ? colours.dark.text : '#374151',
+                              marginBottom: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.025em',
+                              borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                              paddingBottom: '8px'
+                            }}>
+                              Compliance Factors
+                            </div>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5', display: 'grid', gap: '4px' }}>
                               <div><strong>Client Risk Factors:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827' }}>{selectedOverviewItem?.risk?.ClientRiskFactorsConsidered ? 'Considered' : 'Not considered'}</span></div>
                               <div><strong>Transaction Risk Factors:</strong> <span style={{ color: isDarkMode ? colours.dark.text : '#111827' }}>{selectedOverviewItem?.risk?.TransactionRiskFactorsConsidered ? 'Considered' : 'Not considered'}</span></div>
@@ -4581,13 +4723,25 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
 
                         {/* Risk Actions Panel */}
                         <div style={{
+                          background: workbenchCardBackground(isDarkMode),
+                          borderRadius: '12px',
                           padding: '16px',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '8px',
-                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                          boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)',
                           marginBottom: '20px'
                         }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : '#374151' }}>Risk Assessment Actions</h4>
+                          <div style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: isDarkMode ? colours.dark.text : '#374151',
+                            marginBottom: '12px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.025em',
+                            borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            paddingBottom: '8px'
+                          }}>
+                            Risk Assessment Actions
+                          </div>
                           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
                               <div>Assessment Status: <strong style={{ color: selectedOverviewItem?.risk ? colours.green : colours.orange }}>{selectedOverviewItem?.risk ? 'Completed' : 'Pending'}</strong></div>
@@ -4638,10 +4792,11 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
 
                         {/* Technical Details - Expandable */}
                         <div style={{
+                          background: workbenchCardBackground(isDarkMode),
+                          borderRadius: '12px',
                           padding: '12px',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '6px',
-                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                          border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                          boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                         }}>
                           <button
                             onClick={() => toggleSection('risk-raw')}
@@ -4800,9 +4955,10 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                             <div style={{
                               padding: '40px',
                               textAlign: 'center',
-                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                              borderRadius: '8px',
-                              background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                              background: workbenchCardBackground(isDarkMode),
+                              borderRadius: '12px',
+                              border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                              boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)',
                               color: colours.greyText
                             }}>
                               <FaCreditCard size={32} style={{ marginBottom: '16px', opacity: 0.5 }} />
@@ -4814,13 +4970,25 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
 
                         {/* Payment Summary */}
                         <div style={{
+                          background: workbenchCardBackground(isDarkMode),
+                          borderRadius: '12px',
                           padding: '16px',
-                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                          borderRadius: '8px',
-                          background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                          boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)',
                           marginBottom: '20px'
                         }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: colours.blue }}>Payment Summary & Actions</h4>
+                          <div style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: isDarkMode ? colours.dark.text : '#374151',
+                            marginBottom: '12px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.025em',
+                            borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                            paddingBottom: '8px'
+                          }}>
+                            Payment Summary & Actions
+                          </div>
                           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
                             <div style={{ fontSize: '11px', color: isDarkMode ? colours.dark.text : colours.light.text, lineHeight: '1.5' }}>
                               <div>Total Transactions: <strong>{selectedOverviewItem?.instruction?.payments?.length || 0}</strong></div>
@@ -4852,10 +5020,11 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                         {/* Technical Details - Expandable */}
                         {selectedOverviewItem?.instruction?.payments?.length > 0 && (
                           <div style={{
+                            background: workbenchCardBackground(isDarkMode),
+                            borderRadius: '12px',
                             padding: '12px',
-                            border: `1px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
-                            borderRadius: '6px',
-                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : '#f8fafc'
+                            border: `1px solid ${workbenchBorderColour(isDarkMode)}`,
+                            boxShadow: isDarkMode ? '0 6px 16px rgba(2, 6, 23, 0.35)' : '0 6px 16px rgba(15, 23, 42, 0.08)'
                           }}>
                             <button
                               onClick={() => toggleSection('payment-raw')}
@@ -4910,10 +5079,10 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                       <div>
                         
                         <div>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600 }}>Document Library</h4>
-                          {selectedOverviewItem?.documents && selectedOverviewItem.documents.length > 0 ? (
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text }}>Document Library</h4>
+                          {selectedOverviewItem?.instruction?.documents && selectedOverviewItem.instruction.documents.length > 0 ? (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                              {selectedOverviewItem.documents.map((doc: any, index: number) => (
+                              {selectedOverviewItem.instruction.documents.map((doc: any, index: number) => (
                                 <div
                                   key={index}
                                   style={{
@@ -4924,15 +5093,15 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                                     cursor: 'pointer'
                                   }}
                                   onClick={() => {
-                                    // Handle document click - could open viewer or show details
-                                    console.log('Document clicked:', doc);
+                                    // Open document preview modal
+                                    handleDocumentPreview(doc, selectedInstruction?.InstructionRef || '');
                                   }}
                                 >
-                                  <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px' }}>
-                                    {doc.filename || doc.DocumentName || `Document ${index + 1}`}
+                                  <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: isDarkMode ? colours.dark.text : colours.light.text }}>
+                                    {doc.FileName || doc.filename || doc.DocumentName || `Document ${index + 1}`}
                                   </div>
-                                  <div style={{ fontSize: '10px', color: colours.greyText }}>
-                                    Size: {doc.filesize ? formatBytes(doc.filesize) : 'Unknown'}
+                                  <div style={{ fontSize: '10px', color: isDarkMode ? colours.dark.subText : '#64748b' }}>
+                                    Size: {doc.FileSizeBytes ? formatBytes(doc.FileSizeBytes) : (doc.filesize ? formatBytes(doc.filesize) : 'Unknown')}
                                   </div>
                                 </div>
                               ))}
@@ -4941,7 +5110,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                             <div style={{
                               padding: '20px',
                               textAlign: 'center',
-                              color: colours.greyText,
+                              color: isDarkMode ? colours.dark.subText : '#64748b',
                               fontSize: '12px',
                               fontStyle: 'italic'
                             }}>
@@ -5336,6 +5505,15 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
           </div>
         </div>
       )}
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        isOpen={previewModalOpen}
+        onDismiss={handleCloseDocumentPreview}
+        document={previewDocument}
+        instructionRef={selectedInstruction?.InstructionRef || ''}
+        isDarkMode={isDarkMode}
+      />
     </>
   );
 };

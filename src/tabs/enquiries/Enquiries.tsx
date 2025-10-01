@@ -1080,6 +1080,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
           if (!enquiryArea) return false;
 
+          // Always show "other" or "unsure" enquiries - they need triaging
+          if (enquiryArea.includes('other') || enquiryArea.includes('unsure')) return true;
+
           const inAllowed = userAOW.some(
             a => a === enquiryArea || a.includes(enquiryArea) || enquiryArea.includes(a)
           );

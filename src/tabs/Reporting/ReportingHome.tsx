@@ -553,7 +553,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState<number | null>(cachedTimestamp);
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasBootstrapped, setHasBootstrapped] = useState<boolean>(() => Boolean(cachedTimestamp || propUserData || propTeamData));
+  const [hasFetchedOnce, setHasFetchedOnce] = useState<boolean>(() => Boolean(cachedTimestamp));
   const [refreshStartedAt, setRefreshStartedAt] = useState<number | null>(null);
 
   useEffect(() => {
@@ -609,9 +609,10 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
   const refreshDatasets = useCallback(async () => {
     debugLog('ReportingHome: refreshDatasets called');
-  setIsFetching(true);
+    setHasFetchedOnce(true);
+    setIsFetching(true);
     setError(null);
-  setRefreshStartedAt(Date.now());
+    setRefreshStartedAt(Date.now());
 
     setDatasetStatus((prev) => {
       const next: DatasetStatus = { ...prev };
@@ -768,15 +769,12 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     }
   }, []);
 
-  useEffect(() => {
-    debugLog('ReportingHome useEffect - hasBootstrapped:', hasBootstrapped);
-    if (hasBootstrapped) {
-      return;
+  const handleOpenDashboard = useCallback(() => {
+    if (!hasFetchedOnce && !isFetching) {
+      void refreshDatasets();
     }
-    debugLog('ReportingHome: Starting data refresh...');
-    refreshDatasets();
-    setHasBootstrapped(true);
-  }, [hasBootstrapped, refreshDatasets]);
+    setActiveView('dashboard');
+  }, [hasFetchedOnce, isFetching, refreshDatasets, setActiveView]);
 
   useEffect(() => {
     if (propUserData !== undefined) {
@@ -926,7 +924,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <PrimaryButton
             text={isFetching ? 'Preparing…' : 'Open management dashboard'}
-            onClick={() => setActiveView('dashboard')}
+            onClick={handleOpenDashboard}
             styles={primaryButtonStyles(isDarkMode)}
             disabled={isFetching}
           />
@@ -1019,7 +1017,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   <PrimaryButton
                     text={isFetching ? 'Preparing…' : 'Open dashboard'}
-                    onClick={() => setActiveView('dashboard')}
+                    onClick={handleOpenDashboard}
                     styles={primaryButtonStyles(isDarkMode)}
                     disabled={isFetching}
                   />

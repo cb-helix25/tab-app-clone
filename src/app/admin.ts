@@ -1,7 +1,7 @@
 import { UserData } from './functionality/types';
 
 // Centralized list of admin users by initials
-export const ADMIN_USERS = ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW', 'LA', 'BOD'] as const;
+export const ADMIN_USERS = ['LZ', 'AC', 'CB', 'KW', 'BL', 'JW', 'LA', 'BOD', 'IM'] as const;
 
 // Helper to determine if a user has admin privileges
 export function isAdminUser(user?: UserData | null): boolean {

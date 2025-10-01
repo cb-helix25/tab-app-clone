@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { mergeStyles } from '@fluentui/merge-styles';
 import { colours } from '../../app/styles/colours';
+import RelatedClientsSection from './components/RelatedClientsSection';
 
 interface MatterOperationsProps {
   selectedInstruction: any;
@@ -31,6 +32,88 @@ interface ClientData {
   matters?: any[];
   isLoading: boolean;
 }
+
+interface OriginDeal {
+  title?: string;
+  reference?: string | number;
+  stage?: string;
+  service?: string;
+  amount?: number | string;
+  currency?: string;
+  createdDate?: string;
+  owner?: string;
+}
+
+type MatterLike = Record<string, unknown>;
+
+const parseDateValue = (value: unknown): number | null => {
+  if (!value) return null;
+  const asString = typeof value === 'string' ? value : String(value);
+  const parsed = new Date(asString);
+  const timestamp = parsed.getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+};
+
+const getMatterOpenedAt = (matter: MatterLike): number | null => {
+  const candidates = [
+    matter.open_date,
+    matter.OpenDate,
+    matter.openDate,
+    matter['Open Date'],
+    matter.opened_at,
+    matter.OpenedAt,
+  ];
+
+  for (const candidate of candidates) {
+    const timestamp = parseDateValue(candidate);
+    if (timestamp !== null) {
+      return timestamp;
+    }
+  }
+
+  return null;
+};
+
+const getMatterDisplayNumber = (matter: MatterLike): string => {
+  const candidate = matter.display_number ?? matter.DisplayNumber ?? matter.displayNumber ?? '';
+  if (candidate === undefined || candidate === null) return '';
+  return typeof candidate === 'string' ? candidate : String(candidate);
+};
+
+const getMatterNumericId = (matter: MatterLike): number => {
+  const candidate = matter.id ?? matter.MatterID ?? matter.matter_id ?? matter.MatterId;
+  if (candidate === undefined || candidate === null) return 0;
+  const numeric = typeof candidate === 'number' ? candidate : Number(String(candidate));
+  return Number.isNaN(numeric) ? 0 : numeric;
+};
+
+const compareMatters = (a: MatterLike, b: MatterLike): number => {
+  const openedA = getMatterOpenedAt(a);
+  const openedB = getMatterOpenedAt(b);
+
+  if (openedA !== null || openedB !== null) {
+    if (openedA === null) return 1;
+    if (openedB === null) return -1;
+    if (openedA !== openedB) return openedB - openedA;
+  }
+
+  const displayA = getMatterDisplayNumber(a);
+  const displayB = getMatterDisplayNumber(b);
+  if (displayA && displayB) {
+    const comparison = displayA.localeCompare(displayB, undefined, { numeric: true, sensitivity: 'base' });
+    if (comparison !== 0) {
+      return comparison;
+    }
+  }
+
+  const idA = getMatterNumericId(a);
+  const idB = getMatterNumericId(b);
+  if (idA !== idB) {
+    return idB - idA;
+  }
+
+  return 0;
+};
 
 const panelBackground = (dark: boolean): string => (
   dark
@@ -68,16 +151,50 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
     isLoading: false
   });
   const [clientData, setClientData] = useState<ClientData>({
-    isLoading: false
+    isLoading: false,
+    matters: []
   });
+  const [relatedClientIds, setRelatedClientIds] = useState<string>('');
   // Matter opening is handled by a dedicated workflow; creation UI removed here
+
+  const originDeal: OriginDeal | null = useMemo(() => {
+    const dealSource = (selectedInstruction?.deal as any)
+      || (selectedOverviewItem?.deal as any)
+      || (selectedOverviewItem?.instruction?.deal as any)
+      || null;
+
+    if (!dealSource) {
+      return null;
+    }
+
+    const rawAmount = dealSource.Amount ?? dealSource.amount ?? dealSource.Estimate ?? dealSource.QuoteAmount;
+    const amount = typeof rawAmount === 'number'
+      ? rawAmount
+      : rawAmount && !Number.isNaN(Number(rawAmount))
+        ? Number(rawAmount)
+        : undefined;
+
+    return {
+      title: dealSource.ServiceDescription || dealSource.Service || dealSource.Title || dealSource.Name || selectedInstruction?.MatterDescription,
+      reference: dealSource.ProspectId || dealSource.prospectId || dealSource.DealId || dealSource.Id || dealSource.dealId,
+      stage: dealSource.Stage || dealSource.StageName || dealSource.Status,
+      service: dealSource.ServiceDescription || dealSource.Service || selectedInstruction?.AreaOfWork,
+      amount: amount ?? rawAmount,
+      currency: dealSource.Currency || dealSource.currency || 'GBP',
+      createdDate: dealSource.CreatedDate || dealSource.CreatedOn || dealSource.CreatedTime || dealSource.Created?.Date,
+      owner: dealSource.Owner || dealSource.OwnerName || dealSource.ResponsibleSolicitor || dealSource.Solicitor || selectedInstruction?.ResponsibleSolicitor
+    };
+  }, [selectedInstruction, selectedOverviewItem]);
 
   // Load matter data when instruction changes
   useEffect(() => {
     if (selectedInstruction?.InstructionRef) {
       loadMatterData();
+      
       if (selectedInstruction.ClientId) {
         loadClientData();
+      } else {
+        setClientData({ isLoading: false, matters: [] });
       }
     }
   }, [selectedInstruction?.InstructionRef]);
@@ -103,6 +220,8 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
           responsibleSolicitor: matter.ResponsibleSolicitor,
           isLoading: false
         });
+        // Load related client IDs from instruction data
+        setRelatedClientIds(selectedInstruction.RelatedClientId || '');
       } else if (response.status === 404) {
         // Matter doesn't exist yet
         setMatterData({
@@ -111,12 +230,22 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
           clientId: selectedInstruction.ClientId,
           isLoading: false
         });
+        // Load related client IDs from instruction data
+        setRelatedClientIds(selectedInstruction.RelatedClientId || '');
       } else {
         throw new Error('Failed to load matter data');
       }
     } catch (error) {
       console.error('Error loading matter data:', error);
-      setMatterData(prev => ({ ...prev, isLoading: false }));
+      // Set fallback data when API fails
+      setMatterData({
+        status: 'API Unavailable',
+        clientLinked: !!selectedInstruction.ClientId,
+        clientId: selectedInstruction.ClientId,
+        isLoading: false
+      });
+      // Load related client IDs from instruction data
+      setRelatedClientIds(selectedInstruction.RelatedClientId || '');
     }
   };
 
@@ -134,13 +263,16 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
       const response = await fetch(`/api/clio-client-query/${selectedInstruction.ClientId}/${initials}`);
       if (response.ok) {
         const data = await response.json();
+        const matters = Array.isArray(data.matters)
+          ? [...data.matters].sort((a: MatterLike, b: MatterLike) => compareMatters(a, b))
+          : [];
         setClientData({
           id: data.client?.id?.toString(),
           name: data.client?.name,
           email: data.client?.primary_email_address,
           phone: data.client?.primary_phone_number,
           type: data.client?.type,
-          matters: data.matters || [],
+          matters,
           isLoading: false
         });
       } else {
@@ -148,15 +280,19 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
       }
     } catch (error) {
       console.error('Error loading client data:', error);
-      setClientData({ isLoading: false });
+      setClientData({ isLoading: false, matters: [] });
     }
+  };
+
+  const handleRelatedClientsUpdate = (newClientIds: string) => {
+    setRelatedClientIds(newClientIds);
   };
 
   // Matter status logic
   const matterStatus = useMemo(() => {
     const neutral = isDarkMode ? colours.dark.text : '#374151';
     if (matterData.isLoading) return { label: 'Loading...', color: colours.greyText };
-    if (matterData.matterId) return { label: 'Active Matter', color: neutral };
+    if (matterData.matterId && matterData.matterId !== 'NO_MATTER') return { label: 'Active Matter', color: neutral };
     if (selectedInstruction?.ClientId) return { label: 'Ready to Create', color: neutral };
     return { label: 'Client Required', color: neutral };
   }, [matterData, selectedInstruction, isDarkMode]);
@@ -164,7 +300,7 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
   // Creation and client-linking are handled elsewhere
 
   const handleOpenMatterDashboard = () => {
-    if (matterData.matterId) {
+    if (matterData.matterId && matterData.matterId !== 'NO_MATTER') {
       const clioUrl = `https://eu.app.clio.com/nc/#/matters/${matterData.matterId}`;
       window.open(clioUrl, '_blank');
     }
@@ -239,6 +375,8 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
     }} />
   );
 
+  const clientMatters = clientData.matters ?? [];
+
   if (!selectedInstruction) {
     return (
       <div style={{
@@ -257,250 +395,286 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
 
   return (
     <div>
-      {/* Client Information Card */}
-      <div className={cardStyle}>
-        <div className={headerStyle}>
-          <span>Client Information</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {statusIndicator(!!clientData.id)}
-            <span style={{ 
-              color: isDarkMode ? colours.dark.text : '#374151', 
-              fontSize: 10, 
-              fontWeight: 600,
-              textTransform: 'uppercase'
-            }}>
-              {clientData.id ? 'Linked' : 'Not Linked'}
-            </span>
-          </div>
-        </div>
+      {/* Client and Matter Details - Side by Side */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', 
+        gap: '16px',
+        marginBottom: '16px'
+      }}>
         
-        {clientData.isLoading ? (
-          <div style={{ padding: '20px', textAlign: 'center', color: colours.greyText }}>
-            <div style={{ 
-              width: 16, 
-              height: 16, 
-              border: `2px solid ${colours.greyText}30`,
-              borderTop: `2px solid ${colours.greyText}`,
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              display: 'inline-block'
-            }} />
-            <div style={{ marginTop: 8, fontSize: 11 }}>Loading client data...</div>
-          </div>
-        ) : clientData.id ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <div>
-              <div style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIENT NAME</div>
-                <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                  {clientData.name || 'Unknown'}
-                </div>
-              </div>
-              <div style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>EMAIL</div>
-                <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                  {clientData.email || 'Not provided'}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIENT TYPE</div>
-                <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                  {clientData.type || 'Individual'}
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <div style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIO CLIENT ID</div>
-                <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                  {clientData.id}
-                </div>
-              </div>
-              <div style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>PHONE</div>
-                <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                  {clientData.phone || 'Not provided'}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>MATTERS COUNT</div>
-                <div style={{ fontSize: 10, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                  {clientData.matters?.length || 0} matters
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div style={{
-            padding: '16px',
-            textAlign: 'center',
-            color: mutedText(isDarkMode),
-            fontSize: '11px',
-            background: panelBackground(isDarkMode),
-            borderRadius: '12px',
-            border: `1px dashed ${borderColour(isDarkMode)}`
-          }}>
-            No client linked to this instruction
-          </div>
-        )}
-
-        {/* Client Matters List */}
-        {clientData.matters && clientData.matters.length > 0 && (
-          <div style={{ marginTop: '8px' }}>
-            <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>
-              Existing Matters ({clientData.matters.length})
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '80px', overflowY: 'auto' }}>
-              {clientData.matters.map((matter: any, index: number) => (
-                <div key={index} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '6px 8px',
-                  background: cardBackground(isDarkMode),
-                  borderRadius: 8,
-                  border: `1px solid ${borderColour(isDarkMode)}`,
-                  fontSize: 9,
-                  boxShadow: elevatedShadow(isDarkMode)
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                      {matter.display_number || `Matter ${matter.id}`}
-                    </div>
-                    <div style={{ color: mutedText(isDarkMode), fontSize: 8 }}>
-                      {matter.description || 'No description'}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 8, color: mutedText(isDarkMode) }}>
-                    ID: {matter.id}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Matter Status Card */}
-      <div className={cardStyle}>
-        <div className={headerStyle}>
-          <span>Matter Status</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {statusIndicator(!!matterData.matterId)}
-            <span style={{ 
-              color: matterStatus.color, 
-              fontSize: 10, 
-              fontWeight: 600,
-              textTransform: 'uppercase'
-            }}>
-              {matterStatus.label}
-            </span>
-          </div>
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <div>
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>MATTER ID</div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                {matterData.matterId || 'Not assigned'}
-              </div>
-            </div>
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>DISPLAY NUMBER</div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                {matterData.displayNumber || 'Will be auto-generated'}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>PRACTICE AREA</div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                {matterData.practiceArea || selectedInstruction.AreaOfWork || 'General Legal Services'}
-              </div>
+        {/* Client Information Card - Now handled by Related Clients Section below */}
+        {/* <div className={cardStyle}>
+          <div className={headerStyle}>
+            <span>Client Information</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {statusIndicator(!!clientData.id)}
+              <span style={{ 
+                color: isDarkMode ? colours.dark.text : '#374151', 
+                fontSize: 10, 
+                fontWeight: 600,
+                textTransform: 'uppercase'
+              }}>
+                {clientData.id ? 'Linked' : 'Not Linked'}
+              </span>
             </div>
           </div>
           
-          <div>
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>OPEN DATE</div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                {matterData.openDate ? new Date(matterData.openDate).toLocaleDateString() : 'Not opened'}
-              </div>
-            </div>
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>RESPONSIBLE SOLICITOR</div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                {matterData.responsibleSolicitor || selectedInstruction.ResponsibleSolicitor || 'Unassigned'}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, color: mutedText(isDarkMode), marginBottom: 2 }}>STATUS</div>
+          {clientData.isLoading ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: colours.greyText }}>
               <div style={{ 
-                fontSize: 11, 
-                fontWeight: 500, 
-                color: isDarkMode ? colours.dark.text : '#111827' 
-              }}>
-                {matterData.status}
+                width: 16, 
+                height: 16, 
+                border: `2px solid ${colours.greyText}30`,
+                borderTop: `2px solid ${colours.greyText}`,
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                display: 'inline-block'
+              }} />
+              <div style={{ marginTop: 8, fontSize: 11 }}>Loading client data...</div>
+            </div>
+          ) : clientData.id ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIENT NAME</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                    {clientData.name || 'Unknown'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIENT TYPE</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                    {clientData.type || 'Individual'}
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>EMAIL</div>
+                  <div style={{ fontSize: 10, fontWeight: 400, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                    {clientData.email || 'Not provided'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>PHONE</div>
+                  <div style={{ fontSize: 10, fontWeight: 400, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                    {clientData.phone || 'Not provided'}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIO CLIENT ID</div>
+                  <div style={{ fontSize: 10, fontWeight: 400, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                    {clientData.id}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>EXISTING MATTERS</div>
+                  <div style={{ fontSize: 10, fontWeight: 400, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                    {clientData.matters?.length || 0} matters
+                  </div>
+                </div>
               </div>
             </div>
+          ) : (
+            <div style={{
+              padding: '16px',
+              textAlign: 'center',
+              color: mutedText(isDarkMode),
+              fontSize: '11px',
+              background: panelBackground(isDarkMode),
+              borderRadius: '8px',
+              border: `1px dashed ${borderColour(isDarkMode)}`
+            }}>
+              <div style={{ marginBottom: '8px', fontSize: '12px', fontWeight: 600 }}>
+                No Client Linked
+              </div>
+              <div style={{ fontSize: '10px', lineHeight: '1.4' }}>
+                Use the Matter Opening workflow to link a client
+              </div>
+            </div>
+          )}
+        </div> */}
+
+        {/* Related Clients Section */}
+        <RelatedClientsSection
+          key={`related-clients-${selectedInstruction?.InstructionRef}`}
+          instructionRef={selectedInstruction?.InstructionRef}
+          relatedClientIds={relatedClientIds}
+          mainClientId={matterData.clientId}
+          originDeal={originDeal}
+          onRelatedClientsUpdate={handleRelatedClientsUpdate}
+          userInitials={selectedInstruction?.ResponsibleSolicitor?.split(' ')
+            .map((name: string) => name[0])
+            .join('') || 'LZ'}
+        />
+        
+        {/* Matter Overview Card */}
+        <div className={cardStyle}>
+          <div className={headerStyle}>
+            <span>Matter Overview</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {statusIndicator(!!(matterData.matterId && matterData.matterId !== 'NO_MATTER'))}
+              <span style={{ 
+                color: matterStatus.color, 
+                fontSize: 10, 
+                fontWeight: 600,
+                textTransform: 'uppercase'
+              }}>
+                {matterStatus.label}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>MATTER ID</div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                  {(matterData.matterId && matterData.matterId !== 'NO_MATTER') ? matterData.matterId : 'Not assigned'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>STATUS</div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                  {matterData.status}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>DISPLAY NUMBER</div>
+                <div style={{ fontSize: 10, fontWeight: 400, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                  {matterData.displayNumber || 'Auto-generated on creation'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>OPEN DATE</div>
+                <div style={{ fontSize: 10, fontWeight: 400, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                  {matterData.openDate ? new Date(matterData.openDate).toLocaleDateString() : 'Not opened'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>PRACTICE AREA</div>
+                <div style={{ fontSize: 10, fontWeight: 400, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                  {matterData.practiceArea || selectedInstruction.AreaOfWork || 'General Legal Services'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>RESPONSIBLE SOLICITOR</div>
+                <div style={{ fontSize: 10, fontWeight: 400, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                  {matterData.responsibleSolicitor || selectedInstruction.ResponsibleSolicitor || 'Unassigned'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ borderTop: `1px solid ${borderColour(isDarkMode)}`, paddingTop: '12px' }}>
+              <div style={{
+                fontSize: 9,
+                color: mutedText(isDarkMode),
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                marginBottom: '8px'
+              }}>
+                Actions
+              </div>
+              {!matterData.matterId || matterData.matterId === 'NO_MATTER' ? (
+                <div style={{
+                  padding: '16px',
+                  color: mutedText(isDarkMode),
+                  fontSize: 11,
+                  fontStyle: 'italic',
+                  background: panelBackground(isDarkMode),
+                  borderRadius: 8,
+                  border: `1px dashed ${borderColour(isDarkMode)}`,
+                  textAlign: 'center'
+                }}>
+                  <div style={{ marginBottom: '8px', fontSize: '12px', fontWeight: 600 }}>
+                    No Matter Created
+                  </div>
+                  <div>
+                    Use the Matter Opening workflow to create and configure the matter.
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    className={buttonStyle('primary')}
+                    onClick={handleOpenMatterDashboard}
+                  >
+                    📊 View in Clio
+                  </button>
+                  <button
+                    className={buttonStyle('secondary')}
+                    onClick={() => {
+                      console.log('Opening matter timeline');
+                    }}
+                  >
+                    ⏱️ Timeline
+                  </button>
+                  <button
+                    className={buttonStyle('secondary')}
+                    onClick={() => {
+                      console.log('Opening matter documents');
+                    }}
+                  >
+                    📄 Documents
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {clientMatters.length > 0 && (
+              <div style={{ borderTop: `1px solid ${borderColour(isDarkMode)}`, paddingTop: '12px' }}>
+                <div style={{
+                  fontSize: 9,
+                  color: mutedText(isDarkMode),
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  marginBottom: '8px'
+                }}>
+                  Client's Other Matters ({clientMatters.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                  {clientMatters.map((matter: any, index: number) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px',
+                      background: cardBackground(isDarkMode),
+                      borderRadius: 8,
+                      border: `1px solid ${borderColour(isDarkMode)}`,
+                      fontSize: 10,
+                      boxShadow: elevatedShadow(isDarkMode)
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#111827', marginBottom: '4px' }}>
+                          {matter.display_number || `Matter ${matter.id}`}
+                        </div>
+                        <div style={{ color: mutedText(isDarkMode), fontSize: 9 }}>
+                          {matter.description || 'No description'}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 9, color: mutedText(isDarkMode) }}>
+                        ID: {matter.id}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Actions Card */}
-      <div className={cardStyle}>
-        <div className={headerStyle}>
-          <span>Matter Actions</span>
-        </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {/* Primary Actions */}
-          {!matterData.matterId ? (
-            <div style={{
-              padding: '16px',
-              color: mutedText(isDarkMode),
-              fontSize: 11,
-              fontStyle: 'italic',
-              background: panelBackground(isDarkMode),
-              borderRadius: 12,
-              border: `1px dashed ${borderColour(isDarkMode)}`,
-              boxShadow: elevatedShadow(isDarkMode)
-            }}>
-              Use the Matter Opening workflow to create and configure the matter.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                className={buttonStyle('primary')}
-                onClick={handleOpenMatterDashboard}
-              >
-                📊 View in Clio
-              </button>
-              
-              <button
-                className={buttonStyle('secondary')}
-                onClick={() => {
-                  console.log('Opening matter timeline');
-                }}
-              >
-                ⏱️ Timeline
-              </button>
-              
-              <button
-                className={buttonStyle('secondary')}
-                onClick={() => {
-                  console.log('Opening matter documents');
-                }}
-              >
-                📄 Documents
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      
       <style>
         {`
           @keyframes spin {

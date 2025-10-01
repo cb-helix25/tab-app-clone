@@ -527,8 +527,8 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                 </div>
                             )}
 
-                            {/* Local Area Selector */}
-                            {isLocalDev && onAreasChange && (
+                            {/* Area Override - Available to all users */}
+                            {onAreasChange && (
                                 <div style={{ marginBottom: '16px' }}>
                                     <h4 style={{
                                         margin: '0 0 8px 0',
@@ -538,7 +538,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.5px'
                                     }}>
-                                        Local Development
+                                        Area Override
                                     </h4>
                                     <div style={{
                                         background: '#fafbfc',

@@ -622,7 +622,8 @@ const AppWithContext: React.FC = () => {
   // Update user data when local areas change
   const updateLocalUserData = (areas: string[]) => {
     setLocalSelectedAreas(areas);
-    if (useLocalData && userData) {
+    // Allow area override for all users, not just localhost
+    if (userData && userData[0]) {
       const updatedUserData = [{
         ...userData[0],
         AOW: areas.join(', ')
