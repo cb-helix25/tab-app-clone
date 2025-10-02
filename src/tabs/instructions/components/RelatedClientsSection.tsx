@@ -4,6 +4,7 @@ import {
   Text,
   DefaultButton,
   Spinner,
+  SpinnerSize,
   MessageBar,
   MessageBarType,
   FontIcon,
@@ -16,6 +17,7 @@ import {
 import { useTheme } from '../../../app/functionality/ThemeContext';
 import { colours } from '../../../app/styles/colours';
 import ClientLookupModal from './ClientLookupModal';
+import clioIcon from '../../../assets/clio.svg';
 
 interface RelatedClientsSectionProps {
   instructionRef: string;
@@ -35,6 +37,13 @@ interface OriginDeal {
   currency?: string;
   createdDate?: string;
   owner?: string;
+  pitchedAt?: string;
+}
+
+interface CustomFieldValue {
+  id: string;
+  field_name: string;
+  value: string;
 }
 
 interface ClioClient {
@@ -45,6 +54,15 @@ interface ClioClient {
   email: string;
   phone?: string;
   type: 'Person' | 'Company';
+  // Additional fields that might be available from Clio API
+  primary_email_address?: string;
+  primary_phone_number?: string;
+  company?: string;
+  title?: string;
+  custom_fields?: Record<string, any>;
+  custom_field_values?: CustomFieldValue[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 const RelatedClientsSection: React.FC<RelatedClientsSectionProps> = ({
@@ -59,6 +77,7 @@ const RelatedClientsSection: React.FC<RelatedClientsSectionProps> = ({
   const [relatedClients, setRelatedClients] = useState<ClioClient[]>([]);
   const [mainClient, setMainClient] = useState<ClioClient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingCustomFields, setIsLoadingCustomFields] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showLookupModal, setShowLookupModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -90,14 +109,48 @@ const RelatedClientsSection: React.FC<RelatedClientsSectionProps> = ({
     }
   }, [mainClientId, userInitials]);
 
+  const fetchClientCustomFields = async (clientId: string): Promise<CustomFieldValue[]> => {
+    try {
+      console.log('Fetching custom fields for client:', clientId);
+      const response = await fetch(`/api/clio-client-lookup/client/${clientId}/custom-fields?initials=${userInitials}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Custom fields loaded for client', clientId, ':', data.custom_field_values);
+        return data.custom_field_values || [];
+      } else {
+        console.warn('Failed to load custom fields for client', clientId, '- response not ok:', response.status);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error loading custom fields for client', clientId, ':', error);
+      return [];
+    }
+  };
+
   const loadMainClient = async (clientId: string) => {
     try {
       console.log('Loading main client with ID:', clientId);
+      setIsLoadingCustomFields(true);
+      
+      // Load basic client data
       const response = await fetch(`/api/clio-client-lookup/client/${clientId}?initials=${userInitials}`);
       if (response.ok) {
         const data = await response.json();
         console.log('Main client loaded successfully:', data.client);
+        
+        // Set basic client data first
         setMainClient(data.client);
+        
+        // Load custom fields for this client
+        const customFields = await fetchClientCustomFields(clientId);
+        
+        // Combine the data
+        const clientWithCustomFields = {
+          ...data.client,
+          custom_field_values: customFields
+        };
+        
+        setMainClient(clientWithCustomFields);
       } else {
         console.error('Failed to load main client - response not ok:', response.status);
         setMainClient(null);
@@ -105,6 +158,8 @@ const RelatedClientsSection: React.FC<RelatedClientsSectionProps> = ({
     } catch (error) {
       console.error('Error loading main client:', error);
       setMainClient(null);
+    } finally {
+      setIsLoadingCustomFields(false);
     }
   };
 
@@ -116,10 +171,19 @@ const RelatedClientsSection: React.FC<RelatedClientsSectionProps> = ({
       const ids = clientIds.split(',').map(id => id.trim()).filter(id => id !== '');
       const clientPromises = ids.map(async (clientId) => {
         try {
+          // Load basic client data
           const response = await fetch(`/api/clio-client-lookup/client/${clientId}?initials=${userInitials}`);
           if (response.ok) {
             const data = await response.json();
-            return data.client;
+            
+            // Load custom fields for this client
+            const customFields = await fetchClientCustomFields(clientId);
+            
+            // Combine the data
+            return {
+              ...data.client,
+              custom_field_values: customFields
+            };
           }
           return null;
         } catch (err) {
@@ -228,86 +292,319 @@ const RelatedClientsSection: React.FC<RelatedClientsSectionProps> = ({
   };
 
   const renderClientCard = (client: ClioClient, isMainClient: boolean = false) => {
+    // Determine the best email and phone to display
+    const displayEmail = client.primary_email_address || client.email;
+    const displayPhone = client.primary_phone_number || client.phone;
+    
+    // Extract relevant custom fields for display from the structured custom_field_values
+    const customFieldsToShow = client.custom_field_values 
+      ? client.custom_field_values
+          .filter(field => field.value && String(field.value).trim() !== '')
+      : [];
+
     return (
       <div
         key={client.id}
         style={{
-          padding: '12px',
+          padding: '16px',
           border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-          borderRadius: '6px',
+          borderRadius: '8px',
           backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-          position: 'relative'
+          position: 'relative',
+          boxShadow: isDarkMode ? '0 4px 12px rgba(2, 6, 23, 0.25)' : '0 2px 8px rgba(15, 23, 42, 0.06)'
         }}
       >
-        <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 12 }}>
-          <Persona
-            text={client.name}
-            secondaryText={client.email}
-            size={PersonaSize.size32}
-            presence={PersonaPresence.none}
-            initialsColor={colours.highlight}
-          />
-          <Stack grow>
-            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-              <Text 
-                variant="medium" 
+        <Stack tokens={{ childrenGap: 12 }}>
+          {/* Header row with avatar, name, and actions */}
+          <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 12 }}>
+            {/* Custom Clio icon avatar - clickable to open in Clio */}
+            <div 
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                backgroundColor: isDarkMode ? '#334155' : '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: `2px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                flexShrink: 0,
+                boxShadow: isDarkMode ? '0 2px 8px rgba(0, 0, 0, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onClick={() => window.open(`https://eu.app.clio.com/nc/#/contacts/${client.id}`, '_blank')}
+              title="Open in Clio"
+            >
+              <img 
+                src={clioIcon} 
+                alt="Clio Client" 
                 style={{ 
-                  fontWeight: 600,
-                  color: isDarkMode ? '#e2e8f0' : '#374151'
+                  width: 20, 
+                  height: 20,
+                  opacity: isDarkMode ? 0.9 : 1
+                }} 
+              />
+            </div>
+            
+            <Stack grow>
+              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+                <Text 
+                  variant="mediumPlus" 
+                  style={{ 
+                    fontWeight: 600,
+                    color: isDarkMode ? '#e2e8f0' : '#374151'
+                  }}
+                >
+                  {client.name}
+                </Text>
+                <Text 
+                  variant="small" 
+                  style={{ 
+                    color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText,
+                    backgroundColor: isDarkMode ? colours.dark.background : '#f4f4f6',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.025em'
+                  }}
+                >
+                  {client.type}
+                </Text>
+              </Stack>
+              
+              {/* Client ID */}
+              <Text 
+                variant="small" 
+                style={{ 
+                  color: isDarkMode ? 'rgba(226, 232, 240, 0.6)' : '#6b7280',
+                  fontSize: '11px',
+                  fontFamily: 'monospace'
                 }}
               >
-                {client.name}
+                ID: {client.id}
+              </Text>
+            </Stack>
+            
+            {!isMainClient && (
+              <TooltipHost content="Remove related client">
+                <IconButton
+                  iconProps={{ iconName: 'Cancel' }}
+                  onClick={() => handleRemoveClient(client.id)}
+                  disabled={isUpdating}
+                  styles={{
+                    root: {
+                      color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText,
+                      ':hover': {
+                        color: '#dc2626',
+                        backgroundColor: isDarkMode ? '#334155' : '#f8f9fa'
+                      }
+                    }
+                  }}
+                />
+              </TooltipHost>
+            )}
+          </Stack>
+
+          {/* Contact Information Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '12px',
+            paddingTop: '8px',
+            borderTop: `1px solid ${isDarkMode ? '#334155' : '#f1f5f9'}`
+          }}>
+            {/* Email */}
+            {displayEmail && (
+              <div>
+                <Text 
+                  variant="xSmall" 
+                  style={{ 
+                    color: isDarkMode ? 'rgba(148, 163, 184, 0.9)' : '#64748b',
+                    textTransform: 'uppercase',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    marginBottom: '4px',
+                    display: 'block'
+                  }}
+                >
+                  Email
+                </Text>
+                <Text 
+                  variant="small" 
+                  style={{ 
+                    color: isDarkMode ? '#e2e8f0' : '#374151',
+                    fontWeight: 500,
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {displayEmail}
+                </Text>
+              </div>
+            )}
+            
+            {/* Phone */}
+            {displayPhone && (
+              <div>
+                <Text 
+                  variant="xSmall" 
+                  style={{ 
+                    color: isDarkMode ? 'rgba(148, 163, 184, 0.9)' : '#64748b',
+                    textTransform: 'uppercase',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    marginBottom: '4px',
+                    display: 'block'
+                  }}
+                >
+                  Phone
+                </Text>
+                <Text 
+                  variant="small" 
+                  style={{ 
+                    color: isDarkMode ? '#e2e8f0' : '#374151',
+                    fontWeight: 500
+                  }}
+                >
+                  {displayPhone}
+                </Text>
+              </div>
+            )}
+            
+            {/* Company/Title (if available) */}
+            {(client.company || client.title) && (
+              <div>
+                <Text 
+                  variant="xSmall" 
+                  style={{ 
+                    color: isDarkMode ? 'rgba(148, 163, 184, 0.9)' : '#64748b',
+                    textTransform: 'uppercase',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    marginBottom: '4px',
+                    display: 'block'
+                  }}
+                >
+                  {client.company ? 'Company' : 'Title'}
+                </Text>
+                <Text 
+                  variant="small" 
+                  style={{ 
+                    color: isDarkMode ? '#e2e8f0' : '#374151',
+                    fontWeight: 500
+                  }}
+                >
+                  {client.company || client.title}
+                </Text>
+              </div>
+            )}
+            
+            {/* Client Type details */}
+            <div>
+              <Text 
+                variant="xSmall" 
+                style={{ 
+                  color: isDarkMode ? 'rgba(148, 163, 184, 0.9)' : '#64748b',
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                  letterSpacing: '0.05em',
+                  marginBottom: '4px',
+                  display: 'block'
+                }}
+              >
+                Type
               </Text>
               <Text 
                 variant="small" 
                 style={{ 
-                  color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText,
-                  backgroundColor: isDarkMode ? colours.dark.background : '#f4f4f6',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  fontSize: '10px',
+                  color: isDarkMode ? '#e2e8f0' : '#374151',
                   fontWeight: 500
                 }}
               >
-                {isMainClient ? 'Main Client' : client.type}
+                {client.type} {client.firstName && client.lastName ? `(${client.firstName} ${client.lastName})` : ''}
               </Text>
-            </Stack>
-            <Text 
-              variant="small" 
-              style={{ 
-                color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText 
-              }}
-            >
-              {client.email}
-            </Text>
-            {client.phone && (
+            </div>
+          </div>
+
+          {/* Custom Fields (if any) */}
+          {(customFieldsToShow.length > 0 || (isLoadingCustomFields && isMainClient)) && (
+            <div style={{
+              paddingTop: '8px',
+              borderTop: `1px solid ${isDarkMode ? '#334155' : '#f1f5f9'}`
+            }}>
               <Text 
-                variant="small" 
+                variant="xSmall" 
                 style={{ 
-                  color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText 
+                  color: isDarkMode ? 'rgba(148, 163, 184, 0.9)' : '#64748b',
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                  letterSpacing: '0.05em',
+                  marginBottom: '8px',
+                  display: 'block'
                 }}
               >
-                {client.phone}
+                Custom Fields
               </Text>
-            )}
-          </Stack>
-          {!isMainClient && (
-            <TooltipHost content="Remove related client">
-              <IconButton
-                iconProps={{ iconName: 'Cancel' }}
-                onClick={() => handleRemoveClient(client.id)}
-                disabled={isUpdating}
-                styles={{
-                  root: {
-                    color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText,
-                    ':hover': {
-                    color: '#dc2626',
-                    backgroundColor: isDarkMode ? '#334155' : '#f8f9fa'
-                  }
-                }
-              }}
-            />
-          </TooltipHost>
+              
+              {isLoadingCustomFields && isMainClient ? (
+                <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+                  <Spinner size={SpinnerSize.small} />
+                  <Text 
+                    variant="small" 
+                    style={{ 
+                      color: isDarkMode ? 'rgba(148, 163, 184, 0.8)' : '#64748b',
+                      fontStyle: 'italic'
+                    }}
+                  >
+                    Loading custom fields...
+                  </Text>
+                </Stack>
+              ) : customFieldsToShow.length > 0 ? (
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: customFieldsToShow.length === 1 ? '1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', 
+                  gap: '8px' 
+                }}>
+                  {customFieldsToShow.map((field) => (
+                    <div key={field.id}>
+                      <Text 
+                        variant="xSmall" 
+                        style={{ 
+                          color: isDarkMode ? 'rgba(226, 232, 240, 0.6)' : '#6b7280',
+                          fontWeight: 500,
+                          marginBottom: '2px',
+                          display: 'block'
+                        }}
+                      >
+                        {field.field_name}
+                      </Text>
+                      <Text 
+                        variant="small" 
+                        style={{ 
+                          color: isDarkMode ? '#e2e8f0' : '#374151',
+                          fontSize: '11px',
+                          wordBreak: 'break-word'
+                        }}
+                      >
+                        {field.value}
+                      </Text>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Text 
+                  variant="small" 
+                  style={{ 
+                    color: isDarkMode ? 'rgba(148, 163, 184, 0.7)' : '#64748b',
+                    fontStyle: 'italic'
+                  }}
+                >
+                  No custom fields available
+                </Text>
+              )}
+            </div>
           )}
         </Stack>
       </div>
@@ -469,17 +766,38 @@ const RelatedClientsSection: React.FC<RelatedClientsSectionProps> = ({
               </Text>
             </Stack>
             {originDeal.stage && (
-              <Text
-                variant="small"
-                style={{
-                  color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  fontSize: '10px'
-                }}
-              >
-                {originDeal.stage}
-              </Text>
+              <Stack horizontalAlign="end" tokens={{ childrenGap: 2 }}>
+                <Text
+                  variant="small"
+                  style={{
+                    color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    fontSize: '10px'
+                  }}
+                >
+                  {originDeal.stage}
+                </Text>
+                {originDeal.stage.toUpperCase() === 'PITCHED' && originDeal.pitchedAt && (
+                  <Text
+                    variant="small"
+                    style={{
+                      color: isDarkMode ? 'rgba(226, 232, 240, 0.6)' : '#6b7280',
+                      fontSize: '9px',
+                      fontWeight: 400
+                    }}
+                  >
+                    {new Date(originDeal.pitchedAt).toLocaleString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    })}
+                  </Text>
+                )}
+              </Stack>
             )}
           </Stack>
 

@@ -2,11 +2,21 @@ import { Matter, NormalizedMatter } from '../app/functionality/types';
 
 export type MatterDataSource = 'legacy_all' | 'legacy_user' | 'vnet_direct';
 
+// Cache for normalized names to avoid repeated string operations
+const nameNormalizationCache = new Map<string, string>();
+
 /**
  * Checks if two names match, accounting for common variations
+ * Optimized with memoization cache to avoid redundant normalization
  */
 function normalizePersonName(name: string): string {
   if (!name) return '';
+  
+  // Check cache first
+  if (nameNormalizationCache.has(name)) {
+    return nameNormalizationCache.get(name)!;
+  }
+  
   let n = String(name).toLowerCase().trim();
   // Handle "Last, First" → "first last"
   if (n.includes(',')) {
@@ -21,6 +31,16 @@ function normalizePersonName(name: string): string {
   n = n.replace(/\s[-/|].*$/, '');
   // Collapse whitespace
   n = n.replace(/\s+/g, ' ').trim();
+  
+  // Cache result
+  nameNormalizationCache.set(name, n);
+  
+  // Prevent memory leak - limit cache size to 500 unique names
+  if (nameNormalizationCache.size > 500) {
+    const firstKey = nameNormalizationCache.keys().next().value;
+    if (firstKey) nameNormalizationCache.delete(firstKey);
+  }
+  
   return n;
 }
 

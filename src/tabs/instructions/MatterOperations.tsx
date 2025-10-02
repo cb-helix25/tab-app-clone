@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { mergeStyles } from '@fluentui/merge-styles';
+import { FontIcon } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
+import clioIcon from '../../assets/clio.svg';
 import RelatedClientsSection from './components/RelatedClientsSection';
 
 interface MatterOperationsProps {
@@ -80,6 +82,12 @@ const getMatterDisplayNumber = (matter: MatterLike): string => {
   return typeof candidate === 'string' ? candidate : String(candidate);
 };
 
+const getMatterIdString = (matter: MatterLike): string => {
+  const candidate = matter.id ?? matter.MatterID ?? matter.matter_id ?? matter.MatterId;
+  if (candidate === undefined || candidate === null) return '';
+  return typeof candidate === 'string' ? candidate : String(candidate);
+};
+
 const getMatterNumericId = (matter: MatterLike): number => {
   const candidate = matter.id ?? matter.MatterID ?? matter.matter_id ?? matter.MatterId;
   if (candidate === undefined || candidate === null) return 0;
@@ -113,6 +121,28 @@ const compareMatters = (a: MatterLike, b: MatterLike): number => {
   }
 
   return 0;
+};
+
+const dedupeClientMatters = (matters: MatterLike[]): MatterLike[] => {
+  const deduped = new Map<string, MatterLike>();
+
+  matters.forEach((matter, index) => {
+    const keySource = getMatterIdString(matter) || getMatterDisplayNumber(matter) || `index-${index}`;
+
+    const existing = deduped.get(keySource);
+    if (!existing) {
+      deduped.set(keySource, matter);
+      return;
+    }
+
+    const existingDisplay = getMatterDisplayNumber(existing);
+    const candidateDisplay = getMatterDisplayNumber(matter);
+    if (!existingDisplay && candidateDisplay) {
+      deduped.set(keySource, matter);
+    }
+  });
+
+  return Array.from(deduped.values()).sort(compareMatters);
 };
 
 const panelBackground = (dark: boolean): string => (
@@ -155,6 +185,56 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
     matters: []
   });
   const [relatedClientIds, setRelatedClientIds] = useState<string>('');
+  const fetchedDisplayNumbers = useRef<Set<string>>(new Set());
+  const displayNumberLabel = useMemo(() => {
+    const display = (matterData.displayNumber || '').trim();
+    if (display && display !== matterData.matterId) {
+      return display;
+    }
+    if (display) {
+      return display;
+    }
+    if (matterData.matterId && matterData.matterId !== 'NO_MATTER') {
+      return `Matter ${matterData.matterId}`;
+    }
+    return 'Display number pending';
+  }, [matterData.displayNumber, matterData.matterId]);
+
+  const ensureDisplayNumber = async (matterId: string | undefined, currentDisplay?: string) => {
+    if (!matterId || matterId === 'NO_MATTER') return;
+
+    const trimmedDisplay = (currentDisplay || '').trim();
+    const looksLikeNumeric = trimmedDisplay && /^\d+$/.test(trimmedDisplay);
+    if (trimmedDisplay && !looksLikeNumeric && trimmedDisplay !== matterId) {
+      return;
+    }
+
+    if (fetchedDisplayNumbers.current.has(matterId)) {
+      return;
+    }
+
+    fetchedDisplayNumbers.current.add(matterId);
+
+    try {
+      const resp = await fetch(`/api/matters/${matterId}`);
+      if (!resp.ok) {
+        fetchedDisplayNumbers.current.delete(matterId);
+        throw new Error(await resp.text());
+      }
+      const payload = await resp.json();
+      const refreshedDisplay = payload?.displayNumber || payload?.display_number;
+      if (refreshedDisplay) {
+        setMatterData(prev => (
+          prev.matterId === matterId
+            ? { ...prev, displayNumber: refreshedDisplay }
+            : prev
+        ));
+      }
+    } catch (err) {
+      fetchedDisplayNumbers.current.delete(matterId);
+      console.warn('Failed to refresh Clio display number', matterId, err);
+    }
+  };
   // Matter opening is handled by a dedicated workflow; creation UI removed here
 
   const originDeal: OriginDeal | null = useMemo(() => {
@@ -220,6 +300,9 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
           responsibleSolicitor: matter.ResponsibleSolicitor,
           isLoading: false
         });
+        if (matter?.MatterID && matter?.MatterID !== 'NO_MATTER') {
+          ensureDisplayNumber(matter.MatterID, matter.DisplayNumber);
+        }
         // Load related client IDs from instruction data
         setRelatedClientIds(selectedInstruction.RelatedClientId || '');
       } else if (response.status === 404) {
@@ -264,7 +347,7 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
       if (response.ok) {
         const data = await response.json();
         const matters = Array.isArray(data.matters)
-          ? [...data.matters].sort((a: MatterLike, b: MatterLike) => compareMatters(a, b))
+          ? dedupeClientMatters(data.matters as MatterLike[])
           : [];
         setClientData({
           id: data.client?.id?.toString(),
@@ -307,32 +390,53 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
   };
 
   const buttonStyle = (variant: 'primary' | 'secondary' | 'danger' = 'primary') => {
-    const baseColors = {
-      primary: { bg: colours.blue, hover: '#2563eb' },
-      secondary: { bg: colours.orange, hover: '#ea580c' },
-      danger: { bg: colours.red, hover: '#dc2626' }
+    // More subtle, workbench-integrated styling
+    const getColors = () => {
+      if (variant === 'primary') {
+        return {
+          bg: isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.08)',
+          hover: isDarkMode ? 'rgba(54, 144, 206, 0.25)' : 'rgba(54, 144, 206, 0.12)',
+          text: isDarkMode ? '#87ceeb' : colours.blue,
+          border: isDarkMode ? 'rgba(54, 144, 206, 0.3)' : 'rgba(54, 144, 206, 0.2)'
+        };
+      } else {
+        return {
+          bg: isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(107, 114, 128, 0.06)',
+          hover: isDarkMode ? 'rgba(148, 163, 184, 0.18)' : 'rgba(107, 114, 128, 0.1)',
+          text: isDarkMode ? 'rgba(226, 232, 240, 0.85)' : '#4b5563',
+          border: isDarkMode ? 'rgba(148, 163, 184, 0.25)' : 'rgba(107, 114, 128, 0.15)'
+        };
+      }
     };
     
-    const colors = baseColors[variant];
+    const colors = getColors();
     
     return mergeStyles({
       padding: '8px 12px',
-      borderRadius: 4,
-      border: 'none',
+      borderRadius: 6,
+      border: `1px solid ${colors.border}`,
       background: colors.bg,
-      color: '#ffffff',
+      color: colors.text,
       cursor: 'pointer',
       fontSize: 11,
       fontWeight: 500,
       display: 'flex',
       alignItems: 'center',
       gap: 6,
-      textTransform: 'uppercase',
-      letterSpacing: '0.025em',
-      transition: 'all 0.2s ease',
+      textTransform: 'none',
+      letterSpacing: '0.01em',
+      transition: 'all 0.15s ease',
+      backdropFilter: isDarkMode ? 'blur(8px)' : 'none',
       ':hover': {
         background: colors.hover,
-        transform: 'translateY(-1px)',
+        borderColor: isDarkMode ? 'rgba(54, 144, 206, 0.4)' : 'rgba(54, 144, 206, 0.25)',
+        transform: 'translateY(-0.5px)',
+        boxShadow: isDarkMode 
+          ? '0 4px 12px rgba(0, 0, 0, 0.3)' 
+          : '0 2px 8px rgba(15, 23, 42, 0.08)'
+      },
+      ':active': {
+        transform: 'translateY(0px)',
       },
       ':disabled': {
         opacity: 0.5,
@@ -515,42 +619,83 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
         
         {/* Matter Overview Card */}
         <div className={cardStyle}>
-          <div className={headerStyle}>
-            <span>Matter Overview</span>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '16px'
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {statusIndicator(!!(matterData.matterId && matterData.matterId !== 'NO_MATTER'))}
-              <span style={{ 
-                color: matterStatus.color, 
-                fontSize: 10, 
+              <FontIcon
+                iconName="FabricFolder"
+                style={{ fontSize: '14px', color: isDarkMode ? '#e2e8f0' : '#0f172a' }}
+              />
+              <span style={{
+                fontSize: '14px',
                 fontWeight: 600,
-                textTransform: 'uppercase'
+                color: isDarkMode ? '#e2e8f0' : '#0f172a'
               }}>
-                {matterStatus.label}
+                Active Matter
               </span>
             </div>
+            <span style={{ 
+              color: matterStatus.color, 
+              fontSize: 11, 
+              fontWeight: 500
+            }}>
+              {matterStatus.label}
+            </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>MATTER ID</div>
-                <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                  {(matterData.matterId && matterData.matterId !== 'NO_MATTER') ? matterData.matterId : 'Not assigned'}
-                </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: isDarkMode ? 'rgba(30, 41, 59, 0.55)' : '#f8fafc',
+              border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.24)' : '#e2e8f0'}`
+            }}>
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                backgroundColor: isDarkMode ? '#334155' : '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: `2px solid ${isDarkMode ? colours.dark.border : '#e2e8f0'}`,
+                boxShadow: isDarkMode ? '0 2px 8px rgba(0, 0, 0, 0.35)' : '0 2px 6px rgba(15, 23, 42, 0.08)'
+              }}>
+                <img
+                  src={clioIcon}
+                  alt="Clio Matter"
+                  style={{ width: 20, height: 20, opacity: isDarkMode ? 0.9 : 1 }}
+                />
               </div>
-              <div>
-                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>STATUS</div>
-                <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                  {matterData.status}
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  color: isDarkMode ? '#e2e8f0' : '#0f172a'
+                }}>
+                  {displayNumberLabel}
+                </span>
+                <span style={{
+                  fontSize: '11px',
+                  color: isDarkMode ? 'rgba(226, 232, 240, 0.72)' : colours.greyText
+                }}>
+                  {matterData.status ? `Status: ${matterData.status}` : 'Status unavailable'}
+                </span>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>DISPLAY NUMBER</div>
-                <div style={{ fontSize: 10, fontWeight: 400, color: isDarkMode ? colours.dark.text : '#111827' }}>
-                  {matterData.displayNumber || 'Auto-generated on creation'}
+                <div style={{ fontSize: 9, color: mutedText(isDarkMode), marginBottom: 2 }}>CLIO MATTER ID</div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : '#111827' }}>
+                  {(matterData.matterId && matterData.matterId !== 'NO_MATTER') ? matterData.matterId : 'Not assigned'}
                 </div>
               </div>
               <div>
@@ -610,7 +755,8 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
                     className={buttonStyle('primary')}
                     onClick={handleOpenMatterDashboard}
                   >
-                    📊 View in Clio
+                    <FontIcon iconName="ViewDashboard" style={{ fontSize: '12px' }} />
+                    View in Clio
                   </button>
                   <button
                     className={buttonStyle('secondary')}
@@ -618,7 +764,8 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
                       console.log('Opening matter timeline');
                     }}
                   >
-                    ⏱️ Timeline
+                    <FontIcon iconName="Timeline" style={{ fontSize: '12px' }} />
+                    Timeline
                   </button>
                   <button
                     className={buttonStyle('secondary')}
@@ -626,7 +773,8 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
                       console.log('Opening matter documents');
                     }}
                   >
-                    📄 Documents
+                    <FontIcon iconName="Documentation" style={{ fontSize: '12px' }} />
+                    Documents
                   </button>
                 </div>
               )}
@@ -658,15 +806,24 @@ const MatterOperations: React.FC<MatterOperationsProps> = ({
                     }}>
                       <div>
                         <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#111827', marginBottom: '4px' }}>
-                          {matter.display_number || `Matter ${matter.id}`}
+                          {(() => {
+                            const displayValue = getMatterDisplayNumber(matter);
+                            const matterId = getMatterIdString(matter);
+                            if (displayValue && displayValue !== matterId) {
+                              return displayValue;
+                            }
+                            return matterId ? `Matter ${matterId}` : 'Matter';
+                          })()}
                         </div>
                         <div style={{ color: mutedText(isDarkMode), fontSize: 9 }}>
                           {matter.description || 'No description'}
                         </div>
                       </div>
-                      <div style={{ fontSize: 9, color: mutedText(isDarkMode) }}>
-                        ID: {matter.id}
-                      </div>
+                      {getMatterIdString(matter) && (
+                        <div style={{ fontSize: 9, color: mutedText(isDarkMode) }}>
+                          ID: {getMatterIdString(matter)}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

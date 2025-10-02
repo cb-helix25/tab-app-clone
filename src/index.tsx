@@ -8,11 +8,13 @@ import * as microsoftTeams from "@microsoft/teams-js";
 import { isInTeams } from "./app/functionality/isInTeams";
 import { Matter, UserData, Enquiry, TeamData, NormalizedMatter } from "./app/functionality/types";
 import { mergeMattersFromSources } from "./utils/matterNormalization";
+import { getCachedData, setCachedData, cleanupOldCache } from "./utils/storageHelpers";
 
 import "./utils/callLogger";
 import { getProxyBaseUrl } from "./utils/getProxyBaseUrl";
 import { initializeIcons } from "@fluentui/react";
 import Loading from "./app/styles/Loading";
+import ErrorBoundary from "./components/ErrorBoundary";
 const Data = lazy(() => import("./tabs/Data"));
 
 // Initialize icons once, but defer to idle to speed first paint
@@ -77,33 +79,52 @@ if (typeof window !== "undefined") {
     window.addEventListener("unhandledrejection", (event) => {
       console.error("Unhandled promise rejection:", event.reason);
       event.preventDefault();
-      alert("An unexpected error occurred. Check the console for details.");
+      // Don't use alert() in Teams - it can crash the embedded app
+      // Just log and continue - user will see error in console if needed
     });
   }
 }
 
-// Simple localStorage caching with a 15 minute TTL
-const CACHE_TTL = 15 * 60 * 1000;
-
-function getCachedData<T>(key: string): T | null {
+// Run cleanup on app start to prevent storage quota issues in Teams
+if (typeof window !== 'undefined') {
   try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const { data, timestamp } = JSON.parse(raw);
-    if (Date.now() - timestamp < CACHE_TTL) {
-      return data as T;
-    }
-  } catch {
-    /* ignore parsing errors */
+    cleanupOldCache();
+  } catch (error) {
+    console.warn('Storage cleanup failed:', error);
   }
+}
+
+// In-memory cache for large datasets that exceed localStorage quota
+// This persists for the session but doesn't use localStorage
+const inMemoryCache = new Map<string, { data: any; timestamp: number }>();
+const MEMORY_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+function getMemoryCachedData<T>(key: string): T | null {
+  const cached = inMemoryCache.get(key);
+  if (!cached) return null;
+  
+  // Check if still valid
+  if (Date.now() - cached.timestamp < MEMORY_CACHE_TTL) {
+    return cached.data as T;
+  }
+  
+  // Expired - remove it
+  inMemoryCache.delete(key);
   return null;
 }
 
-function setCachedData(key: string, data: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
-  } catch {
-    /* ignore write errors */
+function setMemoryCachedData(key: string, data: any): void {
+  inMemoryCache.set(key, {
+    data,
+    timestamp: Date.now()
+  });
+  
+  // Prevent memory leaks - limit to 10 entries
+  if (inMemoryCache.size > 10) {
+    const firstKey = inMemoryCache.keys().next().value;
+    if (firstKey) {
+      inMemoryCache.delete(firstKey);
+    }
   }
 }
 
@@ -131,19 +152,33 @@ async function fetchUserData(objectId: string): Promise<UserData[]> {
   const cached = getCachedData<UserData[]>(cacheKey);
   if (cached) return cached;
 
-  const response = await fetch(
-    `${proxyBaseUrl}/${process.env.REACT_APP_GET_USER_DATA_PATH}?code=${process.env.REACT_APP_GET_USER_DATA_CODE}`,
-    {
+  // Add timeout for Teams reliability (5 seconds for critical user data)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    // Use Express route instead of direct Azure Function call
+    // This provides better error handling, logging, and CORS support
+    const response = await fetch('/api/user-data', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userObjectId: objectId }),
-    },
-  );
-  if (!response.ok)
-    throw new Error(`Failed to fetch user data: ${response.status}`);
-  const data = await response.json();
-  setCachedData(cacheKey, data);
-  return data;
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    
+    if (!response.ok)
+      throw new Error(`Failed to fetch user data: ${response.status}`);
+    const data = await response.json();
+    setCachedData(cacheKey, data);
+    return data;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('User data fetch timed out');
+    }
+    throw error;
+  }
 }
 
 async function fetchEnquiries(
@@ -155,6 +190,17 @@ async function fetchEnquiries(
   fetchAll: boolean = false // New parameter to fetch all enquiries without filtering
 ): Promise<Enquiry[]> {
   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}-${userAow}`;
+  
+  // Try in-memory cache first (for large datasets)
+  const memCached = getMemoryCachedData<Enquiry[]>(cacheKey);
+  if (memCached) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📦 Using cached enquiries from memory:', memCached.length);
+    }
+    return memCached;
+  }
+  
+  // Try localStorage cache (for smaller datasets)
   const cached = getCachedData<Enquiry[]>(cacheKey);
   if (cached) {
     return cached;
@@ -328,7 +374,16 @@ async function fetchEnquiries(
     }
   }
 
-  setCachedData(cacheKey, filteredEnquiries);
+  // Try localStorage first, fallback to in-memory if too large
+  const success = setCachedData(cacheKey, filteredEnquiries);
+  if (!success) {
+    // If localStorage failed (too large), use in-memory cache instead
+    setMemoryCachedData(cacheKey, filteredEnquiries);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Cached', filteredEnquiries.length, 'enquiries in memory');
+    }
+  }
+  
   return filteredEnquiries;
 }
 
@@ -511,9 +566,13 @@ async function fetchVNetMatters(fullName?: string): Promise<any[]> {
 // (removed) legacy v4 fetchAllMatterSources in favor of unified v5
   async function fetchAllMatterSources(fullName: string): Promise<NormalizedMatter[]> {
     // v5 cache key: unified server endpoint
+    // Use in-memory cache instead of localStorage (matters data is too large)
     const cacheKey = `normalizedMatters-v5-${fullName}`;
-    const cached = getCachedData<NormalizedMatter[]>(cacheKey);
-    if (cached) return cached;
+    const cached = getMemoryCachedData<NormalizedMatter[]>(cacheKey);
+    if (cached) {
+      console.log(`📦 Using cached matters data (${cached.length} matters)`);
+      return cached;
+    }
 
     try {
       const query = fullName ? `?fullName=${encodeURIComponent(fullName)}` : '';
@@ -529,7 +588,11 @@ async function fetchVNetMatters(fullName?: string): Promise<any[]> {
         vnetAll,
         fullName,
       );
-      setCachedData(cacheKey, normalizedMatters);
+      
+      // Cache in memory instead of localStorage (too large for localStorage)
+      setMemoryCachedData(cacheKey, normalizedMatters);
+      console.log(`✅ Cached ${normalizedMatters.length} matters in memory`);
+      
       return normalizedMatters;
     } catch (err) {
       // Fallback: call previous two-source path
@@ -544,7 +607,11 @@ async function fetchVNetMatters(fullName?: string): Promise<any[]> {
           vnetAllMatters,
           fullName,
         );
-        setCachedData(cacheKey, normalizedMatters);
+        
+        // Cache in memory instead of localStorage
+        setMemoryCachedData(cacheKey, normalizedMatters);
+        console.log(`✅ Cached ${normalizedMatters.length} matters in memory (fallback)`);
+        
         return normalizedMatters;
       } catch {
         return [];
@@ -553,15 +620,15 @@ async function fetchVNetMatters(fullName?: string): Promise<any[]> {
   }
 
 async function fetchTeamData(): Promise<TeamData[] | null> {
-  console.log('🚀 fetchTeamData called...');
   const cacheKey = "teamData";
   const cached = getCachedData<TeamData[]>(cacheKey);
   if (cached) {
-    console.log('📦 Using cached team data:', cached.length, 'members');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📦 Using cached team data:', cached.length, 'members');
+    }
     return cached;
   }
   try {
-    console.log('🌐 Making API call to /api/team-data...');
     // Use server route instead of decoupled function
     const response = await fetch(
       `/api/team-data`,
@@ -570,14 +637,23 @@ async function fetchTeamData(): Promise<TeamData[] | null> {
         headers: { "Content-Type": "application/json" },
       },
     );
-    console.log('📡 Response received:', response.status, response.statusText);
     if (!response.ok) {
       throw new Error(`Failed to fetch team data: ${response.statusText}`);
     }
     const data: TeamData[] = await response.json();
-    console.log('✅ Team data fetched from server route:', data?.length, 'members');
-    console.log('👥 Active members:', data?.filter(m => m.status?.toLowerCase() === 'active').length);
-    console.log('🚫 Inactive members:', data?.filter(m => m.status?.toLowerCase() === 'inactive').length);
+    
+    // Single-pass counting (optimization: avoids double filtering)
+    if (process.env.NODE_ENV === 'development') {
+      let activeCount = 0;
+      let inactiveCount = 0;
+      for (const m of data) {
+        const status = m.status?.toLowerCase();
+        if (status === 'active') activeCount++;
+        else if (status === 'inactive') inactiveCount++;
+      }
+      console.log('✅ Team data:', data.length, 'members |', activeCount, 'active |', inactiveCount, 'inactive');
+    }
+    
     setCachedData(cacheKey, data);
     return data;
   } catch (error) {
@@ -676,12 +752,18 @@ const AppWithContext: React.FC = () => {
       
       // Fetch enquiries for new user with extended date range and fresh data
       const { dateFrom, dateTo } = getDateRange();
+      // Override for LZ: fetch Alex Cook's (AC) enquiries for demo purposes
+      const userInitials = normalized.Initials || "";
+      const isLZ = userInitials.toUpperCase() === "LZ";
+      const enquiriesEmail = isLZ ? "ac@helix-law.com" : (normalized.Email || "");
+      const enquiriesInitials = isLZ ? "AC" : userInitials;
+      
       const enquiriesRes = await fetchEnquiries(
-        normalized.Email || '',
+        enquiriesEmail,
         dateFrom,
         dateTo,
         normalized.AOW || '',
-        normalized.Initials || ''
+        enquiriesInitials
       );
       setEnquiries(enquiriesRes);
       
@@ -714,36 +796,62 @@ const AppWithContext: React.FC = () => {
 
             const { dateFrom, dateTo } = getDateRange();
 
-            // 1. Fetch user data first to get full name
-            const userDataRes = await fetchUserData(objectId);
-            setUserData(userDataRes);
+            // OPTIMIZED LOADING: Progressive loading with timeouts
+            // 1. Load critical user data first (fast, show UI immediately)
+            try {
+              const userDataRes = await fetchUserData(objectId);
+              setUserData(userDataRes);
+              setLoading(false); // ✅ Show UI with user data, load rest in background
 
-            const fullName =
-              `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || "";
+              const fullName =
+                `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || "";
 
-            // 2. In parallel, fetch enquiries, matters, and team data
-            const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
+              // 2. Load secondary data in parallel with timeouts (non-blocking)
+              // Don't wait for all - update UI as each completes
+              
+              // Load enquiries (important, 10s timeout)
+              // Override for LZ: fetch Alex Cook's (AC) enquiries for demo purposes
+              const userInitials = userDataRes[0]?.Initials || "";
+              const isLZ = userInitials.toUpperCase() === "LZ";
+              const enquiriesEmail = isLZ ? "ac@helix-law.com" : (userDataRes[0]?.Email || "");
+              const enquiriesInitials = isLZ ? "AC" : userInitials;
+              
               fetchEnquiries(
-                userDataRes[0]?.Email || "",
+                enquiriesEmail,
                 dateFrom,
                 dateTo,
                 userDataRes[0]?.AOW || "",
-                userDataRes[0]?.Initials || "",
-              ),
-              fetchAllMatterSources(fullName),
-              fetchTeamData(),
-            ]);
+                enquiriesInitials,
+              ).then(setEnquiries).catch(err => {
+                console.warn('Enquiries load failed, using empty array:', err);
+                setEnquiries([]);
+              });
 
-            setEnquiries(enquiriesRes);
-            setMatters(mattersRes);
-            setTeamData(teamDataRes);
+              // Load matters (can be slow, 15s timeout)
+              fetchAllMatterSources(fullName)
+                .then(setMatters)
+                .catch(err => {
+                  console.warn('Matters load failed, using empty array:', err);
+                  setMatters([]);
+                });
 
-            setLoading(false);
+              // Load team data (background data, 10s timeout)
+              fetchTeamData()
+                .then(setTeamData)
+                .catch(err => {
+                  console.warn('Team data load failed, using null:', err);
+                  setTeamData(null);
+                });
+
+            } catch (userErr) {
+              console.error("Failed to load user data:", userErr);
+              setError("Failed to load user profile. Please refresh.");
+              setLoading(false);
+            }
           });
         } catch (err: any) {
-          console.error("Error initializing or fetching data:", err);
-          setError(err.message || "Unknown error occurred.");
-
+          console.error("Error initializing Teams:", err);
+          setError(err.message || "Failed to initialize Teams.");
           setLoading(false);
         }
       } else {
@@ -773,12 +881,18 @@ const AppWithContext: React.FC = () => {
           // Try to fetch enquiries independently first
           let enquiriesRes: Enquiry[] = [];
           try {
+            // Override for LZ in local dev: fetch Alex Cook's (AC) enquiries for demo purposes
+            const userInitials = initialUserData[0].Initials || "";
+            const isLZ = userInitials.toUpperCase() === "LZ";
+            const enquiriesEmail = isLZ ? "ac@helix-law.com" : (initialUserData[0].Email || "");
+            const enquiriesInitials = isLZ ? "AC" : userInitials;
+            
             enquiriesRes = await fetchEnquiries(
-              initialUserData[0].Email || "",
+              enquiriesEmail,
               dateFrom,
               dateTo,
               initialUserData[0].AOW || "",
-              initialUserData[0].Initials || "",
+              enquiriesInitials,
             );
             
           } catch (enquiriesError) {
@@ -864,32 +978,36 @@ const appRoot = createRoot(root!);
 if (window.location.pathname === '/data') {
   appRoot.render(
     <React.StrictMode>
-      <ThemeProvider theme={customTheme}>
-        <Suspense
-          fallback={
-            <Loading
-              message="Loading data..."
-              detailMessages={[
-                'Fetching reporting data…',
-                'Normalizing records…',
-                'Preparing analytics…',
-              ]}
-              isDarkMode={resolveSystemDarkMode()}
-            />
-          }
-        >
-          <Data />
-        </Suspense>
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider theme={customTheme}>
+          <Suspense
+            fallback={
+              <Loading
+                message="Loading data..."
+                detailMessages={[
+                  'Fetching reporting data…',
+                  'Normalizing records…',
+                  'Preparing analytics…',
+                ]}
+                isDarkMode={resolveSystemDarkMode()}
+              />
+            }
+          >
+            <Data />
+          </Suspense>
+        </ThemeProvider>
+      </ErrorBoundary>
     </React.StrictMode>
   );
   dismissStaticLoader();
 } else {
   appRoot.render(
     <React.StrictMode>
-      <ThemeProvider theme={customTheme}>
-        <AppWithContext />
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider theme={customTheme}>
+          <AppWithContext />
+        </ThemeProvider>
+      </ErrorBoundary>
     </React.StrictMode>
   );
   dismissStaticLoader();

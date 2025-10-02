@@ -143,6 +143,8 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
 
   // Environment Variables
   const proxyBaseUrl = getProxyBaseUrl();
+  // NOTE: getUserData now uses Express route /api/user-data instead of direct function call
+  // Keeping these variables for now in case other parts of the file still reference them
   const getUserDataCode = process.env.REACT_APP_GET_USER_DATA_CODE;
   const getUserDataPath = process.env.REACT_APP_GET_USER_DATA_PATH;
   const getEnquiriesCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;
@@ -150,15 +152,16 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
   // Remove client dependency on function codes for matters
 
   // Construct URLs
-  const getUserDataUrl = `${proxyBaseUrl}/${getUserDataPath}?code=${getUserDataCode}`;
+  const getUserDataUrl = `${proxyBaseUrl}/${getUserDataPath}?code=${getUserDataCode}`; // Legacy - no longer used
   const getEnquiriesUrl = `${proxyBaseUrl}/${getEnquiriesPath}?code=${getEnquiriesCode}`;
   const getMattersUrl = '/api/getMatters';
 
   // Fetch User Data on Context Change
   const fetchUserData = useCallback(async (objectId: string): Promise<any> => {
     try {
-      console.log('Fetching user data for object ID:', objectId);
-      const response = await fetch(getUserDataUrl, {
+      // Use Express route instead of direct Azure Function call
+      // This provides better error handling, logging, and CORS support
+      const response = await fetch('/api/user-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userObjectId: objectId }),
@@ -169,7 +172,9 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log('User Data:', data);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('User Data fetched:', data?.length || 0, 'records');
+      }
       setSqlData(data); // Assuming user data is set here
       return data;
     } catch (error) {
@@ -177,7 +182,7 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
       setFetchUserDataError('Failed to fetch user data.');
       return {};
     }
-  }, [getUserDataUrl]);
+  }, []); // Removed getUserDataUrl dependency since we use static route now
 
   // Function to fetch Enquiries
   const fetchEnquiries = useCallback(

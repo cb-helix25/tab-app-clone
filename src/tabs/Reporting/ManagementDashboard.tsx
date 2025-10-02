@@ -769,39 +769,19 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   ), [matters, activeStart, activeEnd]);
 
   const filteredWip = useMemo(() => {
-    // Debug: Check first few WIP entries
-    const sampleWip = wip.slice(0, 5);
-    console.log('📋 Sample WIP entries:', sampleWip.map(e => ({
-      date: e.date,
-      created_at: e.created_at,
-      hours: e.quantity_in_hours,
-      parsed: parseDateValue(e.date || e.created_at)?.toISOString().split('T')[0]
-    })));
-    
-    // Check for entries with date field (our Clio entries)
-    const withDateField = wip.filter(e => e.date).slice(0, 3);
-    console.log('📅 Entries with date field:', withDateField.map(e => ({
-      date: e.date,
-      created_at: e.created_at,
-      hours: e.quantity_in_hours
-    })));
+    // OPTIMIZED: Cache range timestamps to avoid repeated Date operations
+    const startTime = activeStart.getTime();
+    const endTime = activeEnd.getTime();
     
     const filtered = wip.filter((entry) => {
       // Prefer date field (YYYY-MM-DD from Clio) over created_at for more accurate filtering
       const dateValue = entry.date || entry.created_at;
       const parsed = parseDateValue(dateValue);
-      const inRange = withinRange(parsed);
-      return inRange;
-    });
-    
-    // Debug: Log WIP filtering for current range
-    console.log('🔍 WIP Filtering:', {
-      totalWip: wip.length,
-      filtered: filtered.length,
-      rangeStart: activeStart.toISOString().split('T')[0],
-      rangeEnd: activeEnd.toISOString().split('T')[0],
-      sampleFiltered: filtered.slice(0, 3).map(e => ({ date: e.date, created_at: e.created_at, hours: e.quantity_in_hours })),
-      totalHours: filtered.reduce((sum, e) => sum + (e.quantity_in_hours || 0), 0)
+      if (!parsed) return false;
+      
+      // Direct time comparison (faster than withinRange function call)
+      const time = parsed.getTime();
+      return time >= startTime && time <= endTime;
     });
     
     return filtered;
@@ -839,6 +819,107 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
     ? teamMembers.filter((member) => selectedTeams.includes(member.initials))
     : teamMembers;
 
+  // OPTIMIZATION: Pre-index all large datasets to avoid repeated filtering
+  
+  // Index WIP by Clio ID (156k+ entries)
+  const wipByClioId = useMemo(() => {
+    const index = new Map<string, typeof filteredWip>();
+    filteredWip.forEach((record) => {
+      const clioId = record.user_id != null 
+        ? String(record.user_id) 
+        : record.user?.id != null 
+          ? String(record.user.id) 
+          : null;
+      if (clioId) {
+        if (!index.has(clioId)) {
+          index.set(clioId, []);
+        }
+        index.get(clioId)!.push(record);
+      }
+    });
+    return index;
+  }, [filteredWip]);
+
+  // Index Fees by Clio ID
+  const feesByClioId = useMemo(() => {
+    const index = new Map<string, typeof filteredFees>();
+    filteredFees.forEach((record) => {
+      const clioId = String(record.user_id ?? '');
+      if (clioId) {
+        if (!index.has(clioId)) {
+          index.set(clioId, []);
+        }
+        index.get(clioId)!.push(record);
+      }
+    });
+    return index;
+  }, [filteredFees]);
+
+  // Index Enquiries by email and initials (1172 enquiries)
+  const enquiriesByContact = useMemo(() => {
+    const byEmail = new Map<string, typeof filteredEnquiries>();
+    const byInitials = new Map<string, typeof filteredEnquiries>();
+    
+    filteredEnquiries.forEach((enquiry) => {
+      // Index by email
+      if (typeof enquiry.Point_of_Contact === 'string') {
+        const email = enquiry.Point_of_Contact.toLowerCase();
+        if (!byEmail.has(email)) {
+          byEmail.set(email, []);
+        }
+        byEmail.get(email)!.push(enquiry);
+      }
+      
+      // Index by initials (for fallback matching)
+      const poc = String(enquiry.Point_of_Contact || '').toUpperCase();
+      if (poc && poc.length <= 4) { // Likely initials
+        if (!byInitials.has(poc)) {
+          byInitials.set(poc, []);
+        }
+        byInitials.get(poc)!.push(enquiry);
+      }
+    });
+    
+    return { byEmail, byInitials };
+  }, [filteredEnquiries]);
+
+  // Index Matters by normalized solicitor name (5594 matters)
+  // OPTIMIZED: Use more efficient Map operations
+  const mattersBySolicitor = useMemo(() => {
+    const index = new Map<string, typeof filteredMatters>();
+    
+    filteredMatters.forEach((matter) => {
+      const rawOriginating = mapNameIfNeeded((matter as any)['Originating Solicitor'] ?? (matter as any).OriginatingSolicitor);
+      const rawResponsible = mapNameIfNeeded((matter as any)['Responsible Solicitor'] ?? (matter as any).ResponsibleSolicitor);
+      
+      // Normalize once per matter (cached by normalizePersonName)
+      const normalizedOriginating = normalizeName(rawOriginating);
+      const normalizedResponsible = normalizeName(rawResponsible);
+      
+      // Index by originating solicitor - use || assignment for efficiency
+      if (normalizedOriginating) {
+        const arr = index.get(normalizedOriginating);
+        if (arr) {
+          arr.push(matter);
+        } else {
+          index.set(normalizedOriginating, [matter]);
+        }
+      }
+      
+      // Index by responsible solicitor
+      if (normalizedResponsible) {
+        const arr = index.get(normalizedResponsible);
+        if (arr) {
+          arr.push(matter);
+        } else {
+          index.set(normalizedResponsible, [matter]);
+        }
+      }
+    });
+    
+    return index;
+  }, [filteredMatters]);
+
   const metricsByMember: MemberMetrics[] = useMemo(() => (
     visibleMembers.map((member) => {
       const memberEmail = (member.record as Record<string, unknown>)['Email']
@@ -848,37 +929,25 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
         ? String((member.record as Record<string, unknown>)['Full Name'])
         : member.display;
 
-      // Enquiries: prefer email equality when available; otherwise fallback to initials containment
-      const enquiriesForMember = filteredEnquiries.filter((enquiry) => {
-        if (memberEmail && typeof enquiry.Point_of_Contact === 'string') {
-          return enquiry.Point_of_Contact.toLowerCase() === memberEmail;
-        }
-        return enquiriesHandledBy(enquiry, member.initials);
-      });
+      // OPTIMIZED: Use pre-indexed enquiries lookup
+      let enquiriesForMember: typeof filteredEnquiries = [];
+      if (memberEmail) {
+        // Primary: lookup by email (O(1))
+        enquiriesForMember = enquiriesByContact.byEmail.get(memberEmail) || [];
+      } else {
+        // Fallback: lookup by initials (O(1))
+        enquiriesForMember = enquiriesByContact.byInitials.get(member.initials.toUpperCase()) || [];
+      }
 
-      // Matters: match by normalized full name against Originating/Responsible Solicitor with legacy name map
+      // OPTIMIZED: Use pre-indexed matters lookup with normalized name (O(1))
       const normalizedMemberName = normalizeName(memberFullName);
-      const mattersForMember = filteredMatters.filter((m) => {
-        const rawOriginating = mapNameIfNeeded((m as any)['Originating Solicitor'] ?? (m as any).OriginatingSolicitor);
-        const rawResponsible = mapNameIfNeeded((m as any)['Responsible Solicitor'] ?? (m as any).ResponsibleSolicitor);
-        const normalizedOriginating = normalizeName(rawOriginating);
-        const normalizedResponsible = normalizeName(rawResponsible);
-        return (
-          normalizedMemberName !== '' &&
-          (normalizedOriginating === normalizedMemberName || normalizedResponsible === normalizedMemberName)
-        );
-      });
+      const mattersForMember = normalizedMemberName 
+        ? (mattersBySolicitor.get(normalizedMemberName) || [])
+        : [];
 
-      // WIP: support DB shape (user_id) and Clio API shape (user.id)
-      const wipForMember = filteredWip.filter((record) => {
-        if (!member.clioId) return false;
-        const flat = record.user_id != null ? String(record.user_id) : undefined;
-        const nested = record.user?.id != null ? String(record.user.id) : undefined;
-        return flat === member.clioId || nested === member.clioId;
-      });
-      const feesForMember = filteredFees.filter((record) => (
-        member.clioId ? String(record.user_id ?? '') === member.clioId : false
-      ));
+      // OPTIMIZED: Use pre-indexed lookups instead of filtering 156k+ entries
+      const wipForMember = member.clioId ? (wipByClioId.get(member.clioId) || []) : [];
+      const feesForMember = member.clioId ? (feesByClioId.get(member.clioId) || []) : [];
       const wipHours = wipForMember.reduce((total, record) => total + safeNumber(record.quantity_in_hours), 0);
       const targetHours = startDate && endDate ? calculateTargetHours(startDate, endDate, member.initials) : 0;
       
@@ -924,7 +993,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
         trendDirection,
       } as MemberMetrics;
     })
-  ), [visibleMembers, filteredEnquiries, filteredMatters, filteredWip, filteredFees]);
+  ), [visibleMembers, enquiriesByContact, mattersBySolicitor, wipByClioId, feesByClioId]);
 
   // Sort the metrics by the selected column and direction
   const sortedMetricsByMember = useMemo(() => {

@@ -121,7 +121,34 @@ router.get('/:id', async (req, res) => {
         });
         if (!resp.ok) throw new Error(await resp.text());
         const data = await resp.json();
-        res.json({ display_number: data?.data?.display_number || '' });
+        const matterData = data?.data || {};
+        const displayNumber = matterData.display_number || matterData.number || '';
+        const matterNumber = matterData.number || '';
+
+        if (displayNumber) {
+            try {
+                const db = await initializeDatabase();
+                await db.request()
+                    .input('matterID', sql.NVarChar(255), id)
+                    .input('displayNumber', sql.NVarChar(255), displayNumber)
+                    .query(`
+                        UPDATE Matters
+                        SET DisplayNumber = @displayNumber
+                        WHERE MatterID = @matterID
+                          AND (DisplayNumber IS NULL OR DisplayNumber = '' OR DisplayNumber <> @displayNumber)
+                    `);
+            } catch (dbErr) {
+                console.warn('Failed to persist display number for matter', id, dbErr?.message || dbErr);
+            }
+        }
+
+        res.json({
+            ok: true,
+            matterId: id,
+            displayNumber,
+            display_number: displayNumber,
+            number: matterNumber
+        });
     } catch (err) {
         console.error('Matter proxy failed', err);
         res.status(500).json({ error: 'Failed to fetch matter' });

@@ -241,6 +241,85 @@ router.get('/client/:clientId', async (req, res) => {
     }
 });
 
+/**
+ * Get custom field values for a specific client by Clio client ID
+ * Used for fetching custom field data to display additional client information
+ */
+router.get('/client/:clientId/custom-fields', async (req, res) => {
+    const { clientId } = req.params;
+    const { initials } = req.query;
+    
+    if (!clientId || !initials) {
+        return res.status(400).json({ error: 'Missing clientId or initials parameter' });
+    }
+
+    console.log(`Fetching custom fields for client ID: ${clientId}, initials: ${initials}`);
+
+    try {
+        // Fetch Clio credentials
+        const clioClientId = await getSecret(`${initials.toLowerCase()}-clio-v1-clientid`);
+        const clientSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientsecret`);
+        const refreshToken = await getSecret(`${initials.toLowerCase()}-clio-v1-refreshtoken`);
+
+        if (!clioClientId || !clientSecret || !refreshToken) {
+            console.error('Clio credentials not found for user');
+            return res.status(500).json({ error: 'Clio credentials not found for user' });
+        }
+
+        // Refresh access token
+        const tokenUrl = `https://eu.app.clio.com/oauth/token?client_id=${clioClientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
+        const tokenResp = await fetch(tokenUrl, { method: 'POST' });
+        
+        if (!tokenResp.ok) {
+            const tokenError = await tokenResp.text();
+            console.error('Clio token refresh failed', tokenError);
+            return res.status(500).json({ error: 'Token refresh failed' });
+        }
+
+        const tokenData = await tokenResp.json();
+        const accessToken = tokenData.access_token;
+
+        // Get client with custom field values from Clio
+        const clientUrl = `https://eu.app.clio.com/api/v4/contacts/${clientId}?fields=custom_field_values{id,field_name,value}`;
+        
+        console.log(`Fetching custom fields from: ${clientUrl}`);
+        
+        const clientResp = await fetch(clientUrl, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!clientResp.ok) {
+            if (clientResp.status === 404) {
+                console.error('Client not found in Clio');
+                return res.status(404).json({ error: 'Client not found in Clio' });
+            }
+            const clientError = await clientResp.text();
+            console.error('Clio custom fields fetch failed', clientError);
+            return res.status(500).json({ error: 'Failed to fetch custom fields from Clio' });
+        }
+
+        const clientData = await clientResp.json();
+        console.log(`Custom fields data:`, JSON.stringify(clientData, null, 2));
+        
+        const customFieldValues = clientData.data?.custom_field_values || [];
+
+        res.json({
+            success: true,
+            custom_field_values: customFieldValues
+        });
+
+    } catch (err) {
+        console.error('Clio custom fields fetch error', err);
+        res.status(500).json({ 
+            error: 'Failed to fetch custom fields from Clio', 
+            details: err.message 
+        });
+    }
+});
+
 // Quick search test endpoint (no filtering)
 router.get('/search-raw', async (req, res) => {
     const { email, initials } = req.query;
