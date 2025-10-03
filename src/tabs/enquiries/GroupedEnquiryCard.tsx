@@ -297,7 +297,7 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry,
           </div>
         </div>
         <div>
-          <div className={metaStyle}>{latestEnquiry.Area_of_Work}</div>
+          <div className={metaStyle}>{latestEnquiry.Area_of_Work?.toLowerCase().includes('other') || latestEnquiry.Area_of_Work?.toLowerCase().includes('unsure') ? 'Other' : latestEnquiry.Area_of_Work}</div>
           {latestEnquiry.Type_of_Work && (
             <Text variant="small" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text, fontSize: 13, opacity: .7 } }}>{latestEnquiry.Type_of_Work}</Text>
           )}

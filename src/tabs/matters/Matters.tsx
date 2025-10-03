@@ -127,6 +127,72 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
     return matters.filter(m => allowedSources.has(m.dataSource)).length;
   }, [matters, useNewData, isAdmin]);
 
+  // Pre-compute scope counts for a compact scope control with badges
+  const scopeCounts = useMemo(() => {
+    const effectiveUseNew = isAdmin ? useNewData : false;
+    const allowedSources = new Set<string>([
+      ...(effectiveUseNew ? ['vnet_direct'] : ['legacy_all', 'legacy_user']),
+    ]);
+
+    // Base after sources
+    let base = matters.filter(m => allowedSources.has(m.dataSource));
+
+    // Apply status filter
+    if (activeFilter === 'Matter Requests') {
+      base = base.filter(m => (m.originalStatus || '').toLowerCase() === 'matterrequest');
+    } else if (activeFilter !== 'All') {
+      base = filterMattersByStatus(base, activeFilter.toLowerCase() as any);
+    }
+
+    // Apply area filter
+    base = filterMattersByArea(base, activeAreaFilter);
+
+    // Apply role filter
+    if (activeRoleFilter !== 'All') {
+      const allowedRoles = activeRoleFilter === 'Responsible' ? ['responsible'] :
+                          activeRoleFilter === 'Originating' ? ['originating'] :
+                          ['responsible', 'originating'];
+      base = filterMattersByRole(base, allowedRoles as any);
+    }
+
+    // Apply search
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      base = base.filter((m) =>
+        m.clientName?.toLowerCase().includes(term) ||
+        m.displayNumber?.toLowerCase().includes(term) ||
+        m.description?.toLowerCase().includes(term) ||
+        m.practiceArea?.toLowerCase().includes(term)
+      );
+    }
+
+    // Counts per scope
+    const mineList = (() => {
+      let arr = applyAdminFilter(base, false, userFullName || '', userRole || '');
+      if (effectiveUseNew) {
+        arr = arr.filter(m => m.role === 'responsible' || m.role === 'both');
+      }
+      return arr;
+    })();
+
+    const allList = applyAdminFilter(base, true, userFullName || '', userRole || '');
+
+    return {
+      mine: mineList.length,
+      all: allList.length,
+    };
+  }, [
+    matters,
+    useNewData,
+    isAdmin,
+    activeFilter,
+    activeAreaFilter,
+    activeRoleFilter,
+    searchTerm,
+    userFullName,
+    userRole,
+  ]);
+
   // Get unique practice areas for filtering
   const availableAreas = useMemo(() => {
     return getUniquePracticeAreas(matters);
@@ -138,14 +204,15 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   useEffect(() => {
     if (!selected) {
       console.log('🔄 Setting new FilterBanner content for Matters');
-      const filterOptions = isAdmin ? ['All', 'Active', 'Closed', 'Matter Requests'] : ['All', 'Active', 'Closed'];
+      const filterOptions = isAdmin ? ['All', 'Active', 'Closed', 'Requests'] : ['All', 'Active', 'Closed'];
       setContent(
         <FilterBanner
           seamless
+          dense
           primaryFilter={{
             value: activeFilter,
             onChange: setActiveFilter,
-            options: filterOptions.map(o => ({ key: o, label: o })),
+            options: filterOptions.map(o => ({ key: o === 'Requests' ? 'Matter Requests' : o, label: o })),
             ariaLabel: "Filter matters by status"
           }}
           secondaryFilter={{
@@ -157,23 +224,23 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
           search={{
             value: searchTerm,
             onChange: setSearchTerm,
-            placeholder: "Search matters..."
+            placeholder: "Search…"
           }}
         >
           {/* Area dropdown - scalable for many areas */}
           {availableAreas.length > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 500, color: isDarkMode ? colours.dark.text : colours.light.text }}>Area:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : colours.light.text }}>Area:</span>
               <select
                 value={activeAreaFilter}
                 onChange={(e) => setActiveAreaFilter(e.target.value)}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: '12px',
+                  padding: '4px 10px',
+                  borderRadius: 10,
                   border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
                   background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
                   color: isDarkMode ? colours.dark.text : colours.light.text,
-                  fontSize: '12px',
+                  fontSize: 12,
                   fontFamily: 'Raleway, sans-serif',
                   minWidth: '120px'
                 }}
@@ -187,7 +254,7 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
           )}
 
           {/* Scope + Layout (moved out of admin panel) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, transform: 'scale(0.96)', transformOrigin: 'left center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : colours.light.text }}>Scope:</span>
               <SegmentedControl
@@ -196,12 +263,12 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                 value={scope}
                 onChange={(k) => setScope(k as 'mine' | 'all')}
                 options={[
-                  { key: 'mine', label: 'Mine' },
-                  { key: 'all', label: 'All', disabled: !isAdmin }
+                  { key: 'mine', label: 'Mine', badge: scopeCounts.mine },
+                  { key: 'all', label: 'All', badge: scopeCounts.all, disabled: !isAdmin }
                 ]}
               />
             </div>
-            <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.1)' }} />
+            <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.12)' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 11, fontWeight: 500, color: isDarkMode ? colours.dark.text : colours.light.text }}>Layout:</span>
               <SegmentedControl
@@ -210,37 +277,37 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                 value={twoColumn ? 'two' : 'one'}
                 onChange={(k) => setTwoColumn(k === 'two')}
                 options={[
-                  { key: 'one', label: '1 col' },
-                  { key: 'two', label: '2 col' }
+                  { key: 'one', label: '1' },
+                  { key: 'two', label: '2' }
                 ]}
               />
             </div>
           </div>
           {/* Admin controls (debug + data toggle) for admin or localhost */}
           {(isAdmin || isLocalhost) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 6 }}>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  padding: '2px 10px 2px 6px',
-                  height: 40,
-                  borderRadius: 12,
+                  gap: 8,
+                  padding: '2px 8px',
+                  height: 32,
+                  borderRadius: 10,
                   background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
                   border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: 600,
                   color: isDarkMode ? '#ffe9a3' : '#5d4700'
                 }}
                 title="Admin Debugger (alex, luke, cass only)"
               >
-                <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700', marginRight: 4 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700', marginRight: 4 }}>
                   Admin Only
                 </span>
-                <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>Showing {filtered.length}/{datasetCount}</span>
-                <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.15)' }} />
+                <span style={{ fontSize: 10, whiteSpace: 'nowrap' }}>Showing {filtered.length}/{datasetCount}</span>
+                <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.2)' }} />
                 {/* Debugger button removed */}
                 <ToggleSwitch
                   id="matters-new-data-toggle"

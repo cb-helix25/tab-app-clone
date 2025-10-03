@@ -8,6 +8,15 @@ router.get('/', async (req, res) => {
   try {
   // Unified enquiries route called
 
+    // Parse query parameters for filtering and pagination
+    const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 2500); // Default 1000, max 2500
+    const email = (req.query.email || '').trim().toLowerCase();
+    const initials = (req.query.initials || '').trim().toLowerCase();
+    const includeTeamInbox = String(req.query.includeTeamInbox || 'true').toLowerCase() === 'true';
+    const fetchAll = String(req.query.fetchAll || 'false').toLowerCase() === 'true';
+    const dateFrom = req.query.dateFrom || '';
+    const dateTo = req.query.dateTo || '';
+
     // Connection strings for both databases
     const mainConnectionString = process.env.SQL_CONNECTION_STRING; // helix-core-data
     const instructionsConnectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING; // instructions DB
@@ -25,8 +34,54 @@ router.get('/', async (req, res) => {
     
     // Sequential database queries to avoid overwhelming connections
     const mainEnquiries = await withRequest(mainConnectionString, async (request) => {
+      // Build WHERE clause dynamically
+      const filters = [];
+      
+      // Date range filtering
+      if (dateFrom) {
+        request.input('dateFrom', sql.DateTime2, new Date(dateFrom));
+        filters.push('Date_Created >= @dateFrom');
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        request.input('dateTo', sql.DateTime2, endDate);
+        filters.push('Date_Created <= @dateTo');
+      }
+
+      // User filtering (unless fetchAll is true)
+      if (!fetchAll && (email || initials)) {
+        const pocConditions = [];
+        
+        if (email) {
+          request.input('userEmail', sql.VarChar(255), email);
+          pocConditions.push("LOWER(LTRIM(RTRIM(Point_of_Contact))) = @userEmail");
+        }
+        
+        if (initials) {
+          request.input('userInitials', sql.VarChar(50), initials.replace(/\./g, ''));
+          pocConditions.push(
+            "LOWER(REPLACE(REPLACE(LTRIM(RTRIM(Point_of_Contact)), ' ', ''), '.', '')) = @userInitials"
+          );
+        }
+
+        if (includeTeamInbox) {
+          pocConditions.push("LOWER(LTRIM(RTRIM(Point_of_Contact))) IN ('team@helix-law.com', 'team', 'team inbox')");
+        }
+
+        if (pocConditions.length > 0) {
+          filters.push(`(${pocConditions.join(' OR ')})`);
+        }
+      }
+
+      request.input('limit', sql.Int, limit);
+      
+      const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+
+      console.log(`📊 Enquiries query: limit=${limit}, filters=${filters.length}, fetchAll=${fetchAll}`);
+
       const result = await request.query(`
-        SELECT 
+        SELECT TOP (@limit)
           ID,
           ID as id,
           Date_Created as datetime,
@@ -57,8 +112,11 @@ router.get('/', async (req, res) => {
           GCLID as gclid,
           'main' as db_source
         FROM enquiries
+        ${whereClause}
         ORDER BY Date_Created DESC
       `);
+      console.log(`✅ Retrieved ${result.recordset?.length || 0} enquiries from main DB`);
+      return Array.isArray(result.recordset) ? result.recordset : [];
       return Array.isArray(result.recordset) ? result.recordset : [];
     });
 
@@ -93,9 +151,7 @@ router.get('/', async (req, res) => {
     }
 
   // Unified result prepared
-    
-    // Return data in expected format
-    res.json({
+    const responsePayload = {
       enquiries: uniqueEnquiries,
       count: uniqueEnquiries.length,
       sources: {
@@ -103,7 +159,14 @@ router.get('/', async (req, res) => {
         instructions: instructionsEnquiries.length,
         unique: uniqueEnquiries.length
       }
-    });
+    };
+    
+    const payloadSize = JSON.stringify(responsePayload).length;
+    const payloadMB = (payloadSize / 1024 / 1024).toFixed(2);
+    console.log(`📦 Response: ${uniqueEnquiries.length} enquiries, ${payloadMB}MB payload`);
+    
+    // Return data in expected format
+    res.json(responsePayload);
     
     // Connection cleanup handled automatically by withRequest utility
     

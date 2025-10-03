@@ -138,21 +138,39 @@
 }
 
 /* Filter Section */
-.filter-section {
+.filter-toolbar {
   width: 100%;
   animation: slideInFromLeft 0.6s ease-out forwards;
-  gap: 8px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
-.date-filter-wrapper {
+.filter-toolbar__top {
   display: flex;
-  align-items: flex-start; /* avoid stretching children which makes buttons look fat when wrapped */
-  gap: 8px;
-  position: relative;
-  z-index: 2;
   flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.filter-toolbar__middle {
+  display: flex;
+  width: 100%;
+}
+
+.filter-toolbar__date-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  flex: 1;
+}
+
+.date-stamp-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .date-pickers {
@@ -161,62 +179,240 @@
   gap: 8px;
 }
 
-.date-range-buttons {
-  flex: 1;
+.filter-toolbar__presets {
   display: flex;
-  justify-content: flex-start;
+  flex: 1;
+}
+
+.filter-preset-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  width: 100%;
-  align-items: flex-start; /* keep wrapped rows compact */
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  row-gap: 8px;
+  flex: 1;
 }
 
-.date-range-buttons .ms-Stack {
-  width: 100%;
+.management-dashboard-container.light-theme .filter-preset-group {
+  background: rgba(248, 250, 252, 0.6);
+  border-color: rgba(148, 163, 184, 0.22);
 }
 
-.date-range-buttons .ms-Button {
-  flex: 1 1 auto;
+.management-dashboard-container.dark-theme .filter-preset-group {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.preset-separator {
+  color: rgba(148, 163, 184, 0.5);
+  font-size: 16px;
+  font-weight: 300;
+  padding: 0 4px;
+  user-select: none;
+}
+
+.filter-toolbar__presets .ms-Stack {
+  width: auto;
+}
+
+.filter-toolbar__presets .ms-Button {
+  flex: 0 0 auto;
   min-width: 0;
-  height: 32px;            /* lock height so wrapped rows don't get tall */
+  height: 32px;
   min-height: 32px;
 }
 
-/* ensure label vertically centers within fixed-height buttons */
-.date-range-buttons .ms-Button .ms-Button-label {
-  line-height: 32px;
+.filter-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
-.date-range-buttons .ms-Button.unselected {
-  background: #e9ecef;
-  color: #333;
+.filter-toolbar__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+  align-items: flex-start;
 }
 
-.date-range-buttons .ms-Button.unselected:hover {
-  background: #dee2e6;
+.filter-toolbar__roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+  align-items: flex-start;
 }
 
-.date-range-buttons .ms-Button.selected {
+.filter-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.filter-status-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'Raleway', sans-serif;
+  letter-spacing: 0.02em;
+  user-select: none;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid transparent;
+}
+
+.management-dashboard-container.light-theme .filter-status-chip {
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.management-dashboard-container.dark-theme .filter-status-chip {
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.filter-status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.management-dashboard-container.light-theme .filter-status-indicator {
   background: #3690ce;
-  color: #fff;
 }
 
-.date-range-buttons .ms-Button.selected:hover {
-  background: #3690ce;
+.management-dashboard-container.dark-theme .filter-status-indicator {
+  background: #60a5fa;
 }
 
-.vertical-separator {
-  width: 1px;
-  background: #e9ecef;
-  margin: 0 10px;
+.filter-icon-button-wrapper {
+  position: relative;
+}
+
+.filter-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.filter-icon-button:hover {
+  background: rgba(248, 250, 252, 1);
+  transform: translateY(-1px);
+}
+
+.filter-icon-button:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+  background: rgba(226, 232, 240, 0.6);
+  color: rgba(100, 116, 139, 0.6);
+}
+
+.management-dashboard-container.dark-theme .filter-icon-button {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+}
+
+.management-dashboard-container.dark-theme .filter-icon-button:hover {
+  background: rgba(51, 65, 85, 0.9);
+}
+
+.management-dashboard-container.dark-theme .filter-icon-button:disabled {
+  background: rgba(71, 85, 105, 0.4);
+  color: rgba(148, 163, 184, 0.6);
+}
+
+.filter-dataset-tooltip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 280px;
+  font-size: 12px;
+  color: #1e293b;
+  font-family: 'Raleway', sans-serif;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.management-dashboard-container.dark-theme .filter-dataset-tooltip {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.98);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+  color: #e2e8f0;
+}
+
+.date-stamp-button {
+  border: none;
+  background: none;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: left;
+}
+
+.clear-all-time-button {
+  border: none;
+  background: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.filter-group-container {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.management-dashboard-container.light-theme .filter-group-container {
+  background: rgba(248, 250, 252, 0.6);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+.management-dashboard-container.dark-theme .filter-group-container {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.team-filter-container {
+  flex: 1;
 }
 
 .team-slicer-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  position: relative;
-  padding-top: 4px;
-  margin-top: 0;
 }
 
 .team-slicer-buttons .ms-Button {
@@ -237,6 +433,29 @@
 }
 
 .management-dashboard-container.dark-theme .team-slicer-buttons .ms-Button {
+  background: rgba(148, 163, 184, 0.16);
+  color: #e2e8f0;
+}
+
+.role-slicer-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.role-slicer-buttons .ms-Button {
+  min-width: 80px;
+  padding: 0 12px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex: 0 0 auto;
+}
+
+.management-dashboard-container.light-theme .role-slicer-buttons .ms-Button {
+  background: transparent;
+  color: #0d2f60;
+}
+
+.management-dashboard-container.dark-theme .role-slicer-buttons .ms-Button {
   background: rgba(148, 163, 184, 0.16);
   color: #e2e8f0;
 }
@@ -291,17 +510,17 @@
   transition: all 0.2s ease;
   border-radius: 6px;
   padding: 4px 8px;
-  margin: -4px -8px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-start;
   position: relative;
+  width: fit-content;
 }
 
 .metrics-table-header span:hover {
   opacity: 1;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .management-dashboard-container.light-theme .metrics-table-header span:hover {

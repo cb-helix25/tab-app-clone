@@ -53,6 +53,11 @@ const opsRouter = require('./routes/ops');
 const sendEmailRouter = require('./routes/sendEmail');
 const attendanceRouter = require('./routes/attendance');
 const reportingRouter = require('./routes/reporting');
+const poidRouter = require('./routes/poid');
+const futureBookingsRouter = require('./routes/futureBookings');
+const outstandingBalancesRouter = require('./routes/outstandingBalances');
+const transactionsRouter = require('./routes/transactions');
+const { userContextMiddleware } = require('./middleware/userContext');
 
 const app = express();
 // Enable gzip compression if available
@@ -96,6 +101,9 @@ if (process.env.NODE_ENV !== 'production') {
     app.use(morgan('dev'));
 }
 app.use(express.json());
+
+// User context middleware - enriches requests with user info and logs sessions
+app.use(userContextMiddleware);
 
 app.use('/api/keys', keysRouter);
 app.use('/api/matter-requests', matterRequestsRouter);
@@ -146,6 +154,12 @@ app.use('/api/reporting', reportingRouter);
 
 // IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
 app.use('/api/attendance', attendanceRouter);
+
+// Metrics routes (migrated from Azure Functions to fix cold start issues)
+app.use('/api/poid', poidRouter);
+app.use('/api/future-bookings', futureBookingsRouter);
+app.use('/api/outstanding-balances', outstandingBalancesRouter);
+app.use('/api/transactions', transactionsRouter);
 
 app.use('/ccls', express.static(CCL_DIR));
 

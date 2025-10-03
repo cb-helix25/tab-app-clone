@@ -33,7 +33,7 @@ export const sharedSearchBoxStyle = (isDarkMode: boolean) => ({
     maxWidth: '300px',
     display: 'flex',
     alignItems: 'center',
-    height: '32px',
+  height: '32px',
     outline: 'none',
     transition: 'border-color 0.15s ease',
     selectors: {
@@ -58,7 +58,8 @@ export const sharedSearchBoxStyle = (isDarkMode: boolean) => ({
     boxShadow: 'none !important',
     borderRadius: '8px 8px 0 0',
     padding: '0 12px',
-    height: '100%',
+  height: '100%',
+  lineHeight: '32px',
     color: isDarkMode ? colours.dark.text : colours.light.text,
     fontSize: '14px',
     outline: 'none',

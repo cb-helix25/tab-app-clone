@@ -51,6 +51,9 @@ const pitchTeamRouter = require('./routes/pitchTeam');
 const sendEmailRouter = require('./routes/sendEmail');
 const attendanceRouter = require('./routes/attendance');
 const reportingRouter = require('./routes/reporting');
+const poidRouter = require('./routes/poid');
+const futureBookingsRouter = require('./routes/futureBookings');
+const outstandingBalancesRouter = require('./routes/outstandingBalances');
 // const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 // Initialize ops log (loads recent entries and ensures log dir)
@@ -132,6 +135,11 @@ app.use('/api/reporting', reportingRouter);
 
 // IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
 app.use('/api/attendance', attendanceRouter);
+
+// Metrics routes (migrated from Azure Functions to fix cold start issues)
+app.use('/api/poid', poidRouter);
+app.use('/api/future-bookings', futureBookingsRouter);
+app.use('/api/outstanding-balances', outstandingBalancesRouter);
 
 // Proxy routes to Azure Functions
 app.use('/', proxyToAzureFunctionsRouter);

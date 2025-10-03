@@ -170,7 +170,6 @@ async function getPool(connStr) {
   const existing = pools.get(connStr);
   if (existing && existing.connected) return existing;
 
-  if (connecting.has(connStr)) return await connecting.get(connStr);
 
   const connectPromise = (async () => {
     // Close any half-open pool before reconnecting

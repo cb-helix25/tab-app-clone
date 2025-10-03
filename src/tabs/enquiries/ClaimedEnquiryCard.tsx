@@ -177,69 +177,45 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
   };
 
   const areaColor = (() => {
-    switch (enquiry.Area_of_Work?.toLowerCase()) {
-      case 'commercial': return colours.blue;
-      case 'construction': return colours.orange;
-      case 'property': return colours.green;
-      case 'employment': return colours.yellow;
-      case 'claim': return colours.accent;
-      default: return colours.cta;
-    }
+    const area = enquiry.Area_of_Work?.toLowerCase() || '';
+    if (area.includes('commercial')) return colours.blue;
+    if (area.includes('construction')) return colours.orange;
+    if (area.includes('property')) return colours.green;
+    if (area.includes('employment')) return colours.yellow;
+    if (area.includes('claim')) return colours.accent;
+    if (area.includes('other') || area.includes('unsure')) return colours.greyText;
+    return colours.greyText; // Default to grey for unmatched areas
   })();
 
   const isCardClickable = hasNotes && (isOverflowing || !expandedNotes) && !isEditing && !isEnteringEdit && !isExitingEdit;
-  const svgMark = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" preserveAspectRatio="xMidYMid meet"><g fill="currentColor" opacity="0.22"><path d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/></g></svg>');
-  const bgColorToken = isDarkMode ? '#1f2732' : '#ffffff';
-  // Increased opacity for stronger visibility (previous 0.035 / 0.06)
-  const markColor = isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(6,23,51,0.11)';
-  const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  
   const card = mergeStyles({
     position: 'relative',
+    background: isDarkMode ? 'rgba(255,255,255,0.06)' : '#fff',
+    border: `1px solid ${isEditing || isEnteringEdit ? colours.blue : (selected || clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'))}`,
     borderRadius: 5,
-    padding: '10px 16px 10px 18px',
-    background: `${bgColorToken}`,
-    '::after': {
-      content: '""',
-      position: 'absolute',
-      top: 10,
-      bottom: 10,
-  right: 12,
-  width: 160, // bumped width for more presence (maintains aspect ratio via contain)
-      // Maintain aspect ratio (original ~0.5756 width:height) -> height auto via mask sizing
-      background: markColor,
-      maskImage: `url("data:image/svg+xml,${svgMark}")`,
-      WebkitMaskImage: `url("data:image/svg+xml,${svgMark}")`,
-      maskRepeat: 'no-repeat',
-      WebkitMaskRepeat: 'no-repeat',
-      maskPosition: 'center',
-      WebkitMaskPosition: 'center',
-      maskSize: 'contain',
-      WebkitMaskSize: 'contain',
-      opacity: 1,
-      mixBlendMode: isDarkMode ? 'screen' : 'multiply',
-      pointerEvents: 'none',
-      transition: 'opacity .3s',
-      filter: 'blur(.15px)',
-  zIndex: 0,
-    },
-    border: `1px solid ${isEditing || isEnteringEdit ? colours.blue : (selected || clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'))}`,
-    boxShadow: isDarkMode
-      ? `0 4px 16px rgba(0,0,0,${isEditing || isEnteringEdit ? '0.5' : '0.4'}), inset 0 0 0 1px rgba(255,255,255,${isEditing || isEnteringEdit ? '0.08' : '0.04'})`
-      : `0 4px 14px rgba(33,56,82,${isEditing || isEnteringEdit ? '0.15' : '0.10'})`,
+    borderLeftWidth: 2,
+    borderLeftStyle: 'solid',
+    padding: 14,
+    margin: '8px 0',
+    cursor: isCardClickable ? 'pointer' : 'default',
+    transition: 'box-shadow .2s, transform .2s, border-color .2s',
+    boxShadow: isDarkMode ? '0 2px 10px rgba(0,0,0,0.25)' : '0 2px 10px rgba(0,0,0,0.08)',
+    overflow: 'hidden',
+    opacity: promotionStatus ? 0.6 : 1,
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
     fontFamily: 'Raleway, sans-serif',
-    cursor: isCardClickable ? 'pointer' : 'default',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    marginBottom: !isLast ? 4 : 0,
-    overflow: 'hidden', // ensure left accent clips to rounded corners
-    borderLeftWidth: 2,
-    borderLeftStyle: 'solid',
-    opacity: promotionStatus ? 0.6 : 1,
     selectors: {
-      ':hover': isCardClickable ? { transform: 'translateY(-2px)', borderColor: selected || clickedForActions ? colours.blue : colours.highlight } : { borderColor: selected || clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)') },
-      ':active': isCardClickable ? { transform: 'translateY(-1px)' } : {},
+      ':hover': isCardClickable ? { 
+        boxShadow: isDarkMode ? '0 6px 20px rgba(0,0,0,0.35)' : '0 6px 20px rgba(0,0,0,0.12)', 
+        transform: 'translateY(-1px)',
+        borderColor: selected || clickedForActions ? colours.blue : areaColor 
+      } : { 
+        borderColor: selected || clickedForActions ? colours.blue : areaColor
+      },
+      ':active': isCardClickable ? { transform: 'translateY(0px)' } : {},
     },
   });
 
@@ -282,7 +258,6 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
           if (!expandedNotes) setExpandedNotes(true);
         }
       }}
-  style={{ zIndex: 1 }}
     >
       {/* Selection Toggle (checkbox style) */}
       {onToggleSelect && (
@@ -688,7 +663,9 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
                   left: 0, 
                   right: 0, 
                   height: 18, 
-                  background: isDarkMode ? 'linear-gradient(to bottom, rgba(31,39,50,0), rgba(31,39,50,0.95))' : 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.95))', 
+                  background: isDarkMode 
+                    ? 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.06))' 
+                    : 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.95))', 
                   pointerEvents: 'none',
                   transition: 'opacity 0.3s ease'
                 }} />
@@ -817,34 +794,39 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
                     color: isPitch ? '#fff' : colours.greyText,
                     border: `1px solid ${isPitch ? colours.highlight : 'transparent'}`,
                     backdropFilter: 'blur(8px)',
-                    padding: '6px 12px',
-                    borderRadius: 20,
-                    fontSize: 10,
+                    padding: '8px 14px',
+                    borderRadius: 18,
+                    fontSize: 10.5,
                     fontWeight: 600,
                     cursor: 'pointer',
+                    minHeight: 34,
                     opacity: showActions || selected ? 1 : 0,
                     transform: showActions || selected ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
                     transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s, border-radius .35s cubic-bezier(.4,0,.2,1)',
                     transitionDelay: `${delay}ms`,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    lineHeight: 1,
                     selectors: {
                       ':hover': { 
                         background: isPitch ? colours.blue : '#f4f6f8', 
                         color: isPitch ? '#fff' : colours.blue, 
-                        borderRadius: 16,
+                        borderRadius: 14,
                         borderColor: isPitch ? colours.blue : 'transparent',
                         transform: 'translateY(-1px)'
                       },
                       ':active': { 
                         background: isPitch ? colours.blue : '#e3f1fb', 
                         color: isPitch ? '#fff' : colours.blue, 
-                        borderRadius: 16, 
+                        borderRadius: 14, 
                         transform: 'scale(0.95)' 
                       },
                     },
                   })}
                 >
-                  <Icon iconName={btn.icon} styles={{ root: { fontSize: 12, marginRight: 4 } }} />
+                  <Icon iconName={btn.icon} styles={{ root: { fontSize: 12, lineHeight: 1 } }} />
                   {btn.label}
                 </button>
               );

@@ -53,13 +53,17 @@ router.get('/management-datasets', async (req, res) => {
   const responsePayload = {};
   const errors = {};
 
-  await Promise.all(requestedDatasets.map(async (datasetKey) => {
+  // To reduce socket resets under load, fetch heavy datasets sequentially
+  const heavy = new Set(['wip', 'recoveredFees', 'poidData']);
+  const light = requestedDatasets.filter((d) => !heavy.has(d));
+  const heavyList = requestedDatasets.filter((d) => heavy.has(d));
+
+  // Fetch light datasets in parallel
+  await Promise.all(light.map(async (datasetKey) => {
     const fetcher = datasetFetchers[datasetKey];
-    if (!fetcher) {
-      return;
-    }
+    if (!fetcher) return;
     try {
-  responsePayload[datasetKey] = await fetcher({ connectionString, entraId, clioId });
+      responsePayload[datasetKey] = await fetcher({ connectionString, entraId, clioId });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`Reporting dataset fetch failed for ${datasetKey}:`, message);
@@ -68,11 +72,25 @@ router.get('/management-datasets', async (req, res) => {
     }
   }));
 
+  // Fetch heavy datasets one by one
+  for (const datasetKey of heavyList) {
+    const fetcher = datasetFetchers[datasetKey];
+    if (!fetcher) continue;
+    try {
+      responsePayload[datasetKey] = await fetcher({ connectionString, entraId, clioId });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Reporting dataset fetch failed for ${datasetKey}:`, message);
+      errors[datasetKey] = message;
+      responsePayload[datasetKey] = null;
+    }
+  }
+
   // Join: Merge Clio current-week into payload for frontend consumption
   try {
-    const clioActivities = Array.isArray(responsePayload.wipClioCurrentWeek)
-      ? responsePayload.wipClioCurrentWeek
-      : null;
+    // Extract activities array from the object structure returned by fetchWipClioCurrentWeek
+    const clioActivities = responsePayload.wipClioCurrentWeek?.current_week?.activities 
+      || (Array.isArray(responsePayload.wipClioCurrentWeek) ? responsePayload.wipClioCurrentWeek : null);
     // Prefer lightweight last-week dataset when present; fallback to full wip if explicitly requested
     const dbWipActivities = Array.isArray(responsePayload.wipDbLastWeek)
       ? responsePayload.wipDbLastWeek
@@ -174,6 +192,8 @@ async function fetchTeamData({ connectionString }) {
 
 async function fetchEnquiries({ connectionString }) {
   const { from, to } = getLast24MonthsRange();
+  console.log(`[Reporting] Fetching enquiries from ${formatDateOnly(from)} to ${formatDateOnly(to)}`);
+  
   return withRequest(connectionString, async (request, sqlClient) => {
     request.input('dateFrom', sqlClient.Date, formatDateOnly(from));
     request.input('dateTo', sqlClient.Date, formatDateOnly(to));
@@ -183,7 +203,9 @@ async function fetchEnquiries({ connectionString }) {
       WHERE Touchpoint_Date BETWEEN @dateFrom AND @dateTo
       ORDER BY Touchpoint_Date DESC
     `);
-    return Array.isArray(result.recordset) ? result.recordset : [];
+    const enquiries = Array.isArray(result.recordset) ? result.recordset : [];
+    console.log(`[Reporting] Retrieved ${enquiries.length} enquiries`);
+    return enquiries;
   });
 }
 
@@ -334,14 +356,35 @@ async function getClioAccessToken() {
   });
   
   if (!response.ok) {
-    throw new Error(`Failed to obtain Clio access token: ${response.status}`);
+    const errorText = await response.text();
+    console.error(`[Reporting] Failed to refresh Clio token (${response.status}):`, errorText);
+    
+    // Clear cache on failure
+    cache.delete(cacheKey);
+    
+    throw new Error(`Failed to obtain Clio access token (${response.status}): ${errorText}. You may need to re-authenticate with Clio and update the refresh token in Key Vault.`);
   }
   
   const tokenData = await response.json();
   const accessToken = tokenData.access_token;
   
+  // Clio returns a new refresh token on each refresh - store it back to Key Vault if changed
+  if (tokenData.refresh_token && tokenData.refresh_token !== refreshToken) {
+    console.log('[Reporting] Storing new Clio refresh token to Key Vault');
+    try {
+      const kvUri = 'https://helix-keys.vault.azure.net/';
+      const credential = new (require('@azure/identity').DefaultAzureCredential)();
+      const secretClient = new (require('@azure/keyvault-secrets').SecretClient)(kvUri, credential);
+      await secretClient.setSecret('clio-teamhubv1-refreshtoken', tokenData.refresh_token);
+    } catch (kvError) {
+      console.error('[Reporting] Failed to update refresh token in Key Vault:', kvError.message);
+    }
+  }
+  
   // Cache with 30min TTL (tokens usually valid for 1h)
-  cache.set(cacheKey, { data: accessToken, expires: Date.now() + 30 * 60 * 1000 });
+  const expiresInSeconds = tokenData.expires_in || 3600;
+  cache.set(cacheKey, { data: accessToken, expires: Date.now() + Math.min(expiresInSeconds - 300, 30 * 60) * 1000 });
+  console.log(`[Reporting] Successfully refreshed Clio access token (expires in ${expiresInSeconds}s)`);
   return accessToken;
 }
 
@@ -407,38 +450,35 @@ async function fetchWipClioCurrentWeek({ connectionString, entraId }) {
     // Convert to WIP format
     const wipActivities = convertClioActivitiesToWIP(activities);
     
-    // If this is a user-specific request (entraId provided), aggregate into daily_data
-    // If team-wide (no entraId), return raw activities to preserve user_id breakdown
+    // Build activities for the current week (used by dashboards) and aggregate daily_data
+    const currentWeekActivities = wipActivities.filter(a => {
+      const key = toDayKey(a.date || a.created_at || a.updated_at);
+      return key && isDateInRange(key, currentStart, currentEnd);
+    });
+
+    // Aggregate per-day totals from the activities we fetched
+    const currentWeekDaily = aggregateDailyData(wipActivities, currentStart, currentEnd);
+
     if (userClioId) {
-      // User-specific: aggregate by day for TimeMetricsV2 component
-      const currentWeekDaily = aggregateDailyData(wipActivities, currentStart, currentEnd);
-      const lastWeekDaily = {};
-      
+      // User-specific: include both daily_data (for personal metrics) and activities (for consistency)
       console.log(`Returning aggregated daily data for user ${userClioId}`);
-      
       return {
-        current_week: { daily_data: currentWeekDaily },
-        last_week: { daily_data: lastWeekDaily },
+        current_week: { daily_data: currentWeekDaily, activities: currentWeekActivities },
+        last_week: { daily_data: {}, activities: [] },
       };
     } else {
-      // Team-wide: return activities array with user_id preserved
-      const currentWeekActivities = wipActivities.filter(a => {
-        const key = toDayKey(a.date || a.created_at || a.updated_at);
-        return key && isDateInRange(key, currentStart, currentEnd);
-      });
-      
+      // Team-wide: include both activities (to preserve user breakdown) and aggregated daily_data for safety
       console.log(`Returning ${currentWeekActivities.length} WIP activities with user breakdown`);
-      
       return {
-        current_week: { activities: currentWeekActivities },
-        last_week: { activities: [] },
+        current_week: { activities: currentWeekActivities, daily_data: currentWeekDaily },
+        last_week: { activities: [], daily_data: {} },
       };
     }
   } catch (error) {
     console.error('Failed to fetch user WIP from Clio:', error.message);
     return {
-      current_week: { daily_data: {} },
-      last_week: { daily_data: {} },
+      current_week: { daily_data: {}, activities: [] },
+      last_week: { daily_data: {}, activities: [] },
     };
   } finally {
     const ms = Date.now() - startedAt;
@@ -821,6 +861,7 @@ function isDateInRange(dateStr, startDate, endDate) {
 
 function aggregateDailyData(activities, rangeStart, rangeEnd) {
   const daily = {};
+  if (!Array.isArray(activities)) return daily;
   for (const a of activities) {
     const rawDate = a.date || a.created_at || a.updated_at;
     const key = toDayKey(rawDate);

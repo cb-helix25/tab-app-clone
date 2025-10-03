@@ -312,11 +312,11 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
   });
 
   const pulseDotInlineStyle = (areaColor: string) => mergeStyles({
-    width: 8,
-    height: 8,
+    width: 5,
+    height: 5,
     borderRadius: '50%',
     backgroundColor: areaColor,
-    boxShadow: `0 0 0 4px ${areaColor}30`,
+    boxShadow: `0 0 0 3px ${areaColor}30`,
     animationName: pulse,
     animationDuration: '1.8s',
     animationIterationCount: 'infinite',
@@ -423,22 +423,22 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
 
   const actionBadgeStyle = mergeStyles({
     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-    color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+    color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)',
     border: 'none',
-    borderRadius: 4,
-    padding: '4px 10px',
-    fontSize: '10px',
+    borderRadius: 6,
+    padding: '6px 12px',
+    fontSize: '10.5px',
     fontWeight: '600',
     fontFamily: 'Raleway, sans-serif',
     cursor: 'pointer',
     transition: 'all 0.15s ease',
     boxShadow: 'none',
-    height: '24px',
-    minWidth: '35px',
+    height: '32px',
+    minWidth: '40px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '4px',
+    gap: '6px',
     whiteSpace: 'nowrap',
     selectors: {
       ':hover': {
@@ -456,17 +456,21 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
     backgroundColor: colours.highlight,
     color: 'white',
     border: 'none',
-    borderRadius: 4,
-    padding: '4px 14px',
-    fontSize: '10px',
+    borderRadius: 6,
+    padding: '6px 16px',
+    fontSize: '10.5px',
     fontWeight: '600',
     fontFamily: 'Raleway, sans-serif',
     cursor: 'pointer',
     transition: 'all 0.15s ease',
     boxShadow: 'none',
-    height: '24px',
-    minWidth: '52px',
+    height: '32px',
+    minWidth: '54px',
     whiteSpace: 'nowrap',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    lineHeight: 1,
     selectors: {
       ':hover:not(:disabled)': {
         backgroundColor: colours.blue,
@@ -492,21 +496,21 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
       ? (rating === 'Good' ? colours.blue : 
          rating === 'Neutral' ? colours.grey : colours.cta)
       : (isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'),
-    border: 'none',
-    borderRadius: 4,
-    padding: '4px 10px',
-    fontSize: '10px',
-    fontWeight: '600',
-    fontFamily: 'Raleway, sans-serif',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-    boxShadow: 'none',
-    height: '24px',
-    minWidth: '35px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '4px',
+  border: 'none',
+  borderRadius: 6,
+  padding: '6px 12px',
+  fontSize: '10.5px',
+  fontWeight: '600',
+  fontFamily: 'Raleway, sans-serif',
+  cursor: 'pointer',
+  transition: 'all 0.15s ease',
+  boxShadow: 'none',
+  height: '32px',
+  minWidth: '40px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '6px',
     whiteSpace: 'nowrap',
     selectors: {
       ':hover': {
@@ -665,14 +669,15 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
               background: 'rgba(102,170,232,0.15)', color: areaColor, fontWeight: 600, letterSpacing: .3, textTransform: 'uppercase',
               boxShadow: '0 1px 4px 0 rgba(33,56,82,0.07)', position: 'relative'
             }}>
-              {enquiry.Area_of_Work}
+              {enquiry.Area_of_Work?.toLowerCase().includes('other') || enquiry.Area_of_Work?.toLowerCase().includes('unsure') ? 'Other' : enquiry.Area_of_Work}
               <span className={pulseDot} aria-hidden="true" />
               <span style={{ fontSize: 10, color: '#b0b8c9', fontWeight: 600 }}>{formatDate(enquiry.Touchpoint_Date)}</span>
             </span>
           </span>
         )}
         {/* Name + inline ID */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <span className={pulseDotInlineStyle(getAreaColor(enquiry.Area_of_Work))} aria-hidden="true" />
           <Text variant="medium" styles={{ root: { fontWeight: 600, color: isDarkMode ? '#fff' : '#0d2538', lineHeight: 1.2 } }}>
             {(enquiry.First_Name || '') + ' ' + (enquiry.Last_Name || '')}
           </Text>
@@ -695,8 +700,8 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
             </span>
           )}
         </div>
-        {/* Meta (value & contact) */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)', fontWeight: 500, marginTop: 6, marginLeft: 2 }}>
+  {/* Meta (value & contact) */}
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)', fontWeight: 500, marginTop: 6, marginLeft: 10 }}>
           {enquiry.Value && <span style={{ fontWeight: 600 }}>{enquiry.Value}</span>}
           {enquiry.Email && <span style={{ cursor: 'copy' }} onClick={e => { e.stopPropagation(); navigator?.clipboard?.writeText(enquiry.Email); }}>{enquiry.Email}</span>}
           {enquiry.Phone_Number && <span style={{ cursor: 'copy' }} onClick={e => { e.stopPropagation(); navigator?.clipboard?.writeText(enquiry.Phone_Number || ''); }}>{enquiry.Phone_Number}</span>}
@@ -901,8 +906,7 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
                 lineHeight: 1.1,
                 whiteSpace: 'nowrap'
               }}>
-                <span className={pulseDotInlineStyle(getAreaColor(enquiry.Area_of_Work))} aria-label="Unclaimed enquiry" />
-                <span>{enquiry.Area_of_Work}</span>
+                <span>{enquiry.Area_of_Work?.toLowerCase().includes('other') || enquiry.Area_of_Work?.toLowerCase().includes('unsure') ? 'Other' : enquiry.Area_of_Work}</span>
               </div>
             ) : (
               <span 
@@ -913,7 +917,7 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
                   background: getAreaColor(enquiry.Area_of_Work), 
                   flexShrink: 0 
                 }}
-                title={enquiry.Area_of_Work}
+                title={enquiry.Area_of_Work?.toLowerCase().includes('other') || enquiry.Area_of_Work?.toLowerCase().includes('unsure') ? 'Other' : enquiry.Area_of_Work}
               />
             )}
             <div style={{
@@ -980,9 +984,9 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
                 className={pitchButtonStyle}
                 onClick={(e) => { e.stopPropagation(); onPitch && onPitch(enquiry); }}
                 title='Pitch this enquiry'
-                style={{ gap: '4px' }}
+                style={{ lineHeight: 1 }}
               >
-                <Icon iconName="Send" style={{ fontSize: '11px' }} />
+                <Icon iconName="Send" style={{ fontSize: '11px', lineHeight: 1 }} />
                 Pitch
               </button>
 
@@ -990,7 +994,7 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
                 className={actionBadgeStyle}
                 onClick={(e) => { e.stopPropagation(); enquiry.Phone_Number && (window.location.href = `tel:${enquiry.Phone_Number}`); }}
                 title="Call"
-                style={{ padding: '4px 10px' }}
+                style={{ padding: '6px 12px' }}
               >
                 <Icon iconName="Phone" style={{ fontSize: '12px' }} />
                 <span style={{ fontSize: 11, fontWeight: 600 }}>Call</span>
@@ -1000,7 +1004,7 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
                 className={actionBadgeStyle}
                 onClick={(e) => { e.stopPropagation(); enquiry.Email && (window.location.href = `mailto:${enquiry.Email}?subject=Your%20Enquiry&bcc=1day@followupthen.com`); }}
                 title="Email"
-                style={{ padding: '4px 10px' }}
+                style={{ padding: '6px 12px' }}
               >
                 <Icon iconName="Mail" style={{ fontSize: '12px' }} />
                 <span style={{ fontSize: 11, fontWeight: 600 }}>Email</span>
@@ -1010,7 +1014,7 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
                 className={ratingBadgeStyle(enquiry.Rating)}
                 onClick={(e) => { e.stopPropagation(); onRate(enquiry.ID); }}
                 title={enquiry.Rating ? `Rating: ${enquiry.Rating}` : 'Rate Enquiry'}
-                style={{ padding: '4px 10px' }}
+                style={{ padding: '6px 12px' }}
               >
                 <Icon 
                   iconName={enquiry.Rating 

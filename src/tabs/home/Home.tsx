@@ -937,6 +937,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: prov
 
   // Fetch pending snippet edits and prefetch snippet blocks
   useEffect(() => {
+    // SNIPPET FUNCTIONALITY REMOVED - Changed approach completely
+    // Snippet edits and blocks are no longer fetched from Azure Functions
     const useLocal = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
 
     const fetchEditsAndBlocks = async () => {
@@ -947,29 +949,30 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: prov
         }
         return;
       }
-      try {
-        const url = `${proxyBaseUrl}/${process.env.REACT_APP_GET_SNIPPET_EDITS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_EDITS_CODE}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          setSnippetEdits(data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch snippet edits', err);
-      }
+      // Snippet fetching disabled - functionality removed
+      // try {
+      //   const url = `${proxyBaseUrl}/${process.env.REACT_APP_GET_SNIPPET_EDITS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_EDITS_CODE}`;
+      //   const res = await fetch(url);
+      //   if (res.ok) {
+      //     const data = await res.json();
+      //     setSnippetEdits(data);
+      //   }
+      // } catch (err) {
+      //   console.error('Failed to fetch snippet edits', err);
+      // }
 
-      if (!sessionStorage.getItem('prefetchedBlocksData')) {
-        try {
-          const blocksUrl = `${proxyBaseUrl}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
-          const blocksRes = await fetch(blocksUrl);
-          if (blocksRes.ok) {
-            const data = await blocksRes.json();
-            sessionStorage.setItem('prefetchedBlocksData', JSON.stringify(data));
-          }
-        } catch (err) {
-          console.error('Failed to prefetch snippet blocks', err);
-        }
-      }
+      // if (!sessionStorage.getItem('prefetchedBlocksData')) {
+      //   try {
+      //     const blocksUrl = `${proxyBaseUrl}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
+      //     const blocksRes = await fetch(blocksUrl);
+      //     if (blocksRes.ok) {
+      //       const data = await blocksRes.json();
+      //       sessionStorage.setItem('prefetchedBlocksData', JSON.stringify(data));
+      //     }
+      //   } catch (err) {
+      //     console.error('Failed to prefetch snippet blocks', err);
+      //   }
+      // }
     };
     fetchEditsAndBlocks();
   }, []);
@@ -1135,7 +1138,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: prov
       setRecoveredData(cachedRecovered);
       setPrevRecoveredData(cachedPrevRecovered ?? 0);
     }
-  }, [teamData, userData?.[0]?.EntraID, userData?.[0]?.Initials, userData?.[0]?.['Clio ID']]);
+  }, [teamData, userData?.[0]?.EntraID, userData?.[0]?.['Entra ID'], userData?.[0]?.Initials, userData?.[0]?.['Clio ID']]);
 
   // Use app-provided normalized matters when available; otherwise normalize local allMatters
   const normalizedMatters = useMemo<NormalizedMatter[]>(() => {
@@ -1592,8 +1595,13 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
 
   // Prefer reporting route for current-week WIP (backend merges DB and Clio); do not call Clio from client
   useEffect(() => {
+    if (!userData?.[0]) {
+      debugLog('⏸️ Skipping WIP fetch until user data is available');
+      return;
+    }
+    const effectiveEntraId = userData?.[0]?.EntraID ?? userData?.[0]?.['Entra ID'] ?? null;
     debugLog('🎯 WIP useEffect triggered', { 
-      entraId: userData?.[0]?.EntraID, 
+      entraId: effectiveEntraId, 
       clioId: userData?.[0]?.['Clio ID'],
       hasCachedWip: !!cachedWipClio,
       useLocalData
@@ -1610,7 +1618,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         
         // Pass current user's Entra ID for user-specific Clio data fetching
         const currentUserData = userData?.[0];
-        let entraId = currentUserData?.EntraID;
+  let entraId = currentUserData?.EntraID ?? currentUserData?.['Entra ID'];
         
         // Fallback for local development or Luke/LZ: use Alex's (AC) data for visible metrics
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -1685,7 +1693,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       }, 8000);
       loadFromReporting().finally(() => clearTimeout(timeout));
     }
-  }, [userData?.[0]?.EntraID, userData?.[0]?.['Clio ID']]);
+  }, [userData?.[0]?.EntraID, userData?.[0]?.['Entra ID'], userData?.[0]?.['Clio ID']]);
 
   // Home no longer fetches matters itself; it receives normalized matters from App.
   // Keep the effect boundary to clear local cache if that logic remains elsewhere.
@@ -1754,7 +1762,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         try {
           setIsLoadingPOID6Years(true);
           const response = await fetch(
-            `${proxyBaseUrl}/${process.env.REACT_APP_GET_POID_6YEARS_PATH}?code=${process.env.REACT_APP_GET_POID_6YEARS_CODE}`,
+            '/api/poid/6years',
             { method: 'GET' }
           );
           if (!response.ok) {
@@ -1782,7 +1790,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     async function fetchSpaceBookings() {
       try {
         const response = await fetch(
-          `${proxyBaseUrl}/${process.env.REACT_APP_GET_FUTURE_BOOKINGS_PATH}?code=${process.env.REACT_APP_GET_FUTURE_BOOKINGS_CODE}`
+          '/api/future-bookings'
         );
         if (!response.ok) {
           throw new Error(`Error fetching space bookings: ${response.status}`);
@@ -1827,9 +1835,8 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         return;
       }
       try {
-        const response = await fetch(
-          `${proxyBaseUrl}/${process.env.REACT_APP_GET_TRANSACTIONS_PATH}?code=${process.env.REACT_APP_GET_TRANSACTIONS_CODE}`
-        );
+        // Migrated to Express server route for connection pooling (cold start fix)
+        const response = await fetch('/api/transactions');
         if (!response.ok) {
           throw new Error(`Failed to fetch transactions: ${response.status}`);
         }
@@ -1870,16 +1877,8 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     }
 
     async function fetchOutstandingBalances() {
-      const code = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_CODE;
-      const path = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_PATH;
-      const baseUrl = proxyBaseUrl;
-      if (!code || !path) {
-        console.error("Missing env variables for outstanding client balances");
-        return null;
-      }
-      const url = baseUrl ? `${baseUrl}/${path}?code=${code}` : `/${path}?code=${code}`;
       try {
-        const response = await fetch(url, {
+        const response = await fetch('/api/outstanding-balances', {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         });
@@ -2361,8 +2360,20 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       );
     }, [outstandingBalancesData, userMatterIDs, myOutstandingBalances]);
 
-    useEffect(() => {
-    }, [userMatterIDs, outstandingBalancesData]);
+    // Calculate firm-wide total outstanding balances (all matters)
+    const firmOutstandingTotal = useMemo(() => {
+      if (!outstandingBalancesData || !outstandingBalancesData.data) {
+        return null; // Data not ready yet
+      }
+      // Sum ALL balances across the entire firm
+      return outstandingBalancesData.data.reduce(
+        (sum: number, record: any) => sum + (Number(record.total_outstanding_balance) || 0),
+        0
+      );
+    }, [outstandingBalancesData]);
+
+  // Removed no-op effect that could trigger unnecessary renders
+  // useEffect(() => {}, [userMatterIDs, outstandingBalancesData]);
 
   const metricsData = useMemo(() => {
     const currentDate = new Date();
@@ -2462,18 +2473,18 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
           { title: 'Fees Recovered This Month', isMoneyOnly: true, money: recoveredData ?? 0, prevMoney: prevRecoveredData ?? 0 },
       // Use computed outstandingTotal even when WIP data hasn't loaded
-      { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0 },
+      { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0, firmTotal: firmOutstandingTotal ?? undefined },
           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
           { title: 'Matters Opened', isTimeMoney: false, count: mattersOpenedCount, prevCount: 0, secondary: firmMattersOpenedCount },
         ];
       }
       
-    const currentWeekData = wipClioData.current_week?.daily_data[formattedToday];
+  const currentWeekData = wipClioData.current_week?.daily_data?.[formattedToday];
     const lastWeekDate = new Date(today);
     lastWeekDate.setDate(today.getDate() - 7);
     const formattedLastWeekDate = formatDateLocal(lastWeekDate);
-    const lastWeekData = wipClioData.last_week?.daily_data[formattedLastWeekDate];
+  const lastWeekData = wipClioData.last_week?.daily_data?.[formattedLastWeekDate];
     const startOfCurrentWeek = new Date(today);
     startOfCurrentWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
     startOfCurrentWeek.setHours(0, 0, 0, 0);
@@ -2505,12 +2516,12 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     };
 
     const currentAvg = computeAverageUpTo(
-      wipClioData.current_week.daily_data,
+      wipClioData.current_week?.daily_data ?? {},
       startOfCurrentWeek,
       today
     );
     const prevAvg = computeAverageUpTo(
-      wipClioData.last_week.daily_data,
+      wipClioData.last_week?.daily_data ?? {},
       startOfLastWeek,
       lastWeekDate
     );
@@ -2621,6 +2632,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Outstanding Office Balances',
         isMoneyOnly: true,
         money: outstandingTotal ?? 0,
+        firmTotal: firmOutstandingTotal ?? undefined, // Show firm-wide total below user's balance
         // No prevMoney - this is a current snapshot with no historical comparison
       },
       {
@@ -2660,7 +2672,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     prevEnquiriesWeekToDate,
     enquiriesMonthToDate,
     prevEnquiriesMonthToDate,
-    today,
     annualLeaveRecords,
     userData,
     normalizedMatters,
@@ -2668,6 +2679,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     transformedTeamData,
     outstandingBalancesData, // ADDED
     userMatterIDs,           // ADDED
+    firmOutstandingTotal,    // ADDED for firm-wide total display
   ]);
   
   const timeMetrics = metricsData.slice(0, 5);

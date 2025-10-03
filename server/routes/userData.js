@@ -41,7 +41,7 @@ router.post('/', async (req, res) => {
   try {
     const startTime = Date.now();
     
-    const rows = await withRequest(connectionString, async (request) => {
+  const rows = await withRequest(connectionString, async (request) => {
       // Query team table for user matching Entra ID
       // Using parameterized query to prevent SQL injection
       const result = await request
@@ -78,8 +78,31 @@ router.post('/', async (req, res) => {
       return res.json([]);
     }
 
+    // Normalize legacy spaced keys and add snake_case aliases while preserving originals
+    const normalized = rows.map((u) => {
+      const entraId = u?.['Entra ID'] ?? u?.EntraID ?? null;
+      const fullName = u?.['Full Name'] ?? u?.FullName ?? null;
+      const clioId = u?.['Clio ID'] ?? u?.ClioID ?? null;
+      return {
+        ...u,
+        // Preferred aliases for client code
+        EntraID: u?.EntraID ?? entraId,
+        FullName: u?.FullName ?? fullName,
+        // New schema snake_case fields for future consumers
+        entra_id: entraId,
+        full_name: fullName,
+        clio_id: clioId,
+        initials: u?.Initials ?? u?.initials ?? null,
+        email: u?.Email ?? u?.email ?? null,
+        role: u?.Role ?? u?.role ?? null,
+        aow: u?.AOW ?? u?.aow ?? null,
+        holiday_entitlement: u?.holiday_entitlement ?? u?.['holiday_entitlement'] ?? null,
+        status: u?.status ?? u?.Status ?? null,
+      };
+    });
+
     console.log(`✅ [userData] Found ${rows.length} user record(s) in ${duration}ms`);
-    return res.json(rows);
+    return res.json(normalized);
 
   } catch (error) {
     const duration = Date.now();

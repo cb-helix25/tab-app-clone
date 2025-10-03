@@ -9,6 +9,8 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  errorCode: string | null;
+  errorTimestamp: string | null;
 }
 
 /**
@@ -27,6 +29,8 @@ class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorCode: null,
+      errorTimestamp: null,
     };
   }
 
@@ -36,12 +40,17 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Log error details to console (or send to analytics service)
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+  // Log error details to console (or send to analytics service)
+    const errorCode = `HUB-${Date.now().toString(36).toUpperCase()}`;
+    const errorTimestamp = new Date().toISOString();
+
+    console.error('ErrorBoundary caught an error:', error, errorInfo, { errorCode, errorTimestamp });
+
     this.setState({
       error,
       errorInfo,
+      errorCode,
+      errorTimestamp,
     });
 
     // Optional: Send error to analytics/monitoring service
@@ -53,6 +62,8 @@ class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorCode: null,
+      errorTimestamp: null,
     });
   };
 
@@ -94,9 +105,33 @@ class ErrorBoundary extends Component<Props, State> {
             <h1 style={{ color: '#d13438', marginBottom: '16px' }}>
               Something went wrong
             </h1>
-            <p style={{ color: '#666', marginBottom: '24px', lineHeight: '1.5' }}>
+            <p style={{ color: '#666', marginBottom: '16px', lineHeight: '1.5' }}>
               The application encountered an unexpected error. Please try reloading the page.
             </p>
+            {this.state.errorCode && (
+              <div
+                style={{
+                  marginBottom: '24px',
+                  padding: '12px 16px',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '6px',
+                  border: '1px solid #e5e5e5',
+                  color: '#333',
+                  fontSize: '15px',
+                  lineHeight: 1.6,
+                }}
+              >
+                <strong>Support reference:</strong>
+                <div style={{ fontFamily: 'monospace', fontSize: '16px', marginTop: '4px' }}>
+                  {this.state.errorCode}
+                </div>
+                {this.state.errorTimestamp && (
+                  <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
+                    Captured at {new Date(this.state.errorTimestamp).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Show error details in development */}
             {process.env.NODE_ENV === 'development' && this.state.error && (

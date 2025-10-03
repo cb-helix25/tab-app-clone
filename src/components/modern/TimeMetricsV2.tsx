@@ -16,6 +16,7 @@ interface TimeMetric {
   dialTarget?: number;
   count?: number;
   prevCount?: number;
+  firmTotal?: number; // For showing firm-wide total below user-specific value
 }
 
 interface EnquiryMetric {
@@ -82,20 +83,64 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
   };
 
   // Count-up animation hook
-  const useCountUp = (target: number, durationMs: number = 700): number => {
+  const useCountUp = (target: number, durationMs: number = 700, animateOnce: boolean = false): number => {
     const [value, setValue] = React.useState(0);
     const previousTargetRef = React.useRef(0);
-    React.useEffect(() => {
-      if (!Number.isFinite(target)) {
-        setValue(0);
-        previousTargetRef.current = 0;
-        return;
-      }
+    const hasAnimatedRef = React.useRef(false);
+    const rafRef = React.useRef<number | null>(null);
+    const initialTargetRef = React.useRef<number | null>(null);
 
-      const startValue = previousTargetRef.current;
-      const delta = target - startValue;
+    // One-time animation on initial mount
+    React.useEffect(() => {
+      if (!animateOnce || hasAnimatedRef.current) return;
+
+      const initial = Number.isFinite(target) ? target : 0;
+      initialTargetRef.current = initial;
+      hasAnimatedRef.current = true; // Mark as started so rapid updates won't restart animation
+
+      const startValue = previousTargetRef.current; // typically 0
+      const delta = initial - startValue;
       const startTime = performance.now();
-      let raf = 0;
+
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - startTime) / durationMs);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setValue(startValue + delta * eased);
+        if (progress < 1) {
+          rafRef.current = requestAnimationFrame(tick);
+        } else {
+          previousTargetRef.current = initial;
+          rafRef.current = null;
+        }
+      };
+
+      setValue(startValue);
+      rafRef.current = requestAnimationFrame(tick);
+
+      return () => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      };
+      // Intentionally exclude `target` to avoid restarting during first animation
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [animateOnce, durationMs]);
+
+    // After first animation, apply new targets instantly without animation
+    React.useEffect(() => {
+      if (!animateOnce) return; // handled by the non-animateOnce effect below
+      if (!hasAnimatedRef.current) return; // initial animation path handles its own value
+      const next = Number.isFinite(target) ? target : 0;
+      previousTargetRef.current = next;
+      setValue(next);
+    }, [animateOnce, target]);
+
+    // Standard animated updates when not in animate-once mode
+    React.useEffect(() => {
+      if (animateOnce) return;
+      const next = Number.isFinite(target) ? target : 0;
+      const startValue = previousTargetRef.current;
+      const delta = next - startValue;
+      const startTime = performance.now();
+      let raf: number | null = null;
 
       const tick = (now: number) => {
         const progress = Math.min(1, (now - startTime) / durationMs);
@@ -104,7 +149,8 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
         if (progress < 1) {
           raf = requestAnimationFrame(tick);
         } else {
-          previousTargetRef.current = target;
+          previousTargetRef.current = next;
+          raf = null;
         }
       };
 
@@ -112,9 +158,9 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
       raf = requestAnimationFrame(tick);
 
       return () => {
-        cancelAnimationFrame(raf);
+        if (raf) cancelAnimationFrame(raf);
       };
-    }, [target, durationMs]);
+    }, [target, durationMs, animateOnce]);
 
     return value;
   };
@@ -126,7 +172,8 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
     };
     const AnimatedValueWithEnabled: React.FC<{ value: number; formatter: (n: number) => string; enabled: boolean; className?: string; style?: React.CSSProperties }>
       = ({ value, formatter, enabled, className, style }) => {
-        const animated = useCountUp(enabled ? value : 0);
+        // When enabled, animate once per component instance, then apply new values instantly
+        const animated = useCountUp(enabled ? value : 0, 700, enabled);
         const toRender = enabled ? animated : value;
         return <span className={className} style={style}>{formatter(toRender)}</span>;
       };
@@ -156,6 +203,10 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
   const [enableAnimationThisMount] = React.useState<boolean>(() => {
     try { return sessionStorage.getItem('tmv2_animated') !== 'true'; } catch { return true; }
   });
+  
+  // Freeze stagger styles after first animation to prevent re-renders from twitching cards
+  const [frozenStaggerStyles] = React.useState<Map<number, React.CSSProperties>>(() => new Map());
+  
   React.useEffect(() => {
     if (enableAnimationThisMount) {
       setMounted(false);
@@ -168,12 +219,39 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
     setMounted(true);
   }, [enableAnimationThisMount]);
 
-  const staggerStyle = (index: number): React.CSSProperties => ({
-    opacity: mounted ? 1 : 0,
-    transform: mounted ? 'translateY(0)' : 'translateY(6px)',
-    transition: 'opacity 300ms ease, transform 300ms ease',
-    transitionDelay: `${index * 80}ms`,
-  });
+  const staggerStyle = (index: number): React.CSSProperties => {
+    // If we've already computed this card's style, return the frozen version
+    if (frozenStaggerStyles.has(index)) {
+      return frozenStaggerStyles.get(index)!;
+    }
+    
+    // Compute style once, freeze it
+    const style: React.CSSProperties = enableAnimationThisMount 
+      ? {
+          opacity: mounted ? 1 : 0,
+          transform: mounted ? 'translateY(0)' : 'translateY(6px)',
+          transition: 'opacity 300ms ease, transform 300ms ease',
+          transitionDelay: `${index * 80}ms`,
+        }
+      : {
+          opacity: 1,
+          transform: 'translateY(0)',
+          transition: 'none',
+        };
+    
+    // After the animation completes, update to a transition-free style to prevent twitching
+    if (enableAnimationThisMount && mounted) {
+      setTimeout(() => {
+        frozenStaggerStyles.set(index, {
+          opacity: 1,
+          transform: 'translateY(0)',
+          transition: 'none',
+        });
+      }, 300 + index * 80);
+    }
+    
+    return style;
+  };
   
 
   // Helper function to get current value
@@ -536,7 +614,7 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                         ? `linear-gradient(90deg, ${colours.green} 0%, rgba(32, 178, 108, 0.8) 100%)`
                         : `linear-gradient(90deg, ${colours.highlight} 0%, rgba(54, 144, 206, 0.8) 100%)`,
                       borderRadius: '3px',
-                      transition: 'width 0.3s ease',
+                      transition: enableAnimationThisMount ? 'width 0.3s ease' : 'none',
                     }} />
                   </div>
                   <div style={{
@@ -613,22 +691,25 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                         {metric.title}
                       </span>
                     </div>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '11px',
-                      color: trendColor,
-                      fontWeight: 600,
-                    }}>
-                      {trend === 'up' && '↗'}
-                      {trend === 'down' && '↘'}
-                      {trend === 'neutral' && '→'}
-                      <span>
-                        {trend === 'up' && '+'}
-                        {Math.abs(((currentValue - prevValue) / (prevValue || 1)) * 100).toFixed(0)}%
-                      </span>
-                    </div>
+                    {/* Only show trend indicator if prevValue exists and is greater than 0 */}
+                    {prevValue > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '11px',
+                        color: trendColor,
+                        fontWeight: 600,
+                      }}>
+                        {trend === 'up' && '↗'}
+                        {trend === 'down' && '↘'}
+                        {trend === 'neutral' && '→'}
+                        <span>
+                          {trend === 'up' && '+'}
+                          {Math.abs(((currentValue - prevValue) / prevValue) * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{
@@ -644,8 +725,18 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                     />
                   </div>
 
-                  {/* Show previous month value for money-only metrics */}
-                  {isTimeMetric(metric) && metric.isMoneyOnly && prevValue > 0 && (
+                  {/* Show firm total or previous month value for money-only metrics */}
+                  {isTimeMetric(metric) && metric.isMoneyOnly && metric.firmTotal && metric.firmTotal > 0 && (
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      color: isDarkMode ? '#9CA3AF' : '#6B7280',
+                      marginBottom: '8px',
+                    }}>
+                      Firm total: {formatCurrency(metric.firmTotal)}
+                    </div>
+                  )}
+                  {isTimeMetric(metric) && metric.isMoneyOnly && !metric.firmTotal && prevValue > 0 && (
                     <div style={{
                       fontSize: '11px',
                       fontWeight: 500,
@@ -710,7 +801,7 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                             ? `linear-gradient(90deg, ${colours.green} 0%, rgba(32, 178, 108, 0.8) 100%)`
                             : `linear-gradient(90deg, ${colours.highlight} 0%, rgba(54, 144, 206, 0.8) 100%)`,
                           borderRadius: '3px',
-                          transition: 'width 0.3s ease',
+                          transition: enableAnimationThisMount ? 'width 0.3s ease' : 'none',
                         }} />
                       </div>
                       <div style={{

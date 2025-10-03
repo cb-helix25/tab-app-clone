@@ -311,15 +311,26 @@ const App: React.FC<AppProps> = ({
   // Determine the current user's initials
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
-  // Fetch instruction data on app load
+  // Fetch instruction data lazily when Instructions tab is opened (not on app load)
   useEffect(() => {
+    // Only fetch instructions when Instructions tab is active
+    if (activeTab !== 'instructions') {
+      return;
+    }
+
+    // Skip fetch if data already loaded
+    if (instructionData.length > 0 || allInstructionData.length > 0) {
+      return;
+    }
+
     const useLocalData =
       process.env.REACT_APP_USE_LOCAL_DATA === "true" ||
       (process.env.REACT_APP_USE_LOCAL_DATA !== "false" && window.location.hostname === "localhost");
 
     async function fetchInstructionData() {
       const pilotUsers = ["AC", "JW", "KW", "BL", "LZ"];
-      const targetInitials = pilotUsers.includes(userInitials) ? "LZ" : userInitials;
+      // Use the actual user's initials for filtering, not LZ's
+      const targetInitials = userInitials;
       const currentUser = userData?.[0];
       const isAdmin = isAdminUser(currentUser);
 
@@ -514,7 +525,7 @@ const App: React.FC<AppProps> = ({
     if (userInitials) {
       fetchInstructionData();
     }
-  }, [userInitials, userData]);
+  }, [activeTab, userInitials, userData, instructionData.length, allInstructionData.length]);
 
   // Tabs visible to all users start with the Enquiries tab.
   // Instructions tab is available to admins plus BR, LA, SP
@@ -539,7 +550,8 @@ const App: React.FC<AppProps> = ({
     return [
       { key: 'enquiries', text: 'Enquiries' },
       ...(showInstructionsTab ? [{ key: 'instructions', text: 'Instructions' }] : []),
-      { key: 'matters', text: 'Matters' },
+      // Disable Matters in production (enabled only on localhost)
+      { key: 'matters', text: 'Matters', disabled: !isLocalhost },
       { key: 'forms', text: 'Forms', disabled: true }, // Disabled tab that triggers modal
       { key: 'resources', text: 'Resources', disabled: true }, // Disabled tab that triggers modal
       ...(showReportsTab ? [{ key: 'reporting', text: 'Reports' }] : []),
@@ -551,8 +563,12 @@ const App: React.FC<AppProps> = ({
   // If current tab is no longer available, redirect to home instead of breaking navigation
   useEffect(() => {
     const validTabKeys = tabs.map(tab => tab.key);
-    if (activeTab !== 'home' && !validTabKeys.includes(activeTab)) {
-      setActiveTab('home'); // Redirect to home if current tab is no longer valid
+    const disabledTabKeys = tabs.filter(tab => tab.disabled).map(tab => tab.key);
+    if (
+      activeTab !== 'home' &&
+      (!validTabKeys.includes(activeTab) || disabledTabKeys.includes(activeTab))
+    ) {
+      setActiveTab('home'); // Redirect to home if current tab is no longer valid or is disabled
     }
   }, [tabs, activeTab]);
 
@@ -610,10 +626,12 @@ const App: React.FC<AppProps> = ({
             userData={userData}
             matters={allMattersFromHome || []}
             hasActiveMatter={hasActiveMatter}
-            setIsInMatterOpeningWorkflow={setIsInMatterOpeningWorkflow} poidData={[]} setPoidData={function (value: React.SetStateAction<POID[]>): void {
-              throw new Error('Function not implemented.');
-            } } enquiries={enquiries}          />
-          );
+            setIsInMatterOpeningWorkflow={setIsInMatterOpeningWorkflow}
+            poidData={poidData}
+            setPoidData={setPoidData}
+            enquiries={enquiries}
+          />
+        );
       case 'matters':
         return (
           <Matters

@@ -93,13 +93,13 @@ const EnquiryNotesClamp: React.FC<EnquiryNotesClampProps> = ({ notes, isDark, fo
 
 // --- Card ---
 const getAreaColour = (area?: string) => {
-  switch (area?.toLowerCase()) {
-    case 'commercial': return colours.blue;
-    case 'construction': return colours.orange;
-    case 'property': return colours.green;
-    case 'employment': return colours.yellow;
-    default: return colours.cta;
-  }
+  const a = area?.toLowerCase() || '';
+  if (a.includes('commercial')) return colours.blue;
+  if (a.includes('construction')) return colours.orange;
+  if (a.includes('property')) return colours.green;
+  if (a.includes('employment')) return colours.yellow;
+  if (a.includes('other') || a.includes('unsure')) return colours.greyText;
+  return colours.greyText;
 };
 
 const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaChange, userEmail, onClaimSuccess, promotionStatus }) => {
@@ -122,12 +122,16 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
     padding: 14,
     margin: '8px 0',
     cursor: 'pointer',
-    transition: 'box-shadow .2s, transform .2s',
+    transition: 'box-shadow .2s, transform .2s, border-color .2s',
     boxShadow: isDarkMode ? '0 2px 10px rgba(0,0,0,0.25)' : '0 2px 10px rgba(0,0,0,0.08)',
     overflow: 'hidden',
     opacity: promotionStatus ? 0.6 : 1,
     selectors: {
-      ':hover': { boxShadow: isDarkMode ? '0 6px 20px rgba(0,0,0,0.35)' : '0 6px 20px rgba(0,0,0,0.12)', transform: 'translateY(-1px)' }
+      ':hover': { 
+        boxShadow: isDarkMode ? '0 6px 20px rgba(0,0,0,0.35)' : '0 6px 20px rgba(0,0,0,0.12)', 
+        transform: 'translateY(-1px)',
+        borderColor: areaColor
+      }
     }
   });
 
@@ -198,7 +202,19 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
       <EnquiryBadge enquiry={enquiry} isClaimed={false} showPulse={true} onAreaChange={onAreaChange} />
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+        <span
+          aria-hidden="true"
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: '50%',
+            background: areaColor,
+            boxShadow: `0 0 0 3px ${areaColor}33`,
+            animation: 'pulseEnquiry 1.8s ease-in-out infinite',
+            display: 'inline-block'
+          }}
+        />
         <Text variant="medium" styles={{ root: { fontWeight: 600, color: isDarkMode ? '#fff' : '#0d2538', lineHeight: 1.2 } }}>
           {(enquiry.First_Name || '') + ' ' + (enquiry.Last_Name || '')}
         </Text>

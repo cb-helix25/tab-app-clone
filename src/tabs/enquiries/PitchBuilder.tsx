@@ -778,19 +778,21 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
             console.error('Failed to parse prefetched blocks', e);
           }
         }
-        try {
-          const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            const compiled = compileBlocks(data);
-            setBlocks(compiled);
-            setSavedSnippets((data as any).savedSnippets || {});
-            return compiled;
-          }
-        } catch (err) {
-          console.error('Failed to load blocks', err);
-        }
+        // SNIPPET FUNCTIONALITY REMOVED - Changed approach completely
+        // Snippet blocks are no longer fetched from Azure Functions
+        // try {
+        //   const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
+        //   const res = await fetch(url);
+        //   if (res.ok) {
+        //     const data = await res.json();
+        //     const compiled = compileBlocks(data);
+        //     setBlocks(compiled);
+        //     setSavedSnippets((data as any).savedSnippets || {});
+        //     return compiled;
+        //   }
+        // } catch (err) {
+        //   console.error('Failed to load blocks', err);
+        // }
         const fallbackData = getDatabaseBlocksData();
         setBlocks(fallbackData.blocks);
         setSavedSnippets(fallbackData.savedSnippets);

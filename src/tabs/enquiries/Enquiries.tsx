@@ -56,6 +56,16 @@ import AreaCountCard from './AreaCountCard';
 import 'rc-slider/assets/index.css';
 import Slider from 'rc-slider';
 import { debugLog, debugWarn } from '../../utils/debug';
+
+// All available areas of work across the organization
+const ALL_AREAS_OF_WORK = [
+  'Commercial',
+  'Construction',
+  'Employment',
+  'Property',
+  'Other/Unsure'
+];
+
 // Local types
 interface MonthlyCount {
   month: string;
@@ -178,7 +188,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       
   // Call unified server-side route for ALL environments to avoid legacy combined route
-  const allDataUrl = '/api/enquiries-unified';
+  const allDataParams = new URLSearchParams({ fetchAll: 'true', includeTeamInbox: 'true', limit: '1500' });
+  const allDataUrl = `/api/enquiries-unified?${allDataParams.toString()}`;
       
       debugLog('🌐 Fetching ALL enquiries (unified) from:', allDataUrl);
       
@@ -342,6 +353,21 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
+  // CRITICAL DEBUG: Log incoming enquiries prop
+  React.useEffect(() => {
+    debugLog('🚨 ENQUIRIES PROP DEBUG:', {
+      hasEnquiries: !!enquiries,
+      enquiriesLength: enquiries?.length || 0,
+      enquiriesIsArray: Array.isArray(enquiries),
+      userEmail: userData?.[0]?.Email,
+      sampleEnquiries: enquiries?.slice(0, 3).map((e: any) => ({
+        ID: e.ID || e.id,
+        POC: e.Point_of_Contact || e.poc,
+        CallTaker: e.Call_Taker || e.rep
+      }))
+    });
+  }, [enquiries, userData]);
+
   // Detect source type heuristically (keep pure & easily testable)
   const detectSourceType = (enq: Record<string, unknown>): 'new' | 'legacy' => {
     // Heuristics for NEW dataset:
@@ -456,13 +482,18 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     }
   }, [allEnquiries, isLocalhost, userData, showMineOnly]);
 
-  // Initialize selected areas with all available areas
+  // Initialize selected areas with user's areas + Other/Unsure
   useEffect(() => {
     if (userData && userData.length > 0 && userData[0].AOW) {
       const userAOW = userData[0].AOW.split(',').map(a => a.trim());
-      // If no areas selected yet, select all available areas
+      // If no areas selected yet, select user's areas + Other/Unsure
       if (selectedAreas.length === 0) {
-        setSelectedAreas(userAOW);
+        const initialSelection = [...userAOW];
+        // Always include Other/Unsure by default
+        if (!initialSelection.includes('Other/Unsure')) {
+          initialSelection.push('Other/Unsure');
+        }
+        setSelectedAreas(initialSelection);
       }
     }
   }, [userData, selectedAreas]);
@@ -944,21 +975,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       ? userData[0].Email.toLowerCase()
       : '';
 
-    // For local development, use Sam SP's data
-    const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
-    const isLocalhost = window.location.hostname === 'localhost';
-    
-    const effectiveUserEmail = (useLocalData && isLocalhost) 
-      ? 'ac@helix-law.com' 
-      : userEmail;
+    // Always use the actual user's email - no local overrides
+    const effectiveUserEmail = userEmail;
 
     // Debug logging for BR
     if (userEmail.includes('br@') || userEmail.includes('brendan')) {
       debugLog('🐛 BR DEBUG - Enquiries filtering:', {
-        originalUserEmail: userEmail,
+        userEmail,
         effectiveUserEmail,
-        isLocalhost,
-        useLocalData,
         activeState,
         showMineOnly,
         totalEnquiriesBeforeFilter: displayEnquiries.length
@@ -987,8 +1011,22 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       allEnquiriesCount: allEnquiries.length,
       displayEnquiriesCount: displayEnquiries.length,
       enquiriesInSliderRangeCount: displayEnquiries.length,
-      filteredStartCount: filtered.length
+      filteredStartCount: filtered.length,
+      effectiveUserEmail,
+      userEmail
     });
+
+    // CRITICAL DEBUG: Log first few POCs to see what we're working with
+    if (filtered.length > 0) {
+      const pocSamples = filtered.slice(0, 10).map(e => ({
+        ID: e.ID,
+        POC: e.Point_of_Contact || (e as any).poc,
+        isUnclaimed: unclaimedEmails.includes((e.Point_of_Contact || (e as any).poc || '').toLowerCase())
+      }));
+      debugLog('📋 CRITICAL - POC samples before Claimed filter:', pocSamples);
+    } else {
+      debugLog('⚠️ CRITICAL - filtered array is EMPTY before Claimed filter!');
+    }
 
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
@@ -1077,16 +1115,26 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
       if (!hasFullAccess) {
         filtered = filtered.filter(enquiry => {
-          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
-          if (!enquiryArea) return false;
+          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase().trim();
+          
+          // Check if this is an unknown/unmatched area
+          const isUnknownArea = !enquiryArea || 
+            (!['commercial', 'construction', 'employment', 'property', 'claim'].some(known => 
+              enquiryArea === known || enquiryArea.includes(known) || known.includes(enquiryArea)
+            ));
 
-          // Always show "other" or "unsure" enquiries - they need triaging
-          if (enquiryArea.includes('other') || enquiryArea.includes('unsure')) return true;
+          // Always show "other/unsure" enquiries if that filter is selected
+          if (isUnknownArea && selectedAreas.some(area => area.toLowerCase() === 'other/unsure')) {
+            return true;
+          }
 
-          const inAllowed = userAOW.some(
-            a => a === enquiryArea || a.includes(enquiryArea) || enquiryArea.includes(a)
-          );
-          if (!inAllowed) return false;
+          // For known areas, check if they're in the user's allowed areas
+          if (!isUnknownArea) {
+            const inAllowed = userAOW.some(
+              a => a === enquiryArea || a.includes(enquiryArea) || enquiryArea.includes(a)
+            );
+            if (!inAllowed) return false;
+          }
 
           // Filter by selected areas (if any areas are selected, only show those)
           if (selectedAreas.length > 0) {
@@ -1100,7 +1148,19 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         });
       } else if (selectedAreas.length > 0) {
         filtered = filtered.filter(enquiry => {
-          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
+          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase().trim();
+          
+          // Check if this is an unknown/unmatched area
+          const isUnknownArea = !enquiryArea || 
+            (!['commercial', 'construction', 'employment', 'property', 'claim'].some(known => 
+              enquiryArea === known || enquiryArea.includes(known) || known.includes(enquiryArea)
+            ));
+          
+          // If enquiry has no area or doesn't match known areas, it falls under "Other/Unsure"
+          if (isUnknownArea && selectedAreas.some(area => area.toLowerCase() === 'other/unsure')) {
+            return true;
+          }
+          
           return selectedAreas.some(area => 
             enquiryArea === area.toLowerCase() || 
             enquiryArea.includes(area.toLowerCase()) || 
@@ -1109,8 +1169,22 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         });
       }
     } else if (selectedAreas.length > 0) {
+      // Apply area filter to all enquiry states consistently
       filtered = filtered.filter(enquiry => {
-        const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
+        const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase().trim();
+        
+        // If enquiry has no area or doesn't match known areas, it falls under "Other/Unsure"
+        const isUnknownArea = !enquiryArea || 
+          (!['commercial', 'construction', 'employment', 'property', 'claim'].some(known => 
+            enquiryArea === known || enquiryArea.includes(known) || known.includes(enquiryArea)
+          ));
+        
+        // Check if "Other/Unsure" is selected and this is an unknown area
+        if (isUnknownArea && selectedAreas.some(area => area.toLowerCase() === 'other/unsure')) {
+          return true;
+        }
+        
+        // Otherwise, match against selected areas normally
         return selectedAreas.some(area => 
           enquiryArea === area.toLowerCase() || 
           enquiryArea.includes(area.toLowerCase()) || 
@@ -1133,18 +1207,23 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       );
     }
     
-    // Final debug logging for BR
-    if (userEmail.includes('br@') || userEmail.includes('brendan')) {
-      debugLog('🎯 BR DEBUG - Final filtered results:', {
-        finalCount: filtered.length,
-        activeState,
+    // Final debug logging - ALWAYS show for Claimed view
+    debugLog('🎯 FINAL FILTER RESULT:', {
+      finalCount: filtered.length,
+      activeState,
+      showMineOnly,
+      searchTerm: searchTerm.trim(),
+      selectedAreas,
+      selectedAreasCount: selectedAreas.length
+    });
+    
+    if (activeState === 'Claimed') {
+      debugLog('� CLAIMED VIEW - Final result:', {
+        claimedCount: filtered.length,
         showMineOnly,
-        searchTerm: searchTerm.trim(),
-        selectedAreas
+        effectiveUserEmail,
+        samplePOCs: filtered.slice(0, 5).map(e => e.Point_of_Contact || (e as any).poc)
       });
-      if (filtered.length > 0) {
-        debugLog('📋 Sample enquiry POCs:', filtered.slice(0, 5).map(e => e.Point_of_Contact || (e as any).poc));
-      }
     }
     
     return filtered;
@@ -1250,9 +1329,10 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       padding: '0 12px',
       display: 'flex',
       flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: '6px',
       alignItems: 'center',
-      height: '44px',
+      minHeight: '44px',
       position: 'sticky',
       top: '48px',
       zIndex: 100,
@@ -1520,14 +1600,115 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             })),
             ariaLabel: "Filter enquiries by status"
           }}
-          secondaryFilter={userData && userData[0]?.AOW && userData[0].AOW.split(',').length > 1 ? (
-            <IconAreaFilter
-              selectedAreas={selectedAreas}
-              availableAreas={userData[0].AOW.split(',').map(a => a.trim())}
-              onAreaChange={setSelectedAreas}
-              ariaLabel="Filter enquiries by area of work"
-            />
-          ) : undefined}
+          secondaryFilter={(
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {userData && userData[0]?.AOW && (
+                <IconAreaFilter
+                  selectedAreas={selectedAreas}
+                  availableAreas={ALL_AREAS_OF_WORK}
+                  onAreaChange={setSelectedAreas}
+                  ariaLabel="Filter enquiries by area of work"
+                />
+              )}
+              {(isAdmin || isLocalhost) && (
+                <SegmentedControl
+                  id="enquiries-scope-seg"
+                  ariaLabel="Scope: toggle between my enquiries and all enquiries"
+                  value={showMineOnly ? 'mine' : 'all'}
+                  onChange={(v) => setShowMineOnly(v === 'mine')}
+                  options={[
+                    { key: 'mine', label: 'Mine' },
+                    { key: 'all', label: 'All' }
+                  ]}
+                />
+              )}
+              <div 
+                role="group" 
+                aria-label="Layout: choose 1 or 2 columns"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  height: 28,
+                  padding: '2px 4px',
+                  background: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                  borderRadius: 14,
+                  fontFamily: 'Raleway, sans-serif',
+                }}
+              >
+                <button
+                  type="button"
+                  title="Single column layout"
+                  aria-label="Single column layout"
+                  aria-pressed={!twoColumn}
+                  onClick={() => setTwoColumn(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 22,
+                    height: 22,
+                    background: !twoColumn ? '#FFFFFF' : 'transparent',
+                    border: 'none',
+                    borderRadius: 11,
+                    cursor: 'pointer',
+                    transition: 'all 200ms ease',
+                    opacity: !twoColumn ? 1 : 0.6,
+                    boxShadow: !twoColumn 
+                      ? (isDarkMode
+                          ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
+                          : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)')
+                      : 'none',
+                  }}
+                >
+                  <Icon
+                    iconName="SingleColumn"
+                    style={{
+                      fontSize: 10,
+                      color: !twoColumn 
+                        ? (isDarkMode ? '#1f2937' : '#1f2937')
+                        : (isDarkMode ? 'rgba(255,255,255,0.70)' : 'rgba(0,0,0,0.55)'),
+                    }}
+                  />
+                </button>
+                <button
+                  type="button"
+                  title="Two column layout"
+                  aria-label="Two column layout"
+                  aria-pressed={twoColumn}
+                  onClick={() => setTwoColumn(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 22,
+                    height: 22,
+                    background: twoColumn ? '#FFFFFF' : 'transparent',
+                    border: 'none',
+                    borderRadius: 11,
+                    cursor: 'pointer',
+                    transition: 'all 200ms ease',
+                    opacity: twoColumn ? 1 : 0.6,
+                    boxShadow: twoColumn 
+                      ? (isDarkMode
+                          ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
+                          : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)')
+                      : 'none',
+                  }}
+                >
+                  <Icon
+                    iconName="DoubleColumn"
+                    style={{
+                      fontSize: 10,
+                      color: twoColumn 
+                        ? (isDarkMode ? '#1f2937' : '#1f2937')
+                        : (isDarkMode ? 'rgba(255,255,255,0.70)' : 'rgba(0,0,0,0.55)'),
+                    }}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
           search={{
             value: searchTerm,
             onChange: setSearchTerm,
@@ -1540,106 +1721,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             collapsible: true
           }}
         >
-          {/* Page-level controls after area of work filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div 
-              role="group" 
-              aria-label="Layout: choose 1 or 2 columns"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                height: 28,
-                padding: '2px 4px',
-                background: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                borderRadius: 14,
-                fontFamily: 'Raleway, sans-serif',
-              }}
-            >
-              <button
-                type="button"
-                title="Single column layout"
-                aria-label="Single column layout"
-                aria-pressed={!twoColumn}
-                onClick={() => setTwoColumn(false)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 22,
-                  height: 22,
-                  background: !twoColumn ? '#FFFFFF' : 'transparent',
-                  border: 'none',
-                  borderRadius: 11,
-                  cursor: 'pointer',
-                  transition: 'all 200ms ease',
-                  opacity: !twoColumn ? 1 : 0.6,
-                  boxShadow: !twoColumn 
-                    ? (isDarkMode
-                        ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
-                        : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)')
-                    : 'none',
-                }}
-              >
-                <Icon
-                  iconName="SingleColumn"
-                  style={{
-                    fontSize: 10,
-                    color: !twoColumn 
-                      ? (isDarkMode ? '#1f2937' : '#1f2937')
-                      : (isDarkMode ? 'rgba(255,255,255,0.70)' : 'rgba(0,0,0,0.55)'),
-                  }}
-                />
-              </button>
-              <button
-                type="button"
-                title="Two column layout"
-                aria-label="Two column layout"
-                aria-pressed={twoColumn}
-                onClick={() => setTwoColumn(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 22,
-                  height: 22,
-                  background: twoColumn ? '#FFFFFF' : 'transparent',
-                  border: 'none',
-                  borderRadius: 11,
-                  cursor: 'pointer',
-                  transition: 'all 200ms ease',
-                  opacity: twoColumn ? 1 : 0.6,
-                  boxShadow: twoColumn 
-                    ? (isDarkMode
-                        ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
-                        : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)')
-                    : 'none',
-                }}
-              >
-                <Icon
-                  iconName="DoubleColumn"
-                  style={{
-                    fontSize: 10,
-                    color: twoColumn 
-                      ? (isDarkMode ? '#1f2937' : '#1f2937')
-                      : (isDarkMode ? 'rgba(255,255,255,0.70)' : 'rgba(0,0,0,0.55)'),
-                  }}
-                />
-              </button>
-            </div>
-            {(isAdmin || isLocalhost) && (
-              <SegmentedControl
-                id="enquiries-scope-seg"
-                ariaLabel="Scope: toggle between my enquiries and all enquiries"
-                value={showMineOnly ? 'mine' : 'all'}
-                onChange={(v) => setShowMineOnly(v === 'mine')}
-                options={[
-                  { key: 'mine', label: 'Mine' },
-                  { key: 'all', label: 'All' }
-                ]}
-              />
-            )}
-          </div>
         </FilterBanner>
       );
     } else {

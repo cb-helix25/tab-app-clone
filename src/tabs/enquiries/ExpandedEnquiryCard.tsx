@@ -612,7 +612,7 @@ const ExpandedEnquiryCard: React.FC<ExpandedEnquiryCardProps> = ({
                   },
                 }}
               >
-                {enquiry.Area_of_Work}
+                {enquiry.Area_of_Work?.toLowerCase().includes('other') || enquiry.Area_of_Work?.toLowerCase().includes('unsure') ? 'Other' : enquiry.Area_of_Work}
               </Text>
               {enquiry.Type_of_Work && (
                 <Text
@@ -847,7 +847,7 @@ const ExpandedEnquiryCard: React.FC<ExpandedEnquiryCardProps> = ({
                               }
                             }}
                           >
-                            {historyEnquiry.Area_of_Work}
+                            {historyEnquiry.Area_of_Work?.toLowerCase().includes('other') || historyEnquiry.Area_of_Work?.toLowerCase().includes('unsure') ? 'Other' : historyEnquiry.Area_of_Work}
                           </Text>
                           {historyEnquiry.Type_of_Work && (
                             <Text 

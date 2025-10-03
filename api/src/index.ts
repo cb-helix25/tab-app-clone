@@ -3,8 +3,9 @@
 import { app } from "@azure/functions";
 
 // Import all functions
-import "./functions/approveSnippetEdit";
-import "./functions/deleteSnippetEdit";
+// Snippet-related functions removed (changed approach):
+// - approveSnippetEdit, deleteSnippetEdit, submitSnippetEdit
+// - getSnippetEdits, getSnippetBlocks, getSimplifiedBlocks
 import "./functions/generateReportDataset";
 import "./functions/getAllMatters";
 import "./functions/getAnnualLeave";
@@ -12,21 +13,22 @@ import "./functions/getAnnualLeaveAll";
 import "./functions/getAttendance";
 import "./functions/getComplianceData";
 import "./functions/getEnquiries";
-import "./functions/getFutureBookings";
+// getFutureBookings migrated to Express server route /api/future-bookings
+// import "./functions/getFutureBookings";
 import "./functions/getInstructionData";
 import "./functions/getMatterOverview";
 import "./functions/getMatters";
 import "./functions/getMatterSpecificActivities";
-import "./functions/getOutstandingClientBalances";
+// getOutstandingClientBalances migrated to Express server route /api/outstanding-balances
+// import "./functions/getOutstandingClientBalances";
 import "./functions/getPOID";
-import "./functions/getPOID6years";
+// getPOID6years migrated to Express server route /api/poid/6years
+// import "./functions/getPOID6years";
 import "./functions/getRecovered";
 import "./functions/getRoadmap";
-import "./functions/getSimplifiedBlocks";
-import "./functions/getSnippetBlocks";
-import "./functions/getSnippetEdits";
 import "./functions/getTeamData";
-import "./functions/getTransactions";
+// getTransactions migrated to Express server route /api/transactions
+// import "./functions/getTransactions";
 import "./functions/getUserData";
 import "./functions/getUserProfile";
 import "./functions/getWIPClio";

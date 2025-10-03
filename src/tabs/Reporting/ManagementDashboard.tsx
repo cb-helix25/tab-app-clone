@@ -9,6 +9,7 @@ import {
   PrimaryButton,
   Spinner,
   Stack,
+  Icon,
 } from '@fluentui/react';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
@@ -47,7 +48,7 @@ interface ManagementDashboardProps {
   isFetching?: boolean;
 }
 
-type RangeKey = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'all';
+type RangeKey = 'all' | 'today' | 'yesterday' | 'week' | 'lastWeek' | 'month' | 'lastMonth' | 'last90Days' | 'quarter' | 'yearToDate' | 'year' | 'custom';
 
 interface RangeOption {
   key: RangeKey;
@@ -71,11 +72,15 @@ type SortDirection = 'asc' | 'desc';
 
 const RANGE_OPTIONS: RangeOption[] = [
   { key: 'today', label: 'Today' },
+  { key: 'yesterday', label: 'Yesterday' },
   { key: 'week', label: 'This Week' },
+  { key: 'lastWeek', label: 'Last Week' },
   { key: 'month', label: 'This Month' },
+  { key: 'lastMonth', label: 'Last Month' },
+  { key: 'last90Days', label: 'Last 90 Days' },
   { key: 'quarter', label: 'This Quarter' },
-  { key: 'year', label: 'This Year' },
-  { key: 'all', label: 'All Time' },
+  { key: 'yearToDate', label: 'Year To Date' },
+  { key: 'year', label: 'Current Year' },
 ];
 
 const getDatePickerStyles = (isDarkMode: boolean): Partial<IDatePickerStyles> => {
@@ -157,31 +162,57 @@ const getDatePickerStyles = (isDarkMode: boolean): Partial<IDatePickerStyles> =>
   };
 };
 
-const getRangeButtonStyles = (isDarkMode: boolean, active: boolean): IButtonStyles => {
+const getRangeButtonStyles = (isDarkMode: boolean, active: boolean, disabled: boolean = false): IButtonStyles => {
   const activeBackground = colours.highlight;
   const inactiveBackground = isDarkMode ? 'rgba(148, 163, 184, 0.16)' : 'transparent';
 
+  const resolvedBackground = disabled
+    ? (isDarkMode ? 'rgba(15, 23, 42, 0.8)' : 'transparent')
+    : active ? activeBackground : inactiveBackground;
+
+  const resolvedBorder = active
+    ? `1px solid ${isDarkMode ? 'rgba(135, 176, 255, 0.5)' : 'rgba(13, 47, 96, 0.32)'}`
+    : `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(13, 47, 96, 0.16)'}`;
+
+  const resolvedColor = disabled
+    ? (isDarkMode ? '#E2E8F0' : colours.missedBlue)
+    : active
+      ? '#ffffff'
+      : (isDarkMode ? '#E2E8F0' : colours.missedBlue);
+
   return {
     root: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      whiteSpace: 'nowrap' as const,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
       borderRadius: 999,
-      border: active
-        ? `1px solid ${isDarkMode ? 'rgba(135, 176, 255, 0.5)' : 'rgba(13, 47, 96, 0.32)'}`
-        : `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.28)' : 'rgba(13, 47, 96, 0.18)'}`,
+      border: resolvedBorder,
   padding: '0 12px',
   minHeight: 32,
   height: 32,
-      fontWeight: 600,
+  fontWeight: 600,
       fontSize: 13,
-      color: active ? '#ffffff' : (isDarkMode ? '#E2E8F0' : colours.missedBlue),
-      background: active ? activeBackground : inactiveBackground,
-      boxShadow: 'none',
+      color: resolvedColor,
+      background: resolvedBackground,
+  boxShadow: active && !disabled ? '0 2px 8px rgba(54, 144, 206, 0.25)' : 'none',
       fontFamily: 'Raleway, sans-serif',
+      cursor: disabled ? 'default' : 'pointer',
     },
     rootHovered: {
-      background: active ? '#2f7cb3' : (isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(54, 144, 206, 0.12)'),
+      background: disabled
+        ? resolvedBackground
+        : active
+          ? '#2f7cb3'
+          : (isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(54, 144, 206, 0.12)'),
     },
     rootPressed: {
-      background: active ? '#266795' : (isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(54, 144, 206, 0.16)'),
+      background: disabled
+        ? resolvedBackground
+        : active
+          ? '#266795'
+          : (isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(54, 144, 206, 0.16)'),
     },
   };
 };
@@ -239,6 +270,53 @@ const getTeamButtonStyles = (isDarkMode: boolean, active: boolean, hasWorked: bo
   };
 };
 
+const getRoleButtonStyles = (isDarkMode: boolean, active: boolean): IButtonStyles => {
+  const activeBackground = active 
+    ? `linear-gradient(135deg, ${colours.highlight} 0%, #2f7cb3 100%)`
+    : (isDarkMode ? 'rgba(15, 23, 42, 0.8)' : 'transparent');
+  
+  const activeBorder = active
+    ? `2px solid ${isDarkMode ? '#87ceeb' : colours.highlight}`
+    : `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.24)' : 'rgba(13, 47, 96, 0.16)'}`;
+
+  const textColor = active ? '#ffffff' : (isDarkMode ? '#E2E8F0' : colours.missedBlue);
+
+  return {
+    root: {
+      borderRadius: 999,
+      minHeight: 32,
+      height: 32,
+      padding: '0 12px',
+      fontWeight: active ? 700 : 600,
+      fontSize: 12,
+      border: activeBorder,
+      background: activeBackground,
+      color: textColor,
+      boxShadow: active 
+        ? (isDarkMode ? '0 2px 8px rgba(54, 144, 206, 0.3)' : '0 2px 8px rgba(54, 144, 206, 0.25)')
+        : 'none',
+      fontFamily: 'Raleway, sans-serif',
+      transform: active ? 'translateY(-1px)' : 'none',
+      transition: 'all 0.2s ease',
+    },
+    rootHovered: {
+      background: active 
+        ? `linear-gradient(135deg, #2f7cb3 0%, #266795 100%)` 
+        : (isDarkMode ? 'rgba(15, 23, 42, 0.86)' : 'rgba(54, 144, 206, 0.1)'),
+      transform: 'translateY(-1px)',
+      boxShadow: active 
+        ? (isDarkMode ? '0 4px 12px rgba(54, 144, 206, 0.4)' : '0 4px 12px rgba(54, 144, 206, 0.35)')
+        : (isDarkMode ? '0 2px 4px rgba(0, 0, 0, 0.1)' : '0 2px 4px rgba(15, 23, 42, 0.05)'),
+    },
+    rootPressed: {
+      background: active 
+        ? `linear-gradient(135deg, #266795 0%, #1e5a7a 100%)` 
+        : (isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(54, 144, 206, 0.14)'),
+      transform: 'translateY(0)',
+    },
+  };
+};
+
 const summaryChipStyle = (isDarkMode: boolean): CSSProperties => ({
   display: 'flex',
   flexDirection: 'column',
@@ -254,6 +332,63 @@ const summaryChipStyle = (isDarkMode: boolean): CSSProperties => ({
   width: '100%',
 });
 
+const dateStampButtonStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  justifyContent: 'center',
+  padding: '6px 12px',
+  borderRadius: 10,
+  border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.28)' : 'rgba(13, 47, 96, 0.14)'}`,
+  background: isDarkMode ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.95)',
+  color: isDarkMode ? '#e2e8f0' : '#0d2f60',
+  minWidth: 132,
+  gap: 2,
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  fontFamily: 'Raleway, sans-serif',
+  whiteSpace: 'nowrap',
+  lineHeight: 1.3,
+});
+
+const clearAllTimeButtonStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '0 14px',
+  height: 58,
+  borderRadius: 10,
+  border: `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)'}`,
+  background: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(254, 242, 242, 0.9)',
+  color: isDarkMode ? '#fca5a5' : '#dc2626',
+  gap: 8,
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  fontFamily: 'Raleway, sans-serif',
+  fontWeight: 600,
+  fontSize: 14,
+  whiteSpace: 'nowrap',
+});
+
+const clearFilterButtonStyle = (isDarkMode: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '0 12px',
+  height: 32,
+  borderRadius: 8,
+  border: `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.35)' : 'rgba(239, 68, 68, 0.25)'}`,
+  background: isDarkMode ? 'rgba(239, 68, 68, 0.12)' : 'rgba(254, 242, 242, 0.85)',
+  color: isDarkMode ? '#fca5a5' : '#dc2626',
+  gap: 6,
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  fontFamily: 'Raleway, sans-serif',
+  fontWeight: 600,
+  fontSize: 13,
+  whiteSpace: 'nowrap',
+});
+
 const computeRange = (range: RangeKey): { start: Date; end: Date } => {
   const now = new Date();
   const end = new Date(now);
@@ -263,6 +398,15 @@ const computeRange = (range: RangeKey): { start: Date; end: Date } => {
     case 'today':
       start.setHours(0, 0, 0, 0);
       break;
+    case 'yesterday': {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      start.setTime(yesterday.getTime());
+      start.setHours(0, 0, 0, 0);
+      end.setTime(yesterday.getTime());
+      end.setHours(23, 59, 59, 999);
+      break;
+    }
     case 'week': {
       const day = now.getDay();
       const diff = (day + 6) % 7; // Monday as start
@@ -270,21 +414,52 @@ const computeRange = (range: RangeKey): { start: Date; end: Date } => {
       start.setHours(0, 0, 0, 0);
       break;
     }
+    case 'lastWeek': {
+      const day = now.getDay();
+      const diff = (day + 6) % 7; // Monday as start
+      const thisWeekStart = new Date(now);
+      thisWeekStart.setDate(now.getDate() - diff);
+      thisWeekStart.setHours(0, 0, 0, 0);
+
+      start.setTime(thisWeekStart.getTime());
+      start.setDate(start.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+
+      end.setTime(start.getTime());
+      end.setDate(end.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      break;
+    }
     case 'month':
       start.setDate(1);
       start.setHours(0, 0, 0, 0);
       break;
+    case 'lastMonth': {
+      // Set to first day of last month
+      start.setMonth(now.getMonth() - 1, 1);
+      start.setHours(0, 0, 0, 0);
+      // Set end to last day of last month (day 0 of current month)
+      end.setDate(0);
+      end.setHours(23, 59, 59, 999);
+      break;
+    }
+    case 'last90Days': {
+      // Set start to 90 days ago
+      start.setDate(now.getDate() - 89);
+      start.setHours(0, 0, 0, 0);
+      break;
+    }
     case 'quarter': {
       const quarterStart = Math.floor(now.getMonth() / 3) * 3;
       start.setMonth(quarterStart, 1);
       start.setHours(0, 0, 0, 0);
       break;
     }
-    case 'year': {
+    case 'yearToDate': {
       // Financial year: 1 April to 31 March
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth(); // 0-11 (0 = January)
-      
+
       if (currentMonth >= 3) { // April onwards (month 3+)
         // We're in the financial year that started this calendar year
         start.setFullYear(currentYear, 3, 1); // 1 April this year
@@ -295,6 +470,20 @@ const computeRange = (range: RangeKey): { start: Date; end: Date } => {
       start.setHours(0, 0, 0, 0);
       break;
     }
+    case 'year': {
+      // Calendar year: 1 January to 31 December
+      const currentYear = now.getFullYear();
+      start.setFullYear(currentYear, 0, 1);
+      start.setHours(0, 0, 0, 0);
+
+      end.setFullYear(currentYear, 11, 31);
+      end.setHours(23, 59, 59, 999);
+      break;
+    }
+    case 'custom':
+      // For custom ranges, return current date as both start and end
+      // The actual dates will be controlled by the DatePicker components
+      return { start: new Date(now), end: new Date(now) };
     case 'all':
     default:
       return { start: new Date(0), end };
@@ -304,7 +493,7 @@ const computeRange = (range: RangeKey): { start: Date; end: Date } => {
 };
 
 const computePreviousRange = (range: RangeKey, currentStart: Date, currentEnd: Date): { start: Date; end: Date } | null => {
-  if (range === 'all') return null;
+  if (range === 'all' || range === 'custom') return null;
 
   const start = new Date();
   const end = new Date();
@@ -324,6 +513,16 @@ const computePreviousRange = (range: RangeKey, currentStart: Date, currentEnd: D
       end.setHours(23, 59, 59, 999);
       break;
     }
+    case 'yesterday': {
+      // Day before yesterday
+      const dayBeforeYesterday = new Date(currentStart);
+      dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 1);
+      start.setTime(dayBeforeYesterday.getTime());
+      start.setHours(0, 0, 0, 0);
+      end.setTime(dayBeforeYesterday.getTime());
+      end.setHours(23, 59, 59, 999);
+      break;
+    }
     case 'week': {
       // Previous week, accounting for partial weeks
       const currentDays = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -334,6 +533,20 @@ const computePreviousRange = (range: RangeKey, currentStart: Date, currentEnd: D
       end.setTime(weekStart.getTime());
       end.setDate(end.getDate() + currentDays - 1);
       end.setHours(23, 59, 59, 999);
+      break;
+    }
+    case 'lastWeek': {
+      // Week before last (full week)
+      const previousWeekStart = new Date(currentStart);
+      previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+      previousWeekStart.setHours(0, 0, 0, 0);
+
+      const previousWeekEnd = new Date(previousWeekStart);
+      previousWeekEnd.setDate(previousWeekEnd.getDate() + 6);
+      previousWeekEnd.setHours(23, 59, 59, 999);
+
+      start.setTime(previousWeekStart.getTime());
+      end.setTime(previousWeekEnd.getTime());
       break;
     }
     case 'month': {
@@ -349,6 +562,36 @@ const computePreviousRange = (range: RangeKey, currentStart: Date, currentEnd: D
       end.setHours(23, 59, 59, 999);
       break;
     }
+    case 'lastMonth': {
+      // "Last Month" compares to the month before that
+      const twoMonthsAgo = new Date(currentStart);
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 1, 1); // Set to 1st of two months ago
+      start.setTime(twoMonthsAgo.getTime());
+      start.setHours(0, 0, 0, 0);
+      
+      // End of two months ago
+      end.setTime(twoMonthsAgo.getTime());
+      end.setMonth(end.getMonth() + 1, 0); // Last day of two months ago
+      end.setHours(23, 59, 59, 999);
+      break;
+    }
+    case 'last90Days': {
+      // Use the length of the current range to ensure the comparison window matches exactly
+  const dayInMs = 24 * 60 * 60 * 1000;
+  const rangeLengthInDays = Math.max(1, Math.round((currentEnd.getTime() - currentStart.getTime()) / dayInMs) + 1);
+
+      const previousEnd = new Date(currentStart);
+      previousEnd.setDate(previousEnd.getDate() - 1);
+      previousEnd.setHours(23, 59, 59, 999);
+
+      const previousStart = new Date(previousEnd);
+      previousStart.setDate(previousStart.getDate() - (rangeLengthInDays - 1));
+      previousStart.setHours(0, 0, 0, 0);
+
+      start.setTime(previousStart.getTime());
+      end.setTime(previousEnd.getTime());
+      break;
+    }
     case 'quarter': {
       // Previous quarter - get the full previous quarter
       const prevQuarter = new Date(currentStart);
@@ -362,17 +605,31 @@ const computePreviousRange = (range: RangeKey, currentStart: Date, currentEnd: D
       end.setHours(23, 59, 59, 999);
       break;
     }
-    case 'year': {
+    case 'yearToDate': {
       // Previous financial year
       const prevYear = new Date(currentStart);
       prevYear.setFullYear(prevYear.getFullYear() - 1);
       start.setTime(prevYear.getTime());
       start.setHours(0, 0, 0, 0);
-      
+
       // End of previous financial year (day before current year starts)
       end.setTime(currentStart.getTime());
       end.setDate(end.getDate() - 1);
       end.setHours(23, 59, 59, 999);
+      break;
+    }
+    case 'year': {
+      // Previous calendar year
+      const prevYearStart = new Date(currentStart);
+      prevYearStart.setFullYear(prevYearStart.getFullYear() - 1);
+      prevYearStart.setHours(0, 0, 0, 0);
+
+      const prevYearEnd = new Date(currentEnd);
+      prevYearEnd.setFullYear(prevYearEnd.getFullYear() - 1);
+      prevYearEnd.setHours(23, 59, 59, 999);
+
+      start.setTime(prevYearStart.getTime());
+      end.setTime(prevYearEnd.getTime());
       break;
     }
     default:
@@ -400,12 +657,17 @@ const formatDateRange = (start: Date, end: Date): string => {
 // Helper function to get range label
 const getRangeLabel = (range: RangeKey): string => {
   switch (range) {
-    case 'today': return 'Today';
-    case 'week': return 'This Week';
-    case 'month': return 'This Month';
-    case 'quarter': return 'This Quarter';
-    case 'year': return 'This Year';
-    case 'all': return 'All Time';
+  case 'today': return 'Today';
+  case 'yesterday': return 'Yesterday';
+  case 'week': return 'This Week';
+  case 'lastWeek': return 'Last Week';
+  case 'month': return 'This Month';
+  case 'lastMonth': return 'Last Month';
+  case 'last90Days': return 'Last 90 Days';
+  case 'quarter': return 'This Quarter';
+  case 'yearToDate': return 'Year To Date';
+  case 'year': return 'Current Year';
+  case 'all': return 'All Time';
     default: return 'Custom';
   }
 };
@@ -413,11 +675,16 @@ const getRangeLabel = (range: RangeKey): string => {
 // Helper function to get previous range label
 const getPreviousRangeLabel = (range: RangeKey): string => {
   switch (range) {
-    case 'today': return 'Previous Working Day';
-    case 'week': return 'Previous Week';
-    case 'month': return 'Previous Month';
-    case 'quarter': return 'Previous Quarter';
-    case 'year': return 'Previous Year';
+  case 'today': return 'Previous Working Day';
+  case 'yesterday': return 'Day Before Yesterday';
+  case 'week': return 'Previous Week';
+  case 'lastWeek': return 'Week Before Last';
+  case 'lastMonth': return 'Two Months Ago';
+  case 'last90Days': return 'Prior 90 Days';
+  case 'month': return 'Previous Month';
+  case 'quarter': return 'Previous Quarter';
+  case 'yearToDate': return 'Previous Financial Year';
+  case 'year': return 'Previous Year';
     default: return 'Previous Period';
   }
 };
@@ -622,10 +889,10 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   }, []);
 
   const { isDarkMode } = useTheme();
-  const [{ start: rangeStart, end: rangeEnd }, setRangeState] = useState(() => computeRange('week'));
-  const [rangeKey, setRangeKey] = useState<RangeKey>('week');
-  const [startDate, setStartDate] = useState<Date | undefined>(() => rangeStart);
-  const [endDate, setEndDate] = useState<Date | undefined>(() => rangeEnd);
+  const [{ start: rangeStart, end: rangeEnd }, setRangeState] = useState(() => computeRange('all'));
+  const [rangeKey, setRangeKey] = useState<RangeKey>('all');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [hoveredMetric, setHoveredMetric] = useState<{ type: string; x: number; y: number } | null>(null);
   const [hoveredMember, setHoveredMember] = useState<{ 
     member: MemberMetrics; 
@@ -633,19 +900,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
     x: number; 
     y: number 
   } | null>(null);
-
-  // Sync range calculation when rangeKey changes (but not if using custom dates)
-  React.useEffect(() => {
-    const newRange = computeRange(rangeKey);
-    setRangeState(newRange);
-    // Only update custom dates if they match the old range (not manually set)
-    if (startDate?.getTime() === rangeStart.getTime() || !startDate) {
-      setStartDate(newRange.start);
-    }
-    if (endDate?.getTime() === rangeEnd.getTime() || !endDate) {
-      setEndDate(newRange.end);
-    }
-  }, [rangeKey]);
+  const [showDatasetInfo, setShowDatasetInfo] = useState(false);
 
   // Check if member was completely away during the period (for daily/weekly views)
   const wasCompletelyAway = (startDate: Date, endDate: Date, memberInitials: string): boolean => {
@@ -725,16 +980,23 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
     
     return targetHours;
   };
+
+  // Role options - "Ops" combines Non-solicitor and Operations 1
+  // "Inactive" includes all inactive team members
+  const ROLE_OPTIONS = [
+    { key: 'Partner', label: 'Partner' },
+    { key: 'Associate Solicitor', label: 'Associate' },
+    { key: 'Solicitor', label: 'Solicitor' },
+    { key: 'Paralegal', label: 'Paralegal' },
+    { key: 'Ops', label: 'Ops' },
+    { key: 'Inactive', label: 'Inactive' },
+  ] as const;
+
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [showRoleFilter, setShowRoleFilter] = useState<boolean>(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>('displayName');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-
-  useEffect(() => {
-    const next = computeRange(rangeKey);
-    setRangeState(next);
-    setStartDate(next.start);
-    setEndDate(next.end);
-  }, [rangeKey]);
 
   const enquiries = rawEnquiries ?? [];
   const matters = rawMatters ?? [];
@@ -742,8 +1004,8 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   const fees = rawFees ?? [];
   const team = rawTeam ?? [];
 
-  const activeStart = startDate ?? rangeStart;
-  const activeEnd = endDate ?? rangeEnd;
+  const activeStart = useMemo(() => startDate ?? rangeStart, [startDate, rangeStart]);
+  const activeEnd = useMemo(() => endDate ?? rangeEnd, [endDate, rangeEnd]);
 
   const withinRange = (value: Date | null): boolean => {
     if (!value) {
@@ -794,30 +1056,88 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   const teamMembers = useMemo(() => (
     team
       .filter((member) => {
+        return Boolean(member['Initials']); // Include all team members with initials
+      })
+      .map((member) => {
         const statusValueRaw = typeof member.status === 'string'
           ? member.status
           : typeof (member as Record<string, unknown>)['Status'] === 'string'
             ? String((member as Record<string, unknown>)['Status'])
             : undefined;
         const isActive = statusValueRaw ? statusValueRaw.toLowerCase() === 'active' : false;
+        
         const roleValueRaw = (member as Record<string, unknown>)['Role'] 
           ? String((member as Record<string, unknown>)['Role'])
           : undefined;
-        const isFeeEarningRole = roleValueRaw && ['Partner', 'Associate Solicitor', 'Solicitor', 'Paralegal'].includes(roleValueRaw);
-        return Boolean(member['Initials']) && isActive && isFeeEarningRole;
+        
+        // If inactive, role becomes "Inactive" regardless of original role
+        if (!isActive) {
+          return {
+            initials: member['Initials'] ?? '',
+            record: member,
+            display: displayName(member),
+            clioId: member['Clio ID'] ? String(member['Clio ID']) : undefined,
+            role: 'Inactive',
+            isActive: false,
+          };
+        }
+        
+        // Normalize role: map "Non-solicitor" and "Operations 1" to "Ops"
+        let normalizedRole = roleValueRaw;
+        if (roleValueRaw === 'Non-solicitor' || roleValueRaw === 'Operations 1') {
+          normalizedRole = 'Ops';
+        }
+        
+        return {
+          initials: member['Initials'] ?? '',
+          record: member,
+          display: displayName(member),
+          clioId: member['Clio ID'] ? String(member['Clio ID']) : undefined,
+          role: normalizedRole,
+          isActive: true,
+        };
       })
-      .map((member) => ({
-        initials: member['Initials'] ?? '',
-        record: member,
-        display: displayName(member),
-        clioId: member['Clio ID'] ? String(member['Clio ID']) : undefined,
-      }))
       .sort((a, b) => a.display.localeCompare(b.display))
   ), [team]);
 
-  const visibleMembers = selectedTeams.length > 0
-    ? teamMembers.filter((member) => selectedTeams.includes(member.initials))
-    : teamMembers;
+  // Filter displayable team members: hide Ops and Inactive unless their filters are selected
+  const displayableTeamMembers = useMemo(() => {
+    const showOps = selectedRoles.includes('Ops');
+    const showInactive = selectedRoles.includes('Inactive');
+    
+    return teamMembers.filter((member) => {
+      // Always show standard fee-earning roles
+      if (member.role !== 'Ops' && member.role !== 'Inactive') {
+        return true;
+      }
+      // Show Ops only if Ops filter is active
+      if (member.role === 'Ops' && showOps) {
+        return true;
+      }
+      // Show Inactive only if Inactive filter is active
+      if (member.role === 'Inactive' && showInactive) {
+        return true;
+      }
+      return false;
+    });
+  }, [teamMembers, selectedRoles]);
+
+  const visibleMembers = useMemo(() => {
+    // Start with displayable members (excludes Ops and Inactive unless their filters are active)
+    let filtered = displayableTeamMembers;
+    
+    // Filter by selected team members
+    if (selectedTeams.length > 0) {
+      filtered = filtered.filter((member) => selectedTeams.includes(member.initials));
+    }
+    
+    // Filter by selected roles
+    if (selectedRoles.length > 0) {
+      filtered = filtered.filter((member) => selectedRoles.includes(member.role ?? ''));
+    }
+    
+    return filtered;
+  }, [displayableTeamMembers, selectedTeams, selectedRoles]);
 
   // OPTIMIZATION: Pre-index all large datasets to avoid repeated filtering
   
@@ -1027,27 +1347,47 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
     return sorted;
   }, [metricsByMember, sortColumn, sortDirection]);
 
-  const totals = sortedMetricsByMember.reduce(
-    (acc, row) => ({
-      enquiries: acc.enquiries + row.enquiries,
-      matters: acc.matters + row.matters,
-      wipHours: acc.wipHours + row.wipHours,
-      wipValue: acc.wipValue + row.wipValue,
-      collected: acc.collected + row.collected,
-    }),
-    { enquiries: 0, matters: 0, wipHours: 0, wipValue: 0, collected: 0 },
-  );
+  const totals = useMemo(() => (
+    sortedMetricsByMember.reduce(
+      (acc, row) => ({
+        enquiries: acc.enquiries + row.enquiries,
+        matters: acc.matters + row.matters,
+        wipHours: acc.wipHours + row.wipHours,
+        wipValue: acc.wipValue + row.wipValue,
+        collected: acc.collected + row.collected,
+      }),
+      { enquiries: 0, matters: 0, wipHours: 0, wipValue: 0, collected: 0 },
+    )
+  ), [sortedMetricsByMember]);
 
-  const summaryTotals = {
-    enquiries: filteredEnquiries.length,
-    matters: filteredMatters.length,
-    wipHours: filteredWip.reduce((total, record) => total + safeNumber(record.quantity_in_hours), 0),
-    wipValue: filteredWip.reduce((total, record) => total + safeNumber(record.total), 0),
-    collected: filteredFees.reduce((total, record) => total + safeNumber(record.payment_allocated), 0),
-  };
+  const summaryTotals = useMemo(() => {
+    const wipAggregates = filteredWip.reduce(
+      (acc, record) => ({
+        hours: acc.hours + safeNumber(record.quantity_in_hours),
+        value: acc.value + safeNumber(record.total),
+      }),
+      { hours: 0, value: 0 },
+    );
+
+    const collectedTotal = filteredFees.reduce(
+      (acc, record) => acc + safeNumber(record.payment_allocated),
+      0,
+    );
+
+    return {
+      enquiries: filteredEnquiries.length,
+      matters: filteredMatters.length,
+      wipHours: wipAggregates.hours,
+      wipValue: wipAggregates.value,
+      collected: collectedTotal,
+    };
+  }, [filteredEnquiries, filteredMatters, filteredWip, filteredFees]);
 
   // Calculate previous period metrics for comparison
-  const previousRange = computePreviousRange(rangeKey, startDate || rangeStart, endDate || rangeEnd);
+  const previousRange = React.useMemo<{ start: Date; end: Date } | null>(
+    () => computePreviousRange(rangeKey, startDate || rangeStart, endDate || rangeEnd),
+    [rangeKey, startDate, endDate, rangeStart, rangeEnd]
+  );
   
   // Debug logging for previous range
   debugLog('🔍 Previous Range Debug:', {
@@ -1296,6 +1636,50 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
 
   const handleRangeSelect = (key: RangeKey) => {
     setRangeKey(key);
+    if (key === 'custom') {
+      return;
+    }
+
+    const newRange = computeRange(key);
+    setRangeState(newRange);
+    if (key === 'all') {
+      setStartDate(undefined);
+      setEndDate(undefined);
+    } else {
+      setStartDate(newRange.start);
+      setEndDate(newRange.end);
+    }
+  };
+
+  const initialiseCustomDates = () => {
+    const today = new Date();
+    const fallbackStart = (!activeStart || rangeKey === 'all' || activeStart.getFullYear() < 1980)
+      ? (() => {
+          const start = new Date(today);
+          start.setDate(today.getDate() - 6);
+          start.setHours(0, 0, 0, 0);
+          return start;
+        })()
+      : new Date(activeStart);
+
+    const fallbackEnd = (!activeEnd || rangeKey === 'all')
+      ? (() => {
+          const end = new Date(today);
+          end.setHours(23, 59, 59, 999);
+          return end;
+        })()
+      : new Date(activeEnd);
+
+    setStartDate(fallbackStart);
+    setEndDate(fallbackEnd);
+  };
+
+  const handleActivateCustomRange = () => {
+    if (isCustomRange) {
+      return;
+    }
+    initialiseCustomDates();
+    setRangeKey('custom');
   };
 
   const toggleTeamSelection = (initials: string) => {
@@ -1303,6 +1687,14 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
       prev.includes(initials)
         ? prev.filter((item) => item !== initials)
         : [...prev, initials]
+    ));
+  };
+
+  const toggleRoleSelection = (role: string) => {
+    setSelectedRoles((prev) => (
+      prev.includes(role)
+        ? prev.filter((item) => item !== role)
+        : [...prev, role]
     ));
   };
 
@@ -1326,29 +1718,32 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   const getSortIcon = (column: SortColumn): JSX.Element => {
     const isActive = sortColumn === column;
     const iconStyle: React.CSSProperties = {
-      marginLeft: '4px',
-      fontSize: '8px',
-      opacity: isActive ? 0.9 : 0.3,
-      transition: 'opacity 0.2s ease',
-      fontWeight: 'bold',
+      marginLeft: '6px',
+      fontSize: '10px',
+      opacity: isActive ? 0.9 : 0.35,
+      transition: 'opacity 0.2s ease, transform 0.2s ease',
+      fontWeight: 'normal',
       color: 'currentColor',
+      display: 'inline-block',
+      lineHeight: 1,
     };
 
     if (!isActive) {
       return (
-        <span style={iconStyle}>▸</span>
+        <span style={iconStyle}>▴</span>
       );
     }
 
     return (
       <span style={iconStyle}>
-        {sortDirection === 'asc' ? '▲' : '▼'}
+        {sortDirection === 'asc' ? '▴' : '▾'}
       </span>
     );
   };
 
   const dashboardThemeClass = isDarkMode ? 'dark-theme' : 'light-theme';
-  const allTeamsSelected = selectedTeams.length === 0 || selectedTeams.length === teamMembers.length;
+  const allTeamsSelected = selectedTeams.length === 0 || selectedTeams.length === displayableTeamMembers.length;
+  const allRolesSelected = selectedRoles.length === 0 || selectedRoles.length === ROLE_OPTIONS.length;
 
   const handleSelectAllTeams = () => {
     if (allTeamsSelected) {
@@ -1357,158 +1752,330 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
     setSelectedTeams([]);
   };
 
+  const handleSelectAllRoles = () => {
+    if (allRolesSelected) {
+      return;
+    }
+    setSelectedRoles([]);
+  };
+
+  const isCustomRange = rangeKey === 'custom';
+  const activePresetKey = RANGE_OPTIONS.some(option => option.key === rangeKey)
+    ? rangeKey
+    : undefined;
+  const isAllPresetActive = rangeKey === 'all';
+  const formattedFromLabel = rangeKey === 'all' ? 'All Time' : formatDateTag(activeStart);
+  const formattedToLabel = formatDateTag(activeEnd);
+
+  const handleClearAllTime = () => {
+    handleRangeSelect('all');
+  };
+
   return (
     <div className={`management-dashboard-container animate-dashboard ${dashboardThemeClass}`}>
-      <div className="filter-section">
-        <div className="date-filter-wrapper">
-          <div className="date-pickers">
-            <DatePicker
-              label="From"
-              styles={getDatePickerStyles(isDarkMode)}
-              value={startDate}
-              onSelectDate={(date) => setStartDate(date ?? undefined)}
-              allowTextInput
-              firstDayOfWeek={DayOfWeek.Monday}
-              formatDate={formatDateForPicker}
-              parseDateFromString={parseDatePickerInput}
-            />
-            <DatePicker
-              label="To"
-              styles={getDatePickerStyles(isDarkMode)}
-              value={endDate}
-              onSelectDate={(date) => setEndDate(date ?? undefined)}
-              allowTextInput
-              firstDayOfWeek={DayOfWeek.Monday}
-              formatDate={formatDateForPicker}
-              parseDateFromString={parseDatePickerInput}
-            />
+      <div className="filter-toolbar">
+        <div className="filter-toolbar__top">
+          <div className="filter-toolbar__date-inputs">
+            {isCustomRange ? (
+              <div className="date-pickers">
+                <DatePicker
+                  label="From"
+                  styles={getDatePickerStyles(isDarkMode)}
+                  value={startDate}
+                  onSelectDate={(date) => {
+                    setStartDate(date ?? undefined);
+                    setRangeKey('custom');
+                  }}
+                  allowTextInput
+                  firstDayOfWeek={DayOfWeek.Monday}
+                  formatDate={formatDateForPicker}
+                  parseDateFromString={parseDatePickerInput}
+                />
+                <DatePicker
+                  label="To"
+                  styles={getDatePickerStyles(isDarkMode)}
+                  value={endDate}
+                  onSelectDate={(date) => {
+                    setEndDate(date ?? undefined);
+                    setRangeKey('custom');
+                  }}
+                  allowTextInput
+                  firstDayOfWeek={DayOfWeek.Monday}
+                  formatDate={formatDateForPicker}
+                  parseDateFromString={parseDatePickerInput}
+                />
+              </div>
+            ) : (
+              <div className="date-stamp-group">
+                <button
+                  type="button"
+                  className="date-stamp-button"
+                  style={dateStampButtonStyle(isDarkMode)}
+                  onClick={handleActivateCustomRange}
+                  title="Click to customise the start date"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDarkMode ? 'rgba(30, 41, 59, 0.86)' : 'rgba(248, 250, 252, 1)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = isDarkMode ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.95)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 600 }}>From</span>
+                  <span style={{ fontSize: 16, fontWeight: 700 }}>{formattedFromLabel}</span>
+                </button>
+                <button
+                  type="button"
+                  className="date-stamp-button"
+                  style={dateStampButtonStyle(isDarkMode)}
+                  onClick={handleActivateCustomRange}
+                  title="Click to customise the end date"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDarkMode ? 'rgba(30, 41, 59, 0.86)' : 'rgba(248, 250, 252, 1)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = isDarkMode ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.95)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 600 }}>To</span>
+                  <span style={{ fontSize: 16, fontWeight: 700 }}>{formattedToLabel}</span>
+                </button>
+              </div>
+            )}
           </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginLeft: 'auto',
-          }}>
-            {/* Refresh Status Indicator */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '6px 10px',
-              borderRadius: 6,
-              border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
-              background: isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.9)',
-              color: isDarkMode ? '#e2e8f0' : '#475569',
-              fontSize: 11,
-              fontWeight: 500,
-              fontFamily: 'Raleway, sans-serif',
-              letterSpacing: '0.02em',
-              userSelect: 'none',
-              gap: 6,
-            }}>
+
+          <div className="filter-toolbar__actions">
+            <div className="filter-status-chip">
               {isFetching ? (
                 <>
-                  <div style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: isDarkMode ? '#60a5fa' : colours.highlight,
-                    animation: 'pulse 1.5s ease-in-out infinite',
-                  }} />
+                  <div className="filter-status-indicator" />
                   Refreshing
                 </>
               ) : (
                 <>
                   Last: {lastRefreshTimestamp ? new Date(lastRefreshTimestamp).toLocaleString('en-GB', {
                     day: '2-digit',
-                    month: '2-digit', 
+                    month: '2-digit',
                     hour: '2-digit',
                     minute: '2-digit'
                   }) : 'Pending'}
                 </>
               )}
             </div>
-            
-            {/* Refresh Button */}
+
             {triggerRefresh && (
               <button
+                type="button"
                 onClick={triggerRefresh}
                 disabled={isFetching}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 32,
-                  height: 32,
-                  borderRadius: 6,
-                  border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
-                  background: isFetching 
-                    ? (isDarkMode ? 'rgba(71, 85, 105, 0.4)' : 'rgba(226, 232, 240, 0.6)')
-                    : (isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.9)'),
-                  color: isFetching 
-                    ? (isDarkMode ? 'rgba(148, 163, 184, 0.6)' : 'rgba(100, 116, 139, 0.6)')
-                    : (isDarkMode ? '#e2e8f0' : '#475569'),
-                  cursor: isFetching ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  fontSize: 14,
-                }}
+                className="filter-icon-button"
                 title={isFetching ? 'Refreshing data...' : 'Refresh datasets'}
                 aria-label={isFetching ? 'Refreshing data' : 'Refresh datasets'}
-                onMouseEnter={(e) => {
-                  if (!isFetching) {
-                    e.currentTarget.style.background = isDarkMode ? 'rgba(51, 65, 85, 0.9)' : 'rgba(248, 250, 252, 1)';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isFetching) {
-                    e.currentTarget.style.background = isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.9)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }
-                }}
               >
-                <span style={{
-                  display: 'inline-block',
-                  animation: isFetching ? 'spin 1s linear infinite' : 'none',
-                }}>
-                  {isFetching ? '⟳' : '↻'}
-                </span>
+                <Icon 
+                  iconName="Refresh" 
+                  style={{ 
+                    fontSize: 16,
+                    animation: isFetching ? 'spin 1s linear infinite' : 'none'
+                  }} 
+                />
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => setShowRoleFilter(!showRoleFilter)}
+              className="filter-icon-button"
+              style={{
+                color: showRoleFilter 
+                  ? (isDarkMode ? '#60a5fa' : colours.highlight)
+                  : (isDarkMode ? 'rgba(148, 163, 184, 0.6)' : 'rgba(13, 47, 96, 0.5)'),
+                transform: showRoleFilter ? 'translateY(-1px)' : 'translateY(0)'
+              }}
+              title={showRoleFilter ? 'Hide role filter' : 'Show role filter'}
+              aria-label={showRoleFilter ? 'Hide role filter' : 'Show role filter'}
+            >
+              <Icon iconName="People" style={{ fontSize: 16 }} />
+            </button>
+
+            <div className="filter-icon-button-wrapper">
+              <button
+                type="button"
+                onMouseEnter={() => setShowDatasetInfo(true)}
+                onMouseLeave={() => setShowDatasetInfo(false)}
+                className="filter-icon-button"
+                style={{
+                  color: isDarkMode ? '#60a5fa' : colours.highlight,
+                  transform: showDatasetInfo ? 'translateY(-1px)' : 'translateY(0)'
+                }}
+                title="Dataset information"
+                aria-label="Dataset information"
+              >
+                <Icon iconName="Info" style={{ fontSize: 16 }} />
+              </button>
+
+              {showDatasetInfo && (
+                <div className="filter-dataset-tooltip">
+                  <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13, color: isDarkMode ? '#60a5fa' : colours.highlight }}>
+                    Dataset Date Ranges
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Enquiries:</span>
+                      <span style={{ fontWeight: 600 }}>Last 24 months</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Matters:</span>
+                      <span style={{ fontWeight: 600 }}>Last 24 months</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>WIP:</span>
+                      <span style={{ fontWeight: 600 }}>Last 12 months</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Recovered Fees:</span>
+                      <span style={{ fontWeight: 600 }}>Last 12 months</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Annual Leave:</span>
+                      <span style={{ fontWeight: 600 }}>Current year</span>
+                    </div>
+                  </div>
+                  <div style={{
+                    marginTop: 10,
+                    paddingTop: 8,
+                    borderTop: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`,
+                    fontSize: 11,
+                    opacity: 0.7,
+                    fontStyle: 'italic'
+                  }}>
+                    Data outside these ranges won't appear in metrics
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="date-range-buttons">
-            <Stack horizontal tokens={{ childrenGap: 6 }}>
-              {RANGE_OPTIONS.map(({ key, label }) => (
+        </div>
+
+        <div className="filter-toolbar__middle">
+          <div className="filter-toolbar__presets">
+            <div className="filter-preset-group">
+              {RANGE_OPTIONS.slice(0, 2).map(({ key, label }) => (
                 <DefaultButton
                   key={key}
                   text={label}
                   onClick={() => handleRangeSelect(key)}
-                  styles={getRangeButtonStyles(isDarkMode, rangeKey === key)}
+                  styles={getRangeButtonStyles(isDarkMode, activePresetKey === key, false)}
                 />
               ))}
-            </Stack>
+              <div className="preset-separator">|</div>
+              {RANGE_OPTIONS.slice(2, 4).map(({ key, label }) => (
+                <DefaultButton
+                  key={key}
+                  text={label}
+                  onClick={() => handleRangeSelect(key)}
+                  styles={getRangeButtonStyles(isDarkMode, activePresetKey === key, false)}
+                />
+              ))}
+              <div className="preset-separator">|</div>
+              {RANGE_OPTIONS.slice(4, 6).map(({ key, label }) => (
+                <DefaultButton
+                  key={key}
+                  text={label}
+                  onClick={() => handleRangeSelect(key)}
+                  styles={getRangeButtonStyles(isDarkMode, activePresetKey === key, false)}
+                />
+              ))}
+              <div className="preset-separator">|</div>
+              {RANGE_OPTIONS.slice(6, 8).map(({ key, label }) => (
+                <DefaultButton
+                  key={key}
+                  text={label}
+                  onClick={() => handleRangeSelect(key)}
+                  styles={getRangeButtonStyles(isDarkMode, activePresetKey === key, false)}
+                />
+              ))}
+              <div className="preset-separator">|</div>
+              {RANGE_OPTIONS.slice(8, 10).map(({ key, label }) => (
+                <DefaultButton
+                  key={key}
+                  text={label}
+                  onClick={() => handleRangeSelect(key)}
+                  styles={getRangeButtonStyles(isDarkMode, activePresetKey === key, false)}
+                />
+              ))}
+              {activePresetKey && activePresetKey !== 'all' && (
+                <button
+                  onClick={handleClearAllTime}
+                  style={clearFilterButtonStyle(isDarkMode)}
+                  title="Clear date range filter"
+                >
+                  <span style={{ fontSize: 16 }}>×</span>
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
         </div>
-        <div className="team-slicer-buttons">
-          <DefaultButton
-            text="All team"
-            onClick={handleSelectAllTeams}
-            disabled={allTeamsSelected}
-            styles={getTeamButtonStyles(isDarkMode, allTeamsSelected, true)}
-          />
-          {teamMembers.map((member) => (
-            <DefaultButton
-              key={member.initials}
-              text={member.initials}
-              onClick={() => toggleTeamSelection(member.initials)}
-              title={memberHasWorked(member.initials) ? undefined : `${member.display || member.initials} has no WIP hours in this period`}
-              styles={getTeamButtonStyles(isDarkMode, selectedTeams.includes(member.initials), memberHasWorked(member.initials))}
-            />
-          ))}
-        </div>
-    </div>
 
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+        <div className="filter-toolbar__bottom">
+          <div className="filter-group-container team-filter-container">
+            <div className="team-slicer-buttons">
+              {displayableTeamMembers.map((member) => (
+                <DefaultButton
+                  key={member.initials}
+                  text={member.initials}
+                  onClick={() => toggleTeamSelection(member.initials)}
+                  title={memberHasWorked(member.initials) ? undefined : `${member.display || member.initials} has no WIP hours in this period`}
+                  styles={getTeamButtonStyles(isDarkMode, selectedTeams.includes(member.initials), memberHasWorked(member.initials))}
+                />
+              ))}
+              {!allTeamsSelected && (
+                <button
+                  onClick={handleSelectAllTeams}
+                  style={clearFilterButtonStyle(isDarkMode)}
+                  title="Clear team filter"
+                >
+                  <span style={{ fontSize: 16 }}>×</span>
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {showRoleFilter && (
+          <div className="filter-toolbar__roles">
+            <div className="filter-group-container role-filter-container">
+              <div className="role-slicer-buttons">
+                {ROLE_OPTIONS.map(({ key, label }) => (
+                  <DefaultButton
+                    key={key}
+                    text={label}
+                    onClick={() => toggleRoleSelection(key)}
+                    styles={getRoleButtonStyles(isDarkMode, selectedRoles.includes(key))}
+                  />
+                ))}
+                {!allRolesSelected && (
+                  <button
+                    onClick={handleSelectAllRoles}
+                    style={clearFilterButtonStyle(isDarkMode)}
+                    title="Clear role filter"
+                  >
+                    <span style={{ fontSize: 16 }}>×</span>
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
         <div style={summaryChipStyle(isDarkMode)}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
             <span style={{ fontSize: 12, opacity: 0.65 }}>Enquiries</span>

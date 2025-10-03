@@ -23,6 +23,7 @@ const areaConfig: Record<string, AreaOption> = {
   'Property': { key: 'Property', label: 'Property', icon: 'CityNext', color: colours.green },
   'Construction': { key: 'Construction', label: 'Construction', icon: 'ConstructionCone', color: colours.orange },
   'Employment': { key: 'Employment', label: 'Employment', icon: 'People', color: colours.yellow },
+  'Other/Unsure': { key: 'Other/Unsure', label: 'Other/Unsure', icon: 'Help', color: colours.greyText },
 };
 
 /**

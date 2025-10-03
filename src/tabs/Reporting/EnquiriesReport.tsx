@@ -204,6 +204,32 @@ const EnquiriesReport: React.FC<EnquiriesReportProps> = ({ enquiries }) => {
   const [rangeKey, setRangeKey] = useState<string>('thisMonth');
   const range = useMemo(() => quickRanges.find(r => r.key === rangeKey)?.get() || null, [rangeKey]);
 
+  // Calculate actual date range from available data
+  const dataDateRange = useMemo(() => {
+    if (!enquiries || enquiries.length === 0) return null;
+    
+    const dates = enquiries
+      .map(e => parseDate((e as any).Touchpoint_Date))
+      .filter(d => d !== null) as Date[];
+    
+    if (dates.length === 0) return null;
+    
+    const earliest = new Date(Math.min(...dates.map(d => d.getTime())));
+    const latest = new Date(Math.max(...dates.map(d => d.getTime())));
+    
+    return { earliest, latest };
+  }, [enquiries]);
+
+  // Debug: Check what data we're receiving
+  React.useEffect(() => {
+    console.log('[EnquiriesReport] Received enquiries:', {
+      isNull: enquiries === null,
+      isArray: Array.isArray(enquiries),
+      length: Array.isArray(enquiries) ? enquiries.length : 0,
+      sample: Array.isArray(enquiries) && enquiries.length > 0 ? enquiries[0] : null
+    });
+  }, [enquiries]);
+
   const filtered = useMemo(() => {
     const list = enquiries || [];
     if (!range) return list;
@@ -323,7 +349,20 @@ const EnquiriesReport: React.FC<EnquiriesReportProps> = ({ enquiries }) => {
     <div style={containerStyle(isDarkMode)}>
       <div style={surface(isDarkMode)}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Enquiries report</h2>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Enquiries report</h2>
+            {dataDateRange && (
+              <div style={{ 
+                marginTop: 4, 
+                fontSize: 11, 
+                opacity: 0.6,
+                fontWeight: 500
+              }}>
+                Available data: {dataDateRange.earliest.toLocaleDateString()} to {dataDateRange.latest.toLocaleDateString()} 
+                ({enquiries?.length.toLocaleString()} total)
+              </div>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {quickRanges.map(r => {
               const active = isActive(r.key);
@@ -343,6 +382,48 @@ const EnquiriesReport: React.FC<EnquiriesReportProps> = ({ enquiries }) => {
             {range ? `${stats.workingDays} working days in selected range` : 'All data (working days not applicable)'}
           </div>
         </div>
+
+        {/* Show data status */}
+        {enquiries === null && (
+          <div style={{ 
+            marginTop: 12, 
+            padding: 16, 
+            borderRadius: 12, 
+            background: isDarkMode ? 'rgba(220,38,38,0.12)' : 'rgba(220,38,38,0.08)',
+            border: isDarkMode ? '1px solid rgba(248,113,113,0.28)' : '1px solid rgba(220,38,38,0.18)',
+            color: isDarkMode ? '#fda4af' : '#b91c1c',
+            fontSize: 14
+          }}>
+            ⚠️ No enquiry data loaded. Click refresh or check console for errors.
+          </div>
+        )}
+        {enquiries && enquiries.length === 0 && (
+          <div style={{ 
+            marginTop: 12, 
+            padding: 16, 
+            borderRadius: 12, 
+            background: isDarkMode ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.08)',
+            border: isDarkMode ? '1px solid rgba(251,191,36,0.28)' : '1px solid rgba(251,191,36,0.18)',
+            color: isDarkMode ? '#fcd34d' : '#d97706',
+            fontSize: 14
+          }}>
+            ℹ️ No enquiries found in database for the last 24 months. Check server logs or database.
+          </div>
+        )}
+        {enquiries && enquiries.length > 0 && filtered.length === 0 && (
+          <div style={{ 
+            marginTop: 12, 
+            padding: 16, 
+            borderRadius: 12, 
+            background: isDarkMode ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.08)',
+            border: isDarkMode ? '1px solid rgba(251,191,36,0.28)' : '1px solid rgba(251,191,36,0.18)',
+            color: isDarkMode ? '#fcd34d' : '#d97706',
+            fontSize: 14
+          }}>
+            ℹ️ {enquiries.length} enquiries loaded, but none match the selected date range "{quickRanges.find(r => r.key === rangeKey)?.label}". Try "All" to see all data.
+          </div>
+        )}
+
         {/* Dashboard-style stat cards */}
         <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(220px, 1fr))', gap: 12 }}>
           {/* Total Enquiries */}

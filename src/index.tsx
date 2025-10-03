@@ -152,9 +152,9 @@ async function fetchUserData(objectId: string): Promise<UserData[]> {
   const cached = getCachedData<UserData[]>(cacheKey);
   if (cached) return cached;
 
-  // Add timeout for Teams reliability (5 seconds for critical user data)
+  // Add timeout for Teams reliability (10 seconds for critical user data)
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     // Use Express route instead of direct Azure Function call
@@ -169,7 +169,17 @@ async function fetchUserData(objectId: string): Promise<UserData[]> {
     
     if (!response.ok)
       throw new Error(`Failed to fetch user data: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    // Normalize legacy spaced keys to camel/sans-space aliases used in the app
+    const data: UserData[] = Array.isArray(raw)
+      ? raw.map((u: any) => ({
+          ...u,
+          // Provide EntraID alias for "Entra ID"
+          EntraID: u?.EntraID ?? u?.['Entra ID'],
+          // Provide FullName alias for "Full Name"
+          FullName: u?.FullName ?? u?.['Full Name'],
+        }))
+      : [];
     setCachedData(cacheKey, data);
     return data;
   } catch (error: any) {
@@ -211,31 +221,28 @@ async function fetchEnquiries(
   let enquiries: Enquiry[] = [];
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   try {
-    const primaryUrl = '/api/enquiries-unified';
+    const params = new URLSearchParams();
+    if (email) params.set('email', email.toLowerCase());
+    if (userInitials) params.set('initials', userInitials.toLowerCase());
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    params.set('includeTeamInbox', 'true');
+    if (fetchAll) {
+      params.set('fetchAll', 'true');
+      params.set('limit', '1500'); // Higher limit for "All" view
+    } else {
+      params.set('limit', '900'); // Lower limit for personal view
+    }
+    
+    const primaryUrl = `/api/enquiries-unified?${params.toString()}`;
     const resp = await fetch(primaryUrl, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
     if (resp.ok) {
       const data = await resp.json();
       let raw: any[] = [];
       if (Array.isArray(data)) raw = data; else if (Array.isArray(data.enquiries)) raw = data.enquiries;
 
-      // Filter to user scope unless fetchAll
-      const userEmail = email.toLowerCase();
-      const userInitialsUpper = userInitials.toUpperCase();
-      let filtered = raw;
-      if (!fetchAll) {
-        filtered = raw.filter(enq => {
-          const poc = (enq.Point_of_Contact || enq.poc || '') as string;
-          const pocInitials = poc.toUpperCase();
-          const pocEmail = poc.toLowerCase();
-          const matchesInitials = pocInitials === userInitialsUpper;
-          const matchesEmail = pocEmail === userEmail;
-          const unclaimedEmails = ['team@helix-law.com'];
-          const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocInitials === 'TEAM';
-          return matchesInitials || matchesEmail || isUnclaimed;
-        });
-      }
-
-      enquiries = filtered.map(enq => ({
+      // Server already filtered, just normalize the data
+      enquiries = raw.map(enq => ({
         ID: (enq as any).ID || (enq as any).id || String(Math.random()),
         Date_Created: (enq as any).Date_Created || (enq as any).date_created || (enq as any).datetime,
         Touchpoint_Date: (enq as any).Touchpoint_Date || (enq as any).touchpoint_date || (enq as any).datetime,
@@ -752,18 +759,16 @@ const AppWithContext: React.FC = () => {
       
       // Fetch enquiries for new user with extended date range and fresh data
       const { dateFrom, dateTo } = getDateRange();
-      // Override for LZ: fetch Alex Cook's (AC) enquiries for demo purposes
+      // Use actual user's email and initials - no overrides
       const userInitials = normalized.Initials || "";
-      const isLZ = userInitials.toUpperCase() === "LZ";
-      const enquiriesEmail = isLZ ? "ac@helix-law.com" : (normalized.Email || "");
-      const enquiriesInitials = isLZ ? "AC" : userInitials;
+      const enquiriesEmail = normalized.Email || "";
       
       const enquiriesRes = await fetchEnquiries(
         enquiriesEmail,
         dateFrom,
         dateTo,
         normalized.AOW || '',
-        enquiriesInitials
+        userInitials
       );
       setEnquiries(enquiriesRes);
       
@@ -788,46 +793,42 @@ const AppWithContext: React.FC = () => {
       if (inTeams && !useLocalData) {
         try {
           microsoftTeams.initialize();
-          microsoftTeams.getContext(async (ctx) => {
+          microsoftTeams.getContext((ctx) => {
             setTeamsContext(ctx);
+            setLoading(false);
 
             const objectId = ctx.userObjectId || "";
-            if (!objectId) throw new Error("Missing Teams context objectId.");
+            if (!objectId) {
+              setError("Missing Teams context objectId.");
+              return;
+            }
 
             const { dateFrom, dateTo } = getDateRange();
 
-            // OPTIMIZED LOADING: Progressive loading with timeouts
-            // 1. Load critical user data first (fast, show UI immediately)
-            try {
-              const userDataRes = await fetchUserData(objectId);
-              setUserData(userDataRes);
-              setLoading(false); // ✅ Show UI with user data, load rest in background
+            const primeUserDependentData = (profile: UserData[]) => {
+              const primaryUser = profile?.[0];
+              if (!primaryUser) {
+                return;
+              }
 
               const fullName =
-                `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || "";
+                `${primaryUser?.First ?? ''} ${primaryUser?.Last ?? ''}`.trim();
 
-              // 2. Load secondary data in parallel with timeouts (non-blocking)
-              // Don't wait for all - update UI as each completes
-              
-              // Load enquiries (important, 10s timeout)
-              // Override for LZ: fetch Alex Cook's (AC) enquiries for demo purposes
-              const userInitials = userDataRes[0]?.Initials || "";
-              const isLZ = userInitials.toUpperCase() === "LZ";
-              const enquiriesEmail = isLZ ? "ac@helix-law.com" : (userDataRes[0]?.Email || "");
-              const enquiriesInitials = isLZ ? "AC" : userInitials;
-              
+              // Use actual user's email and initials - no overrides
+              const userInitials = primaryUser.Initials || "";
+              const enquiriesEmail = primaryUser.Email || "";
+
               fetchEnquiries(
                 enquiriesEmail,
                 dateFrom,
                 dateTo,
-                userDataRes[0]?.AOW || "",
-                enquiriesInitials,
+                primaryUser.AOW || "",
+                userInitials,
               ).then(setEnquiries).catch(err => {
                 console.warn('Enquiries load failed, using empty array:', err);
                 setEnquiries([]);
               });
 
-              // Load matters (can be slow, 15s timeout)
               fetchAllMatterSources(fullName)
                 .then(setMatters)
                 .catch(err => {
@@ -835,19 +836,35 @@ const AppWithContext: React.FC = () => {
                   setMatters([]);
                 });
 
-              // Load team data (background data, 10s timeout)
               fetchTeamData()
                 .then(setTeamData)
                 .catch(err => {
                   console.warn('Team data load failed, using null:', err);
                   setTeamData(null);
                 });
+            };
 
-            } catch (userErr) {
-              console.error("Failed to load user data:", userErr);
-              setError("Failed to load user profile. Please refresh.");
-              setLoading(false);
-            }
+            fetchUserData(objectId)
+              .then((userDataRes) => {
+                setUserData(userDataRes);
+                if (!Array.isArray(userDataRes) || userDataRes.length === 0) {
+                  console.warn('User data fetch returned no records for objectId:', objectId);
+                  setError('We could not load your profile details. Some data may be unavailable.');
+                  setEnquiries([]);
+                  setMatters([]);
+                  setTeamData(null);
+                  return;
+                }
+                primeUserDependentData(userDataRes);
+              })
+              .catch((userErr) => {
+                console.error("Failed to load user data:", userErr);
+                setError("Failed to load user profile. Please refresh.");
+                setUserData([]);
+                setEnquiries([]);
+                setMatters([]);
+                setTeamData(null);
+              });
           });
         } catch (err: any) {
           console.error("Error initializing Teams:", err);
@@ -881,18 +898,16 @@ const AppWithContext: React.FC = () => {
           // Try to fetch enquiries independently first
           let enquiriesRes: Enquiry[] = [];
           try {
-            // Override for LZ in local dev: fetch Alex Cook's (AC) enquiries for demo purposes
+            // Use actual user's email and initials - no overrides
             const userInitials = initialUserData[0].Initials || "";
-            const isLZ = userInitials.toUpperCase() === "LZ";
-            const enquiriesEmail = isLZ ? "ac@helix-law.com" : (initialUserData[0].Email || "");
-            const enquiriesInitials = isLZ ? "AC" : userInitials;
+            const enquiriesEmail = initialUserData[0].Email || "";
             
             enquiriesRes = await fetchEnquiries(
               enquiriesEmail,
               dateFrom,
               dateTo,
               initialUserData[0].AOW || "",
-              enquiriesInitials,
+              userInitials,
             );
             
           } catch (enquiriesError) {

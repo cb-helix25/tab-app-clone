@@ -1396,15 +1396,15 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                 />
               }
               secondaryFilter={
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', transform: 'scale(0.96)', transformOrigin: 'left center' }}>
                   <SegmentedControl
                     id="instructions-scope-seg"
                     ariaLabel={`Scope: toggle between my ${toggleCounts.label} and all ${toggleCounts.label}`}
                     value={showAllInstructions ? 'all' : 'mine'}
                     onChange={(v) => setShowAllInstructions(v === 'all')}
                     options={[
-                      { key: 'mine', label: `Mine (${toggleCounts.mine})` },
-                      { key: 'all', label: `All (${toggleCounts.all})`, disabled: !isAdmin && !isLocalhost }
+                      { key: 'mine', label: 'Mine', badge: toggleCounts.mine },
+                      { key: 'all', label: 'All', badge: toggleCounts.all, disabled: !isAdmin && !isLocalhost }
                     ]}
                   />
                   <SegmentedControl
@@ -1413,39 +1413,13 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                     value={twoColumn ? 'two' : 'one'}
                     onChange={(v) => setTwoColumn(v === 'two')}
                     options={[
-                      { key: 'one', label: '1 Col' },
-                      { key: 'two', label: '2 Col' }
+                      { key: 'one', label: '1' },
+                      { key: 'two', label: '2' }
                     ]}
                   />
                 </div>
               }
-            >
-              {/* Admin controls (debug) for admin or localhost */}
-              {isAdmin && isLocalhost && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '2px 10px 2px 6px',
-                    height: 40,
-                    borderRadius: 12,
-                    background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
-                    border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: isDarkMode ? '#ffe9a3' : '#5d4700',
-                    flexShrink: 0,
-                    minWidth: 'max-content',
-                    visibility: 'hidden' // Hide empty admin controls but maintain layout
-                  }}
-                  title="Admin controls"
-                >
-                  {/* Admin debug controls - toggle removed and moved to main filter bar */}
-                </div>
-              )}
-            </FilterBanner>
+            />
           </>
         )}
       </>,
