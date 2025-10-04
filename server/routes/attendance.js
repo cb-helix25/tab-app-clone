@@ -109,17 +109,26 @@ const getAttendanceHandler = async (req, res) => {
     
     // Get current attendance data from the correct attendance table
   const result = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
-      SELECT 
-        [First_Name] AS First,
-        [Level],
-        [Week_Start],
-        [Week_End],
-        [ISO_Week] AS iso,
-        [Attendance_Days] AS Status
-      FROM [dbo].[attendance]
-      WHERE [Week_Start] <= CAST(GETDATE() AS DATE) 
-        AND [Week_End] >= CAST(GETDATE() AS DATE)
-      ORDER BY [First_Name]
+      WITH LatestAttendance AS (
+        SELECT 
+          [First_Name] AS First,
+          [Level],
+          [Week_Start],
+          [Week_End],
+          [ISO_Week] AS iso,
+          [Attendance_Days] AS Status,
+          ROW_NUMBER() OVER (
+            PARTITION BY [First_Name], [ISO_Week] 
+            ORDER BY [Confirmed_At] DESC
+          ) as rn
+        FROM [dbo].[attendance]
+        WHERE [Week_Start] <= CAST(GETDATE() AS DATE) 
+          AND [Week_End] >= CAST(GETDATE() AS DATE)
+      )
+      SELECT First, Level, Week_Start, Week_End, iso, Status
+      FROM LatestAttendance
+      WHERE rn = 1
+      ORDER BY First
     `));
 
     // Get team roster data from the correct team table

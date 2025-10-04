@@ -674,13 +674,15 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
       isWeekend: mondayBasedIndex < 0 || mondayBasedIndex > 4
     });
     
-    // Only show if it's a weekday (Monday-Friday)
+    // For weekends, use Friday's status as the "current" status
     if (mondayBasedIndex < 0 || mondayBasedIndex > 4) {
-      return member.status || 'home'; // Default for weekends
+      const currentWeekAttendance = getDailyAttendance(member, 0);
+      const fridayStatus = currentWeekAttendance[4]; // Friday is index 4
+      return fridayStatus || member.status || 'wfh';
     }
     
     const currentWeekAttendance = getDailyAttendance(member, 0);
-    const todayStatus = currentWeekAttendance[mondayBasedIndex] || member.status || 'home';
+    const todayStatus = currentWeekAttendance[mondayBasedIndex] || member.status || 'wfh';
     
   debugLog(`DEBUG: Today status for ${member.Initials || member.First}:`, {
       currentWeekAttendance,
@@ -691,31 +693,61 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     return todayStatus;
   };
 
-  // Get tomorrow's attendance status for a member  
-  const getTomorrowAttendance = (member: AttendanceRecord): string => {
+  // Get next workday's attendance status for a member  
+  const getNextWorkdayAttendance = (member: AttendanceRecord): { status: string; label: string; day: string } => {
+    const today = new Date();
+    const todayIndex = today.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+    
+    // If it's weekend (Saturday=6 or Sunday=0), show Monday
+    if (todayIndex === 0 || todayIndex === 6) {
+      const currentWeekAttendance = getDailyAttendance(member, 0);
+      const nextWeekAttendance = getDailyAttendance(member, 1);
+      
+      // If today is Saturday, Monday is next week. If today is Sunday, Monday is today's week.
+      const mondayAttendance = todayIndex === 6 ? nextWeekAttendance : currentWeekAttendance;
+      const mondayStatus = mondayAttendance[0]; // Monday is index 0
+      
+      return {
+        status: mondayStatus || member.status || 'wfh',
+        label: 'Monday:',
+        day: 'Monday'
+      };
+    }
+    
+    // For weekdays, show tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const dayIndex = tomorrow.getDay();
+    const tomorrowIndex = tomorrow.getDay();
     
     // Convert Sunday (0) to Monday-based index (0-4 for Mon-Fri)
-    const mondayBasedIndex = dayIndex === 0 ? -1 : dayIndex - 1;
+    const mondayBasedIndex = tomorrowIndex === 0 ? -1 : tomorrowIndex - 1;
     
-    // Only show if it's a weekday (Monday-Friday)
+    // If tomorrow is weekend, don't show anything
     if (mondayBasedIndex < 0 || mondayBasedIndex > 4) {
-      return member.status || 'home'; // Default for weekends
+      return {
+        status: member.status || 'wfh',
+        label: '',
+        day: ''
+      };
     }
     
     // Check if tomorrow is next week
-    const today = new Date();
     const isNextWeek = tomorrow.getDate() < today.getDate() || 
                       (tomorrow.getDate() - today.getDate()) >= 7 ||
                       tomorrow.getMonth() !== today.getMonth();
     
     const weekOffset = isNextWeek ? 1 : 0;
     const weekAttendance = getDailyAttendance(member, weekOffset);
-    const adjustedIndex = isNextWeek ? mondayBasedIndex : mondayBasedIndex;
+    const tomorrowStatus = weekAttendance[mondayBasedIndex] || member.status || 'wfh';
     
-    return weekAttendance[adjustedIndex] || member.status || 'home';
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const dayName = dayNames[mondayBasedIndex] || 'Tomorrow';
+    
+    return {
+      status: tomorrowStatus,
+      label: 'tomorrow:',
+      day: dayName
+    };
   };
 
   const filteredData = useMemo(() => {
@@ -785,6 +817,18 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
     const weekPreference: WeekFilterKey[] = selectedWeeks.length > 0 ? selectedWeeks : ['current'];
     const dayPreference: DayFilterKey[] = selectedDays.length > 0 ? selectedDays : DAY_ORDER;
 
+    // For weekends with no specific day filters, use today's attendance (which uses Friday for weekends)
+    const today = new Date();
+    const dayIndex = today.getDay();
+    const isWeekend = dayIndex === 0 || dayIndex === 6; // Sunday or Saturday
+    
+    if (isWeekend && selectedDays.length === 0) {
+      const todayStatus = getTodayAttendance(member as AttendanceRecord);
+      if (validStatuses.includes(todayStatus as StatusFilterKey)) {
+        return todayStatus as StatusFilterKey;
+      }
+    }
+
     for (const week of weekPreference) {
       const attendance = getDailyAttendance(member, week === 'current' ? 0 : 1);
 
@@ -823,7 +867,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
           <div className={viewToggleRowStyle}>
             <div className={segmentedControlStyle}>
               <DefaultButton
-                text="Today"
+                text="Daily"
                 iconProps={{ iconName: 'CalendarDay' }}
                 onClick={() => setViewMode('daily')}
                 styles={{ root: viewToggleButtonStyle(viewMode === 'daily') }}
@@ -982,8 +1026,8 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                       {/* People List */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {statusGroups[status].map((member: any) => {
-                          const tomorrowStatus = getTomorrowAttendance(member);
-                          const tomorrowDifferent = tomorrowStatus !== status;
+                          const nextWorkday = getNextWorkdayAttendance(member);
+                          const nextWorkdayDifferent = nextWorkday.status !== status && nextWorkday.label !== '';
                           
                           return (
                             <div 
@@ -1020,29 +1064,29 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                                 )}
                               </span>
                               
-                              {/* Tomorrow indicator - only show if different */}
-                              {tomorrowDifferent && (
+                              {/* Next workday indicator - only show if different */}
+                              {nextWorkdayDifferent && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.6 }}>
                                   <span style={{ 
                                     fontSize: '8px', 
                                     color: isDarkMode ? colours.dark.subText : colours.light.subText
                                   }}>
-                                    tomorrow:
+                                    {nextWorkday.label}
                                   </span>
                                   <div 
                                     style={{
                                       width: '12px',
                                       height: '12px',
                                       borderRadius: '2px',
-                                      backgroundColor: getDayColor(tomorrowStatus as 'office' | 'wfh' | 'away' | 'off-sick' | 'out-of-office'),
+                                      backgroundColor: getDayColor(nextWorkday.status as 'office' | 'wfh' | 'away' | 'off-sick' | 'out-of-office'),
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center'
                                     }}
-                                    title={`Tomorrow: ${tomorrowStatus}`}
+                                    title={`${nextWorkday.day}: ${nextWorkday.status}`}
                                   >
                                     <StatusIcon
-                                      status={tomorrowStatus as 'office' | 'wfh' | 'away' | 'off-sick' | 'out-of-office'}
+                                      status={nextWorkday.status as 'office' | 'wfh' | 'away' | 'off-sick' | 'out-of-office'}
                                       size="6px"
                                       color="white"
                                     />
@@ -1061,9 +1105,9 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
             // Weekly View - Multi-column grid
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
-              gap: '8px',
-              maxWidth: '100%'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '6px',
+              width: '100%'
             }}>
               {filteredData
               .sort((a, b) => {
@@ -1083,21 +1127,28 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                     style={{
                       background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
                       border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                      borderRadius: '8px',
-                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      padding: '6px 8px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '12px',
-                      fontSize: '13px',
-                      minHeight: '36px',
-                      boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)'
+                      gap: '8px',
+                      fontSize: '12px',
+                      minHeight: '32px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      boxShadow: isDarkMode ? '0 2px 4px rgba(0, 0, 0, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.05)'
                     }}
                   >
-                    {/* Name - Fixed width for alignment */}
+                    {/* Name - Compact width for alignment */}
                     <div style={{
-                      minWidth: '80px',
+                      minWidth: '65px',
+                      maxWidth: '65px',
                       fontWeight: member.isUser ? '700' : '500',
-                      color: member.isUser ? colours.missedBlue : (isDarkMode ? colours.dark.text : colours.light.text)
+                      color: member.isUser ? colours.missedBlue : (isDarkMode ? colours.dark.text : colours.light.text),
+                      fontSize: '11px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
                     }}>
                       {member.First || member.Initials}
                       {member.isUser && (
@@ -1114,7 +1165,7 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                         </span>
                       )}
                     </div>                    {/* Current Week Icons */}
-                    <div style={{ display: 'flex', gap: '3px' }}>
+                    <div style={{ display: 'flex', gap: '2px' }}>
                       {currentWeekAttendance.map((dayStatus: any, index: any) => {
                         const dayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][index];
                         const isOnLeave = dayStatus === 'out-of-office';
@@ -1124,9 +1175,9 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                           <div 
                             key={`current-${index}`}
                             style={{
-                              width: '16px',
-                              height: '16px',
-                              borderRadius: '3px',
+                              width: '14px',
+                              height: '14px',
+                              borderRadius: '2px',
                               backgroundColor: `${getDayColor(dayStatus)}20`, // Light fill - 20% opacity
                               border: `1px solid ${getDayColor(dayStatus)}`, // Full opacity border
                               cursor: isClickable ? 'pointer' : 'default',
@@ -1157,12 +1208,12 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                     {/* Divider */}
                     <div style={{
                       width: '1px',
-                      height: '20px',
+                      height: '16px',
                       backgroundColor: isDarkMode ? '#4A5568' : '#E2E8F0'
                     }} />
 
                     {/* Next Week Icons */}
-                    <div style={{ display: 'flex', gap: '3px' }}>
+                    <div style={{ display: 'flex', gap: '2px' }}>
                       {nextWeekAttendance.map((dayStatus: any, index: any) => {
                         const dayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][index];
                         const isOnLeave = dayStatus === 'out-of-office';
@@ -1172,16 +1223,16 @@ const WeeklyAttendanceView: React.FC<WeeklyAttendanceViewProps> = ({
                           <div 
                             key={`next-${index}`}
                             style={{
-                              width: '16px',
-                              height: '16px',
-                              borderRadius: '3px',
+                              width: '14px',
+                              height: '14px',
+                              borderRadius: '2px',
                               backgroundColor: `${getDayColor(dayStatus)}20`, // Light fill - 20% opacity
                               border: `1px solid ${getDayColor(dayStatus)}`, // Full opacity border
                               cursor: isClickable ? 'pointer' : 'default',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              fontSize: '8px',
+                              fontSize: '7px',
                               opacity: 0.8 // Slightly faded to distinguish from current week
                             }}
                             title={`Next ${dayName}: ${dayStatus}`}

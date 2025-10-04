@@ -120,14 +120,123 @@ router.get('/', async (req, res) => {
       return Array.isArray(result.recordset) ? result.recordset : [];
     });
 
-    // Instructions database query (currently disabled due to connection issues)
-    const instructionsEnquiries = []; // Empty for now to prevent timeout issues
+    // Instructions database query - now enabled for cross-reference analysis
+    let instructionsEnquiries = [];
     
-    // TODO: Enable instructions query when database connection is stable
-    // const instructionsEnquiries = await withRequest(instructionsConnectionString, async (request) => {
-    //   // Instructions query would go here
-    //   return [];
-    // });
+    try {
+      instructionsEnquiries = await withRequest(instructionsConnectionString, async (request) => {
+        // Simple query to get all instructions enquiries for cross-reference
+        const result = await request.query(`
+          SELECT 
+            id,
+            datetime,
+            stage,
+            claim,
+            poc,
+            pitch,
+            aow,
+            tow,
+            moc,
+            rep,
+            first,
+            last,
+            email,
+            phone,
+            value,
+            notes,
+            rank,
+            rating,
+            acid,
+            card_id,
+            source,
+            url,
+            contact_referrer,
+            company_referrer,
+            gclid,
+            'instructions' as db_source
+          FROM enquiries
+          ORDER BY datetime DESC
+        `);
+        console.log(`✅ Retrieved ${result.recordset?.length || 0} enquiries from instructions DB`);
+        return Array.isArray(result.recordset) ? result.recordset : [];
+      });
+    } catch (instructionsError) {
+      console.warn('⚠️ Instructions DB unavailable, proceeding with main DB only:', instructionsError.message);
+      instructionsEnquiries = [];
+    }
+
+    // Cross-reference analysis: match enquiries between databases
+    const crossReferenceMap = new Map(); // key: main enquiry ID, value: match info
+    
+    mainEnquiries.forEach(mainEnq => {
+      const matches = instructionsEnquiries.filter(instEnq => {
+        // Match criteria: email exact match (highest priority)
+        if (mainEnq.email && instEnq.email && 
+            mainEnq.email.toLowerCase().trim() === instEnq.email.toLowerCase().trim()) {
+          return true;
+        }
+        
+        // Secondary match: name similarity + date proximity
+        const mainFullName = `${mainEnq.first || ''} ${mainEnq.last || ''}`.trim().toLowerCase();
+        const instFullName = `${instEnq.first || ''} ${instEnq.last || ''}`.trim().toLowerCase();
+        
+        if (mainFullName && instFullName && mainFullName === instFullName) {
+          // Check date proximity (within 7 days)
+          const mainDate = new Date(mainEnq.datetime);
+          const instDate = new Date(instEnq.datetime);
+          const daysDiff = Math.abs(mainDate - instDate) / (1000 * 60 * 60 * 24);
+          
+          if (daysDiff <= 7) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
+      
+      let migrationStatus = 'not-migrated';
+      let matchScore = 0;
+      let matchedEnquiry = null;
+      
+      if (matches.length > 0) {
+        // Take the best match (first one for now)
+        matchedEnquiry = matches[0];
+        
+        // Calculate match quality
+        if (mainEnq.email && matchedEnquiry.email && 
+            mainEnq.email.toLowerCase().trim() === matchedEnquiry.email.toLowerCase().trim()) {
+          matchScore = 100; // Perfect email match
+          migrationStatus = 'migrated';
+        } else {
+          matchScore = 70; // Name + date match
+          migrationStatus = 'partial';
+        }
+      }
+      
+      crossReferenceMap.set(mainEnq.ID, {
+        migrationStatus,
+        matchScore,
+        instructionsId: matchedEnquiry?.id || null,
+        matchedData: matchedEnquiry
+      });
+      
+      // Add migration metadata to the main enquiry object
+      mainEnq.migrationStatus = migrationStatus;
+      mainEnq.matchScore = matchScore;
+      mainEnq.instructionsId = matchedEnquiry?.id || null;
+    });
+
+    // Mark instructions enquiries that don't have main counterparts
+    instructionsEnquiries.forEach(instEnq => {
+      const hasMainCounterpart = Array.from(crossReferenceMap.values())
+        .some(ref => ref.instructionsId === instEnq.id);
+      
+      if (!hasMainCounterpart) {
+        instEnq.migrationStatus = 'instructions-only';
+        instEnq.matchScore = 0;
+        instEnq.mainId = null;
+      }
+    });
 
     // Merge results from both databases
     const allEnquiries = [
@@ -151,6 +260,34 @@ router.get('/', async (req, res) => {
     }
 
   // Unified result prepared
+    
+    // Calculate migration statistics
+    const migrationStats = {
+      total: mainEnquiries.length,
+      migrated: 0,
+      partial: 0,
+      notMigrated: 0,
+      instructionsOnly: instructionsEnquiries.filter(e => e.migrationStatus === 'instructions-only').length
+    };
+    
+    mainEnquiries.forEach(enq => {
+      switch (enq.migrationStatus) {
+        case 'migrated':
+          migrationStats.migrated++;
+          break;
+        case 'partial':
+          migrationStats.partial++;
+          break;
+        case 'not-migrated':
+          migrationStats.notMigrated++;
+          break;
+      }
+    });
+    
+    const migrationRate = migrationStats.total > 0 
+      ? ((migrationStats.migrated / migrationStats.total) * 100).toFixed(1)
+      : '0.0';
+    
     const responsePayload = {
       enquiries: uniqueEnquiries,
       count: uniqueEnquiries.length,
@@ -158,6 +295,11 @@ router.get('/', async (req, res) => {
         main: mainEnquiries.length,
         instructions: instructionsEnquiries.length,
         unique: uniqueEnquiries.length
+      },
+      migration: {
+        ...migrationStats,
+        migrationRate: `${migrationRate}%`,
+        crossReferenceMap: Object.fromEntries(crossReferenceMap)
       }
     };
     

@@ -16,7 +16,6 @@ interface TimeMetric {
   dialTarget?: number;
   count?: number;
   prevCount?: number;
-  firmTotal?: number; // For showing firm-wide total below user-specific value
 }
 
 interface EnquiryMetric {
@@ -725,18 +724,8 @@ const TimeMetricsV2: React.FC<TimeMetricsV2Props> = ({ metrics, enquiryMetrics, 
                     />
                   </div>
 
-                  {/* Show firm total or previous month value for money-only metrics */}
-                  {isTimeMetric(metric) && metric.isMoneyOnly && metric.firmTotal && metric.firmTotal > 0 && (
-                    <div style={{
-                      fontSize: '11px',
-                      fontWeight: 500,
-                      color: isDarkMode ? '#9CA3AF' : '#6B7280',
-                      marginBottom: '8px',
-                    }}>
-                      Firm total: {formatCurrency(metric.firmTotal)}
-                    </div>
-                  )}
-                  {isTimeMetric(metric) && metric.isMoneyOnly && !metric.firmTotal && prevValue > 0 && (
+                  {/* Show previous month value for money-only metrics */}
+                  {isTimeMetric(metric) && metric.isMoneyOnly && prevValue > 0 && (
                     <div style={{
                       fontSize: '11px',
                       fontWeight: 500,

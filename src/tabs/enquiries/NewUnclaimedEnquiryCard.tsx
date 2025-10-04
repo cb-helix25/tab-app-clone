@@ -70,7 +70,7 @@ const EnquiryNotesClamp: React.FC<EnquiryNotesClampProps> = ({ notes, isDark, fo
             <div
               style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 18, pointerEvents: 'none',
                 background: isDark
-                  ? 'linear-gradient(to bottom, rgba(31,39,50,0), rgba(31,39,50,0.9))'
+                  ? 'linear-gradient(to bottom, rgba(15,23,42,0), rgba(15,23,42,1))' // Match the card background #0f172a
                   : 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.95))' }}
             />
           )}
@@ -110,38 +110,70 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
 
   const areaColor = getAreaColour(enquiry.Area_of_Work);
 
+  // Enhanced styling to match instruction cards - code-like dark mode with clean design
+  const bgGradientLight = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+  
+  const selectedBg = isDarkMode 
+    ? `#1e293b` // Solid dark blue-grey for code-like feel
+    : `linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)`;
+  
+  const selectedBorder = isDarkMode
+    ? `1px solid ${areaColor}`
+    : `1px solid ${areaColor}`;
+    
+  const selectedShadow = isDarkMode
+    ? `0 1px 3px rgba(0,0,0,0.8)` // Minimal shadow in dark mode
+    : `0 8px 32px ${areaColor}25, 0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)`;
+
   const container = mergeStyles({
     position: 'relative',
-    background: isDarkMode ? 'rgba(255,255,255,0.06)' : '#fff',
-    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
-    borderRadius: 5,
-    borderTopLeftRadius: 5,
-    borderBottomLeftRadius: 5,
-    borderLeftWidth: 2,
-    borderLeftStyle: 'solid',
-    padding: 14,
-    margin: '8px 0',
-    cursor: 'pointer',
-    transition: 'box-shadow .2s, transform .2s, border-color .2s',
-    boxShadow: isDarkMode ? '0 2px 10px rgba(0,0,0,0.25)' : '0 2px 10px rgba(0,0,0,0.08)',
-    overflow: 'hidden',
+    margin: '6px 0', // Reduced margin to match instruction cards
+    borderRadius: 8,
+    padding: '12px 18px',
+    background: selected 
+      ? selectedBg
+      : (isDarkMode ? '#0f172a' : bgGradientLight), // Solid dark background to match instruction cards
     opacity: promotionStatus ? 0.6 : 1,
-    selectors: {
-      ':hover': { 
-        boxShadow: isDarkMode ? '0 6px 20px rgba(0,0,0,0.35)' : '0 6px 20px rgba(0,0,0,0.12)', 
-        transform: 'translateY(-1px)',
-        borderColor: areaColor
-      }
-    }
-  });
-
-  const meta = mergeStyles({
+    // Responsive padding
+    '@media (max-width: 768px)': {
+      padding: '10px 14px',
+    },
+    '@media (max-width: 480px)': {
+      padding: '8px 12px',
+      borderRadius: 6,
+    },
+    border: selected || showActions 
+      ? selectedBorder
+      : `1px solid ${isDarkMode ? 'rgba(148,163,184,0.2)' : 'rgba(0,0,0,0.08)'}`,
+    borderLeft: `2px solid ${selected ? areaColor : (isDarkMode ? areaColor : `${areaColor}60`)}`, // Override just the left side
+    boxShadow: selected
+      ? selectedShadow
+      : (isDarkMode ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.07)'),
     display: 'flex',
-    gap: 12,
-    fontSize: 11,
-    color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)',
-    fontWeight: 500,
-    marginTop: 6,
+    flexDirection: 'column',
+    gap: 6,
+    fontFamily: 'Raleway, sans-serif',
+    cursor: 'pointer',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    marginBottom: 4,
+    overflow: 'hidden',
+    transform: selected ? 'translateY(-2px)' : 'translateY(0)',
+    selectors: {
+      ':hover': {
+        transform: selected ? 'translateY(-3px)' : 'translateY(-1px)', 
+        boxShadow: selected 
+          ? (isDarkMode ? `0 2px 8px rgba(0,0,0,0.9)` : `0 12px 40px ${areaColor}50, 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2)`)
+          : (isDarkMode ? '0 1px 3px rgba(0,0,0,0.6)' : '0 8px 24px rgba(0,0,0,0.12)'),
+        border: `1px solid ${areaColor}`, // Change the main border to area color on hover
+        borderLeft: `2px solid ${areaColor}`, // Keep left border consistent
+      },
+      ':active': { transform: selected ? 'translateY(-1px)' : 'translateY(0)' },
+      ':focus-within': { 
+        outline: `2px solid ${areaColor}40`, // Thinner outline
+        outlineOffset: '2px',
+        borderColor: areaColor 
+      },
+    },
   });
 
   const handleSelect = () => {
@@ -241,7 +273,14 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
       </div>
 
       {/* Meta */}
-      <div className={meta}>
+      <div style={{
+        display: 'flex',
+        gap: 12,
+        fontSize: 11,
+        color: isDarkMode ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)',
+        fontWeight: 500,
+        marginTop: 6,
+      }}>
         {enquiry.Value && <span style={{ fontWeight: 600 }}>{enquiry.Value}</span>}
       </div>
 

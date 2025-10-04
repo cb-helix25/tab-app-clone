@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Stack, Text, Spinner, SpinnerSize, MessageBar, MessageBarType, IconButton, mergeStyles, Icon } from '@fluentui/react';
+import ThemedSpinner from '../../components/ThemedSpinner';
 import ToggleSwitch from '../../components/ToggleSwitch';
 import SegmentedControl from '../../components/filter/SegmentedControl';
 import FilterBanner from '../../components/filter/FilterBanner';
@@ -406,7 +407,7 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
           alignItems: 'center', 
           height: '200px' 
         }}>
-          <Spinner label="Loading matters..." size={SpinnerSize.medium} />
+          <ThemedSpinner label="Loading matters..." size={SpinnerSize.medium} />
         </div>
       </div>
     );

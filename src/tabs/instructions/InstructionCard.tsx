@@ -1,50 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
-import { TextField, DefaultButton, PrimaryButton, Dropdown, IDropdownOption } from '@fluentui/react';
+import { TextField, DefaultButton, PrimaryButton, Dropdown, IDropdownOption, Icon } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import OperationStatusToast from '../enquiries/pitch-builder/OperationStatusToast';
 import { TeamData } from '../../app/functionality/types';
 import {
-  FaUser, 
-  FaUsers, 
-  FaFileAlt, 
-  FaDownload, 
-  FaCalendarAlt,
-  FaFilePdf,
-  FaFileWord,
-  FaFileExcel,
-  FaFilePowerpoint,
-  FaFileArchive,
-  FaFileImage,
-  FaFileAudio,
-  FaFileVideo,
-  FaFileUpload,
-  FaInfoCircle,
-  FaEnvelope,
-  FaPhone,
-  FaCopy,
-  FaPoundSign,
-  FaShieldAlt,
-  FaBuilding,
-  FaFolder,
-  FaClipboardCheck,
-  FaIdCard,
-  FaIdBadge,
+  FaUser,
+  FaUsers,
+  FaFileAlt,
+  FaDownload,
   FaPlayCircle,
   FaSpinner,
-  FaCheckCircle,
-  FaEdit,
   FaUserEdit,
-  FaExclamationTriangle
+  FaIdBadge,
+  FaEnvelope,
+  FaPhone,
+  FaCalendarAlt,
+  FaInfoCircle,
+  FaFileUpload,
+  FaIdCard,
+  FaPoundSign,
+  FaShieldAlt,
+  FaFolder,
+  FaClipboardCheck,
+  FaBuilding
 } from 'react-icons/fa';
-
-// Helper to capitalise first letter (placed after all imports to satisfy eslint import/first)
-const capitaliseFirst = (val: string): string => {
-  if (!val) return val;
-  return val.charAt(0).toUpperCase() + val.slice(1);
-};
 
 // Format bytes helper
 const formatBytes = (bytes?: number): string => {
@@ -690,9 +672,40 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         return colours.green;
       case 'employment':
         return colours.yellow;
+      case 'other':
+      case 'other/unsure':
+        return colours.greyText;
       default:
-        return colours.cta;
+        return colours.greyText; // Changed from colours.cta to colours.greyText
     }
+  };
+
+  // Get area icon (same logic as enquiry badges)
+  const getAreaIcon = (area: string): string => {
+    switch (area?.toLowerCase()) {
+      case 'commercial':
+        return 'CityNext';
+      case 'construction':
+        return 'Build';
+      case 'property':
+        return 'Home';
+      case 'employment':
+        return 'People';
+      case 'other':
+      case 'other/unsure':
+        return 'Help';
+      default:
+        return 'Help';
+    }
+  };
+
+  // Normalize area text for display
+  const getAreaDisplayText = (area: string): string => {
+    const normalized = area?.toLowerCase() || '';
+    if (normalized === 'other/unsure' || normalized === 'other' || normalized.includes('other') || normalized.includes('unsure')) {
+      return 'Other';
+    }
+    return area;
   };
 
   // Get area of work from deals (linked by InstructionRef)
@@ -712,6 +725,38 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   const isPitchedDeal = !instruction && deal;
   
   const areaColor = getAreaColor(areaOfWork);
+  const areaIcon = getAreaIcon(areaOfWork);
+
+  const solicitorContact = useMemo(() => {
+    const candidates = [
+      instruction?.HelixContact,
+      instruction?.Solicitor,
+      instruction?.AssignedTo,
+      instruction?.Handler,
+      instruction?.PointOfContact,
+      instructionData?.HelixContact,
+      deal?.PitchedBy,
+    ];
+
+    const found = candidates.find(
+      (value) => typeof value === 'string' && value.trim().length > 0,
+    );
+
+    return typeof found === 'string' ? found.trim() : null;
+  }, [instruction, instructionData, deal]);
+
+  const normalizedSolicitor = solicitorContact?.toLowerCase() ?? '';
+  // Generic contact identifiers used to detect unclaimed/placeholder contacts
+  const GENERIC_CONTACT_IDENTIFIERS = new Set<string>([
+    'admin',
+    'helix',
+    'team',
+    'unassigned',
+    'info',
+    'support'
+  ]);
+  const isGenericContact = normalizedSolicitor && GENERIC_CONTACT_IDENTIFIERS.has(normalizedSolicitor);
+  const isClaimedInstruction = Boolean(!isPitchedDeal && solicitorContact && !isGenericContact);
 
   // Determine next action step
   // For pitched deals, use different logic
@@ -819,50 +864,68 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   // Visual styling – simplified, gradient background for legibility
   const bgGradientLight = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
   const bgGradientDark = 'linear-gradient(135deg, #151a22 0%, #11161d 100%)';
-  const bgGradientSelected = `linear-gradient(135deg, rgba(6, 23, 51, 0.04) 0%, rgba(54, 144, 206, 0.08) 100%)`;
+  
+  // Code-like dark mode with high contrast, minimal gradients/shadows
+  const selectedBg = isDarkMode 
+    ? `#1e293b` // Solid dark blue-grey for code-like feel
+    : `linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)`;
+  
+  const selectedBorder = isDarkMode
+    ? `1px solid ${areaColor}`
+    : `1px solid ${areaColor}`;
+    
+  const selectedShadow = isDarkMode
+    ? `0 1px 3px rgba(0,0,0,0.8)` // Minimal shadow in dark mode
+    : `0 8px 32px ${areaColor}25, 0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)`;
+  
   const cardClass = mergeStyles({
     position: 'relative',
-    borderRadius: 5,
-    padding: '10px 16px',
+    borderRadius: 8,
+    padding: '12px 18px',
     background: selected 
-      ? bgGradientSelected
-      : (isDarkMode ? bgGradientDark : bgGradientLight),
+      ? selectedBg
+      : (isDarkMode ? '#0f172a' : bgGradientLight), // Solid dark background instead of gradient
     opacity: 1,
     // Responsive padding
     '@media (max-width: 768px)': {
-      padding: '8px 12px',
+      padding: '10px 14px',
     },
     '@media (max-width: 480px)': {
-      padding: '6px 10px',
-      borderRadius: 4,
+      padding: '8px 12px',
+      borderRadius: 6,
     },
-    border: selected
-      ? `2px solid ${colours.blue}`
-      : `1px solid ${clickedForActions ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
+    border: selected || clickedForActions 
+      ? selectedBorder
+      : `1px solid ${isDarkMode ? 'rgba(148,163,184,0.2)' : 'rgba(0,0,0,0.08)'}`,
+    borderLeft: `2px solid ${selected ? areaColor : (isDarkMode ? areaColor : `${areaColor}60`)}`, // Override just the left side
     boxShadow: selected
-      ? `0 0 0 1px ${colours.blue}20, 0 4px 16px rgba(54, 144, 206, 0.15)`
-      : (isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.07)'),
+      ? selectedShadow
+      : (isDarkMode ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.07)'),
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
     fontFamily: 'Raleway, sans-serif',
     cursor: 'pointer',
-    transition: 'border-color .2s, transform .15s, box-shadow .3s, background .25s ease',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     marginBottom: 4,
     overflow: 'hidden',
-    borderLeftWidth: selected ? 3 : 2,
-    borderLeftStyle: 'solid',
-    borderLeftColor: selected ? colours.blue : areaColor,
+    // Remove vertical translate to avoid perceived size shift on selection
+    transform: 'none',
     selectors: {
       ':hover': {
-        transform: 'translateY(-1px)', 
-        borderColor: selected ? colours.blue : colours.highlight,
-        boxShadow: selected
-          ? `0 0 0 1px ${colours.blue}30, 0 6px 20px rgba(54, 144, 206, 0.2)`
-          : (isDarkMode ? '0 6px 10px rgba(0,0,0,0.45)' : '0 8px 16px rgba(33,56,82,0.12)')
+        // no transform on hover
+        boxShadow: selected 
+          ? (isDarkMode ? `0 2px 8px rgba(0,0,0,0.9)` : `0 12px 40px ${areaColor}50, 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2)`)
+          : (isDarkMode ? '0 1px 3px rgba(0,0,0,0.6)' : '0 8px 24px rgba(0,0,0,0.12)'),
+        border: `1px solid ${areaColor}`, // Change the main border to area color on hover
+        borderLeft: `2px solid ${areaColor}`, // Keep left border consistent
       },
-      ':active': { transform: 'translateY(0)' },
-      ':focus-within': { outline: '2px solid ' + colours.blue, outlineOffset: '2px' },
+      ':active': { },
+      ':focus-within': { 
+        outline: `2px solid ${areaColor}40`, // Thinner outline
+        outlineOffset: '2px',
+        borderColor: areaColor 
+      },
     },
   });
 
@@ -917,11 +980,48 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       onMouseEnter={() => { setIsHovered(true); setShowDetails(true); }}
       onMouseLeave={() => { setIsHovered(false); if (!selected && !clickedForActions) setShowDetails(false); }}
     >
+      {/* Selection Toggle (checkbox style) */}
+      {onToggle && (
+        <button
+          aria-label={selected ? 'Deselect instruction' : 'Select instruction'}
+          onClick={(e) => { e.stopPropagation(); onToggle(); }}
+          className={mergeStyles({
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            width: 18,
+            height: 18,
+            borderRadius: 4,
+            border: `1.5px solid ${selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.25)' : '#c3c9d4')}`,
+            background: selected ? colours.blue : 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            zIndex: 10,
+            selectors: {
+              ':hover': {
+                borderColor: colours.blue,
+                background: selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(54, 144, 206, 0.1)'),
+                // no scale transform on hover
+              },
+              ':focus': {
+                outline: `2px solid ${colours.blue}40`,
+                outlineOffset: '2px'
+              }
+            }
+          })}
+        >
+          {selected && <Icon iconName="CheckMark" styles={{ root: { fontSize: 12, color: '#fff' } }} />}
+        </button>
+      )}
+
       {/* Left accent bar */}
       <span style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, background: areaColor, opacity: .95, pointerEvents: 'none' }} />
       
-      {/* Header: Primary identifier + area chip */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, paddingLeft: 0, justifyContent: 'space-between' }}>
+  {/* Header: Primary identifier + area chip */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, paddingLeft: onToggle ? 26 : 0, justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {/* Client Type Icon */}
           {instruction?.ClientType === 'Company' ? (
@@ -939,10 +1039,15 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           )}
           <span style={{ 
             fontWeight: 700, 
-            color: selected ? colours.blue : (isDarkMode ? '#fff' : '#0d2538'), 
+            color: selected 
+              ? (isDarkMode ? '#ffffff' : colours.darkBlue) 
+              : (isDarkMode ? '#fff' : '#0d2538'), 
             lineHeight: 1.2, 
             fontSize: '15px',
-            transition: 'color 0.2s ease'
+            transition: 'color 0.3s ease',
+            textShadow: selected 
+              ? (isDarkMode ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 2px rgba(255,255,255,0.8)') 
+              : 'none'
           }}>
           {(() => {
             // Helpers to source person name from various places
@@ -1034,34 +1139,120 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           </span>
         </div>
         {areaOfWork && (
-          <span
+          <div
             style={{
               marginLeft: 'auto',
-              padding: '5px 10px',
+              padding: '6px 12px',
               borderRadius: 14,
               fontSize: 11,
               fontWeight: 700,
-              color: areaColor,
-              border: `1px solid ${areaColor}`,
+              color: selected 
+                ? (isDarkMode ? '#ffffff' : areaColor)
+                : areaColor,
+              border: selected
+                ? (isDarkMode ? `1px solid ${areaColor}` : `1px solid ${areaColor}`) // Thinner border
+                : `1px solid ${areaColor}`,
+              backgroundColor: selected
+                ? (isDarkMode ? `${areaColor}20` : `${areaColor}10`)
+                : 'transparent',
               textTransform: 'uppercase',
               letterSpacing: 0.6,
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: 'none' // Simplified - no shadows
+            }}
+            onMouseEnter={(e) => {
+              if (!selected) {
+                e.currentTarget.style.backgroundColor = `${areaColor}12`;
+                e.currentTarget.style.boxShadow = 'none'; // No shadows on hover
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!selected) {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.boxShadow = 'none';
+              }
             }}
           >
-            {areaOfWork}
-          </span>
+            <Icon 
+              iconName={areaIcon} 
+              styles={{ 
+                root: { 
+                  fontSize: '12px', 
+                  color: areaColor,
+                  opacity: 0.9,
+                  display: 'flex',
+                  alignItems: 'center',
+                  lineHeight: 1
+                } 
+              }} 
+            />
+            <span style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              lineHeight: 1
+            }}>
+              {getAreaDisplayText(areaOfWork)}
+            </span>
+            
+            {/* Simple status indicator dot */}
+            {selected && (
+              <>
+                <span style={{ 
+                  width: 3, 
+                  height: 3, 
+                  borderRadius: '50%', 
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.5)' : `${areaColor}80`,
+                  marginLeft: 2
+                }} />
+                <span style={{
+                  fontSize: 9,
+                  fontWeight: 500,
+                  opacity: 0.8,
+                  textTransform: 'none',
+                  letterSpacing: 0.3
+                }}>
+                  {(() => {
+                    // Show instruction status or date info
+                    if (instruction?.InstructionRef) {
+                      return `#${instruction.InstructionRef.toString().slice(-4)}`;
+                    }
+                    if (instruction?.Created_Date) {
+                      try {
+                        const date = new Date(instruction.Created_Date);
+                        const now = new Date();
+                        const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+                        if (diffDays === 0) return 'Today';
+                        if (diffDays === 1) return '1d';
+                        if (diffDays < 7) return `${diffDays}d`;
+                        if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`;
+                        return `${Math.floor(diffDays / 30)}m`;
+                      } catch {
+                        return 'Active';
+                      }
+                    }
+                    return 'Active';
+                  })()}
+                </span>
+              </>
+            )}
+          </div>
         )}
         
       </div>
 
       {/* Meta: contact + identifiers (chips) */}
-      <div style={{ 
+        <div style={{ 
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          opacity: 0.85,
-          transition: 'opacity 0.2s ease',
+          opacity: selected ? 1 : 0.85,
+          transition: 'opacity 0.3s ease',
           marginTop: 4,
+          marginLeft: onToggle ? 26 : 0,
           flexWrap: 'wrap'
         }}>
         {(() => {
@@ -1069,36 +1260,57 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           const phone = instruction?.Phone || instruction?.phone || (deal as any)?.Phone || (instruction as any)?.PhoneNumber || (instruction as any)?.ContactNumber;
           const instructionRefVal = instruction?.InstructionRef || instruction?.instructionRef || instruction?.ref || instruction?.Ref;
           const prospectVal = prospectId;
-          const solicitorContact = instruction?.HelixContact || instruction?.Solicitor || instruction?.AssignedTo || instruction?.Handler || instruction?.PointOfContact || instructionData?.HelixContact || deal?.PitchedBy;
+          const contactValue = solicitorContact;
 
           const chipBase = {
-            color: selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'),
+            color: selected 
+              ? (isDarkMode ? '#ffffff' : '#ffffff') // White text for both when selected
+              : (isDarkMode ? '#e2e8f0' : 'rgba(0,0,0,0.7)'), // Higher contrast text
             fontSize: '12px',
             cursor: 'pointer' as const,
-            padding: '5px 10px',
-            borderRadius: '14px',
-            transition: 'all 0.2s ease',
+            padding: '6px 12px', // constant padding to avoid size jump
+            borderRadius: '14px', // constant radius
+            transition: 'color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            border: `1px solid ${selected ? colours.blue : (isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)')}`,
-            backgroundColor: selected ? 'rgba(54, 144, 206, 0.12)' : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)')
+            border: selected 
+              ? (isDarkMode ? `1px solid ${colours.blue}` : `1px solid ${colours.blue}`) // Same border for both modes
+              : (isDarkMode ? '1px solid #334155' : '1px solid rgba(0,0,0,0.14)'), // Solid border in dark mode
+            backgroundColor: selected 
+              ? (isDarkMode ? '#334155' : colours.blue) // Dark slate for dark mode, blue for light mode
+              : (isDarkMode ? '#1e293b' : 'rgba(0,0,0,0.04)'), // Solid background
+            boxShadow: selected 
+              ? 'none' // No shadow in either mode for consistency
+              : 'none',
+            fontWeight: 400 // Regular weight, not bold
           };
 
           const onHover = (el: HTMLElement) => {
             if (!selected) {
-              el.style.borderColor = colours.blue;
+              el.style.borderColor = isDarkMode ? colours.blue : colours.blue;
               el.style.color = colours.blue;
+              el.style.backgroundColor = isDarkMode ? '#475569' : 'rgba(59, 130, 246, 0.08)'; // Solid hover in dark mode
+              el.style.boxShadow = 'none'; // No shadow to avoid perceived growth
+            } else {
+              el.style.boxShadow = 'none';
+              el.style.backgroundColor = isDarkMode ? '#475569' : 'rgba(59, 130, 246, 0.12)';
             }
           };
           const onLeave = (el: HTMLElement) => {
             if (!selected) {
-              el.style.color = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
-              el.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+              el.style.color = isDarkMode ? '#e2e8f0' : 'rgba(0,0,0,0.6)';
+              el.style.borderColor = isDarkMode ? '#334155' : 'rgba(0,0,0,0.12)';
+              el.style.backgroundColor = isDarkMode ? '#1e293b' : 'rgba(0,0,0,0.04)';
+              el.style.boxShadow = 'none';
+            } else {
+              // Restore the selected chip styles from chipBase
+              el.style.boxShadow = 'none';
+              el.style.backgroundColor = isDarkMode ? '#334155' : colours.blue; // Match chipBase selected styles
+              el.style.color = '#ffffff'; // White text for selected chips
+              el.style.borderColor = colours.blue; // Blue border for selected chips
             }
-          };
-
-          return (
+          };          return (
             <>
               {email && (
                 <div
@@ -1110,7 +1322,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 >
                   <FaEnvelope style={{ 
                     fontSize: '12px', 
-                    color: selected ? colours.blue : 'inherit',
+                    color: selected ? (isDarkMode ? '#ffffff' : '#ffffff') : 'inherit', // White when selected
                     transition: 'color 0.2s ease' 
                   }} />
                   <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>{email}</span>
@@ -1126,7 +1338,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 >
                   <FaPhone style={{ 
                     fontSize: '12px', 
-                    color: selected ? colours.blue : 'inherit',
+                    color: selected ? (isDarkMode ? '#ffffff' : '#ffffff') : 'inherit', // White when selected
                     transition: 'color 0.2s ease' 
                   }} />
                   <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>{phone}</span>
@@ -1140,7 +1352,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   onMouseLeave={(e) => onLeave(e.currentTarget)}
                   title={`Instruction Ref: ${instructionRefVal}`}
                 >
-                  <FaFileAlt style={{ fontSize: '12px' }} />
+                  <FaFileAlt style={{ 
+                    fontSize: '12px',
+                    color: selected ? (isDarkMode ? '#ffffff' : '#ffffff') : 'inherit' // White when selected
+                  }} />
                   <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>{instructionRefVal}</span>
                 </div>
               )}
@@ -1157,7 +1372,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     height="12" 
                     viewBox="0 0 66.45 100" 
                     style={{ 
-                      fill: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'
+                      fill: selected 
+                        ? (isDarkMode ? '#ffffff' : '#ffffff') // White when selected
+                        : (isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)')
                     }}
                   >
                     <path d="m.33,100c0-3.95-.23-7.57.13-11.14.12-1.21,1.53-2.55,2.68-3.37,6.52-4.62,13.15-9.1,19.73-13.64,10.22-7.05,20.43-14.12,30.64-21.18.21-.14.39-.32.69-.57-5.82-4.03-11.55-8-17.27-11.98C25.76,30.37,14.64,22.57,3.44,14.88.97,13.19-.08,11.07.02,8.16.1,5.57.04,2.97.04,0c.72.41,1.16.62,1.56.9,10.33,7.17,20.66,14.35,30.99,21.52,9.89,6.87,19.75,13.79,29.68,20.59,3.26,2.23,4.78,5.03,3.97,8.97-.42,2.05-1.54,3.59-3.24,4.77-8.94,6.18-17.88,12.36-26.82,18.55-10.91,7.55-21.82,15.1-32.73,22.65-.98.68-2,1.32-3.12,2.05Z"/>
@@ -1166,31 +1383,34 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                   <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>{prospectVal}</span>
                 </div>
               )}
-              {solicitorContact && (
+              {contactValue && (
                 <div
                   style={chipBase}
-                  onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(String(solicitorContact)); }}
+                  onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(String(contactValue)); }}
                   onMouseEnter={(e) => onHover(e.currentTarget)}
                   onMouseLeave={(e) => onLeave(e.currentTarget)}
-                  title={`Solicitor/Contact: ${solicitorContact}`}
+                  title={`Solicitor/Contact: ${contactValue}`}
                 >
-                  <FaUser style={{ fontSize: '12px' }} />
+                  <FaUser style={{ 
+                    fontSize: '12px',
+                    color: selected ? (isDarkMode ? '#ffffff' : '#ffffff') : 'inherit' // White when selected
+                  }} />
                   <span style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px' }}>
                     {(() => {
-                      if (!teamData) return solicitorContact;
+                      if (!teamData) return contactValue;
                       
                       // Try multiple lookup strategies to find the correct team member
                       let teamMember = null;
                       
                       // 1. Exact full name match
                       teamMember = teamData.find(member => 
-                        member['Full Name']?.toLowerCase().trim() === solicitorContact.toLowerCase().trim()
+                        member['Full Name']?.toLowerCase().trim() === contactValue.toLowerCase().trim()
                       );
                       
                       // 2. Exact initials match
                       if (!teamMember) {
                         teamMember = teamData.find(member => 
-                          member.Initials?.toLowerCase() === solicitorContact.toLowerCase()
+                          member.Initials?.toLowerCase() === contactValue.toLowerCase()
                         );
                       }
                       
@@ -1198,13 +1418,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                       if (!teamMember) {
                         teamMember = teamData.find(member => {
                           const fullName = member['Full Name']?.toLowerCase();
-                          const contact = solicitorContact.toLowerCase();
+                          const contact = contactValue.toLowerCase();
                           return fullName && (fullName.includes(contact) || contact.includes(fullName));
                         });
                       }
                       
                       // Return proper initials from team data, or fallback to original
-                      return teamMember?.Initials || solicitorContact;
+                      return teamMember?.Initials || contactValue;
                     })()}
                   </span>
                 </div>
@@ -1219,13 +1439,22 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       {/* Deal summary: service + amount (clamped) */}
       {hasDeal && (
         <div style={{
-          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
-          borderRadius: 6,
-          padding: '8px 12px',
+          backgroundColor: selected 
+            ? (isDarkMode ? '#334155' : 'rgba(59, 130, 246, 0.04)') // Solid background in dark mode
+            : (isDarkMode ? '#1e293b' : 'rgba(0,0,0,0.03)'),
+          border: selected
+            ? (isDarkMode ? `1px solid ${colours.blue}` : `1px solid ${colours.blue}`) // Thinner border, same for both modes
+            : (isDarkMode ? '1px solid #334155' : '1px solid rgba(0,0,0,0.06)'), // Solid border
+          borderRadius: 8, // constant
+          padding: '10px 14px', // constant
           marginTop: 6,
           marginBottom: 2,
-          position: 'relative'
+          marginLeft: onToggle ? 26 : 0,
+          position: 'relative',
+          boxShadow: selected 
+            ? (isDarkMode ? 'none' : `0 2px 8px ${colours.blue}15`) // No shadow in dark mode
+            : 'none',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
           {isEditingDeal ? (
             /* Edit mode */
@@ -1353,10 +1582,19 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           display: 'flex', 
           flexDirection: 'column', 
           marginTop: 6,
-          padding: '8px 12px',
-          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(248,250,252,0.6)',
-          borderRadius: '6px',
-          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`
+          marginLeft: onToggle ? 26 : 0,
+          padding: '10px 14px', // constant
+          backgroundColor: selected 
+            ? (isDarkMode ? '#334155' : 'rgba(248,250,252,0.8)') // Solid background in dark mode
+            : (isDarkMode ? '#1e293b' : 'rgba(248,250,252,0.6)'),
+          borderRadius: 8, // constant
+          border: selected
+            ? (isDarkMode ? `1px solid ${colours.blue}` : `1px solid ${colours.blue}`) // Thinner border, same for both modes
+            : (isDarkMode ? '1px solid #334155' : '1px solid rgba(0,0,0,0.03)'), // Solid border
+          boxShadow: selected 
+            ? (isDarkMode ? 'none' : `0 2px 8px ${colours.blue}10`) // No shadow in dark mode
+            : 'none',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
           {/* Header */}
           <div style={{
@@ -1371,9 +1609,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           
           {/* Key Status Indicators */}
           <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: '8px'
+            display: 'flex',
+            flexWrap: 'nowrap',
+            alignItems: 'center',
+            gap: '8px',
+            whiteSpace: 'nowrap',
+            width: '100%',
+            overflow: 'hidden'
           }}>
           {(() => {
             const keySteps = [] as Array<{ key: string; label: string; status: string; icon: React.ReactNode; clickable: boolean; onClick: (() => void) | null }>;
@@ -1470,7 +1712,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
               })();
 
               return (
-                <div key={step.key}>
+                <div key={step.key} style={{ flex: '0 1 auto', minWidth: 0 }}>
                   <div
                     style={{
                       display: 'flex',
@@ -1478,15 +1720,19 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                       justifyContent: 'center',
                       gap: '6px',
                       cursor: step.clickable ? 'pointer' : 'default',
-                      padding: '6px 10px',
-                      borderRadius: '16px',
-                      backgroundColor: step.clickable ? (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.45)') : 'transparent',
-                      border: step.clickable ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` : '1px solid transparent',
-                      transition: 'all 0.2s ease',
-                      minHeight: '28px',
-                      minWidth: 140,
+                      padding: '6px clamp(6px, 1vw, 10px)', // constant padding
+                      borderRadius: 12,
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      transition: 'color 0.2s ease',
+                      minHeight: '28px', // constant height
+                      minWidth: 0,
+                      flex: '0 1 auto',
                       position: 'relative',
-                      overflow: 'visible'
+                      overflow: 'visible',
+                      boxShadow: 'none',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap'
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1495,10 +1741,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                       }
                     }}
                     onMouseEnter={(e) => {
-                      if (step.clickable) {
-                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(54,144,206,0.08)' : 'rgba(54,144,206,0.04)';
-                        e.currentTarget.style.borderColor = colours.blue + '40';
-                      }
+                      // no transform scaling on hover to avoid size changes
                       // Show status text on pill hover
                       const statusEl = e.currentTarget.querySelector('.status-text') as HTMLElement;
                       if (statusEl) {
@@ -1506,10 +1749,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (step.clickable) {
-                        e.currentTarget.style.backgroundColor = step.clickable ? (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.3)') : 'transparent';
-                        e.currentTarget.style.borderColor = step.clickable ? (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)') : 'transparent';
-                      }
+                      // no transform scaling reset needed
                       // Hide status text when not hovering
                       const statusEl = e.currentTarget.querySelector('.status-text') as HTMLElement;
                       if (statusEl) {
@@ -1538,11 +1778,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     
                     {/* Label - always visible */}
                     <div style={{
-                      fontSize: '11px',
+                      fontSize: 'clamp(10px, 1vw, 11px)',
                       fontWeight: 600,
-                      color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+                      color: selected 
+                        ? (isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)')
+                        : (isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'),
                       letterSpacing: '0.2px',
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.3s ease'
                     }}>
                       {step.label}
                     </div>
@@ -1552,7 +1795,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                       className="status-text"
                       style={{
                         display: 'none',
-                        fontSize: '10px',
+                        fontSize: 'clamp(9px, 0.9vw, 10px)',
                         fontWeight: 500,
                         color: (() => {
                           const statusText = step.status.toLowerCase();
@@ -1563,13 +1806,18 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                           } else if (statusText.includes('processing') || statusText.includes('under review')) {
                             return '#f59e0b'; // Amber for in progress
                           } else {
-                            return isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'; // Grey for pending/not ready
+                            return selected 
+                              ? (isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)')
+                              : (isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'); // Grey for pending/not ready
                           }
                         })(),
                         lineHeight: 1.1,
                         marginLeft: '4px',
                         animation: 'fadeIn 0.2s ease-out',
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        textShadow: selected 
+                          ? (isDarkMode ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 2px rgba(255,255,255,0.8)') 
+                          : 'none'
                       }}>
                       {step.status}
                     </div>
@@ -1763,7 +2011,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
           border: '1px solid #e0e0e0',
           borderRadius: '6px',
           background: isDarkMode ? '#2d2d2d' : '#f8f9fa',
-          fontSize: '14px'
+          fontSize: '14px',
+          marginLeft: onToggle ? 26 : 0
         }}>
           <h5 style={{
             color: isDarkMode ? '#fff' : colours.darkBlue,
@@ -1941,6 +2190,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       {showPaymentDetails && (
         <div style={{
           marginTop: '12px',
+          marginLeft: onToggle ? 26 : 0,
           padding: '16px',
           background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(248,250,252,0.8)',
           borderRadius: '4px',
@@ -2439,6 +2689,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       {showRiskDetails && !hasRiskAssessment && (
         <div style={{
           marginTop: '12px',
+          marginLeft: onToggle ? 26 : 0,
           padding: '16px',
           background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(54,144,206,0.05)',
           borderRadius: '8px',

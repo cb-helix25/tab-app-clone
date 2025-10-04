@@ -3,6 +3,7 @@ import React from 'react';
 import { mergeStyles, Icon } from '@fluentui/react';
 import QuickActionsCard from './QuickActionsCard';
 import { colours } from '../../app/styles/colours';
+import ToggleSwitch from '../../components/ToggleSwitch';
 
 interface QuickAction {
     title: string;
@@ -20,15 +21,16 @@ interface QuickActionsBarProps {
     seamless?: boolean;
     userDisplayName?: string;
     userIdentifier?: string;
+    onToggleTheme?: () => void;
 }
 
 const ACTION_BAR_HEIGHT = 30; // More compact header height
 
 const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean, seamless: boolean) =>
     mergeStyles({
-        // Use transparent background in dark mode to avoid introducing new greys; let page background show through
+        // Slightly lighter than CustomTabs nav bar for visual hierarchy
         background: isDarkMode
-            ? 'transparent'
+            ? 'linear-gradient(135deg, #081A36 0%, #0A1E3D 100%)'
             : `linear-gradient(135deg, #FFFFFF 0%, ${colours.light.grey} 100%)`,
 
         // Hairline borders top/bottom for structure (omit when seamless)
@@ -118,6 +120,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     seamless = false,
     userDisplayName,
     userIdentifier,
+    onToggleTheme,
 }) => {
     const [selected, setSelected] = React.useState<string | null>(null);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -491,6 +494,65 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                         transition: 'opacity 0.2s ease',
                     }}
                 />
+            )}
+
+            {/* Dark mode toggle on right side (deferred until greeting completes to avoid overlap) */}
+            {onToggleTheme && !greetingVisible && (
+                <div
+                    style={{
+                        marginLeft: 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        paddingLeft: 12,
+                        borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(6,23,51,0.1)'}`,
+                    }}
+                >
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={isDarkMode ? '#E5E7EB' : '#0F172A'}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{ flexShrink: 0 }}
+                    >
+                        {isDarkMode ? (
+                            // Moon icon
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                        ) : (
+                            // Sun icon
+                            <>
+                                <circle cx="12" cy="12" r="5" />
+                                <line x1="12" y1="1" x2="12" y2="3" />
+                                <line x1="12" y1="21" x2="12" y2="23" />
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                                <line x1="1" y1="12" x2="3" y2="12" />
+                                <line x1="21" y1="12" x2="23" y2="12" />
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                            </>
+                        )}
+                    </svg>
+                    <span
+                        style={{
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: isDarkMode ? '#E5E7EB' : '#0F172A',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        {isDarkMode ? 'Dark' : 'Light'}
+                    </span>
+                    <ToggleSwitch
+                        checked={isDarkMode}
+                        onChange={onToggleTheme}
+                        ariaLabel="Toggle dark mode"
+                    />
+                </div>
             )}
         </div>
     );

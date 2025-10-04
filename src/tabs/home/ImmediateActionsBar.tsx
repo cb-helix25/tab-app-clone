@@ -222,36 +222,31 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
                     highlighted,
                     seamless
                 )}
-                style={{
-                    display: 'flex',
-                    gap: '8px',
-                }}
             >
-            {!immediateActionsReady ? (
-                <Spinner size={SpinnerSize.small} />
-            ) : immediateActionsList.length === 0 ? (
-                <div className={noActionsClass}>
-                    <div className={noActionsIconClass}>
-                        <FaCheck />
+                {!immediateActionsReady ? (
+                    <Spinner size={SpinnerSize.small} />
+                ) : immediateActionsList.length === 0 ? (
+                    <div className={noActionsClass}>
+                        <div className={noActionsIconClass}>
+                            <FaCheck />
+                        </div>
+                        <div className={noActionsTextClass}>Nothing to Action.</div>
                     </div>
-                    <div className={noActionsTextClass}>Nothing to Action.</div>
-                </div>
-            ) : (
-                <>
-                    {immediateActionsList.map((action) => (
-                        <ImmediateActionChip
-                            key={action.title}
-                            title={action.title}
-                            icon={action.icon}
-                            isDarkMode={isDarkMode}
-                            onClick={action.onClick}
-                            disabled={action.disabled}
-                            category={action.category}
-                        />
-                    ))}
-                    
-                </>
-            )}
+                ) : (
+                    <>
+                        {immediateActionsList.map((action) => (
+                            <ImmediateActionChip
+                                key={action.title}
+                                title={action.title}
+                                icon={action.icon}
+                                isDarkMode={isDarkMode}
+                                onClick={action.onClick}
+                                disabled={action.disabled}
+                                category={action.category}
+                            />
+                        ))}
+                    </>
+                )}
             </div>
         </div>
     );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import {
   Modal,
   Stack,
@@ -12,8 +12,10 @@ import {
 } from '@fluentui/react';
 import { useTheme } from '../app/functionality/ThemeContext';
 import { colours } from '../app/styles/colours';
-import DataFlowWorkbench from './DataFlowWorkbench';
-import DataFlowDiagram from './DataFlowDiagram';
+import ThemedSpinner from './ThemedSpinner';
+import { FixedSizeList, VariableSizeList } from 'react-window';
+const DataFlowWorkbench = React.lazy(() => import('./DataFlowWorkbench'));
+const DataFlowDiagram = React.lazy(() => import('./DataFlowDiagram'));
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -26,15 +28,15 @@ interface AdminDashboardProps {
  */
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
   const { isDarkMode } = useTheme();
+  const palette = isDarkMode ? colours.dark : colours.light;
   const [selectedSection, setSelectedSection] = useState<string>('overview');
-  const [showDataFlow, setShowDataFlow] = useState(false);
   const [fileMap, setFileMap] = useState<{
     totalFiles: number; totalDirs: number; usedFiles: number; usedDirs: number; generatedAt: string; groups: Array<{
       key: string; title: string; root: string; files: number; dirs: number; usedFiles: number; usedDirs: number; sample: Array<{ path: string; used: boolean }>; topBySize: Array<{ path: string; size: number; used: boolean }>; allFiles: Array<{ path: string; used: boolean; size?: number }>; entries: any[]
     }>
   } | null>(null);
-  const [fileFilters, setFileFilters] = useState<Record<string, 'all' | 'used' | 'unused'>>({});
-  const [treeExpanded, setTreeExpanded] = useState<Record<string, Record<string, boolean>>>({});
+  const [treeExpanded, setTreeExpanded] = useState<Record<string, boolean>>({});
+  const [fileSearchTerm, setFileSearchTerm] = useState('');
   const [globalFilter, setGlobalFilter] = useState<'all' | 'used' | 'unused'>('all');
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -46,8 +48,200 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
   const [opsError, setOpsError] = useState<string | null>(null);
   const [opsFilter, setOpsFilter] = useState<'all' | 'errors' | 'email' | 'function'>('all');
   const [opsAutoRefresh, setOpsAutoRefresh] = useState<boolean>(true);
+  const [opsSearchTerm, setOpsSearchTerm] = useState('');
+  const [opsIntervalMs, setOpsIntervalMs] = useState(5000);
+  const [expandedOpsRows, setExpandedOpsRows] = useState<Record<string, boolean>>({});
+  const opsListRef = useRef<VariableSizeList | null>(null);
 
-  const loadFileMap = async () => {
+  const toggleTreeNode = useCallback((path: string) => {
+    setTreeExpanded((prev) => ({
+      ...prev,
+      [path]: !prev[path],
+    }));
+  }, []);
+
+  const allDirectoryPaths = useMemo(() => {
+    if (!fileMap) return [] as string[];
+    const dirs: string[] = [];
+    const visit = (nodes: any[]) => {
+      nodes.forEach((node) => {
+        if (node.kind === 'dir') {
+          dirs.push(node.path);
+          if (Array.isArray(node.children)) visit(node.children);
+        }
+      });
+    };
+    (fileMap.groups || []).forEach((group) => visit(group.entries || []));
+    return dirs;
+  }, [fileMap]);
+
+  const setAllTreeNodes = useCallback(
+    (expanded: boolean) => {
+      setTreeExpanded((prev) => {
+        if (expanded) {
+          const next: Record<string, boolean> = { ...prev };
+          allDirectoryPaths.forEach((path) => {
+            next[path] = true;
+          });
+          return next;
+        }
+        const next: Record<string, boolean> = { ...prev };
+        allDirectoryPaths.forEach((path) => {
+          if (next[path]) delete next[path];
+        });
+        return next;
+      });
+    },
+    [allDirectoryPaths]
+  );
+
+  type FileRow = {
+    key: string;
+    name: string;
+    depth: number;
+    isDir: boolean;
+    used: boolean;
+    path: string;
+    hasChildren: boolean;
+  };
+
+  const fileRows = useMemo<FileRow[]>(() => {
+    if (!fileMap) return [];
+    const rows: FileRow[] = [];
+    const search = fileSearchTerm.trim().toLowerCase();
+    const filter = globalFilter;
+
+    const matchesFilter = (node: any) => {
+      if (filter === 'all') return true;
+      const used = !!node.used;
+      return filter === 'used' ? used : !used;
+    };
+
+    const matchesSearch = (node: any) => {
+      if (!search) return true;
+      const name = String(node.path || '').toLowerCase();
+      return name.includes(search);
+    };
+
+    const shouldIncludeNode = (node: any): boolean => {
+      if (!node) return false;
+      if (matchesFilter(node) && matchesSearch(node)) return true;
+      if (node.kind === 'dir' && Array.isArray(node.children)) {
+        return node.children.some((child: any) => shouldIncludeNode(child));
+      }
+      return false;
+    };
+
+    const visit = (nodes: any[], depth = 0) => {
+      nodes.forEach((node) => {
+        if (!shouldIncludeNode(node)) return;
+        const isDir = node.kind === 'dir';
+        const path = node.path;
+        const hasChildren = isDir && Array.isArray(node.children) && node.children.length > 0;
+        const expanded = isDir ? !!treeExpanded[path] : false;
+
+        rows.push({
+          key: path,
+          name: String(path).replace(/^.*?\//, ''),
+          depth,
+          isDir,
+          used: !!node.used,
+          path,
+          hasChildren,
+        });
+
+        if (isDir && expanded && hasChildren) {
+          visit(node.children, depth + 1);
+        }
+      });
+    };
+
+    const roots = (fileMap.groups || []).map((g) => ({
+      kind: 'dir',
+      path: g.root,
+      used: g.usedDirs > 0 || g.usedFiles > 0,
+      children: g.entries,
+    }));
+
+    visit(roots, 0);
+    return rows;
+  }, [fileMap, fileSearchTerm, globalFilter, treeExpanded]);
+
+  const filteredOps = useMemo(() => {
+    if (!ops) return [] as OpEvent[];
+    const search = opsSearchTerm.trim().toLowerCase();
+    return ops.filter((e) => {
+      if (opsFilter === 'errors' && !(e.status === 'error' || (e.httpStatus && e.httpStatus >= 400))) return false;
+      if (opsFilter === 'email' && e.type !== 'email') return false;
+      if (opsFilter === 'function' && e.type !== 'function') return false;
+      if (!search) return true;
+      return (
+        (e.url || '').toLowerCase().includes(search) ||
+        (e.action || '').toLowerCase().includes(search) ||
+        (e.type || '').toLowerCase().includes(search)
+      );
+    });
+  }, [ops, opsFilter, opsSearchTerm]);
+
+  const getOpsRowHeight = useCallback(
+    (index: number) => {
+      const item = filteredOps[index];
+      if (!item) return 68;
+      return expandedOpsRows[item.id] ? 140 : 68;
+    },
+    [expandedOpsRows, filteredOps]
+  );
+
+  useEffect(() => {
+    opsListRef.current?.resetAfterIndex(0, true);
+  }, [filteredOps, expandedOpsRows]);
+
+  const exportOps = useCallback(
+    (format: 'json' | 'csv') => {
+      if (!filteredOps.length) return;
+      if (format === 'json') {
+        const blob = new Blob([JSON.stringify(filteredOps, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ops-log-${new Date().toISOString()}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      const headers = ['timestamp', 'type', 'action', 'status', 'httpStatus', 'durationMs', 'url', 'error'];
+      const csv = [headers.join(',')]
+        .concat(
+          filteredOps.map((e) =>
+            [
+              new Date(e.ts).toISOString(),
+              e.type || '',
+              e.action || '',
+              e.status || '',
+              e.httpStatus ?? '',
+              e.durationMs ?? '',
+              (e.url || '').replace(/"/g, '""'),
+              (e.error || '').replace(/"/g, '""'),
+            ]
+              .map((value) => `"${String(value)}"`)
+              .join(',')
+          )
+        )
+        .join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ops-log-${new Date().toISOString()}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    [filteredOps]
+  );
+
+  const loadFileMap = useCallback(async () => {
     try {
       setLoadingFiles(true);
       setFileError(null);
@@ -99,16 +293,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
     } finally {
       setLoadingFiles(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (selectedSection === 'files' && !fileMap && !loadingFiles) {
       void loadFileMap();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSection]);
+  }, [selectedSection, fileMap, loadingFiles, loadFileMap]);
 
-  const loadOps = async () => {
+  const loadOps = useCallback(async () => {
     try {
       setOpsLoading(true);
       setOpsError(null);
@@ -121,39 +314,39 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
     } finally {
       setOpsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (selectedSection === 'ops' && !ops && !opsLoading) {
       void loadOps();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSection]);
+  }, [selectedSection, ops, opsLoading, loadOps]);
   useEffect(() => {
     if (selectedSection !== 'ops') return;
     if (!opsAutoRefresh) return;
-    const t = setInterval(() => { void loadOps(); }, 3000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSection, opsAutoRefresh]);
+    const timer = setInterval(() => {
+      void loadOps();
+    }, opsIntervalMs);
+    return () => clearInterval(timer);
+  }, [selectedSection, opsAutoRefresh, opsIntervalMs, loadOps]);
 
   const modalStyles = {
     main: {
       width: '95vw',
       maxWidth: 1400,
       minHeight: '85vh',
-      background: `linear-gradient(135deg, ${isDarkMode ? colours.dark.background : '#FFFFFF'} 0%, ${isDarkMode ? colours.dark.background : '#F8FAFC'} 100%)`,
+      background: palette.sectionBackground,
       borderRadius: 12,
       padding: 0,
-      border: isDarkMode ? '1px solid #444' : '1px solid #ddd',
-      boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+      border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.2)' : 'rgba(15,23,42,0.08)'}`,
+      boxShadow: isDarkMode ? '0 18px 42px rgba(2, 6, 23, 0.6)' : '0 18px 42px rgba(15, 23, 42, 0.08)',
     }
   };
 
   const headerStyle = mergeStyles({
-    background: 'transparent',
+    background: palette.cardBackground,
     padding: '20px 24px',
-    borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
+    borderBottom: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.15)' : 'rgba(15,23,42,0.06)'}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between'
@@ -166,8 +359,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
 
   const sidebarStyle = mergeStyles({
     width: '220px',
-    borderRight: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
-    background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
+    borderRight: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.12)' : 'rgba(15,23,42,0.05)'}`,
+    background: isDarkMode ? 'rgba(15,23,42,0.65)' : 'rgba(241,245,249,0.75)',
     padding: '16px 0',
   });
 
@@ -177,13 +370,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
     overflowY: 'auto'
   });
 
+  const focusRingClass = mergeStyles({
+    selectors: {
+      ':focus-visible': {
+        outline: `2px solid ${colours.blue}`,
+        outlineOffset: '2px',
+      },
+    },
+  });
+
   const sectionCardStyle = mergeStyles({
-    background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.8)',
-    border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
+    background: palette.cardBackground,
+    border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.14)' : 'rgba(15,23,42,0.08)'}`,
     borderRadius: 8,
     padding: '20px',
     marginBottom: 20,
-    backdropFilter: 'blur(8px)',
+    boxShadow: isDarkMode ? '0 8px 20px rgba(2,6,23,0.45)' : '0 8px 20px rgba(15,23,42,0.06)',
   });
 
   const navItems: INavLink[] = [
@@ -233,152 +435,113 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
   ];
 
   const renderContent = () => {
-    // Helpers for tree rendering
-    const isExpanded = (groupKey: string, path: string) => !!(treeExpanded[groupKey]?.[path]);
-    const toggleExpand = (groupKey: string, path: string) => {
-      setTreeExpanded(prev => ({
-        ...prev,
-        [groupKey]: { ...(prev[groupKey] || {}), [path]: !prev[groupKey]?.[path] }
-      }));
-    };
-    const hasVisible = (node: any, filter: 'all' | 'used' | 'unused'): boolean => {
-      if (filter === 'all') return true;
-      const used = !!node.used;
-      if (node.kind === 'file') return filter === 'used' ? used : !used;
-      const children = Array.isArray(node.children) ? node.children : [];
-      const selfMatch = filter === 'used' ? used : !used;
-      return selfMatch || children.some((c: any) => hasVisible(c, filter));
-    };
-    const renderTree = (nodes: any[], groupKey: string, depth = 0, filter: 'all' | 'used' | 'unused' = 'all') => {
-      if (!Array.isArray(nodes)) return null;
-      return (
-        <ul style={{ margin: 0, paddingLeft: depth === 0 ? 0 : 14, listStyle: 'none' }}>
-          {nodes.map((n: any) => {
-            if (!hasVisible(n, filter)) return null;
-            const isDir = n.kind === 'dir';
-            const expanded = isDir ? isExpanded(groupKey, n.path) : false;
-            const displayChildren = isDir ? (Array.isArray(n.children) ? n.children : []) : [];
-            const visibleChildren = isDir ? displayChildren.filter((c: any) => hasVisible(c, filter)) : [];
-            const showChildren = isDir && expanded && visibleChildren.length > 0;
-            const name = n.path.replace(/^.*?\//, '');
-            return (
-              <li key={n.path} style={{ padding: '2px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {isDir ? (
-                    <button
-                      onClick={() => toggleExpand(groupKey, n.path)}
-                      aria-label={expanded ? 'Collapse' : 'Expand'}
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: 4,
-                        border: '1px solid ' + (isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'),
-                        background: expanded ? 'rgba(54,144,206,0.12)' : 'transparent',
-                        cursor: 'pointer',
-                        lineHeight: '16px',
-                        fontSize: 10,
-                        color: '#3690CE'
-                      }}
-                    >
-                      {expanded ? '−' : '+'}
-                    </button>
-                  ) : (
-                    <span style={{ width: 18 }} />
-                  )}
-                  <span style={{
-                    color: n.used ? (isDarkMode ? '#22c55e' : '#15803d') : (isDarkMode ? colours.dark.subText : colours.light.subText),
-                    fontWeight: isDir ? 600 : 400,
-                    fontSize: 12
-                  }}>
-                    {name}{n.used ? ' • used' : ''}
-                  </span>
-                </div>
-                {showChildren && renderTree(visibleChildren, groupKey, depth + 1, filter)}
-              </li>
-            );
-          })}
-        </ul>
-      );
-    };
     switch (selectedSection) {
       case 'overview':
         return (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <Icon iconName="ViewDashboard" style={{ fontSize: 20, color: '#3690CE' }} />
-              <Text variant="xLarge" style={{ fontWeight: 600, color: '#3690CE' }}>
+              <Icon iconName="ViewDashboard" style={{ fontSize: 20, color: colours.blue }} />
+              <Text variant="xLarge" style={{ fontWeight: 600, color: colours.blue }}>
                 System Overview
               </Text>
             </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
               <div className={sectionCardStyle}>
-                <h3 style={{ margin: '0 0 12px 0', color: isDarkMode ? colours.dark.text : colours.light.text }}>
+                <h3 style={{ margin: '0 0 12px 0', color: palette.text, fontSize: 16, fontWeight: 600 }}>
                   Application Status
                 </h3>
-                <div style={{ color: isDarkMode ? colours.dark.subText : colours.light.subText }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-                    <Text>Frontend: Active</Text>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-                    <Text>API Functions: Active</Text>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-                    <Text>Database: Connected</Text>
-                  </div>
-                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: palette.subText, display: 'grid', gap: 10 }}>
+                  {[
+                    { label: 'Frontend', status: 'Active' },
+                    { label: 'API Functions', status: 'Active' },
+                    { label: 'Database', status: 'Connected' },
+                  ].map(({ label, status }) => (
+                    <li key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: '#22c55e',
+                          boxShadow: '0 0 0 4px rgba(34,197,94,0.12)',
+                        }}
+                        aria-hidden="true"
+                      />
+                      <span style={{ fontSize: 13, color: palette.text }}>
+                        <strong>{label}:</strong> {status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               <div className={sectionCardStyle}>
-                <h3 style={{ margin: '0 0 12px 0', color: isDarkMode ? colours.dark.text : colours.light.text }}>
+                <h3 style={{ margin: '0 0 12px 0', color: palette.text, fontSize: 16, fontWeight: 600 }}>
                   Quick Actions
                 </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <button
                     onClick={() => setSelectedSection('dataflow')}
                     style={{
-                      padding: '8px 12px',
-                      background: '#3690CE',
-                      color: 'white',
+                      padding: '10px 14px',
+                      background: colours.blue,
+                      color: '#fff',
                       border: 'none',
-                      borderRadius: 6,
+                      borderRadius: 8,
                       cursor: 'pointer',
-                      fontSize: '13px',
-                      transition: 'all 0.2s ease'
+                      fontSize: 13,
+                      fontWeight: 600,
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                      boxShadow: '0 8px 20px rgba(54,144,206,0.25)',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#2563eb';
                       e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 12px 24px rgba(54,144,206,0.3)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#3690CE';
                       e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(54,144,206,0.25)';
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 12px 24px rgba(54,144,206,0.3)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(54,144,206,0.25)';
                     }}
                   >
-                    Analyze Data Flow
+                    Analyse Data Flow
                   </button>
                   <button
                     onClick={() => setSelectedSection('files')}
                     style={{
-                      padding: '8px 12px',
-                      background: '#15803d',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 6,
+                      padding: '10px 14px',
+                      background: isDarkMode ? 'rgba(34,197,94,0.18)' : 'rgba(34,197,94,0.12)',
+                      color: isDarkMode ? '#bbf7d0' : '#166534',
+                      border: `1px solid ${isDarkMode ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.35)'}`,
+                      borderRadius: 8,
                       cursor: 'pointer',
-                      fontSize: '13px',
-                      transition: 'all 0.2s ease'
+                      fontSize: 13,
+                      fontWeight: 600,
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#166534';
                       e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 12px 24px rgba(34,197,94,0.25)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#15803d';
                       e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 12px 24px rgba(34,197,94,0.25)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
                     Map Application Files
@@ -393,17 +556,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
         return (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <Icon iconName="Flow" style={{ fontSize: 20, color: '#3690CE' }} />
-              <Text variant="xLarge" style={{ fontWeight: 600, color: '#3690CE' }}>
+              <Icon iconName="Flow" style={{ fontSize: 20, color: colours.blue }} />
+              <Text variant="xLarge" style={{ fontWeight: 600, color: colours.blue }}>
                 Data Flow Analysis
               </Text>
             </div>
-            
+
             <div className={sectionCardStyle}>
-              <DataFlowDiagram />
+              <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}><ThemedSpinner /></div>}>
+                <DataFlowDiagram />
+              </Suspense>
             </div>
             <div className={sectionCardStyle}>
-              <DataFlowWorkbench isOpen={true} onClose={() => {}} embedded={true} />
+              <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}><ThemedSpinner /></div>}>
+                <DataFlowWorkbench isOpen={true} onClose={() => {}} embedded={true} />
+              </Suspense>
             </div>
           </div>
         );
@@ -412,80 +579,219 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
         return (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <Icon iconName="FabricFolder" style={{ fontSize: 20, color: '#3690CE' }} />
-              <Text variant="xLarge" style={{ fontWeight: 600, color: '#3690CE' }}>
+              <Icon iconName="FabricFolder" style={{ fontSize: 20, color: colours.blue }} />
+              <Text variant="xLarge" style={{ fontWeight: 600, color: colours.blue }}>
                 Application File Mapping
               </Text>
             </div>
 
             <div className={sectionCardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h3 style={{ margin: 0, color: isDarkMode ? colours.dark.text : colours.light.text }}>Live File Structure</h3>
-                <button
-                  onClick={() => loadFileMap()}
-                  style={{ padding: '6px 10px', background: '#3690CE', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
-                >Refresh</button>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ margin: 0, color: palette.text, fontSize: 16, fontWeight: 600 }}>Live File Structure</h3>
+                  {fileMap && (
+                    <p style={{ margin: '6px 0 0 0', fontSize: 12, color: palette.subText }}>
+                      {fileMap.totalFiles} files ({fileMap.usedFiles} used) • {fileMap.totalDirs} folders ({fileMap.usedDirs} used)
+                      <span style={{ marginLeft: 6, opacity: 0.7 }}>Generated {new Date(fileMap.generatedAt).toLocaleTimeString()}</span>
+                    </p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => loadFileMap()}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: colours.blue,
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
 
-              {loadingFiles && <Text>Loading file map…</Text>}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['all', 'used', 'unused'] as const).map((filter) => {
+                    const isActive = globalFilter === filter;
+                    return (
+                      <button
+                        key={filter}
+                        onClick={() => setGlobalFilter(filter)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          border: `1px solid ${isActive ? colours.blue : (isDarkMode ? 'rgba(148,163,184,0.35)' : 'rgba(15,23,42,0.12)')}`,
+                          background: isActive ? 'rgba(54,144,206,0.16)' : 'transparent',
+                          color: isActive ? colours.blue : palette.text,
+                          fontSize: 12,
+                          fontWeight: isActive ? 600 : 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {filter}
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  type="search"
+                  value={fileSearchTerm}
+                  onChange={(event) => setFileSearchTerm(event.target.value)}
+                  placeholder="Search path..."
+                  aria-label="Search files"
+                  style={{
+                    flex: '1 1 200px',
+                    minWidth: 200,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.3)' : 'rgba(15,23,42,0.12)'}`,
+                    background: isDarkMode ? 'rgba(15,23,42,0.7)' : '#fff',
+                    color: palette.text,
+                    fontSize: 12,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => setAllTreeNodes(true)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.35)' : 'rgba(15,23,42,0.12)'}`,
+                      background: 'transparent',
+                      color: palette.text,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Expand all
+                  </button>
+                  <button
+                    onClick={() => setAllTreeNodes(false)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.35)' : 'rgba(15,23,42,0.12)'}`,
+                      background: 'transparent',
+                      color: palette.text,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Collapse all
+                  </button>
+                </div>
+              </div>
+
+              {loadingFiles && (
+                <div style={{ padding: '24px 0', display: 'flex', justifyContent: 'center' }}>
+                  <ThemedSpinner />
+                </div>
+              )}
               {fileError && <Text style={{ color: '#ef4444' }}>{fileError}</Text>}
 
-              {fileMap && (
-                <>
-                  <div style={{ fontSize: 12, color: isDarkMode ? colours.dark.subText : colours.light.subText, marginBottom: 12 }}>
-                    Total: {fileMap.totalFiles} files ({fileMap.usedFiles} used), {fileMap.totalDirs} folders ({fileMap.usedDirs} used) • Generated {new Date(fileMap.generatedAt).toLocaleTimeString()}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 12, color: isDarkMode ? colours.dark.subText : colours.light.subText }}>Filter:</span>
-                      {(['all','used','unused'] as const).map(f => (
-                        <button key={f}
-                          onClick={() => setGlobalFilter(f)}
-                          style={{
-                            padding: '4px 8px', borderRadius: 6, border: '1px solid ' + (globalFilter === f ? '#3690CE' : (isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)')),
-                            background: globalFilter === f ? 'rgba(54,144,206,0.12)' : 'transparent',
-                            color: isDarkMode ? colours.dark.text : colours.light.text,
-                            fontSize: 12, cursor: 'pointer'
-                          }}
-                        >{f}</button>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button
-                        onClick={() => {
-                          const expandAll = (nodes: any[], acc: Record<string, boolean> = {}) => {
-                            for (const n of nodes) {
-                              if (n.kind === 'dir') {
-                                acc[n.path] = true;
-                                if (Array.isArray(n.children)) expandAll(n.children, acc);
-                              }
+              {fileMap && !fileRows.length && !loadingFiles && (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: palette.subText }}>
+                  <Text>No files match the selected filters.</Text>
+                </div>
+              )}
+
+              {fileRows.length > 0 && (
+                <div
+                  role="tree"
+                  aria-label="Application file tree"
+                  style={{
+                    border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.2)' : 'rgba(15,23,42,0.12)'}`,
+                    borderRadius: 6,
+                    background: isDarkMode ? 'rgba(15,23,42,0.7)' : '#fff',
+                  }}
+                >
+                  <FixedSizeList
+                    height={Math.min(420, Math.max(220, fileRows.length * 32))}
+                    itemCount={fileRows.length}
+                    itemSize={32}
+                    width="100%"
+                  >
+                    {({ index, style }) => {
+                      const row = fileRows[index];
+                      const isDir = row.isDir;
+                      const expanded = isDir ? !!treeExpanded[row.path] : false;
+                      return (
+                        <div
+                          key={row.key}
+                          role="treeitem"
+                          aria-level={row.depth + 1}
+                          aria-expanded={isDir ? expanded : undefined}
+                          className={focusRingClass}
+                          tabIndex={0}
+                          onKeyDown={(event) => {
+                            if (isDir && (event.key === 'Enter' || event.key === ' ')) {
+                              event.preventDefault();
+                              toggleTreeNode(row.path);
                             }
-                            return acc;
-                          };
-                          const allRoots = (fileMap.groups || []).map(g => ({ kind: 'dir', path: g.root, children: g.entries }));
-                          setTreeExpanded(prev => ({ ...prev, ALL: expandAll(allRoots) }));
-                        }}
-                        style={{ padding: '2px 6px', fontSize: 11, borderRadius: 6, border: '1px solid ' + (isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'), background: 'transparent', cursor: 'pointer' }}
-                      >Expand all</button>
-                      <button
-                        onClick={() => setTreeExpanded(prev => ({ ...prev, ALL: {} }))}
-                        style={{ padding: '2px 6px', fontSize: 11, borderRadius: 6, border: '1px solid ' + (isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'), background: 'transparent', cursor: 'pointer' }}
-                      >Collapse all</button>
-                    </div>
-                  </div>
-                  <div style={{ maxHeight: 480, overflowY: 'auto', border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)', borderRadius: 6, padding: '6px 10px' }}>
-                    {(() => {
-                      // Build synthetic root nodes so all roots appear in one tree
-                      const roots = (fileMap.groups || []).map(g => ({
-                        kind: 'dir',
-                        path: g.root,
-                        used: g.usedDirs > 0 || g.usedFiles > 0,
-                        children: g.entries
-                      }));
-                      return renderTree(roots as any[], 'ALL', 0, globalFilter);
-                    })()}
-                  </div>
-                </>
+                            if (isDir && event.key === 'ArrowRight' && !expanded) {
+                              event.preventDefault();
+                              toggleTreeNode(row.path);
+                            }
+                            if (isDir && event.key === 'ArrowLeft' && expanded) {
+                              event.preventDefault();
+                              toggleTreeNode(row.path);
+                            }
+                          }}
+                          style={{
+                            ...style,
+                            display: 'flex',
+                            alignItems: 'center',
+                            paddingLeft: 12 + row.depth * 18,
+                            paddingRight: 12,
+                            gap: 8,
+                            fontSize: 12,
+                            color: row.used ? (isDarkMode ? '#4ade80' : '#166534') : palette.text,
+                            borderBottom: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.08)' : 'rgba(15,23,42,0.05)'}`,
+                          }}
+                        >
+                          {isDir ? (
+                            <button
+                              onClick={() => toggleTreeNode(row.path)}
+                              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${row.name}`}
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: 6,
+                                border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.4)' : 'rgba(15,23,42,0.2)'}`,
+                                background: expanded ? 'rgba(54,144,206,0.15)' : 'transparent',
+                                color: colours.blue,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              {expanded ? '−' : '+'}
+                            </button>
+                          ) : (
+                            <span style={{ width: 22 }} />
+                          )}
+                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {row.name || row.path}
+                          </span>
+                          {row.used ? (
+                            <span style={{ fontSize: 10, fontWeight: 600, color: row.used ? (isDarkMode ? '#4ade80' : '#166534') : palette.subText }}>
+                              used
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    }}
+                  </FixedSizeList>
+                </div>
               )}
             </div>
           </div>
@@ -495,14 +801,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
         return (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <Icon iconName="Health" style={{ fontSize: 20, color: '#3690CE' }} />
-              <Text variant="xLarge" style={{ fontWeight: 600, color: '#3690CE' }}>
+              <Icon iconName="Health" style={{ fontSize: 20, color: colours.blue }} />
+              <Text variant="xLarge" style={{ fontWeight: 600, color: colours.blue }}>
                 Application Health
               </Text>
             </div>
-            
+
             <div className={sectionCardStyle}>
-              <Text>Health monitoring features will be implemented here.</Text>
+              <Text style={{ color: palette.subText }}>
+                Health monitoring dashboards will appear here. Hook into Application Insights or custom telemetry to surface live metrics.
+              </Text>
             </div>
           </div>
         );
@@ -511,14 +819,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
         return (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <Icon iconName="Settings" style={{ fontSize: 20, color: '#3690CE' }} />
-              <Text variant="xLarge" style={{ fontWeight: 600, color: '#3690CE' }}>
+              <Icon iconName="Settings" style={{ fontSize: 20, color: colours.blue }} />
+              <Text variant="xLarge" style={{ fontWeight: 600, color: colours.blue }}>
                 System Diagnostics
               </Text>
             </div>
-            
+
             <div className={sectionCardStyle}>
-              <Text>System diagnostics and debugging tools will be implemented here.</Text>
+              <Text style={{ color: palette.subText }}>
+                System diagnostics and automation tooling will be added soon. Expect quick links to runbooks, alert definitions, and environment toggles.
+              </Text>
             </div>
           </div>
         );
@@ -527,76 +837,321 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
         return (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <Icon iconName="History" style={{ fontSize: 20, color: '#3690CE' }} />
-              <Text variant="xLarge" style={{ fontWeight: 600, color: '#3690CE' }}>
+              <Icon iconName="History" style={{ fontSize: 20, color: colours.blue }} />
+              <Text variant="xLarge" style={{ fontWeight: 600, color: colours.blue }}>
                 Operations Log
               </Text>
             </div>
 
             <div className={sectionCardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h3 style={{ margin: 0, color: isDarkMode ? colours.dark.text : colours.light.text }}>Recent Events</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['all', 'errors', 'email', 'function'] as const).map((filter) => {
+                    const isActive = opsFilter === filter;
+                    return (
+                      <button
+                        key={filter}
+                        onClick={() => setOpsFilter(filter)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          border: `1px solid ${isActive ? colours.blue : (isDarkMode ? 'rgba(148,163,184,0.3)' : 'rgba(15,23,42,0.12)')}`,
+                          background: isActive ? 'rgba(54,144,206,0.15)' : 'transparent',
+                          color: isActive ? colours.blue : palette.text,
+                          fontSize: 12,
+                          fontWeight: isActive ? 600 : 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {filter}
+                      </button>
+                    );
+                  })}
+                </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {(['all','errors','email','function'] as const).map(f => (
-                    <button key={f}
-                      onClick={() => setOpsFilter(f)}
-                      style={{
-                        padding: '4px 8px', borderRadius: 6, border: '1px solid ' + (opsFilter === f ? '#3690CE' : (isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)')),
-                        background: opsFilter === f ? 'rgba(54,144,206,0.12)' : 'transparent',
-                        color: isDarkMode ? colours.dark.text : colours.light.text,
-                        fontSize: 12, cursor: 'pointer'
-                      }}
-                    >{f}</button>
-                  ))}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: isDarkMode ? colours.dark.subText : colours.light.subText }}>
-                    <input type="checkbox" checked={opsAutoRefresh} onChange={(e) => setOpsAutoRefresh(e.target.checked)} /> Auto-refresh
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: palette.subText }}>
+                    <input
+                      type="checkbox"
+                      checked={opsAutoRefresh}
+                      onChange={(event) => setOpsAutoRefresh(event.target.checked)}
+                    />
+                    Auto-refresh
                   </label>
+                  <select
+                    value={opsIntervalMs}
+                    onChange={(event) => setOpsIntervalMs(Number(event.target.value))}
+                    aria-label="Auto refresh interval"
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.3)' : 'rgba(15,23,42,0.12)'}`,
+                      background: isDarkMode ? 'rgba(15,23,42,0.7)' : '#fff',
+                      color: palette.text,
+                      fontSize: 12,
+                    }}
+                  >
+                    <option value={3000}>3s</option>
+                    <option value={5000}>5s</option>
+                    <option value={10000}>10s</option>
+                    <option value={30000}>30s</option>
+                  </select>
                   <button
                     onClick={() => loadOps()}
-                    style={{ padding: '6px 10px', background: '#3690CE', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
-                  >Refresh</button>
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: colours.blue,
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Refresh
+                  </button>
                 </div>
               </div>
 
-              {opsLoading && <Text>Loading…</Text>}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                <input
+                  type="search"
+                  value={opsSearchTerm}
+                  onChange={(event) => setOpsSearchTerm(event.target.value)}
+                  placeholder="Filter operations..."
+                  aria-label="Filter operations"
+                  style={{
+                    flex: '1 1 240px',
+                    minWidth: 220,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.3)' : 'rgba(15,23,42,0.12)'}`,
+                    background: isDarkMode ? 'rgba(15,23,42,0.7)' : '#fff',
+                    color: palette.text,
+                    fontSize: 12,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => exportOps('json')}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.3)' : 'rgba(15,23,42,0.12)'}`,
+                      background: 'transparent',
+                      color: palette.text,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Export JSON
+                  </button>
+                  <button
+                    onClick={() => exportOps('csv')}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.3)' : 'rgba(15,23,42,0.12)'}`,
+                      background: 'transparent',
+                      color: palette.text,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+
+              {opsLoading && (
+                <div style={{ padding: '24px 0', display: 'flex', justifyContent: 'center' }}>
+                  <ThemedSpinner />
+                </div>
+              )}
               {opsError && <Text style={{ color: '#ef4444' }}>{opsError}</Text>}
 
-              {ops && (
-                <div style={{ maxHeight: 500, overflowY: 'auto', border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)', borderRadius: 6 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ position: 'sticky', top: 0, background: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)' }}>
-                        <th style={{ textAlign: 'left', padding: '8px 10px' }}>Time</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px' }}>Type</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px' }}>Action</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px' }}>Status</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px' }}>HTTP</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px' }}>Duration</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px' }}>Details</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ops.filter(e => {
-                        if (opsFilter === 'all') return true;
-                        if (opsFilter === 'errors') return e.status === 'error' || (e.httpStatus && e.httpStatus >= 400);
-                        if (opsFilter === 'email') return e.type === 'email';
-                        if (opsFilter === 'function') return e.type === 'function';
-                        return true;
-                      }).map(e => (
-                        <tr key={e.id} style={{ borderTop: '1px solid ' + (isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)') }}>
-                          <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>{new Date(e.ts).toLocaleTimeString()}</td>
-                          <td style={{ padding: '6px 10px' }}>{e.type}</td>
-                          <td style={{ padding: '6px 10px' }}>{e.action || '-'}</td>
-                          <td style={{ padding: '6px 10px', color: e.status === 'error' || (e.httpStatus && e.httpStatus >= 400) ? '#ef4444' : (e.status === 'success' ? (isDarkMode ? '#22c55e' : '#15803d') : (isDarkMode ? colours.dark.subText : colours.light.subText)) }}>{e.status || '-'}</td>
-                          <td style={{ padding: '6px 10px' }}>{e.httpStatus ?? '-'}</td>
-                          <td style={{ padding: '6px 10px' }}>{e.durationMs ? `${e.durationMs} ms` : '-'}</td>
-                          <td style={{ padding: '6px 10px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis' }} title={(e.url || e.error || '')}>
-                            {e.enquiryId ? `enquiry ${e.enquiryId} • ` : ''}{e.url || e.error || ''}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {!filteredOps.length && !opsLoading && (
+                <div style={{ textAlign: 'center', padding: '36px 0', color: palette.subText }}>
+                  <Text>No operations recorded yet.</Text>
+                </div>
+              )}
+
+              {filteredOps.length > 0 && (
+                <div
+                  role="grid"
+                  aria-label="Operations log entries"
+                  aria-rowcount={filteredOps.length}
+                  style={{
+                    border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.2)' : 'rgba(15,23,42,0.12)'}`,
+                    borderRadius: 6,
+                    background: isDarkMode ? 'rgba(15,23,42,0.7)' : '#fff',
+                  }}
+                >
+                  <div
+                    role="row"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '140px 100px 140px 80px 80px 80px 1fr 60px',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.4,
+                      padding: '10px 14px',
+                      color: palette.subText,
+                      borderBottom: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.15)' : 'rgba(15,23,42,0.08)'}`,
+                    }}
+                  >
+                    <span role="columnheader">Time</span>
+                    <span role="columnheader">Type</span>
+                    <span role="columnheader">Action</span>
+                    <span role="columnheader">Status</span>
+                    <span role="columnheader">HTTP</span>
+                    <span role="columnheader">Duration</span>
+                    <span role="columnheader">Details</span>
+                    <span role="columnheader" style={{ textAlign: 'right' }}>Info</span>
+                  </div>
+                  <VariableSizeList
+                    ref={opsListRef}
+                    height={Math.min(480, Math.max(240, filteredOps.length * 68))}
+                    itemCount={filteredOps.length}
+                    width="100%"
+                    itemSize={getOpsRowHeight}
+                  >
+                    {({ index, style }) => {
+                      const event = filteredOps[index];
+                      const expanded = !!expandedOpsRows[event.id];
+                      const statusError = event.status === 'error' || (event.httpStatus && event.httpStatus >= 400);
+                      const statusSuccess = event.status === 'success' || (event.httpStatus && event.httpStatus < 300);
+                      return (
+                        <div
+                          key={event.id}
+                          role="row"
+                          tabIndex={0}
+                          aria-expanded={expanded}
+                          className={focusRingClass}
+                          onKeyDown={(evt) => {
+                            if (evt.key === 'Enter' || evt.key === ' ') {
+                              evt.preventDefault();
+                              setExpandedOpsRows((prev) => ({
+                                ...prev,
+                                [event.id]: !expanded,
+                              }));
+                              if (opsListRef.current) {
+                                opsListRef.current.resetAfterIndex(index);
+                              }
+                            }
+                          }}
+                          style={{
+                            ...style,
+                            borderBottom: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.08)' : 'rgba(15,23,42,0.05)'}`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            padding: '10px 14px',
+                            fontSize: 12,
+                            color: palette.text,
+                            background: expanded
+                              ? (isDarkMode ? 'rgba(54,144,206,0.12)' : 'rgba(54,144,206,0.06)')
+                              : 'transparent',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '140px 100px 140px 80px 80px 80px 1fr 60px',
+                              alignItems: 'center',
+                              gap: 8,
+                            }}
+                            role="presentation"
+                          >
+                            <span role="gridcell">{new Date(event.ts).toLocaleTimeString()}</span>
+                            <span role="gridcell">{event.type}</span>
+                            <span role="gridcell">{event.action || '—'}</span>
+                            <span
+                              role="gridcell"
+                              style={{
+                                color: statusError ? '#ef4444' : statusSuccess ? (isDarkMode ? '#4ade80' : '#15803d') : palette.subText,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {event.status || '—'}
+                            </span>
+                            <span role="gridcell">{event.httpStatus ?? '—'}</span>
+                            <span role="gridcell">{event.durationMs ? `${event.durationMs}ms` : '—'}</span>
+                            <span role="gridcell" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {event.enquiryId ? `enquiry ${event.enquiryId} • ` : ''}
+                              {event.url || event.error || '—'}
+                            </span>
+                            <div role="gridcell" style={{ textAlign: 'right' }}>
+                              <button
+                                onClick={() => {
+                                  setExpandedOpsRows((prev) => ({
+                                    ...prev,
+                                    [event.id]: !expanded,
+                                  }));
+                                  if (opsListRef.current) {
+                                    opsListRef.current.resetAfterIndex(index);
+                                  }
+                                }}
+                                aria-expanded={expanded}
+                                style={{
+                                  padding: '4px 6px',
+                                  borderRadius: 6,
+                                  border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.35)' : 'rgba(15,23,42,0.12)'}`,
+                                  background: 'transparent',
+                                  color: palette.text,
+                                  fontSize: 11,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {expanded ? 'Hide' : 'View'}
+                              </button>
+                            </div>
+                          </div>
+                          {expanded && (
+                            <div
+                              style={{
+                                marginTop: 10,
+                                paddingTop: 10,
+                                borderTop: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.25)' : 'rgba(15,23,42,0.08)'}`,
+                                display: 'grid',
+                                gap: 8,
+                              }}
+                            >
+                              {event.url && (
+                                <div>
+                                  <strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3 }}>Request</strong>
+                                  <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11, wordBreak: 'break-all' }}>{event.method || 'GET'} {event.url}</div>
+                                </div>
+                              )}
+                              {event.error && (
+                                <div>
+                                  <strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, color: '#ef4444' }}>Error</strong>
+                                  <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11, wordBreak: 'break-word' }}>{event.error}</div>
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(JSON.stringify(event, null, 2))}
+                                  style={{
+                                    padding: '4px 8px',
+                                    borderRadius: 6,
+                                    border: `1px solid ${isDarkMode ? 'rgba(148,163,184,0.25)' : 'rgba(15,23,42,0.1)'}`,
+                                    background: 'transparent',
+                                    color: palette.text,
+                                    fontSize: 11,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Copy JSON
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }}
+                  </VariableSizeList>
                 </div>
               )}
             </div>
@@ -642,7 +1197,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
         </div>
 
         <div className={contentStyle}>
-          <div className={sidebarStyle}>
+          <div className={sidebarStyle} role="navigation" aria-label="Admin dashboard sections">
             <Nav
               groups={[
                 {
@@ -650,6 +1205,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
                 }
               ]}
               selectedKey={selectedSection}
+              ariaLabel="Admin dashboard sections"
               styles={{
                 root: {
                   background: 'transparent',
@@ -665,6 +1221,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
                     ':hover': {
                       background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
                       color: isDarkMode ? colours.dark.text : colours.light.text
+                    },
+                    '&:focus-visible': {
+                      outline: `2px solid ${colours.blue}`,
+                      outlineOffset: '2px',
                     },
                     '.is-selected': {
                       background: 'rgba(54, 144, 206, 0.1)',
@@ -686,12 +1246,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
         </div>
       </Modal>
 
-      {showDataFlow && (
-        <DataFlowWorkbench 
-          isOpen={showDataFlow} 
-          onClose={() => setShowDataFlow(false)} 
-        />
-      )}
     </>
   );
 };

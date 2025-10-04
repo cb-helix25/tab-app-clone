@@ -180,7 +180,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         borderBottom: `1px solid ${colours.darkBlue}`,
         position: 'sticky',
         top: 0,
-        zIndex: 1000,
+        zIndex: 2000, // Keep tab bar above downstream sticky navigator content
         transition: 'background-color 0.3s',
       }}
     >

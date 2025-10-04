@@ -738,8 +738,108 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Show workbench when instruction is selected
   // Removed automatic workbench hiding logic - workbench now stays visible
   
+  const filterInstructionsForUser = useCallback((sourceData: InstructionData[]) => {
+    if (!currentUser || (!currentUser.Email && !currentUser.Initials) || sourceData.length === 0) {
+      return sourceData;
+    }
+
+    const userEmail = currentUser.Email?.toLowerCase() ?? '';
+    const userInitials = currentUser.Initials?.toUpperCase() ?? '';
+
+    const filtered = sourceData.filter((instruction: any, index) => {
+      if (index < 3) {
+        debugLog('🔍 Sample instruction structure:', {
+          prospectId: instruction.prospectId,
+          Email: instruction.Email,
+          Lead: instruction.Lead,
+          assignedTo: instruction.assignedTo,
+          poc: instruction.poc,
+          POC: instruction.POC,
+          deals: instruction.deals?.map((d: any) => ({
+            DealId: d.DealId,
+            PitchedBy: d.PitchedBy,
+            Status: d.Status,
+            Email: d.Email,
+            Lead: d.Lead,
+            assignedTo: d.assignedTo,
+            poc: d.poc
+          })),
+          instructions: instruction.instructions?.map((i: any) => ({
+            InstructionRef: i.InstructionRef,
+            HelixContact: i.HelixContact
+          }))
+        });
+      }
+
+      const belongsToUser = (
+        instruction.deals?.some((deal: any) => deal.PitchedBy?.toUpperCase() === userInitials) ||
+        instruction.instructions?.some((inst: any) => inst.HelixContact?.toUpperCase() === userInitials) ||
+        instruction.Email?.toLowerCase() === userEmail ||
+        instruction.Lead?.toLowerCase() === userEmail ||
+        instruction.assignedTo?.toLowerCase() === userEmail ||
+        instruction.poc?.toLowerCase() === userEmail ||
+        instruction.POC?.toUpperCase() === userInitials ||
+        instruction.deal?.Email?.toLowerCase() === userEmail ||
+        instruction.deal?.Lead?.toLowerCase() === userEmail ||
+        instruction.deal?.assignedTo?.toLowerCase() === userEmail ||
+        instruction.deal?.poc?.toLowerCase() === userEmail ||
+        instruction.deal?.PitchedBy?.toUpperCase() === userInitials ||
+        instruction.deals?.some((deal: any) =>
+          deal.Email?.toLowerCase() === userEmail ||
+          deal.Lead?.toLowerCase() === userEmail ||
+          deal.assignedTo?.toLowerCase() === userEmail ||
+          deal.poc?.toLowerCase() === userEmail
+        )
+      );
+
+      const isOtherUnsure = (
+        instruction.instructions?.some((inst: any) => {
+          const area = inst.AreaOfWork || inst.Area_of_Work || inst.areaOfWork || '';
+          return area.toLowerCase().includes('other') && area.toLowerCase().includes('unsure');
+        }) ||
+        instruction.deals?.some((deal: any) => {
+          const area = deal.AreaOfWork || deal.Area_of_Work || deal.areaOfWork || '';
+          return area.toLowerCase().includes('other') && area.toLowerCase().includes('unsure');
+        }) ||
+        (() => {
+          const area = instruction.AreaOfWork || instruction.Area_of_Work || instruction.areaOfWork || '';
+          return area.toLowerCase().includes('other') && area.toLowerCase().includes('unsure');
+        })()
+      );
+
+      const shouldInclude = belongsToUser || isOtherUnsure;
+
+      if (shouldInclude) {
+        debugLog('✅ Instruction included:', {
+          prospectId: instruction.prospectId,
+          userEmail,
+          userInitials,
+          belongsToUser,
+          isOtherUnsure,
+          areaOfWork: instruction.instructions?.[0]?.AreaOfWork || instruction.deals?.[0]?.AreaOfWork || instruction.AreaOfWork,
+          matchedFields: {
+            instruction_Email: instruction.Email?.toLowerCase() === userEmail,
+            instruction_poc: instruction.poc?.toLowerCase() === userEmail,
+            deal_Email: instruction.deal?.Email?.toLowerCase() === userEmail,
+            deal_poc: instruction.deal?.poc?.toLowerCase() === userEmail,
+            deals_any: instruction.deals?.some((d: any) => d.poc?.toLowerCase() === userEmail)
+          }
+        });
+      }
+
+      return shouldInclude;
+    });
+
+    debugLog('🔄 Filtered to user instructions:', {
+      sourceLength: sourceData.length,
+      filteredLength: filtered.length
+    });
+
+    return filtered;
+  }, [currentUser]);
+
   // Get effective instruction data based on admin mode and user filtering
-  const effectiveInstructionData = useMemo(() => {
+  const { effectiveInstructionData, userInstructionData } = useMemo(() => {
     debugLog('🔄 effectiveInstructionData calculation:', {
       isAdmin,
       showAllInstructions,
@@ -748,132 +848,19 @@ const Instructions: React.FC<InstructionsProps> = ({
       currentUserEmail: currentUser?.Email,
       currentUserInitials: currentUser?.Initials
     });
-    
-    let result = instructionData;
-    
-    // If user wants to see all data and allInstructionData is available, use it
+
+    const sourceData = instructionData.length > 0 ? instructionData : allInstructionData;
+    const filteredForUser = filterInstructionsForUser(sourceData);
+
+    let result = filteredForUser;
+
     if (showAllInstructions && allInstructionData.length > 0) {
       result = allInstructionData;
       debugLog('🔄 User viewing ALL instructions (including Other/Unsure)');
     } else {
-      // Default: Filter to show only current user's instructions (for both admin and non-admin)
-      // If instructionData is empty but allInstructionData has data, filter from allInstructionData
-      const sourceData = instructionData.length > 0 ? instructionData : allInstructionData;
-      
-      if (currentUser && currentUser.Email && sourceData.length > 0) {
-        result = sourceData.filter((instruction: any) => {
-          // Check multiple fields that might contain user email/initials
-          const userEmail = currentUser.Email!.toLowerCase();
-          const userInitials = currentUser.Initials?.toUpperCase();
-          
-          // Log the first few items to see the data structure
-          if (sourceData.indexOf(instruction) < 3) {
-            debugLog('🔍 Sample instruction structure:', {
-              prospectId: instruction.prospectId,
-              Email: instruction.Email,
-              Lead: instruction.Lead,
-              assignedTo: instruction.assignedTo,
-              poc: instruction.poc,
-              POC: instruction.POC,
-              deals: instruction.deals?.map((d: any) => ({
-                DealId: d.DealId,
-                PitchedBy: d.PitchedBy,
-                Status: d.Status,
-                Email: d.Email,
-                Lead: d.Lead,
-                assignedTo: d.assignedTo,
-                poc: d.poc
-              })),
-              instructions: instruction.instructions?.map((i: any) => ({
-                InstructionRef: i.InstructionRef,
-                HelixContact: i.HelixContact
-              }))
-            });
-          }
-          
-          // Check if this instruction belongs to the current user
-          const belongsToUser = (
-            // Check deals array for PitchedBy field (this is the key field for deal ownership)
-            instruction.deals?.some((deal: any) => 
-              deal.PitchedBy?.toUpperCase() === userInitials
-            ) ||
-            // Check instructions array for HelixContact field (this is the key field for instruction ownership)
-            instruction.instructions?.some((inst: any) =>
-              inst.HelixContact?.toUpperCase() === userInitials
-            ) ||
-            // Fallback checks for legacy data structure
-            instruction.Email?.toLowerCase() === userEmail ||
-            instruction.Lead?.toLowerCase() === userEmail ||
-            instruction.assignedTo?.toLowerCase() === userEmail ||
-            instruction.poc?.toLowerCase() === userEmail ||
-            instruction.POC?.toUpperCase() === userInitials ||
-            instruction.deal?.Email?.toLowerCase() === userEmail ||
-            instruction.deal?.Lead?.toLowerCase() === userEmail ||
-            instruction.deal?.assignedTo?.toLowerCase() === userEmail ||
-            instruction.deal?.poc?.toLowerCase() === userEmail ||
-            instruction.deal?.PitchedBy?.toUpperCase() === userInitials ||
-            // Check deals array for other fields as fallback
-            instruction.deals?.some((deal: any) => 
-              deal.Email?.toLowerCase() === userEmail ||
-              deal.Lead?.toLowerCase() === userEmail ||
-              deal.assignedTo?.toLowerCase() === userEmail ||
-              deal.poc?.toLowerCase() === userEmail
-            )
-          );
-
-          // Check if this is an "Other/Unsure" instruction that should be visible to everyone
-          const isOtherUnsure = (
-            // Check instruction area of work - handle multiple format variations
-            instruction.instructions?.some((inst: any) => {
-              const area = inst.AreaOfWork || inst.Area_of_Work || inst.areaOfWork || '';
-              return area.toLowerCase().includes('other') && area.toLowerCase().includes('unsure');
-            }) ||
-            // Check deal area of work - handle multiple format variations
-            instruction.deals?.some((deal: any) => {
-              const area = deal.AreaOfWork || deal.Area_of_Work || deal.areaOfWork || '';
-              return area.toLowerCase().includes('other') && area.toLowerCase().includes('unsure');
-            }) ||
-            // Check root level area of work - handle multiple format variations
-            (() => {
-              const area = instruction.AreaOfWork || instruction.Area_of_Work || instruction.areaOfWork || '';
-              return area.toLowerCase().includes('other') && area.toLowerCase().includes('unsure');
-            })()
-          );
-          
-          // Include if user owns it OR if it's Other/Unsure (visible to everyone)
-          const shouldInclude = belongsToUser || isOtherUnsure;
-          
-          if (shouldInclude) {
-            debugLog('✅ Instruction included:', {
-              prospectId: instruction.prospectId,
-              userEmail,
-              userInitials,
-              belongsToUser,
-              isOtherUnsure,
-              areaOfWork: instruction.instructions?.[0]?.AreaOfWork || instruction.deals?.[0]?.AreaOfWork || instruction.AreaOfWork,
-              matchedFields: {
-                instruction_Email: instruction.Email?.toLowerCase() === userEmail,
-                instruction_poc: instruction.poc?.toLowerCase() === userEmail,
-                deal_Email: instruction.deal?.Email?.toLowerCase() === userEmail,
-                deal_poc: instruction.deal?.poc?.toLowerCase() === userEmail,
-                deals_any: instruction.deals?.some((d: any) => d.poc?.toLowerCase() === userEmail)
-              }
-            });
-          }
-          
-          return shouldInclude;
-        });
-        debugLog('🔄 Filtered to user instructions:', {
-          sourceData: sourceData.length > 0 ? 'instructionData' : 'allInstructionData',
-          sourceLength: sourceData.length,
-          filteredLength: result.length
-        });
-      } else {
-        result = sourceData;
-      }
-      debugLog(`🔄 User viewing OWN instructions (filtered)`);
+      debugLog('🔄 User viewing OWN instructions (filtered)');
     }
-    
+
     debugLog('🔄 effectiveInstructionData updated:', {
       isAdmin,
       showAllInstructions,
@@ -882,17 +869,18 @@ const Instructions: React.FC<InstructionsProps> = ({
       allInstructionDataLength: allInstructionData.length,
       instructionDataLength: instructionData.length,
       resultLength: result.length,
+      userResultLength: filteredForUser.length,
       usingAllData: showAllInstructions && allInstructionData.length > 0,
       filteringByUser: !showAllInstructions,
       sampleFilteredItems: result.slice(0, 2).map(r => ({
         prospectId: r.prospectId,
         hasInstructions: r.instructions?.length || 0,
         hasDeals: r.deals?.length || 0,
-        deals: r.deals?.map((d: any) => ({ 
-          DealId: d.DealId, 
+        deals: r.deals?.map((d: any) => ({
+          DealId: d.DealId,
           InstructionRef: d.InstructionRef,
-          Email: d.Email, 
-          Lead: d.Lead, 
+          Email: d.Email,
+          Lead: d.Lead,
           assignedTo: d.assignedTo,
           Status: d.Status
         })),
@@ -901,15 +889,25 @@ const Instructions: React.FC<InstructionsProps> = ({
         }))
       }))
     });
-    
-    return result;
-  }, [isAdmin, showAllInstructions, allInstructionData, instructionData, currentUser]);
+
+    return {
+      effectiveInstructionData: result,
+      userInstructionData: filteredForUser
+    };
+  }, [
+    isAdmin,
+    showAllInstructions,
+    allInstructionData,
+    instructionData,
+    currentUser,
+    filterInstructionsForUser
+  ]);
 
   // Calculate toggle counts based on active tab and current data
   const toggleCounts = useMemo(() => {
     if (activeTab === 'pitches') {
       // For Pitches tab: count deals that don't have instructions yet
-      const myPitchesCount = effectiveInstructionData.reduce((count, prospect) => {
+      const myPitchesCount = userInstructionData.reduce((count, prospect) => {
         const pitchedDeals = prospect.deals?.filter((deal: any) => 
           !prospect.instructions?.some((inst: any) => inst.InstructionRef === deal.InstructionRef)
         ) || [];
@@ -930,7 +928,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       };
     } else {
       // For Instructions tab: count actual instructions
-      const myInstructionsCount = effectiveInstructionData.reduce((count, prospect) => {
+      const myInstructionsCount = userInstructionData.reduce((count, prospect) => {
         return count + (prospect.instructions?.length || 0);
       }, 0);
       
@@ -944,7 +942,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         label: 'instructions'
       };
     }
-  }, [activeTab, effectiveInstructionData, allInstructionData]);
+  }, [activeTab, userInstructionData, allInstructionData]);
   
   const showDraftPivot = true; // Allow all users to see Document editor
 
@@ -1042,6 +1040,8 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
   }, [activeTab]);
 
+  // CustomTabs is 48px tall and sticky at top: 0, so account for it
+  const CUSTOM_TABS_HEIGHT = 48;
   const ACTION_BAR_HEIGHT = 48;
 
   const quickLinksStyle = (dark: boolean) =>
@@ -1062,7 +1062,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       scrollbarWidth: "none",
       alignItems: "center",
       position: "sticky",
-      top: ACTION_BAR_HEIGHT,
+      top: CUSTOM_TABS_HEIGHT + ACTION_BAR_HEIGHT,
       zIndex: 999,
       borderTopLeftRadius: 0,
       borderTopRightRadius: 0,
@@ -1094,7 +1094,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       gap: "8px",
       alignItems: "center",
       position: "sticky",
-      top: ACTION_BAR_HEIGHT,
+      top: CUSTOM_TABS_HEIGHT + ACTION_BAR_HEIGHT,
       zIndex: 999,
     });
 
@@ -1112,7 +1112,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       padding: "0 24px",
       transition: "background-color 0.3s",
       position: "sticky",
-      top: ACTION_BAR_HEIGHT * 2,
+      top: CUSTOM_TABS_HEIGHT + ACTION_BAR_HEIGHT * 2,
       zIndex: 998,
       // Responsive padding
       '@media (max-width: 768px)': {
@@ -1134,7 +1134,9 @@ const workbenchPanelBackground = (isDarkMode: boolean): string => (
 );
 
 const workbenchHeaderBackground = (isDarkMode: boolean): string => (
-  colours.missedBlue
+  isDarkMode 
+    ? 'linear-gradient(135deg, rgba(6, 23, 51, 0.95) 0%, rgba(13, 47, 96, 0.98) 100%)'
+    : `linear-gradient(135deg, ${colours.darkBlue} 0%, ${colours.missedBlue} 100%)`
 );
 
 const workbenchCardBackground = (isDarkMode: boolean): string => (
@@ -1442,23 +1444,53 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
   ]);
 
   const containerStyle = mergeStyles({
-    backgroundColor: isDarkMode
-      ? colours.dark.background
-      : colours.light.background,
+    background: isDarkMode
+      ? `
+        linear-gradient(135deg, #0a0f1c 0%, #1a1a2e 25%, #16213e 50%, #0a0f1c 100%),
+        radial-gradient(circle at 30% 70%, rgba(54, 144, 206, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 70% 30%, rgba(135, 243, 243, 0.06) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(214, 85, 65, 0.04) 0%, transparent 70%)
+      `
+      : `
+        linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f1f5f9 50%, #ffffff 100%),
+        radial-gradient(circle at 30% 70%, rgba(54, 144, 206, 0.06) 0%, transparent 50%),
+        radial-gradient(circle at 70% 30%, rgba(135, 243, 243, 0.04) 0%, transparent 50%),
+        linear-gradient(45deg, transparent 30%, rgba(54, 144, 206, 0.02) 50%, transparent 70%)
+      `,
     minHeight: "100vh",
     boxSizing: "border-box",
     color: isDarkMode ? colours.light.text : colours.dark.text,
+    position: 'relative',
+    '&::before': isDarkMode ? {
+      content: '""',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: `
+        repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 3px,
+          rgba(54, 144, 206, 0.008) 3px,
+          rgba(54, 144, 206, 0.008) 6px
+        )
+      `,
+      pointerEvents: 'none',
+      zIndex: 0
+    } : {}
   });
 
   const newMatterContainerStyle = mergeStyles(containerStyle, {
     padding: "12px",
+    position: "relative",
+    zIndex: 1,
   });
 
   const sectionContainerStyle = (dark: boolean) =>
     mergeStyles({
-      backgroundColor: dark
-        ? colours.dark.sectionBackground
-        : colours.light.sectionBackground,
+      backgroundColor: 'transparent', // Remove section background - let cards sit on main page background
       padding: "0px",
       paddingBottom: activeTab === "clients" && !selectedInstruction ? "104px" : "0px", // No extra padding when workbench replaces global actions
       borderRadius: 0,
@@ -3210,7 +3242,6 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
           <div style={{ fontSize: 12, fontWeight: 600 }}>{toast.message}</div>
         </div>
       )}
-    <section key="instructions-section" className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className={sectionContainerStyle(isDarkMode)}>
         {/* Local development immediate Matter Opening CTA */}
@@ -3627,9 +3658,29 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                     border: 'none',
                     borderRadius: '0',
                     cursor: selectedInstruction ? 'pointer' : 'default',
-                    transition: 'all 0.2s ease',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     height: '48px',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    // Prevent visual shrink by offsetting the absolute 6px resize handle above
+                    marginTop: (isWorkbenchVisible && selectedInstruction) ? 6 : 0
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedInstruction) {
+                      e.currentTarget.style.background = isDarkMode 
+                        ? 'linear-gradient(135deg, rgba(13, 47, 96, 1) 0%, rgba(6, 23, 51, 1) 100%)'
+                        : `linear-gradient(135deg, ${colours.missedBlue} 0%, ${colours.websiteBlue} 100%)`;
+                      e.currentTarget.style.boxShadow = isDarkMode 
+                        ? '0 4px 20px rgba(13, 47, 96, 0.6), inset 0 1px 0 rgba(255,255,255,0.15)'
+                        : `0 4px 20px rgba(6, 23, 51, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)`;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedInstruction) {
+                      e.currentTarget.style.background = workbenchHeaderBackground(isDarkMode);
+                      e.currentTarget.style.boxShadow = 'none';
+                    }
                   }}
                 >
                   {/* Left side - Dynamic content based on state */}
@@ -3648,7 +3699,8 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                         fontWeight: 600, 
                         color: selectedInstruction ? '#ffffff' : (isDarkMode ? colours.dark.text : '#1f2937'),
                         letterSpacing: '0.02em',
-                        fontFamily: selectedInstruction ? 'monospace' : 'Raleway, sans-serif'
+                        fontFamily: selectedInstruction ? 'monospace' : 'Raleway, sans-serif',
+                        textShadow: selectedInstruction ? '0 1px 2px rgba(0,0,0,0.3)' : 'none'
                       }}>
                         {selectedInstruction ? selectedInstruction.InstructionRef : 'One Off Actions'}
                       </span>
@@ -3658,14 +3710,16 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                     {selectedInstruction && (areaOfWorkInfo.label || 'Commercial') && (
                       <span style={{
                         fontSize: '8px',
-                        fontWeight: 600,
-                        color: getAreaColor(selectedInstruction.AreaOfWork || selectedInstruction.Area_of_Work || selectedInstruction.areaOfWork),
+                        fontWeight: 700,
+                        color: '#ffffff',
                         letterSpacing: '0.03em',
                         textTransform: 'uppercase',
-                        background: `${getAreaColor(selectedInstruction.AreaOfWork || selectedInstruction.Area_of_Work || selectedInstruction.areaOfWork)}20`,
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        border: `1px solid ${getAreaColor(selectedInstruction.AreaOfWork || selectedInstruction.Area_of_Work || selectedInstruction.areaOfWork)}40`
+                        background: `${getAreaColor(selectedInstruction.AreaOfWork || selectedInstruction.Area_of_Work || selectedInstruction.areaOfWork)}40`,
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        border: `1px solid ${getAreaColor(selectedInstruction.AreaOfWork || selectedInstruction.Area_of_Work || selectedInstruction.areaOfWork)}60`,
+                        backdropFilter: 'blur(4px)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                       }}>
                         {areaOfWorkInfo.label || 'Commercial'}
                       </span>
@@ -3679,13 +3733,15 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                           <FaBuilding style={{ 
                             color: '#ffffff', 
                             fontSize: '10px',
-                            opacity: 0.8
+                            opacity: 0.9,
+                            filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'
                           }} />
                         ) : (
                           <FaUser style={{ 
                             color: '#ffffff', 
                             fontSize: '10px',
-                            opacity: 0.8
+                            opacity: 0.9,
+                            filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'
                           }} />
                         )}
                         
@@ -3694,11 +3750,12 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                           fontSize: '10px',
                           fontWeight: 500,
                           color: '#ffffff',
-                          opacity: 0.9,
+                          opacity: 0.95,
                           maxWidth: '200px',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                         }}>
                           {selectedInstruction.ClientType === 'Company' 
                             ? (selectedInstruction.CompanyName || `${selectedInstruction.FirstName || ''} ${selectedInstruction.LastName || ''}`.trim() || 'Company Client')
@@ -3718,7 +3775,8 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                         color: '#ffffff',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
-                        opacity: 0.8
+                        opacity: 0.9,
+                        textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                       }}>
                         {isWorkbenchVisible ? 'Collapse' : 'Expand'}
                       </span>
@@ -3728,7 +3786,8 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                         color: '#ffffff',
                         transform: isWorkbenchVisible ? 'rotate(180deg)' : 'rotate(0deg)',
                         transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        padding: '1px'
+                        padding: '1px',
+                        filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'
                       }}>
                         <MdExpandMore size={14} />
                       </div>
@@ -5125,7 +5184,6 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
           </>
         )}
       </Stack>
-    </section>
 
     {/* Dialogs and Modals */}
     <Dialog

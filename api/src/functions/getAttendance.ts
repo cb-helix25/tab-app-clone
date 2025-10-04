@@ -96,21 +96,30 @@ async function queryAttendance(
 ): Promise<PersonAttendance[]> {
   return new Promise((resolve, reject) => {
     const query = `
-        SELECT 
-          [First_Name] AS name,
-          [Level],
-          [Week_Start],
-          [Week_End],
-          [ISO_Week] AS iso,
-          [Attendance_Days] AS attendance
-        FROM [dbo].[attendance]
-        WHERE 
-          [ISO_Week] IN (
-            @PreviousISO, 
-            @CurrentISO, 
-            @NextISO
-          )
-        ORDER BY [First_Name];
+        WITH LatestAttendance AS (
+          SELECT 
+            [First_Name] AS name,
+            [Level],
+            [Week_Start],
+            [Week_End],
+            [ISO_Week] AS iso,
+            [Attendance_Days] AS attendance,
+            ROW_NUMBER() OVER (
+              PARTITION BY [First_Name], [ISO_Week] 
+              ORDER BY [Confirmed_At] DESC
+            ) as rn
+          FROM [dbo].[attendance]
+          WHERE 
+            [ISO_Week] IN (
+              @PreviousISO, 
+              @CurrentISO, 
+              @NextISO
+            )
+        )
+        SELECT name, Level, Week_Start, Week_End, iso, attendance
+        FROM LatestAttendance
+        WHERE rn = 1
+        ORDER BY name;
       `;
     context.log("SQL Query (Attendance):", query);
 
@@ -139,20 +148,8 @@ async function queryAttendance(
         attendanceMap[name] = { name, level, weeks: {} };
       }
 
-      // Combine attendance for the same week
-      if (!attendanceMap[name].weeks[weekRange]) {
-        attendanceMap[name].weeks[weekRange] = { iso, attendance };
-      } else {
-        const existing = attendanceMap[name].weeks[weekRange].attendance;
-        const combined = [existing, attendance]
-          .filter(Boolean)
-          .join(",")
-          .split(",")
-          .map(day => day.trim())
-          .filter((day, idx, arr) => day && arr.indexOf(day) === idx)
-          .join(",");
-        attendanceMap[name].weeks[weekRange].attendance = combined;
-      }
+      // Use the latest attendance record (no combination needed)
+      attendanceMap[name].weeks[weekRange] = { iso, attendance };
     });
 
     sqlRequest.on("requestCompleted", () => {

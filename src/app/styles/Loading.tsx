@@ -3,7 +3,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { mergeStyles } from '@fluentui/react';
-import loaderIcon from '../../assets/dark blue mark.svg';
+import loaderDarkIcon from '../../assets/markwhite.svg';
+import loaderLightIcon from '../../assets/dark blue mark.svg';
 import { colours } from './colours';
 import { useTheme } from '../functionality/ThemeContext';
 
@@ -83,12 +84,56 @@ const Loading: React.FC<LoadingProps> = ({
   isDarkMode,
 }) => {
   const { isDarkMode: themeDarkMode } = useTheme();
+  const normalizeTheme = (value?: string | null) => {
+    if (!value) {
+      return undefined;
+    }
+    const lower = value.toLowerCase();
+    if (lower === 'dark' || lower === 'contrast' || lower === 'light' || lower === 'default') {
+      return lower;
+    }
+    return undefined;
+  };
+
+  const computeHostTheme = () => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const themeParam = normalizeTheme(params.get('theme'));
+      if (themeParam) {
+        return themeParam;
+      }
+    }
+
+    const body = document.body;
+    const datasetTheme = normalizeTheme(body?.dataset?.theme ?? null);
+    if (datasetTheme) {
+      return datasetTheme;
+    }
+
+    if (body?.classList.contains('theme-dark')) {
+      return 'dark';
+    }
+    if (body?.classList.contains('theme-contrast')) {
+      return 'contrast';
+    }
+    if (body?.classList.contains('theme-light')) {
+      return 'light';
+    }
+
+    return undefined;
+  };
+
   const [prefersDarkMode, setPrefersDarkMode] = useState<boolean>(() => {
     if (typeof window === 'undefined' || !window.matchMedia) {
       return false;
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+  const [hostTheme, setHostTheme] = useState<string | undefined>(() => computeHostTheme());
   const [activeDetailIndex, setActiveDetailIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -165,31 +210,6 @@ const Loading: React.FC<LoadingProps> = ({
     return () => window.clearInterval(interval);
   }, [details, isPaused]);
 
-  const inferHostTheme = useMemo(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
-    }
-    const params = new URLSearchParams(window.location.search);
-    const themeParam = params.get('theme');
-    if (themeParam) {
-      return themeParam.toLowerCase();
-    }
-    const bodyDataset = document.body?.dataset?.theme;
-    if (bodyDataset) {
-      return bodyDataset.toLowerCase();
-    }
-    if (document.body?.classList.contains('theme-dark')) {
-      return 'dark';
-    }
-    if (document.body?.classList.contains('theme-contrast')) {
-      return 'contrast';
-    }
-    if (document.body?.classList.contains('theme-light')) {
-      return 'light';
-    }
-    return undefined;
-  }, []);
-
   const resolvedDarkMode = useMemo(
     () => {
       if (typeof isDarkMode === 'boolean') {
@@ -198,13 +218,58 @@ const Loading: React.FC<LoadingProps> = ({
       if (typeof themeDarkMode === 'boolean') {
         return themeDarkMode;
       }
-      if (inferHostTheme) {
-        return inferHostTheme === 'dark' || inferHostTheme === 'contrast';
+      if (hostTheme) {
+        return hostTheme === 'dark' || hostTheme === 'contrast';
       }
       return prefersDarkMode;
     },
-    [inferHostTheme, isDarkMode, prefersDarkMode, themeDarkMode],
+    [hostTheme, isDarkMode, prefersDarkMode, themeDarkMode],
   );
+
+  const backgroundColor = resolvedDarkMode ? '#050b1a' : '#f8fafd';
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+    const body = document.body;
+    if (!body) {
+      return undefined;
+    }
+
+    const updateHostTheme = () => {
+      setHostTheme(computeHostTheme());
+    };
+
+    updateHostTheme();
+
+    const observer = new MutationObserver(updateHostTheme);
+    observer.observe(body, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+    const { body } = document;
+    if (!body) {
+      return undefined;
+    }
+    const previousColor = body.style.backgroundColor;
+    const previousTransition = body.style.transition;
+    body.style.transition = 'background-color 0.1s ease';
+    body.style.backgroundColor = backgroundColor;
+
+    return () => {
+      body.style.backgroundColor = previousColor;
+      body.style.transition = previousTransition;
+    };
+  }, [backgroundColor]);
 
   const containerClass = useMemo(
     () =>
@@ -216,6 +281,7 @@ const Loading: React.FC<LoadingProps> = ({
         minHeight: '100vh',
         width: '100%',
         padding: '24px',
+        backgroundColor,
         background: resolvedDarkMode
           ? `radial-gradient(circle at 20% 20%, rgba(54, 144, 206, 0.12), transparent 55%), linear-gradient(135deg, #0B1220 0%, ${colours.dark.sectionBackground} 45%, #0F1C32 100%)`
           : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 40%, #E8F0FF 100%)',
@@ -226,9 +292,9 @@ const Loading: React.FC<LoadingProps> = ({
         animationIterationCount: 'infinite',
         animationPlayState: isPaused ? 'paused' : 'running',
         color: resolvedDarkMode ? colours.dark.text : colours.light.text,
-        transition: 'background 0.4s ease, color 0.4s ease',
+        transition: 'none', // Remove transition to prevent flash
       }),
-    [isPaused, resolvedDarkMode],
+    [isPaused, resolvedDarkMode, backgroundColor],
   );
 
   const logoClass = useMemo(
@@ -294,11 +360,12 @@ const Loading: React.FC<LoadingProps> = ({
     [isPaused, resolvedDarkMode],
   );
   const activeDetail = details[activeDetailIndex % details.length];
+  const logoSrc = resolvedDarkMode ? loaderDarkIcon : loaderLightIcon;
 
   return (
     <div className={containerClass} role="status" aria-live="polite" data-paused={isPaused ? 'true' : 'false'}>
       <GlobalStyles />
-      <img src={loaderIcon} alt="Loading..." className={logoClass} />
+      <img src={logoSrc} alt="Loading..." className={logoClass} />
       <span className={messageClass}>{message}</span>
       <span className={detailClass}>{activeDetail}</span>
       <div className={spinnerClass} />

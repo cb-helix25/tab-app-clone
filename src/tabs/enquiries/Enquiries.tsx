@@ -1560,10 +1560,42 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   function containerStyle(dark: boolean) {
     return mergeStyles({
-      backgroundColor: dark ? colours.dark.background : colours.light.background,
+      background: dark
+        ? `
+          linear-gradient(135deg, #0a0f1c 0%, #1a1a2e 25%, #16213e 50%, #0a0f1c 100%),
+          radial-gradient(circle at 25% 75%, rgba(54, 144, 206, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 75% 25%, rgba(135, 243, 243, 0.05) 0%, transparent 50%),
+          radial-gradient(circle at 60% 80%, rgba(214, 85, 65, 0.03) 0%, transparent 60%)
+        `
+        : `
+          linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f1f5f9 50%, #ffffff 100%),
+          radial-gradient(circle at 25% 75%, rgba(54, 144, 206, 0.05) 0%, transparent 50%),
+          radial-gradient(circle at 75% 25%, rgba(135, 243, 243, 0.03) 0%, transparent 50%),
+          linear-gradient(90deg, transparent 20%, rgba(54, 144, 206, 0.015) 50%, transparent 80%)
+        `,
       minHeight: '100vh',
       boxSizing: 'border-box',
       color: dark ? colours.light.text : colours.dark.text,
+      position: 'relative',
+      '&::before': dark ? {
+        content: '""',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: `
+          repeating-linear-gradient(
+            135deg,
+            transparent,
+            transparent 4px,
+            rgba(135, 243, 243, 0.006) 4px,
+            rgba(135, 243, 243, 0.006) 8px
+          )
+        `,
+        pointerEvents: 'none',
+        zIndex: 0
+      } : {}
     });
   }
 
@@ -1799,22 +1831,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   return (
     <div className={containerStyle(isDarkMode)}>
 
-  <section className="page-section">
         <Stack
           tokens={{ childrenGap: 20 }}
           styles={{
             root: {
-              backgroundColor: isDarkMode 
-                ? colours.dark.sectionBackground 
-                : colours.light.sectionBackground,
+              backgroundColor: 'transparent', // Remove section background - let cards sit on main page background
               // Remove extra chrome when viewing a single enquiry; PitchBuilder renders its own card
               padding: selectedEnquiry ? '0' : '16px',
               borderRadius: 0,
-              boxShadow: selectedEnquiry
-                ? 'none'
-                : (isDarkMode
-                    ? `0 4px 12px ${colours.dark.border}`
-                    : `0 4px 12px ${colours.light.border}`),
+              position: 'relative',
+              zIndex: 1,
+              boxShadow: 'none', // Remove shadow artifact - content sits directly on page background
               width: '100%',
               fontFamily: 'Raleway, sans-serif',
             },
@@ -2086,7 +2113,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         </Stack>
       </Modal>
         </Stack>
-      </section>
 
     </div>
   );

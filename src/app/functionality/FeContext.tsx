@@ -184,53 +184,68 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
     }
   }, []); // Removed getUserDataUrl dependency since we use static route now
 
-  // Function to fetch Enquiries
+  // Function to fetch Enquiries with cross-reference data
   const fetchEnquiries = useCallback(
-        // Always request all enquiries by using the special 'anyone' keyword
-        const legacyRequestEmail = 'anyone';
+    async (email: string, dateFrom?: string, dateTo?: string): Promise<Enquiry[]> => {
+      try {
+        // Use the unified enquiries route for cross-reference analysis
+        const unifiedUrl = process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:3001/api/enquiries-unified'
+          : '/api/enquiries-unified';
+        
+        const params = new URLSearchParams({
+          fetchAll: 'true', // Get all enquiries for migration analysis
+          limit: '2000',
+          includeTeamInbox: 'true'
+        });
+        
+        if (dateFrom) params.append('dateFrom', dateFrom);
+        if (dateTo) params.append('dateTo', dateTo);
 
-        const legacyResponse = await fetch(getEnquiriesUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: legacyRequestEmail,
-            dateFrom,
-            dateTo,
-          }),
+        const response = await fetch(`${unifiedUrl}?${params}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
         });
 
-        if (!legacyResponse.ok) {
-          throw new Error(`HTTP error! status: ${legacyResponse.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const legacyData = await legacyResponse.json();
-        let rawLegacyEnquiries: Enquiry[] = [];
-        if (Array.isArray(legacyData.enquiries)) {
-          rawLegacyEnquiries = legacyData.enquiries as Enquiry[];
-        } else if (Array.isArray(legacyData)) {
-          rawLegacyEnquiries = legacyData as Enquiry[];
+        const data = await response.json();
+        console.log('📊 Migration statistics:', data.migration);
+        
+        let allEnquiries: Enquiry[] = [];
+        if (Array.isArray(data.enquiries)) {
+          allEnquiries = data.enquiries as Enquiry[];
         } else {
-          console.warn('Unexpected legacy data format:', legacyData);
+          console.warn('Unexpected unified data format:', data);
         }
 
-        // Filter to the current user or unclaimed enquiries
+        // Filter to the current user or unclaimed enquiries (for display)
         const userEmail = email.toLowerCase();
-        const filteredLegacyEnquiries = rawLegacyEnquiries.filter((enq: any) => {
+        const filteredEnquiries = allEnquiries.filter((enq: any) => {
           const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
           const unclaimedEmails = ['team@helix-law.com'];
           const isUnclaimed = unclaimedEmails.includes(pocEmail);
           return pocEmail === userEmail || isUnclaimed;
         });
 
-        setEnquiries(filteredLegacyEnquiries);
-        return filteredLegacyEnquiries;
+        // Store migration metadata for use in reporting
+        (window as any).migrationData = {
+          stats: data.migration,
+          crossReferenceMap: data.migration?.crossReferenceMap || {},
+          allEnquiries // Keep all for cross-reference analysis
+        };
+
+        setEnquiries(filteredEnquiries);
+        return filteredEnquiries;
       } catch (error) {
         console.error('Error fetching enquiries:', error);
         setFetchEnquiriesError('Failed to fetch enquiries.');
         return [];
       }
     },
-    [getEnquiriesUrl]
+    [] // Remove getEnquiriesUrl dependency since we use static route now
   );
 
   // Function to fetch Matters

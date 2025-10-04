@@ -886,6 +886,9 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         <AnnualLeaveReport
           data={datasetData.annualLeave || []}
           teamData={datasetData.teamData || []}
+          triggerRefresh={refreshDatasets}
+          lastRefreshTimestamp={lastRefreshTimestamp ?? undefined}
+          isFetching={isFetching}
         />
       </div>
     );
@@ -894,7 +897,13 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   if (activeView === 'enquiries') {
     return (
       <div style={fullScreenWrapperStyle(isDarkMode)}>
-        <EnquiriesReport enquiries={datasetData.enquiries} />
+        <EnquiriesReport 
+          enquiries={datasetData.enquiries} 
+          teamData={datasetData.teamData}
+          triggerRefresh={refreshDatasets}
+          lastRefreshTimestamp={lastRefreshTimestamp ?? undefined}
+          isFetching={isFetching}
+        />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import CustomTabs from './styles/CustomTabs';
-import { ThemeProvider } from './functionality/ThemeContext';
+import { ThemeProvider, useTheme } from './functionality/ThemeContext';
 import Navigator from '../components/Navigator';
 import { useNavigatorActions } from './functionality/NavigatorContext';
 import FormsModal from '../components/FormsModal';
@@ -103,9 +103,61 @@ const App: React.FC<AppProps> = ({
 
     return undefined;
   }, []);
+  // Local override: persist user selection across refreshes
+  const persistedTheme = useMemo(() => {
+    try {
+      return typeof window !== 'undefined' ? window.localStorage.getItem('helix_theme') : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const teamsTheme = teamsContext?.theme ? teamsContext.theme.toLowerCase() : undefined;
-  const themeName = teamsTheme ?? hostTheme;
+  const themeName = (persistedTheme as string | null) ?? teamsTheme ?? hostTheme;
   const isDarkMode = themeName === 'dark' || themeName === 'contrast' || (!themeName && systemPrefersDark);
+
+  // Ensure body background matches theme immediately for smooth transitions
+  React.useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const body = document.body;
+      if (body) {
+        body.style.backgroundColor = isDarkMode ? colours.dark.background : colours.light.background;
+        body.style.transition = 'background-color 0.1s ease';
+        body.dataset.theme = isDarkMode ? 'dark' : 'light';
+        body.classList.toggle('theme-dark', isDarkMode);
+        body.classList.toggle('theme-light', !isDarkMode);
+      }
+    }
+  }, [isDarkMode]);
+
+  // Use ThemeContext inside fallback so it reflects user toggle immediately
+  const ThemedSuspenseFallback: React.FC = () => {
+    const { isDarkMode } = useTheme();
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+          zIndex: 9999,
+        }}
+      >
+        <Loading
+          message="Loading content..."
+          detailMessages={[
+            'Fetching module data…',
+            'Applying filters…',
+            'Rendering components…',
+            'Almost ready…',
+          ]}
+          isDarkMode={isDarkMode}
+        />
+      </div>
+    );
+  };
   const workspaceLoadingMessages = useMemo(
     () => [
       'Syncing Microsoft Teams context…',
@@ -732,20 +784,7 @@ const App: React.FC<AppProps> = ({
             onDismiss={closeResourcesModal}
           />
           
-          <Suspense
-            fallback={
-              <Loading
-                message="Loading content..."
-                detailMessages={[
-                  'Fetching module data…',
-                  'Applying filters…',
-                  'Rendering components…',
-                  'Almost ready…',
-                ]}
-                isDarkMode={isDarkMode}
-              />
-            }
-          >
+          <Suspense fallback={<ThemedSuspenseFallback /> }>
             {renderContent()}
           </Suspense>
         </div>

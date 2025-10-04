@@ -80,6 +80,9 @@ const leftBorderColor = (areaOfWork: string) => {
       return colours.green;
     case 'employment':
       return colours.yellow;
+    case 'other':
+    case 'other/unsure':
+      return colours.greyText;
     default:
       return colours.cta;
   }

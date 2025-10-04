@@ -156,13 +156,9 @@ const EnquiryBadge: React.FC<Props> = ({
     return 'Help';
   })();
 
-  const badgeBorder = `${areaColor}36`;
-  const badgeBackground = isDarkMode
-    ? `linear-gradient(135deg, ${areaColor}24 0%, rgba(18,22,30,0.8) 95%)`
-    : `linear-gradient(135deg, ${areaColor}16 0%, rgba(255,255,255,0.92) 95%)`;
-  const badgeShadow = isDarkMode
-    ? `inset 0 0 0 1px ${areaColor}28, 0 1px 2px rgba(0,0,0,0.45)`
-    : `inset 0 0 0 1px ${areaColor}21, 0 1px 3px rgba(18,36,58,0.12)`;
+  const badgeBorder = `1px solid ${areaColor}`;
+  const badgeBackground = isDarkMode ? '#1e293b' : 'rgba(255,255,255,0.95)';
+  const badgeShadow = 'none'; // Simplified - no shadows
   const neutralText = isDarkMode ? 'rgba(255,255,255,0.88)' : 'rgba(18,34,54,0.88)';
   const subtleText = isDarkMode ? 'rgba(225,232,245,0.8)' : 'rgba(76,90,110,0.85)';
 
@@ -178,18 +174,17 @@ const EnquiryBadge: React.FC<Props> = ({
         display: 'flex', 
         alignItems: 'center',
         gap: 8,
-  padding: '6px 12px',
-  borderRadius: 8,
+        padding: '6px 12px',
+        borderRadius: 8,
         background: badgeBackground,
-  backdropFilter: 'blur(2px)',
-        border: `1px solid ${badgeBorder}`,
+        border: badgeBorder,
         fontSize: 10.5,
-  fontWeight: 500,
-  opacity: isVisible ? 0.97 : 0,
-  transform: isVisible ? 'translateX(0) scale(1)' : 'translateX(8px) scale(0.99)',
-  transition: 'opacity 0.35s ease, transform 0.35s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
-  boxShadow: badgeShadow,
-  zIndex: 1 // sit flush with the card surface
+        fontWeight: 500,
+        opacity: isVisible ? 0.97 : 0,
+        transform: isVisible ? 'translateX(0) scale(1)' : 'translateX(8px) scale(0.99)',
+        transition: 'opacity 0.35s ease, transform 0.35s ease, background 0.3s ease, border-color 0.3s ease',
+        boxShadow: badgeShadow,
+        zIndex: 1
       }}>
         {/* Area icon + label - clickable for reassignment */}
         {enquiry.Area_of_Work && (

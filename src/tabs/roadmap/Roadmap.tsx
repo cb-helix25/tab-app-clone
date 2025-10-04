@@ -17,6 +17,7 @@ import {
   Spinner,
   SpinnerSize,
 } from '@fluentui/react';
+import ThemedSpinner from '../../components/ThemedSpinner';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import BespokeForm from '../../CustomForms/BespokeForms';
@@ -737,7 +738,7 @@ const Roadmap: React.FC<RoadmapProps> = ({ userData }) => {
 
         <Stack tokens={stackTokens}>
           {isLoadingRoadmap ? (
-            <Spinner label="Loading roadmap..." size={SpinnerSize.medium} />
+            <ThemedSpinner label="Loading roadmap..." size={SpinnerSize.medium} />
           ) : roadmapError ? (
             <MessageBar messageBarType={MessageBarType.error}>{roadmapError}</MessageBar>
           ) : roadmapData && roadmapData.length > 0 ? (

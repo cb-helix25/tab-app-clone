@@ -22,6 +22,7 @@ interface RecoveredFee {
   payment_date: string;
   payment_allocated: number;
   user_id: number;
+  kind?: string; // 'Service', 'Expense', or 'Product'
 }
 
 export interface WIP {
@@ -901,6 +902,72 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
     y: number 
   } | null>(null);
   const [showDatasetInfo, setShowDatasetInfo] = useState(false);
+  const [showCollectedInfo, setShowCollectedInfo] = useState(false);
+  const [timeElapsed, setTimeElapsed] = useState(0); // Time since last refresh in seconds
+
+  // Auto-refresh configuration
+  const AUTO_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
+  const UPDATE_INTERVAL = 1000; // Update color every second
+
+  // Auto-refresh effect - only runs when component is mounted (dashboard is open)
+  useEffect(() => {
+    if (!triggerRefresh) return; // No refresh function available
+
+    // Timer to track elapsed time and update color
+    const colorTimer = setInterval(() => {
+      setTimeElapsed(prev => prev + 1);
+    }, UPDATE_INTERVAL);
+
+    // Timer to trigger auto-refresh every 15 minutes
+    const refreshTimer = setInterval(() => {
+      debugLog('🔄 Auto-refresh triggered after 15 minutes');
+      triggerRefresh();
+      setTimeElapsed(0); // Reset elapsed time
+    }, AUTO_REFRESH_INTERVAL);
+
+    // Cleanup on unmount (when dashboard closes)
+    return () => {
+      clearInterval(colorTimer);
+      clearInterval(refreshTimer);
+    };
+  }, [triggerRefresh]);
+
+  // Reset timer when manual refresh happens
+  useEffect(() => {
+    if (lastRefreshTimestamp) {
+      setTimeElapsed(0);
+    }
+  }, [lastRefreshTimestamp]);
+
+  // Calculate color based on elapsed time (green → blue over 15 minutes)
+  const getRefreshIndicatorColor = () => {
+    const maxSeconds = 15 * 60; // 15 minutes
+    const progress = Math.min(timeElapsed / maxSeconds, 1); // 0 to 1
+
+    // Green (start): rgb(34, 197, 94)
+    // Blue (end): rgb(59, 130, 246)
+    const r = Math.round(34 + (59 - 34) * progress);
+    const g = Math.round(197 + (130 - 197) * progress);
+    const b = Math.round(94 + (246 - 94) * progress);
+
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
+  // Format timestamp as "X ago"
+  const formatTimeAgo = (timestamp: number | undefined): string => {
+    if (!timestamp) return 'Pending';
+    
+    const now = Date.now();
+    const diff = Math.floor((now - timestamp) / 1000); // difference in seconds
+    
+    if (diff < 60) return 'Just now';
+    if (diff < 120) return '1 min ago';
+    if (diff < 3600) return `${Math.floor(diff / 60)} mins ago`;
+    if (diff < 7200) return '1 hour ago';
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+    if (diff < 172800) return '1 day ago';
+    return `${Math.floor(diff / 86400)} days ago`;
+  };
 
   // Check if member was completely away during the period (for daily/weekly views)
   const wasCompletelyAway = (startDate: Date, endDate: Date, memberInitials: string): boolean => {
@@ -1050,7 +1117,15 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   }, [wip, activeStart, activeEnd]);
 
   const filteredFees = useMemo(() => (
-    fees.filter((entry) => withinRange(parseDateValue(entry.payment_date)))
+    fees.filter((entry) => {
+      // Exclude disbursements (kind = 'Expense') - only count actual fees
+      // If kind is 'Expense' or 'Product', exclude it
+      // If kind is 'Service' or missing (legacy data), include it
+      if (entry.kind === 'Expense' || entry.kind === 'Product') {
+        return false;
+      }
+      return withinRange(parseDateValue(entry.payment_date));
+    })
   ), [fees, activeStart, activeEnd]);
 
   const teamMembers = useMemo(() => (
@@ -1691,17 +1766,60 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   };
 
   const toggleRoleSelection = (role: string) => {
+    const isRoleCurrentlySelected = selectedRoles.includes(role);
+    
+    // Update role selection
     setSelectedRoles((prev) => (
-      prev.includes(role)
+      isRoleCurrentlySelected
         ? prev.filter((item) => item !== role)
         : [...prev, role]
     ));
+    
+    // Auto-select team members with this role (use teamMembers, not displayableTeamMembers)
+    if (!isRoleCurrentlySelected) {
+      // Adding role - select all members with this role
+      const membersWithRole = teamMembers
+        .filter(member => member.role === role)
+        .map(member => member.initials);
+      
+      setSelectedTeams(prev => {
+        const newSet = new Set([...prev, ...membersWithRole]);
+        return Array.from(newSet);
+      });
+    } else {
+      // Removing role - deselect members with ONLY this role
+      // (keep members who also match other selected roles)
+      const remainingRoles = selectedRoles.filter(r => r !== role);
+      
+      if (remainingRoles.length > 0) {
+        // Keep members who have any of the remaining selected roles
+        setSelectedTeams(prev => 
+          prev.filter(initials => {
+            const member = teamMembers.find(m => m.initials === initials);
+            return member && remainingRoles.includes(member.role ?? '');
+          })
+        );
+      } else {
+        // No other roles selected, clear team selection
+        const membersWithRole = teamMembers
+          .filter(member => member.role === role)
+          .map(member => member.initials);
+        
+        setSelectedTeams(prev => prev.filter(initials => !membersWithRole.includes(initials)));
+      }
+    }
   };
 
   // Check if a team member has worked (has WIP hours) in the current date range
   const memberHasWorked = (memberInitials: string): boolean => {
-    const memberMetric = metricsByMember.find(m => m.initials === memberInitials);
-    return memberMetric ? memberMetric.wipHours > 0 : false;
+    // Check WIP data directly for the member, not through metricsByMember
+    // This ensures the visual state is independent of filters
+    const member = teamMembers.find(m => m.initials === memberInitials);
+    if (!member || !member.clioId) return false;
+    
+    const wipForMember = wipByClioId.get(member.clioId) || [];
+    const wipHours = wipForMember.reduce((total, record) => total + safeNumber(record.quantity_in_hours), 0);
+    return wipHours > 0;
   };
 
   const handleColumnSort = (column: SortColumn) => {
@@ -1757,6 +1875,8 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
       return;
     }
     setSelectedRoles([]);
+    // Also clear team selections that were auto-selected by roles
+    setSelectedTeams([]);
   };
 
   const isCustomRange = rangeKey === 'custom';
@@ -1848,7 +1968,18 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
           </div>
 
           <div className="filter-toolbar__actions">
-            <div className="filter-status-chip">
+            <div 
+              className="filter-status-chip"
+              style={{
+                borderColor: isFetching ? undefined : getRefreshIndicatorColor(),
+                transition: 'border-color 1s ease',
+              }}
+              title={
+                isFetching 
+                  ? 'Refreshing data...' 
+                  : `Next auto-refresh in ${Math.floor((15 * 60 - timeElapsed) / 60)}m ${(15 * 60 - timeElapsed) % 60}s`
+              }
+            >
               {isFetching ? (
                 <>
                   <div className="filter-status-indicator" />
@@ -1856,12 +1987,14 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
                 </>
               ) : (
                 <>
-                  Last: {lastRefreshTimestamp ? new Date(lastRefreshTimestamp).toLocaleString('en-GB', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  }) : 'Pending'}
+                  <div 
+                    className="filter-status-indicator" 
+                    style={{ 
+                      background: getRefreshIndicatorColor(),
+                      transition: 'background 1s ease',
+                    }}
+                  />
+                  {formatTimeAgo(lastRefreshTimestamp)}
                 </>
               )}
             </div>
@@ -1869,10 +2002,13 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
             {triggerRefresh && (
               <button
                 type="button"
-                onClick={triggerRefresh}
+                onClick={() => {
+                  triggerRefresh();
+                  setTimeElapsed(0); // Reset timer on manual refresh
+                }}
                 disabled={isFetching}
                 className="filter-icon-button"
-                title={isFetching ? 'Refreshing data...' : 'Refresh datasets'}
+                title={isFetching ? 'Refreshing data...' : 'Refresh datasets (auto-refreshes every 15 min)'}
                 aria-label={isFetching ? 'Refreshing data' : 'Refresh datasets'}
               >
                 <Icon 
@@ -2104,12 +2240,70 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
           </div>
           <span style={{ fontSize: 20, fontWeight: 700 }}>{formatCurrency(summaryTotals.wipValue)}</span>
         </div>
-        <div style={summaryChipStyle(isDarkMode)}>
+        <div 
+          style={{
+            ...summaryChipStyle(isDarkMode),
+            position: 'relative',
+          }}
+          onMouseEnter={() => setShowCollectedInfo(true)}
+          onMouseLeave={() => setShowCollectedInfo(false)}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-            <span style={{ fontSize: 12, opacity: 0.65 }}>Collected</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 12, opacity: 0.65 }}>Collected</span>
+              <Icon 
+                iconName="Info" 
+                style={{ 
+                  fontSize: 10, 
+                  opacity: 0.4,
+                  cursor: 'help'
+                }} 
+              />
+            </div>
             {renderTrendIndicator(summaryTotals.collected, previousMetrics?.collected, 'currency', 'collected')}
           </div>
           <span style={{ fontSize: 20, fontWeight: 700 }}>{formatCurrency(summaryTotals.collected)}</span>
+          
+          {showCollectedInfo && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: 8,
+              padding: '10px 12px',
+              background: isDarkMode ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+              border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.25)'}`,
+              borderRadius: 8,
+              boxShadow: isDarkMode ? '0 8px 16px rgba(0, 0, 0, 0.4)' : '0 4px 12px rgba(0, 0, 0, 0.15)',
+              fontSize: 11,
+              lineHeight: 1.5,
+              width: 240,
+              zIndex: 1000,
+              color: isDarkMode ? '#e2e8f0' : '#334155',
+              textAlign: 'left',
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 6, fontSize: 12, textAlign: 'left' }}>
+                Total Fees Collected
+              </div>
+              <div style={{ opacity: 0.85, textAlign: 'left' }}>
+                Includes all fee earners (active, Ops, and inactive).
+              </div>
+              <div style={{ marginTop: 6, opacity: 0.85, textAlign: 'left' }}>
+                Table below shows only active solicitors and selected filters.
+              </div>
+              <div style={{ 
+                marginTop: 8, 
+                paddingTop: 6, 
+                borderTop: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`,
+                fontSize: 10,
+                opacity: 0.65,
+                fontStyle: 'italic',
+                textAlign: 'left'
+              }}>
+                Excludes disbursements
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

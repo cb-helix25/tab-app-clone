@@ -49,6 +49,7 @@ import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import './EnhancedHome.css';
 import { dashboardTokens, cardTokens, cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
+import ThemedSpinner from '../../components/ThemedSpinner';
 import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 
 import FormCard from '../forms/FormCard';
@@ -320,9 +321,48 @@ const quickActions: QuickLink[] = [
 
 const containerStyle = (isDarkMode: boolean) =>
   mergeStyles({
-    backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+    background: isDarkMode 
+      ? `
+        linear-gradient(135deg, #0a0f1c 0%, #1a1a2e 25%, #16213e 50%, #0a0f1c 100%),
+        radial-gradient(circle at 20% 80%, rgba(54, 144, 206, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(135, 243, 243, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(214, 85, 65, 0.05) 0%, transparent 50%)
+      ` 
+      : `
+        linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f1f5f9 50%, #ffffff 100%),
+        radial-gradient(circle at 20% 80%, rgba(54, 144, 206, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(135, 243, 243, 0.06) 0%, transparent 50%),
+        linear-gradient(45deg, transparent 40%, rgba(54, 144, 206, 0.02) 50%, transparent 60%)
+      `,
     minHeight: '100vh',
     boxSizing: 'border-box',
+    position: 'relative',
+    '&::before': isDarkMode ? {
+      content: '""',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: `
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 2px,
+          rgba(54, 144, 206, 0.01) 2px,
+          rgba(54, 144, 206, 0.01) 4px
+        ),
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(135, 243, 243, 0.01) 2px,
+          rgba(135, 243, 243, 0.01) 4px
+        )
+      `,
+      pointerEvents: 'none',
+      zIndex: 0
+    } : {}
   });
 
 const headerStyle = mergeStyles({
@@ -338,6 +378,8 @@ const headerStyle = mergeStyles({
 const mainContentStyle = mergeStyles({
   display: 'flex',
   flexDirection: 'column',
+  position: 'relative',
+  zIndex: 1,
 });
 // Height of the top tab menu so the quick action bar can align with it
 const ACTION_BAR_HEIGHT = 48;
@@ -702,7 +744,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 //////////////////////
 
 const Home: React.FC<HomeProps> = ({ context, userData, enquiries, matters: providedMatters, instructionData: propInstructionData, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false, onImmediateActionsChange }) => {
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, toggleTheme } = useTheme();
   const { setContent } = useNavigatorActions();
   const inTeams = isInTeams();
   const useLocalData =
@@ -2186,7 +2228,8 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
   const isLocalhost = window.location.hostname === 'localhost';
 
   // Does the user have an object at all for that week?
-  const currentUserConfirmed = isLocalhost || !!currentUserRecord?.weeks?.[relevantWeekKey];
+  // If currentUserRecord is not found (user not in attendance data), treat as confirmed to avoid nagging
+  const currentUserConfirmed = isLocalhost || !currentUserRecord || !!currentUserRecord?.weeks?.[relevantWeekKey];
 
   // Debug logging for instructionData changes
   // Calculate actionable instruction summaries (needs isLocalhost)
@@ -2360,18 +2403,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       );
     }, [outstandingBalancesData, userMatterIDs, myOutstandingBalances]);
 
-    // Calculate firm-wide total outstanding balances (all matters)
-    const firmOutstandingTotal = useMemo(() => {
-      if (!outstandingBalancesData || !outstandingBalancesData.data) {
-        return null; // Data not ready yet
-      }
-      // Sum ALL balances across the entire firm
-      return outstandingBalancesData.data.reduce(
-        (sum: number, record: any) => sum + (Number(record.total_outstanding_balance) || 0),
-        0
-      );
-    }, [outstandingBalancesData]);
-
   // Removed no-op effect that could trigger unnecessary renders
   // useEffect(() => {}, [userMatterIDs, outstandingBalancesData]);
 
@@ -2473,7 +2504,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
           { title: 'Fees Recovered This Month', isMoneyOnly: true, money: recoveredData ?? 0, prevMoney: prevRecoveredData ?? 0 },
       // Use computed outstandingTotal even when WIP data hasn't loaded
-      { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0, firmTotal: firmOutstandingTotal ?? undefined },
+      { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0 },
           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
           { title: 'Matters Opened', isTimeMoney: false, count: mattersOpenedCount, prevCount: 0, secondary: firmMattersOpenedCount },
@@ -2632,7 +2663,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Outstanding Office Balances',
         isMoneyOnly: true,
         money: outstandingTotal ?? 0,
-        firmTotal: firmOutstandingTotal ?? undefined, // Show firm-wide total below user's balance
         // No prevMoney - this is a current snapshot with no historical comparison
       },
       {
@@ -2679,7 +2709,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     transformedTeamData,
     outstandingBalancesData, // ADDED
     userMatterIDs,           // ADDED
-    firmOutstandingTotal,    // ADDED for firm-wide total display
   ]);
   
   const timeMetrics = metricsData.slice(0, 5);
@@ -2759,7 +2788,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   const handleApproveLeaveClick = () => {
     if (approvalsNeeded.length > 0) {
       setBespokePanelContent(
-        <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+        <Suspense fallback={<ThemedSpinner size={SpinnerSize.small} />}>
           <AnnualLeaveApprovals
             approvals={approvalsNeeded.map((item) => ({
               id: item.id,
@@ -2824,7 +2853,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     ];
 
     setBespokePanelContent(
-      <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+      <Suspense fallback={<ThemedSpinner size={SpinnerSize.small} />}>
         <AnnualLeaveApprovals
           approvals={testApprovals}
           futureLeave={futureLeaveRecords.map((item) => ({
@@ -2859,7 +2888,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       }
 
       setBespokePanelContent(
-        <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+        <Suspense fallback={<ThemedSpinner size={SpinnerSize.small} />}>
           <AnnualLeaveBookings
             bookings={entries.map((item) => ({
               id: item.id,
@@ -2930,7 +2959,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   const handleSnippetApprovalClick = () => {
     if (snippetApprovalsNeeded.length > 0) {
       setBespokePanelContent(
-        <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+        <Suspense fallback={<ThemedSpinner size={SpinnerSize.small} />}>
           <SnippetEditsApproval
             edits={snippetApprovalsNeeded}
             onApprove={(id) => approveSnippet(id, true)}
@@ -3075,7 +3104,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         break;
       case 'Create a Task':
         content = (
-          <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+          <Suspense fallback={<ThemedSpinner size={SpinnerSize.small} />}>
             <Tasking />
           </Suspense>
         );
@@ -3085,7 +3114,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         break;
       case 'Save Telephone Note':
         content = (
-          <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+          <Suspense fallback={<ThemedSpinner size={SpinnerSize.small} />}>
             <TelephoneAttendance />
           </Suspense>
         );
@@ -3101,7 +3130,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         break;
       case 'Request Annual Leave':
         content = (
-          <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+          <Suspense fallback={<ThemedSpinner size={SpinnerSize.small} />}>
             <AnnualLeaveForm
               futureLeave={futureLeaveRecords}
               team={transformedTeamData}
@@ -3144,7 +3173,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         break;
       case 'Book Space':
         content = (
-          <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+          <Suspense fallback={<ThemedSpinner size={SpinnerSize.small} />}>
             <BookSpaceForm
               feeEarner={userData[0].Initials}
               onCancel={() => {
@@ -3351,6 +3380,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         seamless
         userDisplayName={currentUserName}
         userIdentifier={currentUserEmail}
+        onToggleTheme={toggleTheme}
       />
     );
     setContent(content);
@@ -3360,6 +3390,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     currentUserConfirmed,
     currentUserName,
     currentUserEmail,
+    toggleTheme,
   ]);
 
   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)
