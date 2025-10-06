@@ -6,7 +6,7 @@ interface EmailSignatureProps {
 }
 
 const EmailSignature: React.FC<EmailSignatureProps> = ({ bodyHtml, userData }) => {
-  const userFullName = userData?.[0]?.['Full Name'] || '';
+  const userFullName = userData?.[0]?.FullName || userData?.[0]?.['Full Name'] || '';
   const userFirstName = userData?.[0]?.['First'] || '';
   const userRole = userData?.[0]?.['Role'] || '';
   const userInitials = userFullName

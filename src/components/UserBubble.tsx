@@ -7,7 +7,6 @@ import '../app/styles/UserBubble.css';
 import '../app/styles/personas.css';
 import { isAdminUser, isPowerUser } from '../app/admin';
 import { useTheme } from '../app/functionality/ThemeContext';
-import ToggleSwitch from './ToggleSwitch';
 
 interface UserBubbleProps {
     user: UserData;
@@ -725,6 +724,130 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                     </div>
                                 </div>
                             )}
+
+                            {/* Theme Toggle - Available to all users */}
+                            <div style={{ marginBottom: '20px' }}>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    marginBottom: '10px'
+                                }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDarkMode ? 'rgba(148,163,184,0.7)' : 'rgba(100, 116, 139, 0.7)'} strokeWidth="2">
+                                        <circle cx="12" cy="12" r="5"/>
+                                        <line x1="12" y1="1" x2="12" y2="3"/>
+                                        <line x1="12" y1="21" x2="12" y2="23"/>
+                                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                        <line x1="1" y1="12" x2="3" y2="12"/>
+                                        <line x1="21" y1="12" x2="23" y2="12"/>
+                                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                                    </svg>
+                                    <h4 style={{
+                                        margin: 0,
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(51, 65, 85, 0.9)',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        Appearance
+                                    </h4>
+                                </div>
+                                
+                                <button
+                                    onClick={() => {
+                                        toggleTheme();
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 14px',
+                                        background: isDarkMode 
+                                            ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.15) 0%, rgba(54, 144, 206, 0.08) 100%)'
+                                            : 'linear-gradient(135deg, rgba(54, 144, 206, 0.08) 0%, rgba(54, 144, 206, 0.04) 100%)',
+                                        color: isDarkMode ? 'rgba(135, 243, 243, 0.95)' : '#3690CE',
+                                        border: isDarkMode 
+                                            ? '1px solid rgba(54, 144, 206, 0.25)'
+                                            : '1px solid rgba(54, 144, 206, 0.15)',
+                                        borderRadius: '10px',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.25s ease',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: '8px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                        e.currentTarget.style.background = isDarkMode 
+                                            ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.22) 0%, rgba(54, 144, 206, 0.12) 100%)'
+                                            : 'linear-gradient(135deg, rgba(54, 144, 206, 0.12) 0%, rgba(54, 144, 206, 0.06) 100%)';
+                                        e.currentTarget.style.borderColor = isDarkMode 
+                                            ? 'rgba(54, 144, 206, 0.35)'
+                                            : 'rgba(54, 144, 206, 0.25)';
+                                        e.currentTarget.style.boxShadow = isDarkMode 
+                                            ? '0 4px 12px rgba(54, 144, 206, 0.15)'
+                                            : '0 4px 12px rgba(54, 144, 206, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.background = isDarkMode 
+                                            ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.15) 0%, rgba(54, 144, 206, 0.08) 100%)'
+                                            : 'linear-gradient(135deg, rgba(54, 144, 206, 0.08) 0%, rgba(54, 144, 206, 0.04) 100%)';
+                                        e.currentTarget.style.borderColor = isDarkMode 
+                                            ? 'rgba(54, 144, 206, 0.25)'
+                                            : 'rgba(54, 144, 206, 0.15)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {isDarkMode ? (
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                                            </svg>
+                                        ) : (
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <circle cx="12" cy="12" r="5"/>
+                                                <line x1="12" y1="1" x2="12" y2="3"/>
+                                                <line x1="12" y1="21" x2="12" y2="23"/>
+                                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                                <line x1="1" y1="12" x2="3" y2="12"/>
+                                                <line x1="21" y1="12" x2="23" y2="12"/>
+                                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                                            </svg>
+                                        )}
+                                        <span>Switch to {isDarkMode ? 'Light' : 'Dark'} Mode</span>
+                                    </div>
+                                    
+                                    <div style={{
+                                        width: '40px',
+                                        height: '20px',
+                                        borderRadius: '10px',
+                                        background: isDarkMode 
+                                            ? 'rgba(54, 144, 206, 0.4)' 
+                                            : 'rgba(203, 213, 225, 0.6)',
+                                        position: 'relative',
+                                        transition: 'all 0.25s ease'
+                                    }}>
+                                        <div style={{
+                                            width: '16px',
+                                            height: '16px',
+                                            borderRadius: '8px',
+                                            background: '#ffffff',
+                                            position: 'absolute',
+                                            top: '2px',
+                                            left: isDarkMode ? '22px' : '2px',
+                                            transition: 'all 0.25s ease',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                        }} />
+                                    </div>
+                                </button>
+                            </div>
 
                             {/* User Details - moved lower */}
                             <div style={{ marginBottom: '20px' }}>

@@ -26,7 +26,7 @@ export const DealCapture: React.FC<DealCaptureProps> = ({
   const border = isDarkMode ? colours.dark.border : '#E2E8F0';
   const text = isDarkMode ? colours.dark.text : colours.light.text;
   const subtle = isDarkMode ? '#94a3b8' : '#64748B';
-  const accent = colours.blue;
+  const accent = isDarkMode ? '#60A5FA' : '#3690CE';
 
   const handleScope = useCallback((ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, v?: string) => {
     onScopeChange(v || '');
@@ -54,21 +54,27 @@ export const DealCapture: React.FC<DealCaptureProps> = ({
 
   return (
     <div style={{
-      background: isDarkMode ? 'linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%)' : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-      border: `1px solid ${border}`,
-      borderRadius: 14,
-      padding: 24,
+      background: isDarkMode
+        ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.98) 0%, rgba(9, 22, 44, 0.94) 52%, rgba(13, 35, 63, 0.9) 100%)'
+        : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.94) 100%)',
+      border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.22)'}`,
+      borderRadius: 16,
+      padding: 28,
       display: 'flex',
       flexDirection: 'column',
-      gap: 24,
-      boxShadow: isDarkMode ? '0 4px 8px rgba(0,0,0,0.4)' : '0 4px 6px rgba(0,0,0,0.07)',
-      position: 'relative'
+      gap: 28,
+      boxShadow: isDarkMode 
+        ? '0 18px 32px rgba(2, 6, 17, 0.58)' 
+        : '0 12px 28px rgba(13, 47, 96, 0.12)',
+      position: 'relative',
+      backdropFilter: 'blur(12px)',
+      animation: 'cascadeIn 0.4s ease-out'
     }}>
       <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
         <label style={{
           fontSize: 16,
           fontWeight: 600,
-          color: text,
+          color: isDarkMode ? '#E0F2FE' : '#0F172A',
           display: 'flex',
           alignItems: 'center',
           gap: 8
@@ -84,28 +90,41 @@ export const DealCapture: React.FC<DealCaptureProps> = ({
           placeholder="Describe the scope of work..."
           styles={{
             field:{
-              fontSize:14,
+              fontSize:15,
               lineHeight:1.55,
-              background:isDarkMode?colours.dark.inputBackground:'#FFFFFF',
-              color:text,
+              background: 'transparent',
+              color: isDarkMode ? '#E0F2FE' : '#0F172A',
               fontFamily:'inherit',
-              padding:'12px 14px',
+              padding:'18px 20px',
+              border: 'none',
+              borderRadius: 10,
               selectors:{
-                '::placeholder':{ color: subtle }
+                '::placeholder':{ color: isDarkMode ? '#94A3B8' : '#64748B' }
               }
             },
             fieldGroup:{
-              border:`1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
-              borderRadius:8,
-              background: isDarkMode ? colours.dark.inputBackground : '#FFFFFF',
+              border:`1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.3)'}`,
+              borderRadius:10,
+              background: isDarkMode
+                ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.88) 100%)'
+                : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
+              overflow: 'hidden',
               selectors:{
-                ':hover':{ borderColor: accent },
-                '.is-focused':{ borderColor:accent, boxShadow:`0 0 0 3px ${isDarkMode?'rgba(54,144,206,0.35)':'rgba(54,144,206,0.25)'}` }
+                ':hover':{ 
+                  borderColor: isDarkMode ? '#60A5FA' : '#3690CE',
+                  transition: 'border-color 0.2s ease'
+                },
+                '.is-focused':{ 
+                  borderColor: isDarkMode ? '#60A5FA' : '#3690CE', 
+                  boxShadow: isDarkMode
+                    ? '0 0 0 4px rgba(96, 165, 250, 0.2)'
+                    : '0 0 0 4px rgba(54, 144, 206, 0.15)',
+                  outline: 'none'
+                }
               }
             },
             wrapper:{
-              background: isDarkMode ? colours.dark.inputBackground : '#FFFFFF',
-              borderRadius:8
+              borderRadius:10
             }
           }}
         />
@@ -114,10 +133,10 @@ export const DealCapture: React.FC<DealCaptureProps> = ({
       <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
         <div style={{ width:'100%' }}>
           <label style={{
-            fontSize:14,
+            fontSize:15,
             fontWeight:600,
-            color:text,
-            marginBottom:6,
+            color: isDarkMode ? '#E0F2FE' : '#0F172A',
+            marginBottom:8,
             display:'flex',
             alignItems:'center',
             gap:6
@@ -126,33 +145,56 @@ export const DealCapture: React.FC<DealCaptureProps> = ({
           </label>
           <div 
             style={{
-              border:`1px solid ${isDarkMode?colours.dark.border:'#94A3B8'}`,
-              borderRadius:10,
-              background:isDarkMode?colours.dark.inputBackground:'#FFFFFF',
+              border:`1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.3)'}`,
+              borderRadius:12,
+              background: isDarkMode
+                ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.88) 100%)'
+                : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
               display:'flex',
               alignItems:'stretch',
-              transition:'all .15s ease'
+              minHeight: 62,
+              transition:'all .2s ease',
+              boxShadow: isDarkMode
+                ? '0 8px 16px rgba(4, 9, 20, 0.5)'
+                : '0 4px 12px rgba(13, 47, 96, 0.1)',
+              backdropFilter: 'blur(6px)'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = accent}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = isDarkMode?colours.dark.border:'#94A3B8'}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = isDarkMode ? '#60A5FA' : '#3690CE';
+              e.currentTarget.style.boxShadow = isDarkMode
+                ? '0 12px 24px rgba(96, 165, 250, 0.25)'
+                : '0 8px 20px rgba(54, 144, 206, 0.18)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.3)';
+              e.currentTarget.style.boxShadow = isDarkMode
+                ? '0 8px 16px rgba(4, 9, 20, 0.5)'
+                : '0 4px 12px rgba(13, 47, 96, 0.1)';
+            }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = accent;
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${isDarkMode?'rgba(54,144,206,0.35)':'rgba(54,144,206,0.25)'}`;
+              e.currentTarget.style.borderColor = isDarkMode ? '#60A5FA' : '#3690CE';
+              e.currentTarget.style.boxShadow = isDarkMode
+                ? '0 0 0 4px rgba(96, 165, 250, 0.2), 0 12px 24px rgba(96, 165, 250, 0.25)'
+                : '0 0 0 4px rgba(54, 144, 206, 0.15), 0 8px 20px rgba(54, 144, 206, 0.18)';
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = isDarkMode?colours.dark.border:'#94A3B8';
-              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.borderColor = isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.3)';
+              e.currentTarget.style.boxShadow = isDarkMode
+                ? '0 8px 16px rgba(4, 9, 20, 0.5)'
+                : '0 4px 12px rgba(13, 47, 96, 0.1)';
             }}
           >
             <div style={{
               display:'flex',
               alignItems:'center',
-              paddingLeft:12,
-              paddingRight:8,
+              paddingLeft:16,
+              paddingRight:12,
+              paddingTop: 4,
+              paddingBottom: 4,
               fontSize:18,
               fontWeight:600,
-              color:accent,
-              borderRight:`1px solid ${isDarkMode?colours.dark.border:'#E2E8F0'}`
+              color: isDarkMode ? '#60A5FA' : '#3690CE',
+              borderRight:`1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.3)'}`
             }}>
               £
             </div>
@@ -167,50 +209,60 @@ export const DealCapture: React.FC<DealCaptureProps> = ({
                   fontSize:20,
                   fontWeight:600,
                   background:'transparent',
-                  color:text,
+                  color: isDarkMode ? '#E0F2FE' : '#0F172A',
                   fontFamily:'inherit',
-                  padding:'14px 12px',
-                  border:'none'
+                  padding:'20px 16px',
+                  border:'none',
+                  minHeight: 60
                 },
                 fieldGroup:{
                   border:'none',
                   borderRadius:0,
-                  background:'transparent'
+                  background:'transparent',
+                  minHeight: 60
                 }
               }}
             />
             <div style={{
               display:'flex',
               alignItems:'center',
-              gap:1,
-              paddingRight:4,
-              borderLeft:`1px solid ${isDarkMode?colours.dark.border:'#E2E8F0'}`
+              gap:2,
+              paddingRight:8,
+              paddingTop: 4,
+              paddingBottom: 4,
+              borderLeft:`1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.3)'}`
             }}>
               <button type="button" onClick={() => adjust(50)} style={integratedButton(isDarkMode, true)}>+50</button>
               <button type="button" onClick={() => adjust(-50)} style={integratedButton(isDarkMode, false)}>-50</button>
             </div>
           </div>
-          <div style={{ marginTop:6, fontSize:12, lineHeight:1.4, color: subtle }}>
+          <div style={{ marginTop:8, fontSize:12, lineHeight:1.4, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
             Fee excluding VAT. Use +50/-50 to adjust.
           </div>
         </div>
 
         {vatInfo && (
           <div style={{
-            background: isDarkMode ? colours.dark.inputBackground : '#FFFFFF',
-            border: `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
-            borderRadius: 12,
-            padding: '18px 20px',
+            background: isDarkMode
+              ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.92) 0%, rgba(11, 30, 55, 0.86) 100%)'
+              : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
+            border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.3)' : 'rgba(148, 163, 184, 0.22)'}`,
+            borderRadius: 14,
+            padding: '20px 24px',
             display:'grid',
-            gap:10,
+            gap:12,
             gridTemplateColumns:'auto 1fr',
-            alignItems:'center'
+            alignItems:'center',
+            boxShadow: isDarkMode 
+              ? '0 10px 22px rgba(4, 9, 20, 0.55)' 
+              : '0 6px 16px rgba(13, 47, 96, 0.12)',
+            backdropFilter: 'blur(8px)'
           }}>
-            <span style={labelStyle(subtle)}>Ex VAT:</span><span style={valueStyle(text)}>{vatInfo.ex}</span>
-            <span style={labelStyle(subtle)}>VAT (20%):</span><span style={valueStyle(text)}>{vatInfo.vat}</span>
-            <div style={{ gridColumn:'1 / -1', height:1, background:isDarkMode?'#3a3a3a':'#E2E8F0', margin:'4px 0 2px' }} />
-            <span style={{ fontSize:14, fontWeight:700, color:text }}>Total inc VAT:</span>
-            <span style={{ fontSize:18, fontWeight:700, background:'linear-gradient(135deg, #3690CE, #60A5FA)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', textAlign:'right' }}>{vatInfo.total}</span>
+            <span style={labelStyle(isDarkMode ? '#94A3B8' : '#64748B')}>Ex VAT:</span><span style={valueStyle(isDarkMode ? '#E0F2FE' : '#0F172A')}>{vatInfo.ex}</span>
+            <span style={labelStyle(isDarkMode ? '#94A3B8' : '#64748B')}>VAT (20%):</span><span style={valueStyle(isDarkMode ? '#E0F2FE' : '#0F172A')}>{vatInfo.vat}</span>
+            <div style={{ gridColumn:'1 / -1', height:1, background:isDarkMode?'rgba(125, 211, 252, 0.24)':'rgba(148, 163, 184, 0.3)', margin:'6px 0 4px' }} />
+            <span style={{ fontSize:15, fontWeight:700, color: isDarkMode ? '#E0F2FE' : '#0F172A' }}>Total inc VAT:</span>
+            <span style={{ fontSize:18, fontWeight:700, color: isDarkMode ? '#60A5FA' : '#3690CE', textAlign:'right' }}>{vatInfo.total}</span>
           </div>
         )}
       </div>
@@ -222,7 +274,7 @@ const buttonStyle = (isDarkMode: boolean): React.CSSProperties => ({
   padding:'4px 10px',
   border:'1px solid #94A3B8',
   background: isDarkMode ? colours.dark.inputBackground : '#FFFFFF',
-  color: isDarkMode ? colours.dark.text : colours.darkBlue,
+  color: isDarkMode ? '#E0F2FE' : '#0F172A',
   borderRadius:6,
   cursor:'pointer',
   fontSize:12,
@@ -236,7 +288,7 @@ const inlineButton = (isDarkMode: boolean, positive: boolean): React.CSSProperti
   padding:'4px 8px',
   border:'1px solid ' + (isDarkMode ? colours.dark.border : '#94A3B8'),
   background: isDarkMode ? colours.dark.inputBackground : '#FFFFFF',
-  color: positive ? colours.blue : (isDarkMode ? colours.dark.text : colours.darkBlue),
+  color: positive ? (isDarkMode ? '#60A5FA' : '#3690CE') : (isDarkMode ? '#E0F2FE' : '#0F172A'),
   borderRadius:4,
   cursor:'pointer',
   fontSize:11,
@@ -248,22 +300,33 @@ const inlineButton = (isDarkMode: boolean, positive: boolean): React.CSSProperti
 });
 
 const integratedButton = (isDarkMode: boolean, positive: boolean): React.CSSProperties => ({
-  padding:'6px 8px',
+  padding:'8px 10px',
   margin:'2px',
   border:'none',
-  background: positive ? 'rgba(54,144,206,0.1)' : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
-  color: positive ? colours.blue : (isDarkMode ? colours.dark.text : colours.darkBlue),
-  borderRadius:6,
+  background: positive 
+    ? (isDarkMode 
+      ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(59, 130, 246, 0.18) 100%)'
+      : 'linear-gradient(135deg, rgba(54, 144, 206, 0.16) 0%, rgba(96, 165, 250, 0.18) 100%)')
+    : (isDarkMode 
+      ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.12) 0%, rgba(203, 213, 225, 0.08) 100%)'
+      : 'linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(226, 232, 240, 0.6) 100%)'),
+  color: positive 
+    ? (isDarkMode ? '#60A5FA' : '#3690CE') 
+    : (isDarkMode ? '#E0F2FE' : '#0F172A'),
+  borderRadius:8,
   cursor:'pointer',
-  fontSize:11,
+  fontSize:12,
   fontWeight:600,
   lineHeight:1,
   display:'inline-flex',
   alignItems:'center',
-  transition:'all .15s ease',
+  transition:'all .2s ease',
+  boxShadow: isDarkMode 
+    ? '0 2px 4px rgba(4, 9, 20, 0.3)' 
+    : '0 1px 3px rgba(13, 47, 96, 0.08)'
 });
 
-const labelStyle = (col:string): React.CSSProperties => ({ fontSize:12, fontWeight:600, color:col });
-const valueStyle = (col:string): React.CSSProperties => ({ fontSize:14, fontWeight:600, color:col, textAlign:'right' });
+const labelStyle = (col:string): React.CSSProperties => ({ fontSize:13, fontWeight:600, color:col });
+const valueStyle = (col:string): React.CSSProperties => ({ fontSize:15, fontWeight:600, color:col, textAlign:'right' });
 
 export default DealCapture;

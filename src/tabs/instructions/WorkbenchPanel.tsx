@@ -317,7 +317,7 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
 
   const tabStyle = (isActive: boolean) => mergeStyles({
     padding: '8px 16px',
-    background: isActive ? colours.blue : 'transparent',
+    background: isActive ? '#3b82f6' : 'transparent',
     color: isActive ? '#ffffff' : (isDarkMode ? colours.dark.text : '#6b7280'),
     border: 'none',
     borderRadius: '4px 4px 0 0',
@@ -327,7 +327,7 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
     letterSpacing: '0.025em',
     transition: 'all 0.2s ease',
     ':hover': {
-      background: isActive ? colours.blue : (isDarkMode ? colours.dark.cardHover : '#f3f4f6'),
+      background: isActive ? '#2563eb' : (isDarkMode ? colours.dark.cardHover : '#f3f4f6'),
     }
   });
 
@@ -335,7 +335,7 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
     padding: '8px 12px',
     borderRadius: 8,
     border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
-    background: isDarkMode ? colours.blue : `linear-gradient(135deg, ${colours.blue} 0%, ${colours.blue} 100%)`,
+    background: isDarkMode ? '#3b82f6' : 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
     color: '#ffffff',
     cursor: 'pointer',
     fontSize: 11,
@@ -347,9 +347,8 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
     letterSpacing: '0.025em',
     transition: 'all 0.2s ease',
     ':hover': {
-      background: isDarkMode ? colours.blue : `linear-gradient(135deg, ${colours.blue} 0%, ${colours.blue} 100%)`,
+      background: isDarkMode ? '#2563eb' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
       transform: 'translateY(-1px)',
-      filter: 'brightness(0.9)',
     },
     ':disabled': {
       opacity: 0.5,
@@ -395,9 +394,9 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
     background: isDarkMode ? colours.dark.inputBackground : '#ffffff',
     color: isDarkMode ? colours.dark.text : '#111827',
     ':focus': {
-      borderColor: colours.blue,
+      borderColor: '#3b82f6',
       outline: 'none',
-      boxShadow: `0 0 0 3px ${colours.blue}20`,
+      boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
     }
   });
 

@@ -43,19 +43,31 @@ import PitchBuilder from './PitchBuilder';
 import EnquiryCalls from './EnquiryCalls';
 import EnquiryEmails from './EnquiryEmails';
 import { colours } from '../../app/styles/colours';
-import ToggleSwitch from '../../components/ToggleSwitch';
 import SegmentedControl from '../../components/filter/SegmentedControl';
 import { isAdminUser, hasInstructionsAccess } from '../../app/admin';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import UnclaimedEnquiries from './UnclaimedEnquiries';
-import { Pivot, PivotItem } from '@fluentui/react';
 import FilterBanner from '../../components/filter/FilterBanner';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import AreaCountCard from './AreaCountCard';
 import 'rc-slider/assets/index.css';
+import '../../app/styles/NavigatorPivot.css';
 import Slider from 'rc-slider';
 import { debugLog, debugWarn } from '../../utils/debug';
+  // Subtle Helix watermark generator – three rounded ribbons rotated slightly
+  const helixWatermarkSvg = (dark: boolean) => {
+    const fill = dark ? '%23FFFFFF' : '%23061733';
+    const opacity = dark ? '0.06' : '0.035';
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900' viewBox='0 0 900 900'>
+      <g transform='rotate(-12 450 450)'>
+        <path d='M160 242 C160 226 176 210 200 210 L560 210 Q640 235 560 274 L200 274 C176 274 160 258 160 242 Z' fill='${fill}' fill-opacity='${opacity}'/>
+        <path d='M160 362 C160 346 176 330 200 330 L560 330 Q640 355 560 394 L200 394 C176 394 160 378 160 362 Z' fill='${fill}' fill-opacity='${opacity}'/>
+        <path d='M160 482 C160 466 176 450 200 450 L560 450 Q640 475 560 514 L200 514 C176 514 160 498 160 482 Z' fill='${fill}' fill-opacity='${opacity}'/>
+      </g>
+    </svg>`;
+    return `url("data:image/svg+xml,${svg}")`;
+  };
 
 // All available areas of work across the organization
 const ALL_AREAS_OF_WORK = [
@@ -316,8 +328,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [isSearchActive, setSearchActive] = useState<boolean>(false);
   const [showGroupedView, setShowGroupedView] = useState<boolean>(true);
   // Local dataset toggle (legacy vs new direct) analogous to Matters (only in localhost UI for now)
-  // Admin-only: control visibility of Deal Capture (Scope & Quote Description + Amount)
-  const [showDealCapture, setShowDealCapture] = useState<boolean>(false);
+  // Deal Capture is always enabled by default now
+  const showDealCapture = true;
   
   // Auto-refresh state
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
@@ -681,16 +693,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     return sortedMonths.map((m) => counts[m]);
   }, [enquiriesInSliderRange]);
 
-  const handleSubTabChange = useCallback((item?: PivotItem) => {
-    if (item) {
-      const key = item.props.itemKey as string;
-      // Prevent switching to Calls or Emails if Pitch Builder is open
-      if (activeSubTab === 'Pitch' && (key === 'Calls' || key === 'Emails')) {
-        return;
-      }
-      setActiveSubTab(key);
+  const handleSubTabChange = useCallback((key: string) => {
+    // Prevent switching to Calls or Emails if Pitch Builder is open
+    if (activeSubTab === 'Pitch' && (key === 'Calls' || key === 'Emails')) {
+      return;
     }
-  }, [activeSubTab]);
+    // Prevent switching to Calls or Emails in production
+    if (!isLocalhost && (key === 'Calls' || key === 'Emails')) {
+      return;
+    }
+    setActiveSubTab(key);
+  }, [activeSubTab, isLocalhost]);
 
   const handleSelectEnquiry = useCallback((enquiry: Enquiry) => {
     setSelectedEnquiry(enquiry);
@@ -1309,36 +1322,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const ACTION_BAR_HEIGHT = 48;
 
-  const backButtonStyle = mergeStyles({
-    width: 32,
-    height: 32,
-    borderRadius: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#f3f3f3',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-    marginRight: 8,
-  });
-
-  function detailNavStyle(dark: boolean) {
-    return mergeStyles({
-      backgroundColor: dark ? colours.dark.sectionBackground : colours.light.sectionBackground,
-      boxShadow: dark ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
-      borderTop: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
-      padding: '0 12px',
-      display: 'flex',
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: '6px',
-      alignItems: 'center',
-      minHeight: '44px',
-      position: 'sticky',
-      top: '48px',
-      zIndex: 100,
-    });
-  }
-
   const ratingOptions = [
     {
       key: 'Good',
@@ -1410,13 +1393,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     (enquiry: Enquiry) => (
       <>
         {activeSubTab === 'Pitch' && (
-          <PitchBuilder enquiry={enquiry} userData={userData} showDealCapture={showDealCapture} />
+          <PitchBuilder enquiry={enquiry} userData={userData} />
         )}
-        {activeSubTab === 'Calls' && <EnquiryCalls enquiry={enquiry} />}
-        {activeSubTab === 'Emails' && <EnquiryEmails enquiry={enquiry} />}
+        {isLocalhost && activeSubTab === 'Calls' && <EnquiryCalls enquiry={enquiry} />}
+        {isLocalhost && activeSubTab === 'Emails' && <EnquiryEmails enquiry={enquiry} />}
       </>
     ),
-    [activeSubTab, userData, showDealCapture]
+  [activeSubTab, userData, isLocalhost]
   );
 
   const enquiriesCountPerMember = useMemo(() => {
@@ -1560,42 +1543,26 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   function containerStyle(dark: boolean) {
     return mergeStyles({
-      background: dark
-        ? `
-          linear-gradient(135deg, #0a0f1c 0%, #1a1a2e 25%, #16213e 50%, #0a0f1c 100%),
-          radial-gradient(circle at 25% 75%, rgba(54, 144, 206, 0.1) 0%, transparent 50%),
-          radial-gradient(circle at 75% 25%, rgba(135, 243, 243, 0.05) 0%, transparent 50%),
-          radial-gradient(circle at 60% 80%, rgba(214, 85, 65, 0.03) 0%, transparent 60%)
-        `
-        : `
-          linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f1f5f9 50%, #ffffff 100%),
-          radial-gradient(circle at 25% 75%, rgba(54, 144, 206, 0.05) 0%, transparent 50%),
-          radial-gradient(circle at 75% 25%, rgba(135, 243, 243, 0.03) 0%, transparent 50%),
-          linear-gradient(90deg, transparent 20%, rgba(54, 144, 206, 0.015) 50%, transparent 80%)
-        `,
+      background: dark ? colours.darkBlue : '#ffffff',
       minHeight: '100vh',
       boxSizing: 'border-box',
       color: dark ? colours.light.text : colours.dark.text,
       position: 'relative',
-      '&::before': dark ? {
+      '&::before': {
         content: '""',
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        background: `
-          repeating-linear-gradient(
-            135deg,
-            transparent,
-            transparent 4px,
-            rgba(135, 243, 243, 0.006) 4px,
-            rgba(135, 243, 243, 0.006) 8px
-          )
-        `,
+        background: 'none',
+        backgroundImage: helixWatermarkSvg(dark),
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: dark ? 'right -120px top -80px' : 'right -140px top -100px',
+        backgroundSize: 'min(52vmin, 520px)',
         pointerEvents: 'none',
         zIndex: 0
-      } : {}
+      }
     });
   }
 
@@ -1756,53 +1723,57 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         </FilterBanner>
       );
     } else {
-      // Detail mode: 48px navigator with Back + tabs (and optional small admin pill at right)
+      // Detail mode: reuse FilterBanner space with back button + tabs (same visual position as claimed/unclaimed bar)
       setContent(
-        <div className={detailNavStyle(isDarkMode)}>
+        <FilterBanner
+          seamless
+          dense
+          sticky={false}
+          primaryFilter={{
+            value: activeSubTab,
+            onChange: (key) => {
+              // Prevent switching to Calls or Emails if Pitch Builder is open
+              if (activeSubTab === 'Pitch' && (key === 'Calls' || key === 'Emails')) {
+                return;
+              }
+              // Prevent switching to Calls or Emails in production
+              if (!isLocalhost && (key === 'Calls' || key === 'Emails')) {
+                return;
+              }
+              setActiveSubTab(key);
+            },
+            options: [
+              { key: 'Pitch', label: 'Pitch Builder' },
+              ...(isLocalhost ? [
+                { key: 'Calls', label: 'Calls' },
+                { key: 'Emails', label: 'Emails' }
+              ] : [])
+            ],
+            ariaLabel: "Switch between enquiry detail tabs"
+          }}
+        >
           <IconButton
             iconProps={{ iconName: 'ChevronLeft' }}
             onClick={handleBackToList}
-            className={backButtonStyle}
-            title="Back"
-            ariaLabel="Back"
+            title="Back to enquiries list"
+            ariaLabel="Back to enquiries list"
+            styles={{
+              root: {
+                width: 32,
+                height: 32,
+                marginRight: 8,
+                backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#f3f3f3',
+                border: '1px solid #e1dfdd',
+                borderRadius: 4,
+                order: -1, // Ensure it appears first
+              },
+              rootHovered: {
+                backgroundColor: '#e7f1ff',
+                borderColor: '#3690CE',
+              }
+            }}
           />
-          <Pivot className="navigatorPivot" selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
-            <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
-            <PivotItem
-              headerText="Calls"
-              itemKey="Calls"
-              headerButtonProps={activeSubTab === 'Pitch' ? { 'aria-disabled': true, style: { color: '#aaa', cursor: 'not-allowed' } } : {}}
-            />
-            <PivotItem
-              headerText="Emails"
-              itemKey="Emails"
-              headerButtonProps={activeSubTab === 'Pitch' ? { 'aria-disabled': true, style: { color: '#aaa', cursor: 'not-allowed' } } : {}}
-            />
-          </Pivot>
-          <div style={{ flex: 1 }} />
-          {(isAdmin || isLocalhost) && (
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', height: 28, borderRadius: 8,
-                background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
-                border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 10, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
-              }}
-              title="Admin controls"
-            >
-              <span style={{ fontSize: 9, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700' }}>Deal Capture</span>
-              <ToggleSwitch
-                id="deal-capture-toggle"
-                checked={showDealCapture}
-                onChange={setShowDealCapture}
-                size="sm"
-                onText="Show"
-                offText="Hide"
-                ariaLabel="Show or hide Deal Capture (Scope & Quote Description + Amount)"
-              />
-            </div>
-          )}
-        </div>
+        </FilterBanner>
       );
     }
     return () => setContent(null);

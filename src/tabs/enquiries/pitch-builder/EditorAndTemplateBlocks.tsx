@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Stack, Text, Icon, Pivot, PivotItem, TextField } from '@fluentui/react';
-import { FaBolt, FaEdit, FaFileAlt, FaEraser, FaInfoCircle, FaThumbtack, FaCalculator, FaExclamationTriangle, FaEnvelope, FaPaperPlane, FaChevronDown, FaChevronUp, FaCopy, FaEye, FaCheck } from 'react-icons/fa';
+import { FaBolt, FaEdit, FaFileAlt, FaEraser, FaInfoCircle, FaThumbtack, FaCalculator, FaExclamationTriangle, FaEnvelope, FaPaperPlane, FaChevronDown, FaChevronUp, FaCopy, FaEye, FaCheck, FaTimes, FaUsers } from 'react-icons/fa';
 import DealCapture from './DealCapture';
 import { colours } from '../../../app/styles/colours';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
@@ -12,52 +12,97 @@ import { SCENARIOS, SCENARIOS_VERSION } from './scenarios';
 import EmailSignature from '../EmailSignature';
 import { applyDynamicSubstitutions, convertDoubleBreaksToParagraphs } from './emailUtils';
 import markUrl from '../../../assets/dark blue mark.svg';
+// Import tab bg image directly for debugging
+const tabBgUrl = require('../../../assets/tab bg.jpg');
 
-// CSS animations for processing status icons
+// Enterprise-grade subtle animations for professional appearance
 const animationStyles = `
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-@keyframes pulse {
+@keyframes subtlePulse {
   0%, 100% { 
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    opacity: 1;
     transform: scale(1); 
   }
   50% { 
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
-    transform: scale(1.02); 
+    opacity: 0.85;
+    transform: scale(1.01); 
   }
 }
 
-@keyframes morphToCheck {
+@keyframes smoothCheck {
   0% { 
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
-  }
-  30% { 
-    opacity: 0.3;
-    transform: scale(0.8) rotate(180deg);
+    opacity: 0;
+    transform: scale(0.9);
   }
   60% { 
-    opacity: 0.3;
-    transform: scale(0.8) rotate(270deg);
+    opacity: 0.8;
+    transform: scale(1.05);
   }
   100% { 
     opacity: 1;
-    transform: scale(1) rotate(360deg);
+    transform: scale(1);
   }
 }
 
-@keyframes subtleFloat {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-1px); }
+@keyframes gentleFloat {
+  0%, 100% { 
+    transform: translateY(0px);
+  }
+  50% { 
+    transform: translateY(-1px);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
+  from { 
+    opacity: 0; 
+    transform: translateY(4px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes subtleShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes softGlow {
+  0%, 100% { 
+    opacity: 1;
+  }
+  50% { 
+    opacity: 0.9;
+  }
+}
+
+@keyframes radio-check {
+  from { 
+    opacity: 0; 
+    transform: scale(0.8); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
 }
 `;
 
@@ -838,9 +883,9 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
       color: 'transparent', // hide raw text, rely on highlighted layer
     caretColor: isDarkMode ? colours.dark.text : '#222',
       font: 'inherit',
-  lineHeight: 1,
+  lineHeight: 1.6, // 🎯 Improved line spacing for better readability
       border: 'none',
-      padding: '4px 6px',
+      padding: '8px 12px', // 🎯 Slightly more padding for comfortable editing
       outline: 'none',
       whiteSpace: 'pre-wrap',
       wordBreak: 'break-word',
@@ -898,6 +943,8 @@ interface EditorAndTemplateBlocksProps {
   cc?: string;
   bcc?: string;
   feeEarnerEmail?: string;
+  // Callback to update recipients before sending
+  onRecipientsChange?: (to: string, cc?: string, bcc?: string) => void;
   // Inline status feedback
   dealCreationInProgress?: boolean;
   dealStatus?: 'idle' | 'processing' | 'ready' | 'error';
@@ -949,6 +996,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   cc,
   bcc,
   feeEarnerEmail,
+  onRecipientsChange,
   // Inline status feedback
   dealCreationInProgress,
   dealStatus,
@@ -987,6 +1035,15 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [hmrTick, setHmrTick] = useState(0);
   // Prevent Draft visual state from being triggered by Send action
   const [hasSentEmail, setHasSentEmail] = useState(false);
+  // Track hover state for validation message
+  const [showSendValidation, setShowSendValidation] = useState<boolean>(false);
+  // Editable To field in modal
+  const [editableTo, setEditableTo] = useState<string>(to || '');
+
+  // Update editable To when prop changes
+  React.useEffect(() => {
+    setEditableTo(to || '');
+  }, [to]);
 
   // Helper: reset editor to a fresh state
   const resetEditor = useCallback(() => {
@@ -1007,15 +1064,27 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     } catch {}
   }, [setBody, setSubject]);
 
-  // Auto-close the modal and restart editor when saving/sending finishes successfully
+  // Keep modal open - let user close when ready (more reassuring UX)
+  // Auto-reset editor when both saving and sending complete successfully
   useEffect(() => {
     const saved = dealStatus === 'ready';
     const sent = emailStatus === 'sent';
-    if (showSendConfirmModal && (saved || sent)) {
-      setShowSendConfirmModal(false);
+    // Only auto-reset editor if both operations completed successfully AND modal is closed
+    if (!showSendConfirmModal && saved && sent) {
       resetEditor();
     }
   }, [showSendConfirmModal, dealStatus, emailStatus, resetEditor]);
+
+  // Auto-close modal after successful email send
+  useEffect(() => {
+    if (emailStatus === 'sent' && showSendConfirmModal) {
+      const timer = setTimeout(() => {
+        setShowSendConfirmModal(false);
+      }, 2000); // Close after 2 seconds to allow user to see success
+      return () => clearTimeout(timer);
+    }
+  }, [emailStatus, showSendConfirmModal]);
+
   // Helper: apply simple [RATE]/[ROLE] substitutions and dynamic tokens ([InstructLink])
   const applyRateRolePlaceholders = useCallback((text: string) => {
     const u: any = Array.isArray(userData) ? (userData?.[0] ?? null) : userData;
@@ -1501,97 +1570,236 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 0 } }}>
         {/* Direct content without Email Composer container */}
         <div style={{ padding: '0 0 16px 0' }}>
-          {/* Scenario Picker (minimal, non-breaking) */}
+          {/* Scenario Picker - Modern Professional Design */}
           <div style={{
-            background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+            background: isDarkMode 
+              ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.98) 0%, rgba(9, 22, 44, 0.94) 52%, rgba(13, 35, 63, 0.9) 100%)'
+              : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
             borderRadius: '16px',
             padding: '24px',
-            border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
-            boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.4)' : '0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+            border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.26)' : 'rgba(148, 163, 184, 0.16)'}`,
+            boxShadow: isDarkMode 
+              ? '0 20px 44px rgba(2, 6, 17, 0.72)'
+              : '0 16px 40px rgba(13, 47, 96, 0.18)',
             marginBottom: 20,
             fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-            position: 'relative'
+            position: 'relative',
+            transition: 'all 0.25s ease'
           }}>
-            {/* Subtle accent border */}
+            {/* Refined accent border */}
             <div style={{
               position: 'absolute',
               top: 0,
               left: '50%',
               transform: 'translateX(-50%)',
-              width: '40px',
-              height: '2px',
-              background: 'linear-gradient(90deg, #3690CE, #60A5FA)',
-              borderRadius: '0 0 6px 6px'
+              width: '60px',
+              height: '3px',
+              background: isDarkMode 
+                ? 'linear-gradient(90deg, #3B82F6, #60A5FA)'
+                : 'linear-gradient(90deg, #3690CE, #60A5FA)',
+              borderRadius: '0 0 8px 8px'
             }}></div>
             
             <div 
               style={{
-                fontSize: '16px',
+                fontSize: '17px',
                 fontWeight: 600,
                 color: isDarkMode ? colours.dark.text : '#0F172A',
-                marginBottom: isTemplatesCollapsed ? 0 : '16px',
+                marginBottom: isTemplatesCollapsed ? 0 : '20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '8px',
-                padding: '8px 16px',
-                background: isDarkMode ? colours.dark.inputBackground : 'rgba(255, 255, 255, 0.7)',
-                borderRadius: '10px',
-                border: isDarkMode ? `1px solid ${colours.dark.border}` : '1px solid rgba(54, 144, 206, 0.1)',
+                gap: '12px',
+                padding: '12px 20px',
+                background: isDarkMode 
+                  ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.86) 100%)'
+                  : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                borderRadius: '12px',
+                border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.22)'}`,
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.3s ease',
+                backdropFilter: 'blur(12px)'
               }}
               onClick={() => setIsTemplatesCollapsed(!isTemplatesCollapsed)}
               onMouseEnter={(e) => {
                 if (isDarkMode) {
-                  e.currentTarget.style.background = colours.dark.cardBackground;
-                  e.currentTarget.style.borderColor = colours.blue;
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(10, 20, 40, 0.96) 0%, rgba(15, 35, 65, 0.9) 100%)';
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
                 } else {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
-                  e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.2)';
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #FAFBFC 0%, #F1F5F9 100%)';
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (isDarkMode) {
-                  e.currentTarget.style.background = colours.dark.inputBackground;
-                  e.currentTarget.style.borderColor = colours.dark.border;
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.86) 100%)';
+                  e.currentTarget.style.borderColor = 'rgba(125, 211, 252, 0.24)';
+                  e.currentTarget.style.transform = 'translateY(0)';
                 } else {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)';
-                  e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.1)';
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                  e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.22)';
+                  e.currentTarget.style.transform = 'translateY(0)';
                 }
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FaBolt style={{ fontSize: 14, color: '#3690CE' }} />
-                Quick Templates
-                {isTemplatesCollapsed && selectedScenarioId && (
-                  <span style={{ 
-                    fontSize: '13px', 
-                    fontWeight: 400, 
-                    color: '#64748B',
-                    marginLeft: '8px'
-                  }}>
-                    • {SCENARIOS.find(s => s.id === selectedScenarioId)?.name || 'Selected'}
-                  </span>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  padding: '8px',
+                  borderRadius: '8px',
+                  background: (() => {
+                    if (selectedScenarioId) {
+                      switch(selectedScenarioId) {
+                        case 'before-call-call':
+                          return isDarkMode 
+                            ? 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%)'
+                            : 'linear-gradient(135deg, rgba(54, 144, 206, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%)';
+                        case 'before-call-no-call':
+                          return isDarkMode
+                            ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(217, 119, 6, 0.15) 100%)'
+                            : 'linear-gradient(135deg, rgba(217, 119, 6, 0.1) 0%, rgba(251, 191, 36, 0.08) 100%)';
+                        case 'after-call-probably-cant-assist':
+                          return isDarkMode
+                            ? 'linear-gradient(135deg, rgba(248, 113, 113, 0.2) 0%, rgba(220, 38, 38, 0.15) 100%)'
+                            : 'linear-gradient(135deg, rgba(220, 38, 38, 0.1) 0%, rgba(248, 113, 113, 0.08) 100%)';
+                        case 'after-call-want-instruction':
+                          return isDarkMode
+                            ? 'linear-gradient(135deg, rgba(74, 222, 128, 0.2) 0%, rgba(5, 150, 105, 0.15) 100%)'
+                            : 'linear-gradient(135deg, rgba(5, 150, 105, 0.1) 0%, rgba(74, 222, 128, 0.08) 100%)';
+                        default:
+                          return isDarkMode
+                            ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.2) 0%, rgba(107, 114, 128, 0.15) 100%)'
+                            : 'linear-gradient(135deg, rgba(107, 114, 128, 0.1) 0%, rgba(148, 163, 184, 0.08) 100%)';
+                      }
+                    } else {
+                      // Default blue background when no template selected
+                      return isDarkMode 
+                        ? 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%)'
+                        : 'linear-gradient(135deg, rgba(54, 144, 206, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%)';
+                    }
+                  })(),
+                  border: (() => {
+                    if (selectedScenarioId) {
+                      switch(selectedScenarioId) {
+                        case 'before-call-call':
+                          return `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.3)' : 'rgba(54, 144, 206, 0.2)'}`;
+                        case 'before-call-no-call':
+                          return `1px solid ${isDarkMode ? 'rgba(251, 191, 36, 0.3)' : 'rgba(217, 119, 6, 0.2)'}`;
+                        case 'after-call-probably-cant-assist':
+                          return `1px solid ${isDarkMode ? 'rgba(248, 113, 113, 0.3)' : 'rgba(220, 38, 38, 0.2)'}`;
+                        case 'after-call-want-instruction':
+                          return `1px solid ${isDarkMode ? 'rgba(74, 222, 128, 0.3)' : 'rgba(5, 150, 105, 0.2)'}`;
+                        default:
+                          return `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(107, 114, 128, 0.2)'}`;
+                      }
+                    } else {
+                      // Default blue border when no template selected
+                      return `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.3)' : 'rgba(54, 144, 206, 0.2)'}`;
+                    }
+                  })(),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {(() => {
+                    const iconSize = 16;
+                    
+                    if (selectedScenarioId) {
+                      // Get the specific color for the selected template
+                      const iconColor = (() => {
+                        switch(selectedScenarioId) {
+                          case 'before-call-call': return isDarkMode ? '#60A5FA' : '#3690CE';
+                          case 'before-call-no-call': return isDarkMode ? '#FBBF24' : '#D97706';
+                          case 'after-call-probably-cant-assist': return isDarkMode ? '#F87171' : '#DC2626';
+                          case 'after-call-want-instruction': return isDarkMode ? '#4ADE80' : '#059669';
+                          default: return isDarkMode ? '#94A3B8' : '#6B7280';
+                        }
+                      })();
+                      
+                      // Show the selected template's icon with its specific color
+                      switch(selectedScenarioId) {
+                        case 'before-call-call':
+                          return (
+                            <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.1 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.66 12.66 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.66 12.66 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                            </svg>
+                          );
+                        case 'before-call-no-call':
+                          return (
+                            <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                              <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                          );
+                        case 'after-call-probably-cant-assist':
+                          return (
+                            <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                              <circle cx="12" cy="12" r="10"/>
+                              <path d="M15 9l-6 6M9 9l6 6"/>
+                            </svg>
+                          );
+                        case 'after-call-want-instruction':
+                          return (
+                            <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                              <path d="M9 12l2 2 4-4"/>
+                              <circle cx="12" cy="12" r="10"/>
+                            </svg>
+                          );
+                        default:
+                          return (
+                            <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                              <line x1="9" y1="9" x2="15" y2="15"/>
+                              <line x1="15" y1="9" x2="9" y2="15"/>
+                            </svg>
+                          );
+                      }
+                    } else {
+                      // Default lightning bolt icon when no template is selected
+                      const defaultIconColor = isDarkMode ? '#60A5FA' : '#3690CE';
+                      return <FaBolt style={{ fontSize: iconSize, color: defaultIconColor }} />;
+                    }
+                  })()}
+                </div>
+                <div>
+                  <div style={{ fontSize: '17px', fontWeight: 600 }}>
+                    {selectedScenarioId ? 
+                      (SCENARIOS.find(s => s.id === selectedScenarioId)?.name || 'Template Selected') :
+                      'Pitch Templates'
+                    }
+                  </div>
+                </div>
               </div>
-              {isTemplatesCollapsed ? 
-                <FaChevronDown style={{ fontSize: 12, color: '#64748B' }} /> : 
-                <FaChevronUp style={{ fontSize: 12, color: '#64748B' }} />
-              }
+              <div style={{
+                padding: '6px',
+                borderRadius: '6px',
+                background: isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.08)',
+                transition: 'all 0.2s ease'
+              }}>
+                {isTemplatesCollapsed ? 
+                  <FaChevronDown style={{ fontSize: 14, color: isDarkMode ? '#94A3B8' : '#64748B' }} /> : 
+                  <FaChevronUp style={{ fontSize: 14, color: isDarkMode ? '#94A3B8' : '#64748B' }} />
+                }
+              </div>
             </div>
             
             {!isTemplatesCollapsed && (
-              <div style={{ 
+              <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gridTemplateRows: 'repeat(2, 1fr)',
-                gap: '16px',
-                padding: '16px',
-                background: isDarkMode ? colours.dark.cardBackground : 'rgba(255, 255, 255, 0.5)',
-                borderRadius: '12px',
-                border: `1px solid ${isDarkMode ? colours.dark.border : 'rgba(203, 213, 225, 0.6)'}`,
-                animation: 'cascadeIn 0.3s ease-out',
+                gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : 'repeat(2, 1fr)',
+                gap: '20px',
+                padding: '20px',
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.98) 0%, rgba(9, 22, 44, 0.94) 52%, rgba(13, 35, 63, 0.9) 100%)'
+                  : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                borderRadius: '16px',
+                border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.18)'}`,
+                boxShadow: isDarkMode
+                  ? '0 18px 32px rgba(2, 6, 17, 0.58)'
+                  : '0 12px 28px rgba(13, 47, 96, 0.12)',
+                backdropFilter: 'blur(12px)',
+                animation: 'cascadeIn 0.4s ease-out',
                 opacity: 1,
                 transform: 'translateY(0)'
               }}>
@@ -1599,13 +1807,28 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   <button
                     key={s.id}
                     type="button"
-                    className={`premium-professional-choice-card ${selectedScenarioId === s.id ? 'active' : ''}`}
+                    className={`scenario-choice-card ${selectedScenarioId === s.id ? 'active' : ''}`}
                     aria-pressed={selectedScenarioId === s.id}
+                    aria-label={`Select ${s.name} template: ${(() => {
+                      switch (s.id) {
+                        case 'before-call-call':
+                          return 'Schedule consultation with Calendly link and no upfront cost';
+                        case 'before-call-no-call':
+                          return 'Detailed written pitch with cost estimate and instruction link';
+                        case 'after-call-probably-cant-assist':
+                          return 'Polite decline with alternative suggestions and review request';
+                        case 'after-call-want-instruction':
+                          return 'Formal proposal with comprehensive costs and next steps';
+                        default:
+                          return 'Standard professional response template';
+                      }
+                    })()}`}
                     role="radio"
+                    tabIndex={0}
                     onClick={() => {
                       setSelectedScenarioId(s.id);
-                      setIsTemplatesCollapsed(true); // Collapse after selection
-          // Prefill only the body; subject is kept independent. Prepend a dynamic salutation.
+                      setIsTemplatesCollapsed(true);
+
                       const raw = stripDashDividers(s.body);
                       const greetingName = (() => {
                         const e = enquiry as any;
@@ -1613,18 +1836,17 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         const name = String(first || '').trim();
                         return name.length > 0 ? name : 'there';
                       })();
-                      const salutation = `Dear ${greetingName},\n\n`;
-                      const composed = salutation + raw;
+                      const composed = raw.startsWith('Hi ') || raw.startsWith('Hello ')
+                        ? raw
+                        : `Hi ${greetingName},\n\n${raw}`;
                       const projected = applyRateRolePlaceholders(composed);
                       lastScenarioBodyRef.current = projected;
                       setBody(projected);
-                      // Optionally seed first block editable content to keep edit UX consistent
-                      const firstBlock = templateBlocks[0];
-                      if (firstBlock) {
+                      const firstBlock = templateBlocks?.[0];
+                      if (firstBlock?.title) {
                         setBlockContents(prev => ({ ...prev, [firstBlock.title]: projected }));
                       }
-                      // For "Before call" scenarios, quietly seed deal-capture placeholders
-                      // so users aren't blocked by validation. Only apply if empty/default.
+
                       const isBeforeCall = s.id.startsWith('before-call');
                       if (isBeforeCall) {
                         const placeholderDesc = 'Initial informal steer; scope to be confirmed after call';
@@ -1633,124 +1855,268 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           setScopeDescription(placeholderDesc);
                           onScopeDescriptionChange?.(placeholderDesc);
                         }
-                        const needsAmount = !amountValue || amountValue.trim() === '' || amountValue.trim() === '1500';
-                        if (needsAmount) {
-                          setAmountValue('0.99');
-                          onAmountChange?.('0.99');
-                        }
                       }
                     }}
                     style={{
                       position: 'relative',
-                      background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-                      border: `1px solid ${isDarkMode ? colours.dark.border : '#e5e7eb'}`,
-                      borderRadius: '8px',
-                      padding: '20px 24px',
+                      background: selectedScenarioId === s.id
+                        ? (isDarkMode
+                          ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.95) 0%, rgba(9, 22, 44, 0.92) 52%, rgba(13, 35, 63, 0.9) 100%)'
+                          : 'linear-gradient(135deg, rgba(248, 250, 252, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%)')
+                        : (isDarkMode
+                          ? 'linear-gradient(135deg, rgba(11, 22, 43, 0.88) 0%, rgba(13, 30, 56, 0.8) 100%)'
+                          : 'linear-gradient(135deg, rgba(248, 250, 252, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%)'),
+                      border: `2px solid ${selectedScenarioId === s.id
+                        ? (isDarkMode ? '#60A5FA' : '#3690CE')
+                        : (isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.16)')}`,
+                      borderRadius: '12px',
+                      padding: '24px',
                       cursor: 'pointer',
-                      transition: 'all 0.25s ease',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '20px',
+                      flexDirection: 'column',
+                      gap: '16px',
                       textAlign: 'left',
-                      minHeight: '100px',
-                      boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)',
-                      transform: 'translateY(0)',
-                      animation: `cascadeIn 0.4s ease-out ${index * 0.1}s both`,
+                      minHeight: '140px',
+                      boxShadow: selectedScenarioId === s.id
+                        ? (isDarkMode ? '0 10px 36px rgba(54, 144, 206, 0.35), 0 0 0 1px rgba(54, 144, 206, 0.22) inset' : '0 6px 24px rgba(54, 144, 206, 0.25), 0 0 0 1px rgba(54, 144, 206, 0.12) inset')
+                        : (isDarkMode ? '0 6px 18px rgba(4, 9, 20, 0.55)' : '0 3px 12px rgba(13, 47, 96, 0.08)'),
                       opacity: 0,
                       animationFillMode: 'forwards',
                       overflow: 'hidden',
-                      fontFamily: 'inherit'
+                      fontFamily: 'inherit',
+                      animation: `cascadeIn 0.5s ease-out ${index * 0.15}s both`,
+                      backdropFilter: 'blur(8px)'
                     }}
                     onMouseEnter={(e) => {
                       if (selectedScenarioId !== s.id) {
-                        e.currentTarget.style.borderColor = '#061733';
-                        e.currentTarget.style.boxShadow = isDarkMode ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0, 0, 0, 0.12)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.background = isDarkMode ? colours.dark.inputBackground : '#fafbfc';
+                        e.currentTarget.style.borderColor = isDarkMode ? '#60A5FA' : '#3690CE';
+                        e.currentTarget.style.boxShadow = isDarkMode
+                          ? '0 12px 28px rgba(96, 165, 250, 0.28)'
+                          : '0 8px 24px rgba(54, 144, 206, 0.2)';
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.01)';
+                        e.currentTarget.style.background = isDarkMode
+                          ? 'linear-gradient(135deg, rgba(13, 28, 56, 0.95) 0%, rgba(17, 36, 64, 0.9) 100%)'
+                          : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (selectedScenarioId !== s.id) {
-                        e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#e5e7eb';
-                        e.currentTarget.style.boxShadow = isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardBackground : '#ffffff';
+                        e.currentTarget.style.borderColor = isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.16)';
+                        e.currentTarget.style.boxShadow = isDarkMode ? '0 6px 18px rgba(4, 9, 20, 0.55)' : '0 3px 12px rgba(13, 47, 96, 0.08)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.background = isDarkMode
+                          ? 'linear-gradient(135deg, rgba(11, 22, 43, 0.88) 0%, rgba(13, 30, 56, 0.8) 100%)'
+                          : 'linear-gradient(135deg, rgba(248, 250, 252, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%)';
                       }
                     }}
                   >
+                    {/* Modern selection indicator */}
                     {selectedScenarioId === s.id && (
                       <div style={{
                         position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height: '3px',
-                        background: '#061733',
-                        borderRadius: '6px 6px 0 0'
+                        top: '-2px',
+                        left: '-2px',
+                        right: '-2px',
+                        bottom: '-2px',
+                        background: `linear-gradient(135deg, ${isDarkMode ? '#3B82F6' : '#2563EB'}, ${isDarkMode ? '#60A5FA' : '#3B82F6'})`,
+                        borderRadius: '14px',
+                        zIndex: -1,
+                        animation: 'pulseGlow 2s infinite'
                       }}></div>
                     )}
                     
-                    <div className="premium-choice-content" style={{
-                      flex: 1,
+                    <div className="scenario-card-content" style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '12px'
+                      height: '100%',
+                      gap: '16px',
+                      position: 'relative',
+                      zIndex: 1
                     }}>
-                      <div className="premium-choice-title" style={{
-                        fontSize: '16px',
-                        fontWeight: 600,
-                        color: isDarkMode ? colours.dark.text : '#1E293B',
-                        lineHeight: '1.3',
-                        marginBottom: '6px'
-                      }}>
-                        {s.name}
+                      {/* Icon and title section */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                        <div style={{
+                          padding: '12px',
+                          borderRadius: '12px',
+                          background: (() => {
+                            const baseColor = (() => {
+                              switch (s.id) {
+                                case 'before-call-call': return isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
+                                case 'before-call-no-call': return isDarkMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(251, 191, 36, 0.1)';
+                                case 'after-call-probably-cant-assist': return isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)';
+                                case 'after-call-want-instruction': return isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)';
+                                default: return isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.1)';
+                              }
+                            })();
+
+                            if (selectedScenarioId !== s.id) {
+                              return baseColor;
+                            }
+
+                            const accentGradient = (() => {
+                              switch (s.id) {
+                                case 'before-call-call':
+                                  return isDarkMode
+                                    ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.35) 0%, rgba(96, 165, 250, 0.3) 100%)'
+                                    : 'linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(96, 165, 250, 0.18) 100%)';
+                                case 'before-call-no-call':
+                                  return isDarkMode
+                                    ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.35) 0%, rgba(250, 204, 21, 0.28) 100%)'
+                                    : 'linear-gradient(135deg, rgba(251, 191, 36, 0.22) 0%, rgba(250, 204, 21, 0.16) 100%)';
+                                case 'after-call-probably-cant-assist':
+                                  return isDarkMode
+                                    ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.35) 0%, rgba(252, 165, 165, 0.28) 100%)'
+                                    : 'linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(248, 113, 113, 0.16) 100%)';
+                                case 'after-call-want-instruction':
+                                  return isDarkMode
+                                    ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.35) 0%, rgba(134, 239, 172, 0.28) 100%)'
+                                    : 'linear-gradient(135deg, rgba(34, 197, 94, 0.22) 0%, rgba(74, 222, 128, 0.16) 100%)';
+                                default:
+                                  return isDarkMode
+                                    ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.35) 0%, rgba(203, 213, 225, 0.28) 100%)'
+                                    : 'linear-gradient(135deg, rgba(148, 163, 184, 0.22) 0%, rgba(226, 232, 240, 0.16) 100%)';
+                              }
+                            })();
+
+                            return accentGradient;
+                          })(),
+                          border: `1px solid ${(() => {
+                            switch(s.id) {
+                              case 'before-call-call': return isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)';
+                              case 'before-call-no-call': return isDarkMode ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.2)';
+                              case 'after-call-probably-cant-assist': return isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)';
+                              case 'after-call-want-instruction': return isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)';
+                              default: return isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.2)';
+                            }
+                          })()}`,
+                          flexShrink: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s ease'
+                        }}>
+                          {(() => {
+                            const iconColor = (() => {
+                              // If this template is selected, use brand highlight blue
+                              if (selectedScenarioId === s.id) {
+                                return isDarkMode ? '#60A5FA' : '#3690CE';
+                              }
+                              
+                              // Otherwise, use theme-appropriate colors per template type
+                              switch(s.id) {
+                                case 'before-call-call': return isDarkMode ? '#60A5FA' : '#3690CE';
+                                case 'before-call-no-call': return isDarkMode ? '#FBBF24' : '#D97706';
+                                case 'after-call-probably-cant-assist': return isDarkMode ? '#F87171' : '#DC2626';
+                                case 'after-call-want-instruction': return isDarkMode ? '#4ADE80' : '#059669';
+                                default: return isDarkMode ? '#94A3B8' : '#6B7280';
+                              }
+                            })();
+                            
+                            switch(s.id) {
+                              case 'before-call-call': 
+                                return (
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.1 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.66 12.66 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.66 12.66 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                  </svg>
+                                );
+                              case 'before-call-no-call':
+                                return (
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                    <polyline points="22,6 12,13 2,6"/>
+                                  </svg>
+                                );
+                              case 'after-call-probably-cant-assist':
+                                return (
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M15 9l-6 6M9 9l6 6"/>
+                                  </svg>
+                                );
+                              case 'after-call-want-instruction':
+                                return (
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                                    <path d="M9 12l2 2 4-4"/>
+                                    <circle cx="12" cy="12" r="10"/>
+                                  </svg>
+                                );
+                              default:
+                                return (
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="9" y1="9" x2="15" y2="15"/>
+                                    <line x1="15" y1="9" x2="9" y2="15"/>
+                                  </svg>
+                                );
+                            }
+                          })()}
+                        </div>
+                        
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="scenario-title" style={{
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            color: isDarkMode ? colours.dark.text : '#1E293B',
+                            lineHeight: '1.4',
+                            marginBottom: '4px'
+                          }}>
+                            {s.name}
+                          </div>
+                          
+                          <div className="scenario-description" style={{
+                            fontSize: '12px',
+                            color: isDarkMode ? '#94A3B8' : '#64748B',
+                            lineHeight: '1.4',
+                            fontWeight: 400
+                          }}>
+                            {(() => {
+                              switch(s.id) {
+                                case 'before-call-call': 
+                                  return 'Schedule consultation • Calendly link • No upfront cost';
+                                case 'before-call-no-call':
+                                  return 'Detailed written pitch • Cost estimate • Instruction link';
+                                case 'after-call-probably-cant-assist':
+                                  return 'Polite decline • Alternative suggestions • Review request';
+                                case 'after-call-want-instruction':
+                                  return 'Formal proposal • Comprehensive costs • Next steps';
+                                default:
+                                  return 'Standard professional response template';
+                              }
+                            })()}
+                          </div>
+                        </div>
                       </div>
-                      <div className="premium-choice-description" style={{
-                        fontSize: '14px',
-                        color: isDarkMode ? '#CBD5E1' : '#6b7280',
-                        lineHeight: '1.4',
-                        fontWeight: 400
+                      
+                      {/* Selection indicator */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        alignItems: 'center',
+                        marginTop: 'auto'
                       }}>
-                        {s.name === 'Before call — Call' ? 'Send pitch email before scheduling consultation call' :
-                         s.name === 'Before call — No call' ? 'Send pitch email without scheduling a call' :
-                         s.name === 'After call — Probably can\'t assist' ? 'Polite follow-up when unable to take the case' :
-                         s.name === 'After call — Want the instruction' ? 'Formal proposal after successful consultation' :
-                         'Standard professional response template'}
-                      </div>
-                    </div>
-                    
-                    <div className="premium-choice-indicator" style={{
-                      flexShrink: 0,
-                      marginTop: '6px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <div className="premium-choice-radio" style={{
-                        width: '20px',
-                        height: '20px',
-                        border: `2px solid ${isDarkMode ? colours.dark.border : '#d1d5db'}`,
-                        borderRadius: '50%',
-                        background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-                        position: 'relative',
-                        transition: 'all 0.25s ease',
-                        boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)',
-                        borderColor: selectedScenarioId === s.id ? '#061733' : (isDarkMode ? colours.dark.border : '#d1d5db'),
-                        backgroundColor: selectedScenarioId === s.id ? '#061733' : (isDarkMode ? colours.dark.cardBackground : '#ffffff')
-                      }}>
-                        {selectedScenarioId === s.id && (
-                          <div style={{
-                            position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            width: '5px',
-                            height: '5px',
-                            background: '#ffffff',
-                            borderRadius: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            animation: 'radio-check 0.25s ease 0.1s forwards'
-                          }}></div>
-                        )}
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          border: `2px solid ${selectedScenarioId === s.id 
+                            ? (isDarkMode ? '#3B82F6' : '#2563EB') 
+                            : (isDarkMode ? 'rgba(148, 163, 184, 0.4)' : 'rgba(148, 163, 184, 0.3)')}`,
+                          borderRadius: '50%',
+                          background: selectedScenarioId === s.id 
+                            ? (isDarkMode ? '#3B82F6' : '#2563EB') 
+                            : 'transparent',
+                          position: 'relative',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {selectedScenarioId === s.id && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3">
+                              <polyline points="20,6 9,17 4,12"/>
+                            </svg>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -1770,31 +2136,40 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             
             {/* Subject Line - Primary Focus */}
             <div style={{
-              background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
-              borderRadius: '12px',
-              padding: '20px',
-              border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
-              boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-              marginBottom: initialNotes ? 20 : 0,
-              fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+              background: isDarkMode
+                ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.98) 0%, rgba(9, 22, 44, 0.94) 52%, rgba(13, 35, 63, 0.9) 100%)'
+                : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.94) 100%)',
+              borderRadius: '16px',
+              padding: '24px',
+              border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.22)'}`,
+              boxShadow: isDarkMode 
+                ? '0 18px 32px rgba(2, 6, 17, 0.58)' 
+                : '0 12px 28px rgba(13, 47, 96, 0.12)',
+              marginBottom: initialNotes ? 24 : 0,
+              fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+              backdropFilter: 'blur(12px)',
+              animation: 'cascadeIn 0.4s ease-out'
             }}>
               <div style={{
                 fontSize: '14px',
                 fontWeight: 600,
-                color: isDarkMode ? colours.dark.text : '#1E293B',
-                marginBottom: '12px',
+                color: isDarkMode ? '#E0F2FE' : '#0F172A',
+                marginBottom: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
               }}>
                 <div style={{
-                  padding: '6px',
-                  background: isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.1)',
-                  borderRadius: '6px',
+                  padding: '8px',
+                  background: isDarkMode 
+                    ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(59, 130, 246, 0.18) 100%)'
+                    : 'linear-gradient(135deg, rgba(54, 144, 206, 0.16) 0%, rgba(96, 165, 250, 0.18) 100%)',
+                  borderRadius: '8px',
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)'}`
                 }}>
-                  <FaEdit style={{ fontSize: 12, color: '#3690CE' }} />
+                  <FaEdit style={{ fontSize: 14, color: isDarkMode ? '#60A5FA' : '#3690CE' }} />
                 </div>
                 Subject Line
               </div>
@@ -1805,28 +2180,37 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 placeholder="Craft your email subject based on the context below..."
                 style={{
                   width: '100%',
-                  padding: '14px 18px',
-                  fontSize: '14px',
+                  padding: '16px 20px',
+                  fontSize: '15px',
                   fontWeight: 400,
-                  border: `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
-                  borderRadius: '8px',
-                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#FFFFFF',
-                  color: isDarkMode ? colours.dark.text : '#0F172A',
+                  border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.3)'}`,
+                  borderRadius: '10px',
+                  background: isDarkMode 
+                    ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.88) 100%)'
+                    : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
+                  color: isDarkMode ? '#E0F2FE' : '#0F172A',
                   outline: 'none',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: isDarkMode
+                    ? '0 12px 20px rgba(4, 9, 20, 0.6)'
+                    : '0 8px 18px rgba(13, 47, 96, 0.14)',
                   fontFamily: 'inherit',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  backdropFilter: 'blur(8px)'
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#3690CE';
+                  e.target.style.borderColor = isDarkMode ? '#60A5FA' : '#3690CE';
                   e.target.style.borderWidth = '2px';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(54, 144, 206, 0.1), 0 4px 6px rgba(0,0,0,0.1)';
+                  e.target.style.boxShadow = isDarkMode
+                    ? '0 0 0 4px rgba(96, 165, 250, 0.2), 0 16px 28px rgba(4, 9, 20, 0.7)'
+                    : '0 0 0 4px rgba(54, 144, 206, 0.15), 0 12px 24px rgba(13, 47, 96, 0.18)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = isDarkMode ? colours.dark.border : '#CBD5E1';
+                  e.target.style.borderColor = isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.3)';
                   e.target.style.borderWidth = '1px';
-                  e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                  e.target.style.boxShadow = isDarkMode
+                    ? '0 12px 20px rgba(4, 9, 20, 0.6)'
+                    : '0 8px 18px rgba(13, 47, 96, 0.14)';
                 }}
               />
             </div>
@@ -1835,37 +2219,52 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
             {/* Email body / Preview (swap in place) */}
             <div style={{
-              background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
-              borderRadius: '12px',
-              padding: '20px',
-              border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
-              boxShadow: isDarkMode ? '0 2px 4px rgba(0,0,0,0.5)' : '0 2px 4px 0 rgba(0, 0, 0, 0.06)',
-              marginBottom: 18,
-              fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+              background: isDarkMode
+                ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.98) 0%, rgba(9, 22, 44, 0.94) 52%, rgba(13, 35, 63, 0.9) 100%)'
+                : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.94) 100%)',
+              borderRadius: '16px',
+              padding: '24px',
+              border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.22)'}`,
+              boxShadow: isDarkMode 
+                ? '0 18px 32px rgba(2, 6, 17, 0.58)' 
+                : '0 12px 28px rgba(13, 47, 96, 0.12)',
+              marginBottom: 20,
+              fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+              backdropFilter: 'blur(12px)',
+              animation: 'cascadeIn 0.4s ease-out'
             }}>
               <div style={{
                 fontSize: '14px',
                 fontWeight: 600,
-                color: isDarkMode ? colours.dark.text : '#1E293B',
-                marginBottom: '16px',
+                color: isDarkMode ? '#E0F2FE' : '#0F172A',
+                marginBottom: '18px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
                 justifyContent: 'space-between',
-                padding: '8px 16px',
-                background: isDarkMode ? colours.dark.inputBackground : 'rgba(255, 255, 255, 0.7)',
-                borderRadius: '10px',
-                border: isDarkMode ? `1px solid ${colours.dark.border}` : '1px solid rgba(54, 144, 206, 0.1)'
+                padding: '12px 18px',
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.92) 0%, rgba(11, 30, 55, 0.86) 100%)'
+                  : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
+                borderRadius: '12px',
+                border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.3)' : 'rgba(148, 163, 184, 0.22)'}`,
+                boxShadow: isDarkMode 
+                  ? '0 10px 22px rgba(4, 9, 20, 0.55)' 
+                  : '0 6px 16px rgba(13, 47, 96, 0.12)',
+                backdropFilter: 'blur(8px)'
               }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   <div style={{
-                    padding: '6px',
-                    background: isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.1)',
-                    borderRadius: '6px',
+                    padding: '8px',
+                    background: isDarkMode 
+                      ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(59, 130, 246, 0.18) 100%)'
+                      : 'linear-gradient(135deg, rgba(54, 144, 206, 0.16) 0%, rgba(96, 165, 250, 0.18) 100%)',
+                    borderRadius: '8px',
                     display: 'flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)'}`
                   }}>
-                    <FaFileAlt style={{ fontSize: 12, color: '#3690CE' }} />
+                    <FaFileAlt style={{ fontSize: 14, color: isDarkMode ? '#60A5FA' : '#3690CE' }} />
                   </div>
                   {showInlinePreview ? 'Preview' : 'Email body'}
                 </span>
@@ -1905,33 +2304,52 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       setTimeout(() => setCopiedToolbar(false), 1200);
                     }}
                     style={{
-                      padding: '6px 12px',
+                      padding: '10px 16px',
                       fontSize: '12px',
-                      borderRadius: '6px',
-                      border: copiedToolbar ? '1px solid #16a34a' : `1px solid ${isDarkMode ? colours.blue : '#3690CE'}`,
-                      color: copiedToolbar ? '#166534' : (isDarkMode ? colours.blue : '#3690CE'),
-                      background: copiedToolbar ? (isDarkMode ? 'rgba(22, 101, 52, 0.2)' : '#e8f5e8') : (isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)'),
+                      borderRadius: '10px',
+                      border: copiedToolbar 
+                        ? '1px solid #16a34a' 
+                        : `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)'}`,
+                      color: copiedToolbar ? '#166534' : (isDarkMode ? '#60A5FA' : '#3690CE'),
+                      background: copiedToolbar
+                        ? (isDarkMode ? 'linear-gradient(135deg, rgba(22, 101, 52, 0.35) 0%, rgba(21, 128, 61, 0.25) 100%)' : 'linear-gradient(135deg, #e8f5e8 0%, #dcfce7 100%)')
+                        : (isDarkMode
+                          ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(59, 130, 246, 0.18) 100%)'
+                          : 'linear-gradient(135deg, rgba(54, 144, 206, 0.16) 0%, rgba(96, 165, 250, 0.18) 100%)'),
                       cursor: 'pointer',
                       fontFamily: 'inherit',
-                      fontWeight: 500,
-                      transition: 'all 0.2s ease',
+                      fontWeight: 600,
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 4,
-                      boxShadow: copiedToolbar ? '0 2px 4px rgba(22, 163, 74, 0.2)' : (isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(54, 144, 206, 0.15)')
+                      gap: 6,
+                      boxShadow: copiedToolbar
+                        ? '0 4px 12px rgba(22, 163, 74, 0.28)'
+                        : (isDarkMode
+                          ? '0 8px 16px rgba(4, 9, 20, 0.5)'
+                          : '0 4px 12px rgba(13, 47, 96, 0.12)'),
+                      backdropFilter: 'blur(6px)'
                     }}
                     onMouseEnter={(e) => {
                       if (!copiedToolbar) {
-                        e.currentTarget.style.background = isDarkMode ? colours.dark.inputBackground : 'linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%)';
+                        e.currentTarget.style.background = isDarkMode
+                          ? 'linear-gradient(135deg, rgba(13, 28, 56, 0.94) 0%, rgba(17, 36, 64, 0.9) 100%)'
+                          : 'linear-gradient(135deg, rgba(54, 144, 206, 0.26) 0%, rgba(96, 165, 250, 0.32) 100%)';
                         e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = isDarkMode ? '0 4px 6px rgba(0,0,0,0.5)' : '0 4px 6px rgba(54, 144, 206, 0.2)';
+                        e.currentTarget.style.boxShadow = isDarkMode
+                          ? '0 10px 20px rgba(10, 20, 40, 0.55)'
+                          : '0 6px 16px rgba(54, 144, 206, 0.24)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!copiedToolbar) {
-                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
+                        e.currentTarget.style.background = isDarkMode
+                          ? 'linear-gradient(135deg, rgba(11, 22, 43, 0.88) 0%, rgba(13, 30, 56, 0.82) 100%)'
+                          : 'linear-gradient(135deg, rgba(54, 144, 206, 0.18) 0%, rgba(96, 165, 250, 0.24) 100%)';
                         e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(54, 144, 206, 0.15)';
+                        e.currentTarget.style.boxShadow = isDarkMode
+                          ? '0 6px 14px rgba(4, 9, 20, 0.6)'
+                          : '0 4px 10px rgba(13, 47, 96, 0.16)';
                       }
                     }}
                     title={showInlinePreview ? 'Copy preview text' : 'Copy plain text'}
@@ -1949,43 +2367,57 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   <button
                     onClick={() => setShowInlinePreview(v => !v)}
                     style={{
-                      padding: '6px 12px',
+                      padding: '10px 16px',
                       fontSize: '12px',
-                      borderRadius: '8px',
-                      border: showInlinePreview ? `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}` : '1px solid #D65541',
-                      color: showInlinePreview ? (isDarkMode ? colours.dark.text : '#64748B') : '#ffffff',
+                      borderRadius: '10px',
+                      border: showInlinePreview
+                        ? `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)'}`
+                        : `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.55)' : 'rgba(54, 144, 206, 0.55)'}`,
+                      color: showInlinePreview ? (isDarkMode ? '#60A5FA' : '#3690CE') : '#ffffff',
                       background: showInlinePreview
-                        ? (isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)')
-                        : `linear-gradient(135deg, ${colours.red} 0%, #b04434 100%)`,
+                        ? (isDarkMode
+                          ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(59, 130, 246, 0.18) 100%)'
+                          : 'linear-gradient(135deg, rgba(54, 144, 206, 0.16) 0%, rgba(96, 165, 250, 0.18) 100%)')
+                        : 'linear-gradient(135deg, #3690CE 0%, #60A5FA 100%)',
                       cursor: 'pointer',
                       fontFamily: 'inherit',
                       fontWeight: showInlinePreview ? 600 : 700,
-                      transition: 'all 0.2s ease',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
-                      boxShadow: showInlinePreview ? (isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)') : '0 2px 4px rgba(214, 85, 65, 0.25)'
+                      boxShadow: showInlinePreview
+                        ? (isDarkMode ? '0 8px 16px rgba(4, 9, 20, 0.5)' : '0 4px 12px rgba(13, 47, 96, 0.12)')
+                        : '0 6px 16px rgba(54, 144, 206, 0.22)',
+                      backdropFilter: 'blur(6px)'
                     }}
                     onMouseEnter={(e) => {
                       if (showInlinePreview) {
-                        e.currentTarget.style.borderColor = isDarkMode ? colours.blue : '#94A3B8';
-                        e.currentTarget.style.color = isDarkMode ? colours.dark.text : '#475569';
-                        e.currentTarget.style.background = isDarkMode ? colours.dark.inputBackground : 'linear-gradient(135deg, #F0F4F8 0%, #EFF6FF 100%)';
+                        e.currentTarget.style.borderColor = isDarkMode ? '#60A5FA' : '#3690CE';
+                        e.currentTarget.style.color = isDarkMode ? '#60A5FA' : '#3690CE';
+                        e.currentTarget.style.background = isDarkMode
+                          ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.34) 0%, rgba(59, 130, 246, 0.28) 100%)'
+                          : 'linear-gradient(135deg, rgba(54, 144, 206, 0.26) 0%, rgba(96, 165, 250, 0.28) 100%)';
+                        e.currentTarget.style.boxShadow = isDarkMode
+                          ? '0 10px 20px rgba(10, 20, 40, 0.55)'
+                          : '0 6px 16px rgba(54, 144, 206, 0.24)';
                       } else {
-                        e.currentTarget.style.background = `linear-gradient(135deg, #c24a39 0%, #9e3d30 100%)`;
-                        e.currentTarget.style.boxShadow = '0 3px 6px rgba(214, 85, 65, 0.30)';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #2F7DC2 0%, #539EF0 100%)';
+                        e.currentTarget.style.boxShadow = '0 8px 18px rgba(54, 144, 206, 0.25)';
                       }
                       e.currentTarget.style.transform = 'translateY(-1px)';
                     }}
                     onMouseLeave={(e) => {
                       if (showInlinePreview) {
-                        e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#CBD5E1';
-                        e.currentTarget.style.color = isDarkMode ? colours.dark.text : '#64748B';
-                        e.currentTarget.style.background = isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                        e.currentTarget.style.boxShadow = isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0, 0, 0, 0.08)';
+                        e.currentTarget.style.borderColor = isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)';
+                        e.currentTarget.style.color = isDarkMode ? '#60A5FA' : '#3690CE';
+                        e.currentTarget.style.background = isDarkMode
+                          ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(59, 130, 246, 0.18) 100%)'
+                          : 'linear-gradient(135deg, rgba(54, 144, 206, 0.16) 0%, rgba(96, 165, 250, 0.18) 100%)';
+                        e.currentTarget.style.boxShadow = isDarkMode ? '0 8px 16px rgba(4, 9, 20, 0.5)' : '0 4px 12px rgba(13, 47, 96, 0.12)';
                       } else {
-                        e.currentTarget.style.background = `linear-gradient(135deg, ${colours.red} 0%, #b04434 100%)`;
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(214, 85, 65, 0.25)';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #3690CE 0%, #60A5FA 100%)';
+                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(54, 144, 206, 0.22)';
                       }
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
@@ -1997,13 +2429,16 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               </div>
               {!showInlinePreview && (
                 <div className="smooth-appear" style={{
-                  border: `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
-                  borderRadius: '8px',
-                  background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #FEFEFE 100%)',
-                  padding: '6px',
+                  border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(148, 163, 184, 0.22)'}`,
+                  borderRadius: '12px',
+                  background: isDarkMode
+                    ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.88) 100%)'
+                    : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
+                  padding: '10px',
                   position: 'relative',
                   overflow: 'hidden',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+                  boxShadow: isDarkMode ? '0 12px 28px rgba(4, 9, 20, 0.6)' : '0 8px 20px rgba(13, 47, 96, 0.14)',
+                  backdropFilter: 'blur(10px)'
                 }}>
                   {/* Watermark */}
                   <div aria-hidden="true" style={{ position: 'absolute', top: 8, right: 8, width: 150, height: 150, opacity: 0.06, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none' }} />
@@ -2024,26 +2459,54 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               {showInlinePreview && (
                 <div className="smooth-appear" style={{
                 marginTop: 12,
-                border: `1px solid ${isDarkMode ? colours.dark.border : '#CBD5E1'}`,
-                borderRadius: '8px',
-                background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #FFFFFF 0%, #FEFEFE 100%)',
+                border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(148, 163, 184, 0.22)'}`,
+                borderRadius: '12px',
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.88) 100%)'
+                  : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
                 overflow: 'hidden',
-                position: 'relative'
+                position: 'relative',
+                boxShadow: isDarkMode ? '0 12px 28px rgba(4, 9, 20, 0.6)' : '0 8px 20px rgba(13, 47, 96, 0.14)',
+                backdropFilter: 'blur(10px)'
               }}>
                 {/* Watermark */}
                 <div aria-hidden="true" style={{ position: 'absolute', top: 10, right: 10, width: 160, height: 160, opacity: isDarkMode ? 0.08 : 0.08, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none' }} />
                 <div style={{
-                  padding: '10px 12px',
-                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-                  borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  padding: '12px 16px',
+                  background: isDarkMode
+                    ? 'linear-gradient(135deg, rgba(11, 30, 55, 0.92) 0%, rgba(15, 38, 68, 0.85) 100%)'
+                    : 'linear-gradient(135deg, rgba(240, 249, 255, 0.85) 0%, rgba(219, 234, 254, 0.8) 100%)',
+                  borderBottom: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.25)' : 'rgba(148, 163, 184, 0.2)'}`,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8
+                  gap: 8,
+                  backdropFilter: 'blur(8px)'
                 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#5f6368', letterSpacing: 0.4, textTransform: 'uppercase' }}>Inline Preview</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 11, color: '#888' }}>{subject || 'Your Enquiry - Helix Law'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: isDarkMode ? '#E0F2FE' : '#0F172A', letterSpacing: 0.6, textTransform: 'uppercase' }}>Inline Preview</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: isDarkMode ? 'rgba(224, 242, 254, 0.7)' : '#3B82F6' }}>{subject || 'Your Enquiry - Helix Law'}</span>
                 </div>
-                <div ref={previewRef} style={{ padding: 12 }}>
+                <div 
+                  ref={previewRef} 
+                  className={`email-preview ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
+                  style={{ 
+                    padding: '18px 20px',
+                    background: isDarkMode
+                      ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.92) 0%, rgba(11, 30, 55, 0.86) 100%)'
+                      : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
+                    color: isDarkMode ? '#E0F2FE' : '#1F2937',
+                    lineHeight: 1.6,
+                    fontSize: '14px',
+                    borderRadius: '0 0 12px 12px',
+                    border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.3)' : 'rgba(148, 163, 184, 0.22)'}`,
+                    borderTop: 'none',
+                    boxShadow: isDarkMode 
+                      ? '0 8px 16px rgba(4, 9, 20, 0.5)' 
+                      : '0 4px 12px rgba(13, 47, 96, 0.1)',
+                    backdropFilter: 'blur(8px)',
+                    // Ensure proper text selection visibility
+                    WebkitUserSelect: 'text',
+                    userSelect: 'text'
+                  }}>
                   {(() => {
                     // Build preview HTML with substitutions and signature
                     const withoutAutoBlocks = stripDashDividers(body || '');
@@ -2071,15 +2534,22 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       <>
                         {unresolvedBody.length > 0 && (
                           <div style={{
-                            background: '#fff1f0',
-                            border: '1px solid #ffa39e',
-                            color: '#a8071a',
+                            background: isDarkMode
+                              ? 'linear-gradient(135deg, rgba(185, 28, 28, 0.2) 0%, rgba(153, 27, 27, 0.15) 100%)'
+                              : 'linear-gradient(135deg, #fff1f0 0%, #fef2f2 100%)',
+                            border: `1px solid ${isDarkMode ? 'rgba(248, 113, 113, 0.4)' : '#ffa39e'}`,
+                            color: isDarkMode ? '#FCA5A5' : '#a8071a',
                             fontSize: 12,
-                            padding: '8px 10px',
-                            borderRadius: 6,
-                            marginBottom: 10
+                            padding: '10px 12px',
+                            borderRadius: 8,
+                            marginBottom: 10,
+                            boxShadow: isDarkMode 
+                              ? '0 4px 12px rgba(185, 28, 28, 0.25)' 
+                              : '0 2px 8px rgba(168, 7, 26, 0.15)',
+                            backdropFilter: 'blur(6px)',
+                            fontWeight: 500
                           }}>
-                            <FaExclamationTriangle style={{ fontSize: 12, color: '#a8071a', marginRight: 6 }} />
+                            <FaExclamationTriangle style={{ fontSize: 12, color: isDarkMode ? '#FCA5A5' : '#a8071a', marginRight: 6 }} />
                             {unresolvedBody.length} placeholder{unresolvedBody.length === 1 ? '' : 's'} to resolve: {unresolvedBody.join(', ')}
                           </div>
                         )}
@@ -2089,19 +2559,22 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   })()}
                 </div>
                 <div style={{
-                  padding: '10px 12px',
-                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
-                  borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  padding: '12px 16px',
+                  background: isDarkMode
+                    ? 'linear-gradient(135deg, rgba(11, 30, 55, 0.92) 0%, rgba(15, 38, 68, 0.85) 100%)'
+                    : 'linear-gradient(135deg, rgba(240, 249, 255, 0.85) 0%, rgba(219, 234, 254, 0.8) 100%)',
+                  borderTop: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.25)' : 'rgba(148, 163, 184, 0.2)'}`,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
-                  flexWrap: 'wrap'
+                  flexWrap: 'wrap',
+                  backdropFilter: 'blur(8px)'
                 }}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: isDarkMode ? colours.dark.text : '#3c4043' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: isDarkMode ? '#CFE8FF' : '#1E293B', fontWeight: 600 }}>
                     <input type="checkbox" checked={confirmReady} onChange={e => setConfirmReady(e.currentTarget.checked)} />
                     Everything looks good, ready to proceed
                   </label>
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, position: 'relative' }}>
                     {(() => {
                       // Determine unresolved placeholders across subject and body after substitution
                       const userDataLocal = (typeof userData !== 'undefined') ? userData : undefined;
@@ -2129,93 +2602,111 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                             disabled={disableSend}
                             title={sendBtnTitle}
                             style={{
-                              padding: '6px 12px', 
+                              padding: '8px 16px', 
                               borderRadius: 6, 
                               border: 'none', 
                               cursor: disableSend ? 'not-allowed' : 'pointer',
-                              background: disableSend ? '#CCCCCC' : colours.blue, 
-                              color: '#fff', 
+                              background: disableSend ? '#9CA3AF' : '#3B82F6', 
+                              color: '#ffffff', 
                               fontWeight: 600, 
                               opacity: disableSend ? 0.6 : 1,
-                              transition: 'all 0.2s ease',
-                              transform: 'translateY(0)'
+                              transition: 'background-color 0.2s ease'
                             }}
                             onMouseEnter={(e) => {
-                              if (!disableSend) {
-                                e.currentTarget.style.background = '#2B7BC7';
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(54, 144, 206, 0.3)';
+                              if (disableSend) {
+                                setShowSendValidation(true);
+                              } else {
+                                e.currentTarget.style.background = '#2563EB';
                               }
                             }}
                             onMouseLeave={(e) => {
-                              if (!disableSend) {
-                                e.currentTarget.style.background = colours.blue;
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = 'none';
-                              }
-                            }}
-                            onMouseDown={(e) => {
-                              if (!disableSend) {
-                                e.currentTarget.style.transform = 'translateY(1px)';
-                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(54, 144, 206, 0.2)';
-                              }
-                            }}
-                            onMouseUp={(e) => {
-                              if (!disableSend) {
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(54, 144, 206, 0.3)';
+                              if (disableSend) {
+                                setShowSendValidation(false);
+                              } else {
+                                e.currentTarget.style.background = '#3B82F6';
                               }
                             }}
                           >
-                            <FaPaperPlane style={{ marginRight: 4 }} /> Send
+                            <FaPaperPlane style={{ marginRight: 6 }} /> Send Email...
                           </button>
                           <button
                             onClick={() => handleDraftEmail?.()}
                             disabled={disableDraft}
                             style={{
-                              padding: '6px 12px', 
+                              padding: '8px 16px', 
                               borderRadius: 6, 
-                              border: `1px solid ${draftVisualConfirmed ? colours.green : '#e1e5e9'}`,
-                              background: draftVisualConfirmed ? '#e8f5e8' : '#fff', 
-                              color: draftVisualConfirmed ? colours.green : '#3c4043', 
+                              border: `1px solid ${draftVisualConfirmed ? colours.green : (isDarkMode ? '#475569' : '#D1D5DB')}`,
+                              background: draftVisualConfirmed
+                                ? 'rgba(34, 197, 94, 0.1)'
+                                : (isDarkMode ? '#374151' : '#F9FAFB'), 
+                              color: draftVisualConfirmed ? colours.green : (isDarkMode ? '#E5E7EB' : '#374151'), 
                               fontWeight: 600,
                               cursor: disableDraft ? 'not-allowed' : 'pointer',
-                              transition: 'all 0.2s ease',
-                              transform: 'translateY(0)',
+                              transition: 'background-color 0.2s ease',
                               opacity: disableDraft ? 0.6 : 1
                             }}
                             onMouseEnter={(e) => {
                               if (!disableDraft && !draftVisualConfirmed) {
-                                e.currentTarget.style.borderColor = colours.green;
-                                e.currentTarget.style.background = '#f0f9f0';
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(32, 178, 108, 0.15)';
+                                e.currentTarget.style.background = isDarkMode ? '#4B5563' : '#E5E7EB';
                               }
                             }}
                             onMouseLeave={(e) => {
                               if (!disableDraft && !draftVisualConfirmed) {
-                                e.currentTarget.style.borderColor = '#e1e5e9';
-                                e.currentTarget.style.background = '#fff';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = 'none';
-                              }
-                            }}
-                            onMouseDown={(e) => {
-                              if (!disableDraft && !draftVisualConfirmed) {
-                                e.currentTarget.style.transform = 'translateY(1px)';
-                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(32, 178, 108, 0.1)';
-                              }
-                            }}
-                            onMouseUp={(e) => {
-                              if (!disableDraft && !draftVisualConfirmed) {
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(32, 178, 108, 0.15)';
+                                e.currentTarget.style.background = isDarkMode ? '#374151' : '#F9FAFB';
                               }
                             }}
                             title={draftVisualConfirmed ? 'Drafted' : (unresolvedAny ? 'Resolve placeholders before drafting' : 'Draft Email')}
                           >
                             {draftVisualConfirmed ? <FaCheck style={{ marginRight: 4 }} /> : <FaEnvelope style={{ marginRight: 4 }} />} {draftVisualConfirmed ? 'Drafted' : 'Draft Email'}
                           </button>
+                          
+                          {/* Validation feedback for disabled send button - shows on hover */}
+                          {disableSend && showSendValidation && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '100%',
+                              right: 0,
+                              marginTop: 8,
+                              background: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(254, 242, 242, 0.9)',
+                              border: `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)'}`,
+                              borderRadius: 6,
+                              padding: '10px 14px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              whiteSpace: 'nowrap',
+                              zIndex: 1000,
+                              boxShadow: isDarkMode 
+                                ? '0 4px 12px rgba(0, 0, 0, 0.4)' 
+                                : '0 4px 12px rgba(0, 0, 0, 0.1)',
+                              opacity: 1,
+                              animation: 'fadeIn 0.15s ease-out'
+                            }}>
+                              <div style={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: '50%',
+                                background: isDarkMode ? '#EF4444' : '#DC2626',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#ffffff',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                flexShrink: 0
+                              }}>!</div>
+                              <div style={{
+                                fontSize: 13,
+                                fontWeight: 500,
+                                color: isDarkMode ? '#FEE2E2' : '#991B1B'
+                              }}>
+                                {unresolvedAny 
+                                  ? 'Please resolve all highlighted placeholders before sending the email.'
+                                  : 'Scope of Work missing.'
+                                }
+                              </div>
+                            </div>
+                          )}
                         </>
                       );
                     })()}
@@ -2229,29 +2720,37 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       }}
                       style={{ 
                         padding: '6px 12px', 
-                        borderRadius: 6, 
-                        border: copiedFooter ? '1px solid #16a34a' : '1px solid #e1e5e9', 
-                        background: copiedFooter ? '#e8f5e8' : '#fff', 
-                        color: copiedFooter ? '#166534' : '#3c4043', 
-                        fontWeight: 500,
+                        borderRadius: 8, 
+                        border: copiedFooter ? '1px solid #16a34a' : `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.45)' : 'rgba(54, 144, 206, 0.45)'}`, 
+                        background: copiedFooter
+                          ? (isDarkMode ? 'linear-gradient(135deg, rgba(22, 101, 52, 0.35) 0%, rgba(21, 128, 61, 0.25) 100%)' : 'linear-gradient(135deg, #e8f5e8 0%, #dcfce7 100%)')
+                          : (isDarkMode
+                            ? 'linear-gradient(135deg, rgba(11, 22, 43, 0.88) 0%, rgba(13, 30, 56, 0.82) 100%)'
+                            : 'linear-gradient(135deg, rgba(54, 144, 206, 0.18) 0%, rgba(96, 165, 250, 0.24) 100%)'), 
+                        color: copiedFooter ? '#166534' : (isDarkMode ? '#E0F2FE' : '#0F172A'), 
+                        fontWeight: 600,
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
                         transform: 'translateY(0)'
                       }}
                       onMouseEnter={(e) => {
                         if (!copiedFooter) {
-                          e.currentTarget.style.borderColor = '#3690CE';
-                          e.currentTarget.style.background = '#f8fafc';
-                          e.currentTarget.style.color = '#3690CE';
+                          e.currentTarget.style.borderColor = isDarkMode ? '#60A5FA' : '#3690CE';
+                          e.currentTarget.style.background = isDarkMode
+                            ? 'linear-gradient(135deg, rgba(13, 28, 56, 0.92) 0%, rgba(17, 36, 64, 0.88) 100%)'
+                            : 'linear-gradient(135deg, rgba(54, 144, 206, 0.26) 0%, rgba(96, 165, 250, 0.32) 100%)';
+                          e.currentTarget.style.color = isDarkMode ? '#F8FAFC' : '#0F172A';
                           e.currentTarget.style.transform = 'translateY(-1px)';
-                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(54, 144, 206, 0.15)';
+                          e.currentTarget.style.boxShadow = '0 8px 18px rgba(54, 144, 206, 0.22)';
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!copiedFooter) {
-                          e.currentTarget.style.borderColor = '#e1e5e9';
-                          e.currentTarget.style.background = '#fff';
-                          e.currentTarget.style.color = '#3c4043';
+                          e.currentTarget.style.borderColor = isDarkMode ? 'rgba(96, 165, 250, 0.45)' : 'rgba(54, 144, 206, 0.45)';
+                          e.currentTarget.style.background = isDarkMode
+                            ? 'linear-gradient(135deg, rgba(11, 22, 43, 0.88) 0%, rgba(13, 30, 56, 0.82) 100%)'
+                            : 'linear-gradient(135deg, rgba(54, 144, 206, 0.18) 0%, rgba(96, 165, 250, 0.24) 100%)';
+                          e.currentTarget.style.color = isDarkMode ? '#E0F2FE' : '#0F172A';
                           e.currentTarget.style.transform = 'translateY(0)';
                           e.currentTarget.style.boxShadow = 'none';
                         }
@@ -2290,29 +2789,41 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             {/* Context Notes - Supporting Information */}
             {initialNotes && !isNotesPinned && (
               <div style={{
-                background: isDarkMode ? colours.dark.cardBackground : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
-                borderRadius: '12px',
-                padding: '20px',
-                border: `1px solid ${isDarkMode ? colours.dark.border : '#E2E8F0'}`,
-                boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,0.5)' : '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                marginBottom: '16px',
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.98) 0%, rgba(9, 22, 44, 0.94) 52%, rgba(13, 35, 63, 0.9) 100%)'
+                  : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.94) 100%)',
+                borderRadius: '16px',
+                padding: '24px',
+                border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.22)'}`,
+                boxShadow: isDarkMode 
+                  ? '0 18px 32px rgba(2, 6, 17, 0.58)' 
+                  : '0 12px 28px rgba(13, 47, 96, 0.12)',
+                marginBottom: '20px',
                 transition: 'all 0.3s ease-in-out',
                 position: 'relative',
-                fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+                fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                backdropFilter: 'blur(12px)',
+                animation: 'cascadeIn 0.4s ease-out'
               }}>
                 <div style={{
                   fontSize: '14px',
                   fontWeight: 600,
-                  color: isDarkMode ? colours.dark.text : '#1E293B',
-                  marginBottom: '12px',
+                  color: isDarkMode ? '#E0F2FE' : '#0F172A',
+                  marginBottom: '16px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   position: 'relative',
-                  padding: '8px 16px',
-                  background: isDarkMode ? colours.dark.inputBackground : 'rgba(255, 255, 255, 0.7)',
-                  borderRadius: '10px',
-                  border: isDarkMode ? `1px solid ${colours.dark.border}` : '1px solid rgba(54, 144, 206, 0.1)'
+                  padding: '12px 18px',
+                  background: isDarkMode
+                    ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.92) 0%, rgba(11, 30, 55, 0.86) 100%)'
+                    : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
+                  borderRadius: '12px',
+                  border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.3)' : 'rgba(148, 163, 184, 0.22)'}`,
+                  boxShadow: isDarkMode 
+                    ? '0 10px 22px rgba(4, 9, 20, 0.55)' 
+                    : '0 6px 16px rgba(13, 47, 96, 0.12)',
+                  backdropFilter: 'blur(8px)'
                 }}>
                   <span
                     onMouseEnter={() => setShowSubjectHint(true)}
@@ -2320,13 +2831,16 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
                   >
                     <div style={{
-                      padding: '6px',
-                      background: isDarkMode ? 'rgba(54, 144, 206, 0.15)' : 'rgba(54, 144, 206, 0.1)',
-                      borderRadius: '6px',
+                      padding: '8px',
+                      background: isDarkMode 
+                        ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(59, 130, 246, 0.18) 100%)'
+                        : 'linear-gradient(135deg, rgba(54, 144, 206, 0.16) 0%, rgba(96, 165, 250, 0.18) 100%)',
+                      borderRadius: '8px',
                       display: 'flex',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)'}`
                     }}>
-                      <FaInfoCircle style={{ fontSize: 12, color: '#3690CE' }} />
+                      <FaInfoCircle style={{ fontSize: 14, color: isDarkMode ? '#60A5FA' : '#3690CE' }} />
                     </div>
                   </span>
                   Enquiry Notes
@@ -2356,14 +2870,20 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 <div style={{
                   fontSize: '14px',
                   lineHeight: 1.6,
-                  color: isDarkMode ? colours.dark.text : '#64748B',
+                  color: isDarkMode ? '#E0F2FE' : '#1F2937',
                   whiteSpace: 'pre-wrap',
-                  background: isDarkMode ? colours.dark.inputBackground : 'rgba(255, 255, 255, 0.8)',
-                  padding: '16px',
-                  borderRadius: '8px',
-                  border: `1px solid ${isDarkMode ? colours.dark.border : 'rgba(203, 213, 225, 0.6)'}`,
+                  background: isDarkMode
+                    ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.92) 0%, rgba(11, 30, 55, 0.86) 100%)'
+                    : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
+                  padding: '18px',
+                  borderRadius: '12px',
+                  border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.3)' : 'rgba(148, 163, 184, 0.22)'}`,
                   position: 'relative',
-                  fontFamily: 'inherit'
+                  fontFamily: 'inherit',
+                  boxShadow: isDarkMode 
+                    ? '0 10px 22px rgba(4, 9, 20, 0.55)' 
+                    : '0 6px 16px rgba(13, 47, 96, 0.12)',
+                  backdropFilter: 'blur(8px)'
                 }}>
                   {/* Floating pin inside notes box */}
                   <button
@@ -2435,6 +2955,46 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         @keyframes cascadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
         .smooth-appear{animation:fadeSlideIn .18s ease}
         
+        /* Preview text selection styling for dark mode */
+        [data-theme="dark"] ::selection {
+          background-color: rgba(96, 165, 250, 0.3);
+          color: #E0F2FE;
+        }
+        [data-theme="light"] ::selection {
+          background-color: rgba(54, 144, 206, 0.2);
+          color: #0F172A;
+        }
+        
+        /* Force proper text colors in preview mode (excluding signature) */
+        .email-preview.dark-mode p,
+        .email-preview.dark-mode div:not([class*="signature"]) {
+          color: #E0F2FE !important;
+        }
+        .email-preview.light-mode p,
+        .email-preview.light-mode div:not([class*="signature"]) {
+          color: #1F2937 !important;
+        }
+        
+        /* Ensure links remain visible and accessible */
+        .email-preview.dark-mode a {
+          color: #60A5FA !important;
+          text-decoration: underline !important;
+        }
+        .email-preview.light-mode a {
+          color: #3690CE !important;
+          text-decoration: underline !important;
+        }
+        
+        /* Improve text selection visibility in preview */
+        .email-preview.dark-mode ::selection {
+          background-color: rgba(96, 165, 250, 0.4) !important;
+          color: #FFFFFF !important;
+        }
+        .email-preview.light-mode ::selection {
+          background-color: rgba(54, 144, 206, 0.3) !important;
+          color: #000000 !important;
+        }
+        
         /* Numbered list styling with CTA red numbers */
         ol:not(.hlx-numlist) {
           counter-reset: list-counter;
@@ -2472,108 +3032,317 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.4)',
+          backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 10000,
-          backdropFilter: 'blur(2px)'
+          zIndex: 10000
         }}>
           <div style={{
             background: isDarkMode 
-              ? colours.dark.cardBackground 
-              : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-            padding: '24px',
-            borderRadius: '12px',
-            maxWidth: '520px',
-            width: '90%',
+              ? '#1E293B'
+              : '#FFFFFF',
+            padding: '32px',
+            borderRadius: '8px',
+            maxWidth: '580px',
+            width: '92%',
             maxHeight: '85vh',
             overflowY: 'auto',
             boxShadow: isDarkMode 
-              ? '0 20px 40px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3)' 
-              : '0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.08)',
+              ? '0 10px 25px rgba(0, 0, 0, 0.5)' 
+              : '0 10px 25px rgba(0, 0, 0, 0.15)',
             border: isDarkMode 
-              ? `1px solid ${colours.dark.borderColor}` 
-              : '1px solid rgba(255, 255, 255, 0.8)'
+              ? '1px solid rgba(148, 163, 184, 0.2)' 
+              : '1px solid rgba(226, 232, 240, 0.8)'
           }}>
-            <h3 style={{
-              margin: '0 0 20px 0',
-              color: isDarkMode ? colours.dark.text : colours.darkBlue,
-              fontSize: '20px',
-              fontWeight: '600',
-              letterSpacing: '-0.01em'
+            {/* Enhanced Header with Icon */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              marginBottom: '24px',
+              paddingBottom: '20px',
+              borderBottom: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.25)' : 'rgba(148, 163, 184, 0.2)'}`
             }}>
-              Confirm Email Send
-            </h3>
-            
-            {/* Recipients Section - Primary Focus */}
-            <div style={{ 
-              marginBottom: '20px',
-              padding: '16px',
-              background: isDarkMode 
-                ? 'rgba(59, 130, 246, 0.08)' 
-                : 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
-              border: `1px solid ${isDarkMode ? colours.dark.borderColor : '#E5E7EB'}`,
-              borderRadius: '8px'
-            }}>
-              <h4 style={{
-                margin: '0 0 12px 0',
-                fontSize: '16px',
-                fontWeight: '600',
-                color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                letterSpacing: '-0.005em'
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '8px',
+                background: isDarkMode 
+                  ? 'rgba(71, 85, 105, 0.3)'
+                  : 'rgba(241, 245, 249, 0.8)',
+                border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.25)' : 'rgba(203, 213, 225, 0.6)'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: isDarkMode 
+                  ? '0 4px 8px rgba(0, 0, 0, 0.2)' 
+                  : '0 2px 6px rgba(0, 0, 0, 0.08)'
               }}>
-                Email Recipients
-              </h4>
-
-              {/* Sender (From) field - shows who the email will be sent from */}
-              <div style={{ marginBottom: '8px', fontSize: '14px' }}>
-                <span style={{ 
-                  fontWeight: '600', 
-                  color: isDarkMode ? colours.blue : colours.darkBlue, 
-                  minWidth: '50px', 
-                  display: 'inline-block' 
-                }}>From:</span>
-                <span style={{ color: isDarkMode ? colours.dark.text : colours.darkBlue }}>
-                  {userData?.[0]?.['Full Name'] || [userData?.[0]?.First, userData?.[0]?.Last].filter(Boolean).join(' ') || 'Fee Earner'} ({userData?.[0]?.Email || userData?.[0]?.WorkEmail || userData?.[0]?.Mail || userData?.[0]?.UserPrincipalName || userData?.[0]?.['Email Address'] || (userData?.[0]?.Initials ? `${userData[0].Initials.toLowerCase()}@helix-law.com` : 'automations@helix-law.com')})
-                </span>
+                <FaPaperPlane style={{ 
+                  fontSize: '20px', 
+                  color: isDarkMode ? '#60A5FA' : '#3690CE'
+                }} />
               </div>
-              
-              {to && (
-                <div style={{ marginBottom: '8px', fontSize: '14px' }}>
+              <div>
+                <h3 style={{
+                  margin: '0 0 4px 0',
+                  color: isDarkMode ? '#E0F2FE' : '#0F172A',
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  letterSpacing: '-0.02em',
+                  lineHeight: '1.2'
+                }}>
+                  Review & Send Email
+                </h3>
+                <p style={{
+                  margin: 0,
+                  color: isDarkMode ? 'rgba(224, 242, 254, 0.7)' : '#64748B',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  letterSpacing: '-0.005em'
+                }}>
+                  Please review the details before sending
+                </p>
+              </div>
+            </div>
+            
+            {/* Recipients Section - Enhanced Design */}
+            <div style={{ 
+              marginBottom: '24px',
+              padding: '20px',
+              background: isDarkMode 
+                ? 'rgba(30, 41, 59, 0.4)' 
+                : 'rgba(248, 250, 252, 0.6)',
+              border: isDarkMode 
+                ? '1px solid rgba(148, 163, 184, 0.2)' 
+                : '1px solid rgba(226, 232, 240, 0.7)',
+              borderRadius: '8px',
+              backdropFilter: 'blur(4px)',
+              boxShadow: isDarkMode 
+                ? '0 4px 8px rgba(0, 0, 0, 0.15)' 
+                : '0 2px 6px rgba(0, 0, 0, 0.05)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '18px'
+              }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  background: isDarkMode 
+                    ? 'rgba(71, 85, 105, 0.4)'
+                    : 'rgba(241, 245, 249, 0.8)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(203, 213, 225, 0.6)'}`
+                }}>
+                  <FaUsers style={{ 
+                    fontSize: '14px', 
+                    color: isDarkMode ? '#60A5FA' : '#3B82F6'
+                  }} />
+                </div>
+                <h4 style={{
+                  margin: 0,
+                  fontSize: '18px',
+                  fontWeight: '650',
+                  color: isDarkMode ? '#E0F2FE' : '#0F172A',
+                  letterSpacing: '-0.01em'
+                }}>
+                  Email Recipients
+                </h4>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Sender (From) field */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '10px 0',
+                  borderBottom: isDarkMode 
+                    ? '1px solid rgba(71, 85, 105, 0.4)' 
+                    : '1px solid rgba(226, 232, 240, 0.5)'
+                }}>
                   <span style={{ 
-                    fontWeight: '600', 
-                    color: isDarkMode ? colours.blue : colours.darkBlue, 
-                    minWidth: '50px', 
-                    display: 'inline-block' 
+                    fontWeight: '650', 
+                    color: isDarkMode ? '#94A3B8' : '#64748B',
+                    fontSize: '13px',
+                    minWidth: '55px',
+                    letterSpacing: '0.025em',
+                    textTransform: 'uppercase'
+                  }}>From:</span>
+                  <span style={{ 
+                    color: isDarkMode ? '#CBD5E1' : '#334155',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    flex: 1,
+                    lineHeight: '1.4'
+                  }}>
+                    {userData?.[0]?.['Full Name'] || [userData?.[0]?.First, userData?.[0]?.Last].filter(Boolean).join(' ') || 'Fee Earner'} ({userData?.[0]?.Email || userData?.[0]?.WorkEmail || userData?.[0]?.Mail || userData?.[0]?.UserPrincipalName || userData?.[0]?.['Email Address'] || (userData?.[0]?.Initials ? `${userData[0].Initials.toLowerCase()}@helix-law.com` : 'automations@helix-law.com')})
+                  </span>
+                </div>
+                
+                {/* Recipients - Editable To field */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '10px 0',
+                  borderBottom: isDarkMode 
+                    ? '1px solid rgba(71, 85, 105, 0.4)' 
+                    : '1px solid rgba(226, 232, 240, 0.5)'
+                }}>
+                  <span style={{ 
+                    fontWeight: '650', 
+                    color: isDarkMode ? '#94A3B8' : '#64748B',
+                    fontSize: '13px',
+                    minWidth: '55px',
+                    letterSpacing: '0.025em',
+                    textTransform: 'uppercase',
+                    paddingTop: '8px'
                   }}>To:</span>
-                  <span style={{ color: isDarkMode ? colours.dark.text : colours.darkBlue }}>{to}</span>
+                  <input
+                    type="text"
+                    value={editableTo}
+                    onChange={(e) => setEditableTo(e.target.value)}
+                    placeholder="Enter recipient email addresses..."
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.4)' : 'rgba(226, 232, 240, 0.6)'}`,
+                      borderRadius: '6px',
+                      background: isDarkMode ? '#374151' : '#FFFFFF',
+                      color: isDarkMode ? '#F3F4F6' : '#1F2937',
+                      fontSize: '14px',
+                      fontWeight: '400',
+                      lineHeight: '1.4',
+                      outline: 'none',
+                      transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#3B82F6';
+                      e.target.style.boxShadow = isDarkMode 
+                        ? '0 0 0 1px rgba(59, 130, 246, 0.3)' 
+                        : '0 0 0 1px rgba(59, 130, 246, 0.2)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = isDarkMode ? 'rgba(71, 85, 105, 0.4)' : 'rgba(226, 232, 240, 0.6)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
                 </div>
-              )}
-              
-              {cc && (
-                <div style={{ marginBottom: '8px', fontSize: '14px' }}>
+                
+                {cc && (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    padding: '10px 0',
+                    borderBottom: isDarkMode 
+                      ? '1px solid rgba(71, 85, 105, 0.4)' 
+                      : '1px solid rgba(226, 232, 240, 0.5)'
+                  }}>
+                    <span style={{ 
+                      fontWeight: '650', 
+                      color: isDarkMode ? '#94A3B8' : '#64748B',
+                      fontSize: '13px',
+                      minWidth: '55px',
+                      letterSpacing: '0.025em',
+                      textTransform: 'uppercase'
+                    }}>CC:</span>
+                    <span style={{ 
+                      color: isDarkMode ? '#CBD5E1' : '#334155',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      flex: 1,
+                      lineHeight: '1.4'
+                    }}>{cc}</span>
+                  </div>
+                )}
+                
+                {/* BCC field */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '10px 0'
+                }}>
                   <span style={{ 
-                    fontWeight: '600', 
-                    color: isDarkMode ? colours.blue : colours.darkBlue, 
-                    minWidth: '40px', 
-                    display: 'inline-block' 
-                  }}>CC:</span>
-                  <span style={{ color: isDarkMode ? colours.dark.text : colours.darkBlue }}>{cc}</span>
+                    fontWeight: '650', 
+                    color: isDarkMode ? '#94A3B8' : '#64748B',
+                    fontSize: '13px',
+                    minWidth: '55px',
+                    letterSpacing: '0.025em',
+                    textTransform: 'uppercase'
+                  }}>BCC:</span>
+                  <span style={{ 
+                    color: isDarkMode ? '#CBD5E1' : '#334155',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    flex: 1,
+                    lineHeight: '1.4'
+                  }}>
+                    {[bcc, feeEarnerEmail].filter(Boolean).join(', ')}
+                  </span>
                 </div>
-              )}
-              
-              {/* Show current BCC plus fee earner email */}
-              <div style={{ fontSize: '14px', marginBottom: '8px' }}>
-                <span style={{ 
-                  fontWeight: '600', 
-                  color: isDarkMode ? colours.blue : colours.darkBlue, 
-                  minWidth: '40px', 
-                  display: 'inline-block' 
-                }}>BCC:</span>
-                <span style={{ color: isDarkMode ? colours.dark.text : colours.darkBlue }}>
-                  {[bcc, feeEarnerEmail].filter(Boolean).join(', ')}
-                </span>
+              </div>
+            </div>
+
+            {/* Sent Items Confirmation - Passive Info */}
+            <div style={{
+              marginBottom: '20px',
+              padding: '16px 18px',
+              background: isDarkMode 
+                ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(22, 163, 74, 0.06) 100%)'
+                : 'linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(22, 163, 74, 0.04) 100%)',
+              border: isDarkMode 
+                ? '1px solid rgba(34, 197, 94, 0.25)' 
+                : '1px solid rgba(34, 197, 94, 0.2)',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '4px',
+                background: isDarkMode 
+                  ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(22, 163, 74, 0.2) 100%)'
+                  : 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.15) 100%)',
+                border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.4)' : 'rgba(34, 197, 94, 0.3)'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <FaCheck style={{ 
+                  fontSize: '10px', 
+                  color: isDarkMode ? '#4ADE80' : '#16A34A'
+                }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: isDarkMode ? '#4ADE80' : '#15803D',
+                  marginBottom: '2px',
+                  letterSpacing: '-0.005em'
+                }}>
+                  Email will be saved to your Sent Items
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: isDarkMode ? 'rgba(74, 222, 128, 0.8)' : 'rgba(21, 128, 61, 0.7)',
+                  lineHeight: '1.3'
+                }}>
+                  A copy will automatically appear in your Outlook Sent Items folder
+                </div>
               </div>
             </div>
             
@@ -2633,9 +3402,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             {/* Debug/Support Info Box */}
             <div style={{
               background: isDarkMode 
-                ? 'rgba(59, 130, 246, 0.1)' 
-                : 'linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(147, 197, 253, 0.08) 100%)',
-              border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.15)'}`,
+                ? 'rgba(54, 144, 206, 0.1)' 
+                : 'linear-gradient(135deg, rgba(54, 144, 206, 0.03) 0%, rgba(96, 165, 250, 0.08) 100%)',
+              border: `1px solid ${isDarkMode ? 'rgba(54, 144, 206, 0.3)' : 'rgba(54, 144, 206, 0.15)'}`,
               borderRadius: '8px',
               padding: '12px',
               marginBottom: '24px',
@@ -2657,205 +3426,203 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 fontSize: '12px',
                 fontWeight: '500'
               }}>
-                lz@helix-law.com, cb@helix-law.com
+                cb@helix-law.com
               </div>
             </div>
 
-            {/* Processing Status Section - Animated Processing Feedback */}
+            {/* Processing Status Section */}
             <div style={{
-              background: isDarkMode
-                ? 'rgba(16, 185, 129, 0.06)'
-                : 'linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
-              border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.25)' : '#E5E7EB'}`,
-              borderRadius: 8,
-              padding: '12px 14px',
-              marginBottom: 16
+              background: isDarkMode ? '#374151' : '#F9FAFB',
+              border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+              borderRadius: '6px',
+              padding: '16px',
+              marginBottom: '20px'
             }}>
-              <h4 style={{
-                margin: '0 0 16px 0',
-                fontSize: 16,
-                fontWeight: 600,
-                color: isDarkMode ? colours.dark.text : colours.darkBlue
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '20px'
               }}>
-                Processing Status
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Deal creation status with animated icon */}
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '4px',
+                  background: isDarkMode ? '#6B7280' : '#9CA3AF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ 
+                    color: 'white'
+                  }}>
+                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" 
+                          stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <h4 style={{
+                  margin: 0,
+                  fontSize: '18px',
+                  fontWeight: '650',
+                  color: isDarkMode ? '#E0F2FE' : '#0F172A',
+                  letterSpacing: '-0.01em'
+                }}>
+                  Processing Status
+                </h4>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Deal Creation Status */}
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: 12, 
-                  fontSize: 14,
-                  padding: '10px 12px',
+                  gap: '16px', 
+                  padding: '16px 18px',
                   borderRadius: '8px',
-                  background: (dealCreationInProgress || dealStatus === 'processing') ? 
-                    (isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)') : 
-                    dealStatus === 'ready' ? 
-                      (isDarkMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)') :
-                      'transparent',
-                  border: (dealCreationInProgress || dealStatus === 'processing') ? 
-                    '1px solid rgba(59, 130, 246, 0.25)' : 
-                    dealStatus === 'ready' ? 
-                      '1px solid rgba(34, 197, 94, 0.25)' :
-                      '1px solid transparent',
-                  transition: 'all 0.3s ease'
+                  background: isDarkMode ? '#374151' : '#F9FAFB',
+                  border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'}`,
+                  transition: 'all 0.2s ease'
                 }}>
-                  {/* Animated Deal Icon */}
+                  {/* Status Icon */}
                   <div style={{ 
-                    width: 28, 
-                    height: 28, 
+                    width: '24px', 
+                    height: '24px', 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    borderRadius: '50%',
-                    background: (dealCreationInProgress || dealStatus === 'processing') ? 
-                      'linear-gradient(135deg, #3B82F6, #60A5FA)' : 
-                      dealStatus === 'ready' ? 
-                        'linear-gradient(135deg, #22C55E, #4ADE80)' :
-                        dealStatus === 'error' ? 
-                          'linear-gradient(135deg, #EF4444, #F87171)' :
-                          isDarkMode ? colours.dark.border : '#E5E7EB',
-                    boxShadow: (dealCreationInProgress || dealStatus === 'processing') ? 
-                      '0 0 0 2px rgba(59, 130, 246, 0.15)' : 
-                      dealStatus === 'ready' ? 
-                        '0 0 0 2px rgba(34, 197, 94, 0.15)' : 'none',
-                    animation: (dealCreationInProgress || dealStatus === 'processing') ? 
-                      'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 
-                      dealStatus === 'ready' ? 
-                        'fadeIn 0.4s ease-out' : 'none',
-                    transition: 'all 0.3s ease'
+                    borderRadius: '4px',
+                    background: isDarkMode ? '#6B7280' : '#9CA3AF'
                   }}>
                     {(dealCreationInProgress || dealStatus === 'processing') ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
-                        <circle cx="12" cy="8" r="2" fill="currentColor"/>
-                        <path d="M12 14c-4 0-6 2-6 4v2h12v-2c0-2-2-4-6-4z" fill="currentColor"/>
-                        <path d="M16 8h4l-2-2m2 2l-2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"/>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ 
+                        color: 'white',
+                        animation: 'spin 1s linear infinite'
+                      }}>
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     ) : dealStatus === 'ready' ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ 
-                        color: 'white',
-                        animation: 'morphToCheck 0.6s ease-in-out'
-                      }}>
-                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     ) : dealStatus === 'error' ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
                         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     ) : (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: isDarkMode ? colours.dark.text : '#9CA3AF' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: isDarkMode ? colours.dark.text : '#9CA3AF' }}>
                         <circle cx="12" cy="8" r="2" stroke="currentColor" strokeWidth="2"/>
                         <path d="M12 14c-4 0-6 2-6 4v2h12v-2c0-2-2-4-6-4z" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#1F2937', marginBottom: 2 }}>
+                    <div style={{ 
+                      fontWeight: '500', 
+                      color: isDarkMode ? '#F3F4F6' : '#374151',
+                      marginBottom: '4px',
+                      fontSize: '14px'
+                    }}>
                       {(dealCreationInProgress || dealStatus === 'processing')
-                        ? 'Saving Pitch'
+                        ? 'Saving Pitch Details'
                         : (dealStatus === 'ready')
-                          ? 'Saved'
+                          ? 'Pitch Saved Successfully'
                           : (dealStatus === 'error')
-                            ? 'Failed to save'
-                            : 'Pitch save'}
+                            ? 'Failed to Save Pitch'
+                            : 'Ready to Save'}
                     </div>
                     <div style={{ 
-                      fontSize: 13, 
-                      color: (dealStatus === 'ready' ? '#166534' : dealStatus === 'error' ? '#991B1B' : isDarkMode ? colours.dark.text : '#6B7280'),
-                      fontWeight: dealStatus === 'ready' ? 600 : 500
+                      fontSize: '13px', 
+                      color: isDarkMode ? '#9CA3AF' : '#6B7280',
+                      fontWeight: '400',
+                      lineHeight: '1.4'
                     }}>
-                      {dealCreationInProgress || dealStatus === 'processing' ? 'Saving Pitch...' :
-                        dealStatus === 'ready' ? 'Saved' :
-                        dealStatus === 'error' ? 'Failed to save' : 'Ready to save'}
+                      {(dealCreationInProgress || dealStatus === 'processing') ? 
+                        'Creating deal record and saving pitch information...' :
+                        dealStatus === 'ready' ? 
+                          'Pitch details have been securely saved to your system' :
+                        dealStatus === 'error' ? 
+                          'There was an issue saving the pitch. Please try again.' : 
+                        'Pitch will be saved before sending email'}
                     </div>
                   </div>
                 </div>
 
-                {/* Email sending status with animated icon */}
+                {/* Email Sending Status */}
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: 12, 
-                  fontSize: 14,
-                  padding: '10px 12px',
+                  gap: '16px', 
+                  padding: '16px 18px',
                   borderRadius: '8px',
-                  background: (emailStatus === 'processing' || modalSending) ? 
-                    (isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)') : 
-                    emailStatus === 'sent' ? 
-                      (isDarkMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)') :
-                      emailStatus === 'error' ?
-                        (isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)') :
-                        'transparent',
-                  border: (emailStatus === 'processing' || modalSending) ? 
-                    '1px solid rgba(59, 130, 246, 0.25)' : 
-                    emailStatus === 'sent' ? 
-                      '1px solid rgba(34, 197, 94, 0.25)' :
-                      emailStatus === 'error' ?
-                        '1px solid rgba(239, 68, 68, 0.25)' :
-                        '1px solid transparent',
-                  transition: 'all 0.3s ease'
+                  background: isDarkMode ? '#374151' : '#F9FAFB',
+                  border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'}`,
+                  transition: 'all 0.2s ease'
                 }}>
-                  {/* Animated Email Icon */}
+                  {/* Email Icon */}
                   <div style={{ 
-                    width: 28, 
-                    height: 28, 
+                    width: '24px', 
+                    height: '24px', 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    borderRadius: '50%',
-                    background: (emailStatus === 'processing' || modalSending) ? 
-                      'linear-gradient(135deg, #3B82F6, #60A5FA)' : 
-                      emailStatus === 'sent' ? 
-                        'linear-gradient(135deg, #22C55E, #4ADE80)' :
-                        emailStatus === 'error' ? 
-                          'linear-gradient(135deg, #EF4444, #F87171)' :
-                          isDarkMode ? colours.dark.border : '#E5E7EB',
-                    boxShadow: (emailStatus === 'processing' || modalSending) ? 
-                      '0 0 0 2px rgba(59, 130, 246, 0.15)' : 
-                      emailStatus === 'sent' ? 
-                        '0 0 0 2px rgba(34, 197, 94, 0.15)' : 'none',
-                    animation: (emailStatus === 'processing' || modalSending) ? 
-                      'subtleFloat 2s ease-in-out infinite' : 
-                      emailStatus === 'sent' ? 
-                        'fadeIn 0.4s ease-out' : 'none',
-                    transition: 'all 0.3s ease'
+                    borderRadius: '4px',
+                    background: isDarkMode ? '#6B7280' : '#9CA3AF'
                   }}>
                     {(emailStatus === 'processing' || modalSending) ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
-                        <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ 
+                        color: 'white',
+                        animation: 'spin 1s linear infinite'
+                      }}>
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     ) : emailStatus === 'sent' ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ 
-                        color: 'white',
-                        animation: 'morphToCheck 0.6s ease-in-out'
-                      }}>
-                        <path d="M4 12L8 16L20 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     ) : emailStatus === 'error' ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
-                        <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: 'white' }}>
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     ) : (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: isDarkMode ? colours.dark.text : '#9CA3AF' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: isDarkMode ? colours.dark.text : '#9CA3AF' }}>
                         <path d="M3 8L10.89 13.26C11.2187 13.4793 11.6049 13.5963 12 13.5963C12.3951 13.5963 12.7813 13.4793 13.11 13.26L21 8M5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : '#1F2937', marginBottom: 2 }}>Email delivery</div>
                     <div style={{ 
-                      fontSize: 13, 
-                      color: (emailStatus === 'sent' ? '#166534' : emailStatus === 'error' ? '#991B1B' : isDarkMode ? colours.dark.text : '#6B7280'),
-                      fontWeight: emailStatus === 'sent' ? 600 : 500
+                      fontWeight: '500', 
+                      color: isDarkMode ? '#F3F4F6' : '#374151',
+                      marginBottom: '4px',
+                      fontSize: '14px'
                     }}>
-                      {emailStatus === 'processing' ? 'Sending via Microsoft Graph...' : 
-                       emailStatus === 'sent' ? 'Email delivered successfully' : 
-                       emailStatus === 'error' ? 'Failed to send email' : 
-                       modalSending ? 'Preparing to send...' : 'Ready to send'}
+                      {(emailStatus === 'processing' || modalSending) ? 'Sending Email' : 
+                       emailStatus === 'sent' ? 'Email Sent Successfully' : 
+                       emailStatus === 'error' ? 'Email Delivery Failed' : 
+                       'Ready to Send Email'}
+                    </div>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      color: isDarkMode ? '#9CA3AF' : '#6B7280',
+                      fontWeight: '400',
+                      lineHeight: '1.4'
+                    }}>
+                      {(emailStatus === 'processing' || modalSending) ? 
+                        'Delivering email via Microsoft Graph API to recipients...' : 
+                       emailStatus === 'sent' ? 
+                        'Email has been successfully delivered and saved to Sent Items' : 
+                       emailStatus === 'error' ? 
+                        'There was an issue sending the email. Please try again.' : 
+                       'Email will be sent from your account when ready'}
                     </div>
                     {!!emailMessage && emailMessage !== 'Sent' && emailMessage !== 'Error' && (
-                      <div style={{ fontSize: 12, color: isDarkMode ? colours.dark.text : '#6B7280', marginTop: 4, fontStyle: 'italic' }}>
+                      <div style={{ 
+                        fontSize: '13px', 
+                        color: isDarkMode ? 'rgba(203, 213, 225, 0.8)' : 'rgba(107, 114, 128, 0.8)', 
+                        marginTop: '6px', 
+                        fontStyle: 'italic',
+                        fontWeight: '500'
+                      }}>
                         {emailMessage}
                       </div>
                     )}
@@ -2863,9 +3630,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     {(emailStatus === 'processing' || emailStatus === 'sent' || modalSending) && (
                       <div style={{ marginTop: 8, padding: '8px 10px', background: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(248, 250, 252, 0.8)', borderRadius: 6, border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.15)' : 'rgba(203, 213, 225, 0.5)'}` }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#475569', marginBottom: 6 }}>Delivery Details:</div>
-                        {to && (
+                        {editableTo && (
                           <div style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#64748B', marginBottom: 3 }}>
-                            <span style={{ fontWeight: 500 }}>Primary:</span> {to.split(',').length > 1 ? `${to.split(',').length} recipients` : to.trim()}
+                            <span style={{ fontWeight: 500 }}>Primary:</span> {editableTo.split(',').length > 1 ? `${editableTo.split(',').length} recipients` : editableTo.trim()}
                           </div>
                         )}
                         {cc && (
@@ -2875,7 +3642,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         )}
                         {(bcc || feeEarnerEmail) && (
                           <div style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#64748B', marginBottom: 3 }}>
-                            <span style={{ fontWeight: 500 }}>BCC:</span> {[bcc, feeEarnerEmail, 'lz@helix-law.com', 'cb@helix-law.com'].filter(Boolean).join(', ').split(',').length} monitoring addresses
+                            <span style={{ fontWeight: 500 }}>BCC:</span> {[bcc, feeEarnerEmail, 'cb@helix-law.com'].filter(Boolean).join(', ').split(',').length} monitoring addresses
                           </div>
                         )}
                       </div>
@@ -2900,49 +3667,65 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               </div>
             )}
             
+            {/* Enhanced Action Buttons */}
             <div style={{
               display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end'
+              gap: '16px',
+              justifyContent: 'flex-end',
+              paddingTop: '24px',
+              borderTop: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`
             }}>
               <button
                 onClick={() => { if (!modalSending) setShowSendConfirmModal(false); }}
                 style={{
-                  padding: '10px 20px',
-                  border: `1px solid ${isDarkMode ? colours.dark.borderColor : '#D1D5DB'}`,
+                  padding: '12px 24px',
+                  border: isDarkMode 
+                    ? '1px solid rgba(148, 163, 184, 0.3)' 
+                    : '1px solid rgba(203, 213, 225, 0.6)',
                   background: isDarkMode 
-                    ? 'transparent' 
-                    : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                  color: isDarkMode ? colours.dark.text : colours.darkBlue,
-                  borderRadius: '8px',
+                    ? 'rgba(51, 65, 85, 0.6)' 
+                    : 'rgba(248, 250, 252, 0.9)',
+                  color: isDarkMode ? '#CBD5E1' : '#475569',
+                  borderRadius: '10px',
                   cursor: modalSending ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  letterSpacing: '-0.005em'
+                  fontWeight: '600',
+                  transition: 'background-color 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  minWidth: '100px',
+                  justifyContent: 'center'
                 }}
                 disabled={modalSending}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = isDarkMode 
-                    ? colours.dark.inputBackground 
-                    : 'linear-gradient(135deg, #F0F4F8 0%, #EFF6FF 100%)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  if (!modalSending) {
+                    e.currentTarget.style.background = isDarkMode 
+                      ? 'rgba(71, 85, 105, 0.8)' 
+                      : 'rgba(226, 232, 240, 0.95)';
+                  }
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = isDarkMode 
-                    ? 'transparent' 
-                    : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                    ? 'rgba(51, 65, 85, 0.6)' 
+                    : 'rgba(248, 250, 252, 0.9)';
                 }}
               >
-                {emailStatus === 'sent' ? 'Close' : 'Cancel'}
+                {(emailStatus === 'sent' || (dealStatus === 'ready' && emailStatus !== 'processing' && !modalSending)) ? 
+                  <FaCheck style={{ fontSize: '12px', opacity: 0.9 }} /> :
+                  <FaTimes style={{ fontSize: '12px', opacity: 0.8 }} />
+                }
+                {(emailStatus === 'sent') ? 'Close' :
+                 (dealStatus === 'ready' && emailStatus !== 'processing' && !modalSending) ? 'Done' :
+                 'Cancel'}
               </button>
+              
               <button
                 onClick={async () => {
                   // Validate essential fields locally before closing modal
                   const numericAmt = parseFloat(String(amountValue || '').replace(/[^0-9.]/g, ''));
                   const err = (() => {
-                    if (!to || !to.trim()) return 'Recipient (To) is required.';
+                    if (!editableTo || !editableTo.trim()) return 'Recipient (To) is required.';
                     if (!subject || !subject.trim()) return 'Subject is required.';
                     if (!body || !body.trim()) return 'Email body is required.';
                     if (!isBeforeCallCall) {
@@ -2959,43 +3742,63 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   try {
                     setModalSending(true);
                     setHasSentEmail(true);
+                    // Update recipients before sending if callback provided
+                    if (onRecipientsChange && editableTo !== to) {
+                      onRecipientsChange(editableTo, cc, bcc);
+                    }
                     await sendEmail?.();
                   } finally {
                     setModalSending(false);
                   }
                 }}
                 style={{
-                  padding: '10px 20px',
+                  padding: '12px 32px',
                   border: 'none',
-                  background: modalSending ? 'linear-gradient(90deg, #94A3B8, #CBD5E1)' : `linear-gradient(90deg, ${colours.blue}, #60A5FA)`,
+                  background: modalSending 
+                    ? 'rgba(148, 163, 184, 0.8)' 
+                    : '#3B82F6',
                   color: '#FFFFFF',
-                  borderRadius: '8px',
+                  borderRadius: '10px',
                   cursor: modalSending ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  transition: 'all 0.2s ease',
-                  letterSpacing: '-0.005em',
-                  boxShadow: isDarkMode 
-                    ? '0 4px 8px rgba(0, 0, 0, 0.3)' 
-                    : '0 4px 8px rgba(54, 144, 206, 0.25)'
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  transition: 'background-color 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  minWidth: '140px',
+                  justifyContent: 'center'
                 }}
                 disabled={modalSending}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(90deg, #2563EB, #3B82F6)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = isDarkMode 
-                    ? '0 6px 12px rgba(0, 0, 0, 0.4)' 
-                    : '0 6px 12px rgba(54, 144, 206, 0.35)';
+                  if (!modalSending) {
+                    e.currentTarget.style.background = '#2563EB';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = modalSending ? 'linear-gradient(90deg, #94A3B8, #CBD5E1)' : `linear-gradient(90deg, ${colours.blue}, #60A5FA)`;
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = isDarkMode 
-                    ? '0 4px 8px rgba(0, 0, 0, 0.3)' 
-                    : '0 4px 8px rgba(54, 144, 206, 0.25)';
+                  if (!modalSending) {
+                    e.currentTarget.style.background = '#3B82F6';
+                  }
                 }}
               >
-                {modalSending ? 'Sending…' : 'Send Email'}
+                {modalSending ? (
+                  <>
+                    <div style={{ 
+                      width: '16px', 
+                      height: '16px', 
+                      border: '2px solid rgba(255, 255, 255, 0.3)',
+                      borderTop: '2px solid white',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    Sending…
+                  </>
+                ) : (
+                  <>
+                    <FaPaperPlane style={{ fontSize: '14px' }} />
+                    Send Email
+                  </>
+                )}
               </button>
             </div>
           </div>

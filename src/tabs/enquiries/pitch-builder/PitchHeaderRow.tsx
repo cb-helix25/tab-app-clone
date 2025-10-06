@@ -70,87 +70,152 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
   const labelColour = isDarkMode ? '#fff' : colours.darkBlue;
 
-  // Generic card style used across enquiry, email and deal sections
+  // Modern card style with gradients and enhanced shadows
   const sectionStyle = {
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    padding: 8,
-    gap: 4,
-    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd'}`,
-    borderRadius: 8,
-    backgroundColor: isDarkMode
-      ? colours.dark.cardBackground
-      : '#ffffff',
+    padding: '24px',
+    gap: '16px',
+    border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.26)' : 'rgba(148, 163, 184, 0.16)'}`,
+    borderRadius: '16px',
+    background: isDarkMode 
+      ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.98) 0%, rgba(9, 22, 44, 0.94) 52%, rgba(13, 35, 63, 0.9) 100%)'
+      : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+    boxShadow: isDarkMode 
+      ? '0 20px 44px rgba(2, 6, 17, 0.72)'
+      : '0 16px 40px rgba(13, 47, 96, 0.18)',
+    backdropFilter: 'blur(12px)',
+    transition: 'all 0.25s ease',
+    position: 'relative' as const,
+    minHeight: '160px'
   };
 
-  const enquiryNotesContainer = mergeStyles(sectionStyle, { padding: 12 });
+  const enquiryNotesContainer = mergeStyles({
+    ...sectionStyle
+  });
 
   const enquiryNotesHeader = mergeStyles({
-    color: labelColour,
+    color: isDarkMode ? colours.dark.text : '#0F172A',
     fontWeight: 600,
-    fontSize: 13,
-    lineHeight: 1.2,
-    marginBottom: 8,    // ↑ more breathing room under the title
+    fontSize: '17px',
+    lineHeight: 1.4,
+    marginBottom: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    paddingBottom: '12px',
+    borderBottom: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.16)'}`,
+    position: 'relative' as const,
+    '&::before': {
+      content: '""',
+      position: 'absolute' as const,
+      top: '-1px',
+      left: '0',
+      right: '0',
+      height: '3px',
+      background: isDarkMode 
+        ? 'linear-gradient(90deg, #3B82F6, #60A5FA)'
+        : 'linear-gradient(90deg, #3690CE, #60A5FA)',
+      borderRadius: '0 0 8px 8px'
+    }
   });
 
   const enquiryNotesContent = mergeStyles({
-    whiteSpace: 'pre-wrap',
-    fontSize: 14,
-    color: labelColour,
+    whiteSpace: 'pre-wrap' as const,
+    fontSize: '14px',
+    color: isDarkMode ? colours.dark.text : '#374151',
     display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
+    flexDirection: 'column' as const,
+    gap: '12px',
   });
 
   const notesContainerStyle = mergeStyles({
-    background: isDarkMode ? colours.dark.cardBackground : '#fff',
-    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
-    borderRadius: 0,
-    padding: 12,
-    fontSize: 14,
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    background: isDarkMode 
+      ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.86) 100%)'
+      : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+    border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.22)'}`,
+    borderRadius: '12px',
+    padding: '16px',
+    fontSize: '14px',
+    boxShadow: isDarkMode 
+      ? '0 18px 32px rgba(2, 6, 17, 0.58)'
+      : '0 12px 28px rgba(13, 47, 96, 0.12)',
+    backdropFilter: 'blur(12px)',
     width: '100%',
+    transition: 'all 0.25s ease',
+    marginTop: '16px'
   });
 
   const notesTextStyle = mergeStyles({
-    fontFamily: 'Raleway',
+    fontFamily: 'Raleway, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    color: isDarkMode ? colours.dark.text : '#374151',
+    lineHeight: 1.5
   });
 
-  const intakeContainer = mergeStyles(sectionStyle);
+  const intakeContainer = mergeStyles({
+    ...sectionStyle
+  });
 
   const intakeHeader = mergeStyles({
-    color: labelColour,
+    color: isDarkMode ? colours.dark.text : '#0F172A',
     fontWeight: 600,
-    fontSize: 13,
-    marginBottom: 8,    // ↑ match the enquiry title spacing
+    fontSize: '16px',
+    marginBottom: '12px',
     padding: '0 4px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: '8px'
   });
 
   const toggleCcBccStyle = mergeStyles({
-    color: colours.greyText,
+    color: isDarkMode ? '#94A3B8' : colours.greyText,
     cursor: 'pointer',
-    fontSize: 12,
-    marginTop: 6,
+    fontSize: '12px',
+    marginTop: '8px',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.16)'}`,
+    background: isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.05)',
+    transition: 'all 0.2s ease',
     selectors: {
-      ':hover': { color: labelColour },
-
+      ':hover': { 
+        color: isDarkMode ? colours.dark.text : labelColour,
+        background: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+        borderColor: isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'
+      },
     },
   });
 
   const detailRowStyle = mergeStyles({
     display: 'flex',
     alignItems: 'center',
-    gap: 4,
-    fontSize: 13,
+    gap: '12px',
+    fontSize: '14px',
+    padding: '8px 0',
+    borderBottom: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.08)'}`,
+    ':last-child': {
+      borderBottom: 'none'
+    }
   });
 
-  const detailLabelStyle = mergeStyles({ fontWeight: 600 });
+  const detailLabelStyle = mergeStyles({ 
+    fontWeight: 600,
+    color: isDarkMode ? '#94A3B8' : '#6B7280',
+    fontSize: '13px',
+    minWidth: '60px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.025em'
+  });
 
-  const detailValueStyle = mergeStyles({ flexGrow: 1, overflowWrap: 'anywhere' });
+  const detailValueStyle = mergeStyles({ 
+    flexGrow: 1, 
+    overflowWrap: 'anywhere' as const,
+    color: isDarkMode ? colours.dark.text : '#1F2937',
+    fontSize: '14px',
+    fontWeight: 500
+  });
 
   const copyBtnStyle = mergeStyles({
     background: 'none',
@@ -164,55 +229,76 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
   const separatorColour = isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd';
 
-  const emailFieldsContainer = mergeStyles(sectionStyle, {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 0,
-    padding: 0,
-    borderRadius: 0,
-    selectors: {
-      '> div:last-child': { borderRight: 'none' },
-    },
+  const emailFieldsContainer = mergeStyles({
+    display: 'flex',
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: '8px',
+    padding: '12px',
+    background: isDarkMode 
+      ? 'linear-gradient(135deg, rgba(5, 12, 26, 0.98) 0%, rgba(9, 22, 44, 0.94) 52%, rgba(13, 35, 63, 0.9) 100%)'
+      : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.94) 100%)',
+    border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.28)' : 'rgba(148, 163, 184, 0.25)'}`,
+    borderRadius: '16px',
+    boxShadow: isDarkMode 
+      ? '0 20px 44px rgba(2, 6, 17, 0.72)' 
+      : '0 8px 24px rgba(13, 47, 96, 0.16)',
+    backdropFilter: 'blur(12px)',
+    borderLeft: isDarkMode 
+      ? '3px solid rgba(125, 211, 252, 0.7)' 
+      : '3px solid rgba(59, 130, 246, 0.6)',
+    animation: 'cascadeIn 0.6s ease-out'
   });
 
   const emailFieldBase = {
     flexGrow: 1,
-    padding: 8,
+    padding: '16px',
     display: 'flex',
     flexDirection: 'column' as const,
+    background: isDarkMode 
+      ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.86) 100%)'
+      : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+    border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.22)'}`,
+    borderRadius: '12px',
+    margin: '4px',
+    boxShadow: isDarkMode 
+      ? '0 8px 16px rgba(2, 6, 17, 0.4)'
+      : '0 4px 12px rgba(13, 47, 96, 0.08)',
+    backdropFilter: 'blur(8px)',
+    transition: 'all 0.25s ease'
   };
 
   const toFieldStyle = mergeStyles(emailFieldBase, {
-    minWidth: 250,
-    borderRight: `1px solid ${separatorColour}`,
+    minWidth: '250px'
   });
 
   const ccFieldStyle = mergeStyles(emailFieldBase, {
-    minWidth: 250,
-    borderRight: `1px solid ${separatorColour}`,
+    minWidth: '250px',
     selectors: {
-      '@media (max-width: 650px)': {
-        borderRight: 'none',
-        borderTop: `1px solid ${separatorColour}`,
-      },
-    },
+      '&:hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: isDarkMode 
+          ? '0 12px 20px rgba(2, 6, 17, 0.6)'
+          : '0 8px 16px rgba(13, 47, 96, 0.12)'
+      }
+    }
   });
 
   const bccFieldStyle = mergeStyles(emailFieldBase, {
-    minWidth: 250,
-    borderRight: `1px solid ${separatorColour}`,
+    minWidth: '250px',
     selectors: {
-      '@media (max-width: 650px)': {
-        borderRight: 'none',
-        borderTop: `1px solid ${separatorColour}`,
-      },
-    },
+      '&:hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: isDarkMode 
+          ? '0 12px 20px rgba(2, 6, 17, 0.6)'
+          : '0 8px 16px rgba(13, 47, 96, 0.12)'
+      }
+    }
   });
 
   const subjectFieldStyle = mergeStyles(emailFieldBase, {
     width: '100%',
-    minWidth: 250,
-    borderTop: `1px solid ${separatorColour}`,
+    minWidth: '250px'
   });
 
   const [showCc, setShowCc] = useState(!!cc);

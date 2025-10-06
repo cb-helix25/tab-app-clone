@@ -6,7 +6,6 @@ import {
   DefaultButton,
   mergeStyles,
   Label,
-  IIconProps,
   Icon,
   Callout,
   IconButton,
@@ -16,17 +15,14 @@ import {
   DirectionalHint,
   Separator,
   Checkbox,
-  // invisible change
   ChoiceGroup,
   IChoiceGroupOption,
   IPoint,
   Text,
   TooltipHost,
 } from '@fluentui/react';
-import ModernMultiSelect from '../instructions/MatterOpening/ModernMultiSelect';
-import { Enquiry } from '../../app/functionality/types';
+import { Enquiry, UserData } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
-import ToggleSwitch from '../../components/ToggleSwitch';
 import { isAdminUser } from '../../app/admin';
 import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
@@ -53,17 +49,12 @@ import {
 } from '../../app/styles/FilterStyles';
 import { PitchDebugPanel, useLocalFetchLogger } from './pitch-builder';
 import EmailSignature from './EmailSignature';
-// EmailPreview panel deprecated in favour of inline preview
 import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
 import VerificationSummary from './pitch-builder/VerificationSummary';
-
 import OperationStatusToast from './pitch-builder/OperationStatusToast';
-// import InstructionCard from '../instructions/InstructionCard';
 import { addDays } from 'date-fns';
 import PlaceholderEditorPopover from './pitch-builder/PlaceholderEditorPopover';
 import SnippetEditPopover from './pitch-builder/SnippetEditPopover';
-
-
 
 import ReactDOMServer from 'react-dom/server';
 import { placeholderSuggestions } from '../../app/customisation/InsertSuggestions';
@@ -121,8 +112,23 @@ function useDynamicTemplateBlocks(templateSet: TemplateSet) {
 
 interface PitchBuilderProps {
   enquiry: Enquiry;
-  userData: any;
+  userData: UserData[] | null;
   showDealCapture?: boolean;
+}
+
+// Small typed fetch helper with discriminated result for safer error handling
+async function safeFetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<{ ok: true; value: T } | { ok: false; error: string; status?: number }> {
+  try {
+    const res = await fetch(input as any, init);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      return { ok: false, error: text || `HTTP ${res.status}`, status: res.status };
+    }
+    const json = (await res.json()) as T;
+    return { ok: true, value: json };
+  } catch (err: unknown) {
+    return { ok: false, error: (err instanceof Error ? err.message : 'Network error') };
+  }
 }
 
 interface ApiCallLog {
@@ -141,9 +147,6 @@ interface ClientInfo {
   lastName: string;
   email: string;
 }
-
-
-// Removed unused legacy icon & padlock constants.
 
 // Escape attribute values for use within querySelector
 function escapeForSelector(value: string): string {
@@ -437,26 +440,30 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       margin: 0;
     }
   .insert-placeholder {
-    background: ${colours.highlightBlue};
+    background: ${colours.highlightBlue}20;
     color: ${colours.darkBlue};
-    padding: 2px 4px;
-    border-radius: 0;
-    border: 1px dashed ${colours.darkBlue};
+    padding: 1px 3px;
+    border-radius: 3px;
+    border: 1px dotted ${colours.darkBlue}60;
     font-style: italic;
     cursor: pointer;
-    transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
-    display: inline-block; /* Changed from inline to inline-block for proper wrapping */
+    transition: all 0.15s ease;
+    display: inline-block;
     max-width: 100%;
     word-wrap: break-word;
-    white-space: normal; /* Allow text to wrap naturally */
+    white-space: normal;
+    font-size: 0.9em;
+    opacity: 0.8;
   }
     .insert-placeholder:hover,
     .insert-placeholder:focus {
-      background: ${colours.blue};
-      color: #ffffff;
-      box-shadow: 0 0 0 2px ${colours.blue}80;
-      transform: scale(1.05);
+      background: ${colours.blue}40;
+      color: ${colours.darkBlue};
+      border-color: ${colours.blue};
+      box-shadow: 0 0 0 2px ${colours.blue}30;
+      transform: translateY(-1px);
       outline: none;
+      opacity: 1;
     }
     [data-sentence] {
       display: inline;
@@ -673,34 +680,36 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     (userInitials ? `${userInitials.toLowerCase()}@helix-law.com` : '');
 
   // Pitch Builder-specific: fetch team data via new server route and derive effective user data
-  const [pitchUserData, setPitchUserData] = useState<any[] | null>(null);
+  const [pitchUserData, setPitchUserData] = useState<UserData[] | null>(null);
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const init = async () => {
       try {
-        const res = await fetch('/api/pitch-team');
-        if (!res.ok) return;
-        const all = await res.json();
+        const result = await safeFetchJson<UserData[]>(
+          '/api/pitch-team',
+          { signal: controller.signal }
+        );
+        if (!result.ok) return;
+        const all = Array.isArray(result.value) ? result.value : [];
         if (!Array.isArray(all)) return;
         const initials = (userData?.[0]?.Initials || '').toString().trim().toUpperCase();
         const email = (typeof userEmailAddress === 'string' ? userEmailAddress : '').trim().toLowerCase();
-        const fullNameLocal = (
-          (userData?.[0]?.['Full Name'])
-          || [userData?.[0]?.First, userData?.[0]?.Last].filter(Boolean).join(' ')
-        )?.toString().trim().toLowerCase().replace(/\s+/g, ' ');
+        const getFullName = (u: any) => (u?.FullName
+          || u?.['Full Name']
+          || [u?.First, u?.Last].filter(Boolean).join(' '))?.toString().trim();
+        const fullNameLocal = getFullName(userData?.[0] || {})
+          ?.toLowerCase().replace(/\s+/g, ' ') || '';
 
         // Try to find a matching record by Initials, then Email, then Full Name
         const rec = all.find((r: any) => {
           const rInitials = (r?.Initials || r?.initials || '').toString().trim().toUpperCase();
           const rEmail = (r?.Email || r?.email || '').toString().trim().toLowerCase();
-          const rFullName = (
-            r?.['Full Name']
-            || [r?.First, r?.Last].filter(Boolean).join(' ')
-          )?.toString().trim().toLowerCase().replace(/\s+/g, ' ');
+          const rFullName = getFullName(r)?.toLowerCase().replace(/\s+/g, ' ') || '';
           return (
-            (!!initials && rInitials === initials)
-            || (!!email && rEmail && rEmail === email)
-            || (!!fullNameLocal && rFullName && rFullName === fullNameLocal)
+            (!!initials && rInitials === initials) ||
+            (!!email && rEmail && rEmail === email) ||
+            (!!fullNameLocal && rFullName && rFullName === fullNameLocal)
           );
         });
         if (!rec) {
@@ -709,7 +718,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           return;
         }
         const current = (userData && userData[0]) || {};
-        const merged = {
+        const merged: Partial<UserData> & any = {
           ...current,
           Role: rec.Role ?? current.Role,
           Rate: rec.Rate ?? current.Rate,
@@ -717,9 +726,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           Email: rec.Email ?? current.Email,
           First: current.First ?? rec.First,
           Last: current.Last ?? rec.Last,
-          'Full Name': current['Full Name'] ?? rec['Full Name'] ?? `${rec.First ?? ''} ${rec.Last ?? ''}`.trim(),
+          FullName: current.FullName ?? rec.FullName ?? `${rec.First ?? ''} ${rec.Last ?? ''}`.trim(),
         };
-        if (!cancelled) setPitchUserData([merged]);
+        if (!cancelled) setPitchUserData([merged as UserData]);
       } catch (_) {
         // Silent fallback to existing userData
       }
@@ -727,6 +736,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     init();
     return () => {
       cancelled = true;
+      controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userInitials]);
@@ -778,21 +788,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
             console.error('Failed to parse prefetched blocks', e);
           }
         }
-        // SNIPPET FUNCTIONALITY REMOVED - Changed approach completely
-        // Snippet blocks are no longer fetched from Azure Functions
-        // try {
-        //   const url = `${getProxyBaseUrl()}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
-        //   const res = await fetch(url);
-        //   if (res.ok) {
-        //     const data = await res.json();
-        //     const compiled = compileBlocks(data);
-        //     setBlocks(compiled);
-        //     setSavedSnippets((data as any).savedSnippets || {});
-        //     return compiled;
-        //   }
-        // } catch (err) {
-        //   console.error('Failed to load blocks', err);
-        // }
         const fallbackData = getDatabaseBlocksData();
         setBlocks(fallbackData.blocks);
         setSavedSnippets(fallbackData.savedSnippets);
@@ -1356,7 +1351,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   // Default recipient fields
   const [to, setTo] = useState<string>(enquiry.Email || '');
   const [cc, setCc] = useState<string>('');
-  const [bcc, setBcc] = useState<string>('1day@followupthen.com');
+  const [bcc, setBcc] = useState<string>('');
 
   // Extracted blocks (handled as qualifying sections above editor). They won't appear as placeholders inside the editor.
   const EXTRACTED_BLOCKS: string[] = [
@@ -3269,16 +3264,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       bccList.push(bcc.trim());
     }
     
-    // Add additional BCC if provided
-    if (additionalBcc && additionalBcc.trim()) {
+    // Add additional BCC if provided (exclude lz@helix-law.com)
+    if (additionalBcc && additionalBcc.trim() && additionalBcc.trim() !== 'lz@helix-law.com') {
       bccList.push(additionalBcc.trim());
     }
     
     // Add safety net addresses as requested
-    bccList.push('lz@helix-law.com', 'cb@helix-law.com');
+    bccList.push('cb@helix-law.com');
     
-    // Remove duplicates
-    return Array.from(new Set(bccList)).join(', ');
+    // Remove duplicates and filter out lz@helix-law.com
+    const filtered = Array.from(new Set(bccList)).filter(email => email !== 'lz@helix-law.com');
+    return filtered.join(', ');
   }
 
   /**
@@ -3380,6 +3376,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       subject: subject, // Use 'subject' not 'subject_line' for decoupled function
       from_email: senderEmail, // Send from fee earner's email
       bcc_emails: bccList, // BCC sender + safety addresses
+      saveToSentItems: true, // 🎯 Save to fee earner's Sent Items folder
       // Include recipient details for monitoring notification
       recipient_details: {
         to: to,
@@ -3579,6 +3576,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       to,
       from_email: userEmailAddress || undefined,
       bcc_emails: bccList, // Safety only
+      saveToSentItems: true, // 🎯 Save draft to Sent Items folder
     };
 
     // Guard: ensure we have a valid recipient email for the drafted message
@@ -4583,8 +4581,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
   return (
     <Stack className={containerStyle}>
-      {/* Client Info Header - Simplified (admin controls moved to Navigator) */}
-      <div style={{ padding: '12px 20px', borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}` }}>
+      {/* Client Info Header - Navigator Integrated */}
+      <div style={{ 
+        padding: '12px 20px', 
+        borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}`,
+        background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           {/* Integrated verification & client header */}
           <div style={{ flex: 1, minWidth: 280 }}>
@@ -4604,6 +4606,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
               }}
             />
           </div>
+
         </div>
       </div>
 
@@ -4690,7 +4693,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           </div>
         )}
         {/* Summary/Overview Section: Instruction, Deal, and Risk/Compliance Cards */}
-        {/* Old InstructionCard removed: now using unified summary card above */}
 
         {/* Row: Combined Email Editor and Template Blocks */}
         <EditorAndTemplateBlocks
@@ -4698,8 +4700,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           body={body}
           setBody={setBodyForComponents}
           templateBlocks={blocks.filter(b => !EXTRACTED_BLOCKS.includes(b.title))}
-          // templateSet prop removed; not needed by EditorAndTemplateBlocks
-          // onTemplateSetChange prop removed; not needed by EditorAndTemplateBlocks
           selectedTemplateOptions={selectedTemplateOptions}
           insertedBlocks={insertedBlocks}
           lockedBlocks={lockedBlocks}
@@ -4723,8 +4723,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           initialNotes={enquiry.Initial_first_call_notes}
           subject={subject}
           setSubject={setSubject}
-          // Deal capture props
-          showDealCapture={showDealCapture}
+          // Deal capture props (always enabled)
           initialScopeDescription={initialScopeDescription}
           onScopeDescriptionChange={setInitialScopeDescription}
           amount={amount}
@@ -4746,19 +4745,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
           dealStatus={dealStatus}
           emailStatus={emailStatus}
           emailMessage={emailMessage}
-        // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
-        // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
-        // highlightBlock prop removed; not needed by EditorAndTemplateBlocks
-        // onReorderBlocks prop removed; not needed by EditorAndTemplateBlocks
-        // onDuplicateBlock prop removed; not needed by EditorAndTemplateBlocks
-        // onClearAllBlocks prop removed; not needed by EditorAndTemplateBlocks
-        // removedBlocks prop removed; not needed by EditorAndTemplateBlocks
-        // onAddBlock prop removed; not needed by EditorAndTemplateBlocks
-        // showToast prop removed; not needed by EditorAndTemplateBlocks
-        // undo prop removed; not needed by EditorAndTemplateBlocks
-        // redo prop removed; not needed by EditorAndTemplateBlocks
-        // canUndo prop removed; not needed by EditorAndTemplateBlocks
-        // canRedo prop removed; not needed by EditorAndTemplateBlocks
         />
 
         {snippetOptionsBlock && snippetOptionsTarget && (
@@ -4917,16 +4903,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
             }} originalText={''} editedText={''} />
         )}
 
-        {/* Reset button preserved */}
-        <Stack horizontal tokens={{ childrenGap: 16 }} styles={{ root: { marginTop: '24px', padding: '0 8px' } }}>
-          <DefaultButton
-            text="Reset All"
-            onClick={resetForm}
-            styles={sharedDefaultButtonStyles}
-            ariaLabel="Reset Form"
-            iconProps={{ iconName: 'Refresh' }}
-          />
-        </Stack>
+
 
         <OperationStatusToast
           visible={toast !== null}

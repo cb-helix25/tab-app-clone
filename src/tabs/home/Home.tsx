@@ -319,50 +319,41 @@ const quickActions: QuickLink[] = [
 // Styles
 //////////////////////
 
+// Subtle Helix watermark (three rounded ribbons) as inline SVG, Teams-like subtlety
+const helixWatermarkSvg = (dark: boolean) => {
+  const fill = dark ? '%23FFFFFF' : '%23061733';
+  const opacity = dark ? '0.06' : '0.035';
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900' viewBox='0 0 900 900'>
+    <g transform='rotate(-12 450 450)'>
+      <path d='M160 242 C160 226 176 210 200 210 L560 210 Q640 235 560 274 L200 274 C176 274 160 258 160 242 Z' fill='${fill}' fill-opacity='${opacity}'/>
+      <path d='M160 362 C160 346 176 330 200 330 L560 330 Q640 355 560 394 L200 394 C176 394 160 378 160 362 Z' fill='${fill}' fill-opacity='${opacity}'/>
+      <path d='M160 482 C160 466 176 450 200 450 L560 450 Q640 475 560 514 L200 514 C176 514 160 498 160 482 Z' fill='${fill}' fill-opacity='${opacity}'/>
+    </g>
+  </svg>`;
+  return `url("data:image/svg+xml,${svg}")`;
+};
+
 const containerStyle = (isDarkMode: boolean) =>
   mergeStyles({
-    background: isDarkMode 
-      ? `
-        linear-gradient(135deg, #0a0f1c 0%, #1a1a2e 25%, #16213e 50%, #0a0f1c 100%),
-        radial-gradient(circle at 20% 80%, rgba(54, 144, 206, 0.15) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(135, 243, 243, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(214, 85, 65, 0.05) 0%, transparent 50%)
-      ` 
-      : `
-        linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f1f5f9 50%, #ffffff 100%),
-        radial-gradient(circle at 20% 80%, rgba(54, 144, 206, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(135, 243, 243, 0.06) 0%, transparent 50%),
-        linear-gradient(45deg, transparent 40%, rgba(54, 144, 206, 0.02) 50%, transparent 60%)
-      `,
+    background: isDarkMode ? colours.darkBlue : '#ffffff',
     minHeight: '100vh',
     boxSizing: 'border-box',
     position: 'relative',
-    '&::before': isDarkMode ? {
+    '&::before': {
       content: '""',
       position: 'fixed',
       top: 0,
       left: 0,
       right: 0,
       bottom: 0,
-      background: `
-        repeating-linear-gradient(
-          90deg,
-          transparent,
-          transparent 2px,
-          rgba(54, 144, 206, 0.01) 2px,
-          rgba(54, 144, 206, 0.01) 4px
-        ),
-        repeating-linear-gradient(
-          0deg,
-          transparent,
-          transparent 2px,
-          rgba(135, 243, 243, 0.01) 2px,
-          rgba(135, 243, 243, 0.01) 4px
-        )
-      `,
+      background: 'none',
+      backgroundImage: helixWatermarkSvg(isDarkMode),
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: isDarkMode ? 'right -120px top -80px' : 'right -140px top -100px',
+      backgroundSize: 'min(52vmin, 520px)',
       pointerEvents: 'none',
       zIndex: 0
-    } : {}
+    }
   });
 
 const headerStyle = mergeStyles({
