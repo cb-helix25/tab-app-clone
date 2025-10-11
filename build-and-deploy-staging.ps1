@@ -31,21 +31,24 @@ if (Test-Path "$PSScriptRoot\build") {
 Write-Host "Installing server dependencies (production only)"
 npm ci --prefix server --only=prod
 
-Write-Host "Copying server dependencies to deploy directory"
-Copy-Item -Path "server\node_modules" -Destination "$deployDir\node_modules" -Recurse -Force
-
-Write-Host "Creating IISNode log directory"
-New-Item -ItemType Directory -Path "$deployDir\iisnode" -Force | Out-Null
-
-
-
-# Copy server files to deploy directory for Azure compatibility
+Write-Host "Copying server files and dependencies with path length handling"
+# Copy server files directly instead of trying to copy node_modules
 Copy-Item -Path "server\package.json" -Destination "$deployDir\package.json" -Force
 Copy-Item -Path "server\package-lock.json" -Destination "$deployDir\package-lock.json" -Force
 Copy-Item -Path "server\server.js" -Destination "$deployDir\server.js" -Force
 Copy-Item -Path "server\routes" -Destination "$deployDir\routes" -Recurse -Force
 Copy-Item -Path "server\utils" -Destination "$deployDir\utils" -Recurse -Force
 Copy-Item -Path "server\web.config" -Destination "$deployDir\web.config" -Force
+
+# Use npm install in target directory instead of copying node_modules
+Write-Host "Installing dependencies in deploy directory"
+Push-Location $deployDir
+npm ci --only=prod --no-optional
+Pop-Location
+
+Write-Host "Creating IISNode log directory"
+New-Item -ItemType Directory -Path "$deployDir\iisnode" -Force | Out-Null
+
 # Include shared merge field schema required by CCL routes
 $schemaDir = Join-Path $deployDir 'src\app\functionality'
 New-Item -ItemType Directory -Path $schemaDir -Force | Out-Null

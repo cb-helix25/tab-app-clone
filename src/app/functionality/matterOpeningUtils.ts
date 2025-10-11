@@ -53,7 +53,8 @@ export const hasActiveMatterOpening = (isCurrentlyInMatterOpening: boolean = fal
     'matterOpeningDraft_showSummary',
     'matterOpeningDraft_touchedFields',
     'matterOpeningDraft_hasInput',
-    'matterOpeningDraft_completed'
+    'matterOpeningDraft_completed',
+    'matterOpeningDraft_activePoid'
   ];
 
   // Check if the matter has been completed (submitted)
@@ -121,7 +122,8 @@ export const clearMatterOpeningDraft = (): void => {
     'matterOpeningDraft_currentStep',
     'matterOpeningDraft_showSummary',
     'matterOpeningDraft_hasInput',
-    'matterOpeningDraft_completed'
+    'matterOpeningDraft_completed',
+    'matterOpeningDraft_activePoid' // Ensure activePoid is cleared
   ];
 
   draftKeys.forEach(key => {

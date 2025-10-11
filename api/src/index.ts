@@ -43,6 +43,7 @@ import "./functions/postFinancialTask";
 import "./functions/sendEmail";
 import "./functions/submitSnippetEdit";
 import "./functions/updateAnnualLeave";
+import "./functions/updateEnquiryPOC";
 import "./functions/updateEnquiryRating";
 import "./functions/updateTransactions";
 import "./functions/updateInstructionStatus";

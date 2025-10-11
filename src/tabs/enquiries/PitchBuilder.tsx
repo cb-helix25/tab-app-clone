@@ -72,6 +72,7 @@ import {
 } from './pitch-builder/emailUtils';
 import { inputFieldStyle } from '../../CustomForms/BespokeForms';
 import { ADDITIONAL_CLIENT_PLACEHOLDER_ID } from '../../constants/deals';
+import EmailProcessor from './pitch-builder/EmailProcessor';
 
 // PROOF_OF_ID_URL constant removed - now constructed dynamically with passcode in applyDynamicSubstitutions
 
@@ -3085,9 +3086,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
       // Update progress
       if (!options?.background) {
-        showToast('Connecting to deal capture service...', 'info', {
+        showToast('Saving deal…', 'info', {
           loading: true,
-          details: `Sending deal data for ${enquiry.Point_of_Contact || 'client'}`,
+          details: `Capturing details for ${enquiry.Point_of_Contact || 'client'}`,
           progress: 30,
           duration: 0
         });
@@ -3106,9 +3107,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       });
 
       if (!options?.background) {
-        showToast('Processing deal data...', 'info', {
+        showToast('Finalising deal…', 'info', {
           loading: true,
-          details: 'Server is generating passcode and instruction reference',
+          details: 'Generating passcode and instruction link',
           progress: 70,
           duration: 0
         });
@@ -3336,20 +3337,38 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
     await delay(400);
 
-    // Remove highlight spans and apply dynamic substitutions
-    let rawHtml = removeHighlightSpans(body);
-    rawHtml = applyDynamicSubstitutions(
-      rawHtml,
-      effectiveUserData,
-      enquiry,
-      amount,
-      normalizePasscode(dealPasscode, enquiry?.ID) || dealPasscode,
-      undefined
-    );
+    // Check if V2 processing was requested from the confirmation dialog
+    const useV2Processing = (window as any).__helixEmailProcessingV2__ === true;
+    let finalHtml: string;
 
-    // Remove leftover placeholders and format paragraphs
-    const noPlaceholders = removeUnfilledPlaceholders(rawHtml, templateBlocks);
-    const finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
+    if (useV2Processing) {
+      console.log('Using V2 email processing (experimental enhanced formatting)');
+      // Use EmailProcessor V2 for enhanced processing
+      finalHtml = EmailProcessor.processCompleteEmail(body, {
+        userData: effectiveUserData,
+        enquiry,
+        amount,
+        passcode: normalizePasscode(dealPasscode, enquiry?.ID) || dealPasscode,
+        editorElement: bodyEditorRef.current,
+        forceV2: true
+      });
+    } else {
+      console.log('Using V1 email processing (production method)');
+      // Use original V1 processing method
+      let rawHtml = removeHighlightSpans(body);
+      rawHtml = applyDynamicSubstitutions(
+        rawHtml,
+        effectiveUserData,
+        enquiry,
+        amount,
+        normalizePasscode(dealPasscode, enquiry?.ID) || dealPasscode,
+        undefined
+      );
+
+      // Remove leftover placeholders and format paragraphs
+      const noPlaceholders = removeUnfilledPlaceholders(rawHtml, templateBlocks);
+      finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
+    }
 
     // Step 3: Email composition with signature
     setEmailMessage('Generating final email…');
@@ -3361,7 +3380,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
     });
 
     const fullEmailHtml = ReactDOMServer.renderToStaticMarkup(
-  <EmailSignature bodyHtml={finalHtml} userData={effectiveUserData} />
+  <EmailSignature bodyHtml={finalHtml} userData={effectiveUserData} experimentalLayout={useV2Processing} />
     );
 
     // Use fee earner's email as sender, fallback to automations
@@ -3533,31 +3552,49 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
     await delay(400); // Brief pause to show progress
 
-    // Remove highlight spans
-    let rawHtml = removeHighlightSpans(body);
+    // Check if V2 processing was requested (in case draft follows a send operation)
+    const useV2Processing = (window as any).__helixEmailProcessingV2__ === true;
+    let finalHtml: string;
 
-    // Apply dynamic substitutions such as amount just before sending
-    // Use the fresh passcode from the API call, not the state variable
-    rawHtml = applyDynamicSubstitutions(
-      rawHtml,
-      effectiveUserData,
-      enquiry,
-      amount,
-      normalizePasscode(currentPasscode, enquiry?.ID) || currentPasscode,
-      undefined // Let applyDynamicSubstitutions construct URL with passcode
-    );
+    if (useV2Processing) {
+      console.log('Using V2 email processing for draft (experimental enhanced formatting)');
+      // Use EmailProcessor V2 for enhanced processing
+      finalHtml = EmailProcessor.processCompleteEmail(body, {
+        userData: effectiveUserData,
+        enquiry,
+        amount,
+        passcode: normalizePasscode(currentPasscode, enquiry?.ID) || currentPasscode,
+        editorElement: bodyEditorRef.current,
+        forceV2: true
+      });
+    } else {
+      console.log('Using V1 email processing for draft (production method)');
+      // Use original V1 processing method
+      let rawHtml = removeHighlightSpans(body);
 
-    // Remove leftover placeholders
-    const noPlaceholders = removeUnfilledPlaceholders(rawHtml, templateBlocks);
+      // Apply dynamic substitutions such as amount just before sending
+      // Use the fresh passcode from the API call, not the state variable
+      rawHtml = applyDynamicSubstitutions(
+        rawHtml,
+        effectiveUserData,
+        enquiry,
+        amount,
+        normalizePasscode(currentPasscode, enquiry?.ID) || currentPasscode,
+        undefined // Let applyDynamicSubstitutions construct URL with passcode
+      );
 
-    // After removing leftover placeholders/highlights in handleDraftEmail():
-    const finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
+      // Remove leftover placeholders
+      const noPlaceholders = removeUnfilledPlaceholders(rawHtml, templateBlocks);
+
+      // After removing leftover placeholders/highlights in handleDraftEmail():
+      finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
+    }
 
     // Step 3: Email composition
     setEmailMessage('Generating email draft…');
-    showToast('Generating email draft...', 'info', {
+    showToast('Preparing draft…', 'info', {
       loading: true,
-      details: 'Creating formatted email with signature',
+      details: 'Formatting content and signature',
       progress: 70,
       duration: 0
     });
@@ -3596,9 +3633,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
 
       // Step 4: Sending to Outlook
       setEmailMessage('Creating draft…');
-      showToast('Opening Outlook draft...', 'info', {
+      showToast('Creating draft…', 'info', {
         loading: true,
-        details: 'Launching email application',
+        details: 'Saving to Outlook',
         progress: 90,
         duration: 0
       });
@@ -3616,8 +3653,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
       }
 
       // Success feedback with completion details
-      showToast('Email draft created!', 'success', {
-        details: `Opened in Outlook for ${enquiry.Point_of_Contact || 'client'}`,
+      showToast('Draft created', 'success', {
+        details: `Saved to Outlook for ${enquiry.Point_of_Contact || 'client'}`,
         icon: 'MailSolid',
         duration: 4000
       });
@@ -4874,10 +4911,45 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
             onDismiss={() => setPlaceholderEdit(null)}
             onSave={(val) => {
               const span = placeholderEdit.span;
+              const editor = bodyEditorRef.current;
+              
+              if (!editor) {
+                setPlaceholderEdit(null);
+                return;
+              }
+              
+              // Store cursor position relative to the span
+              const selection = window.getSelection();
+              const range = document.createRange();
+              
+              // Create a clean text node replacement
               const textNode = document.createTextNode(val);
+              
+              // Replace the span with the text node
               span.replaceWith(textNode);
-              setBody(bodyEditorRef.current?.innerHTML || '');
+              
+              // If this was the very last element, ensure it doesn't get re-processed
+              const lastChild = editor.lastChild;
+              if (lastChild === textNode || 
+                  (lastChild && lastChild.nodeType === Node.TEXT_NODE && 
+                   lastChild.textContent === val)) {
+                // Add an invisible zero-width space to prevent contentEditable from
+                // converting the last text node back to HTML
+                const protectiveSpace = document.createTextNode('\u200B');
+                editor.appendChild(protectiveSpace);
+              }
+              
+              // Update the body content
+              setBody(editor.innerHTML);
               setPlaceholderEdit(null);
+              
+              // Restore cursor position after the inserted text
+              if (selection) {
+                range.setStartAfter(textNode);
+                range.setEndAfter(textNode);
+                selection.removeAllRanges();
+                selection.addRange(range);
+              }
             }}
           />
         )}

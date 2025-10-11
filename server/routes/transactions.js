@@ -1,5 +1,6 @@
 const express = require('express');
 const { withRequest } = require('../utils/db');
+const { cacheWrapper, generateCacheKey } = require('../utils/redisClient');
 const router = express.Router();
 
 /**
@@ -16,17 +17,31 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    const result = await withRequest(connectionString, async (request) => {
-      const query = `
-        SELECT *
-        FROM transactions
-        ORDER BY transaction_date DESC
-      `;
-      return await request.query(query);
-    });
+    // Generate cache key based on current date (transactions can be added throughout the day)
+    const today = new Date().toISOString().split('T')[0];
+    const cacheKey = generateCacheKey('metrics', 'transactions', today);
 
-    // Return the recordset
-    res.json(result.recordset);
+    const transactions = await cacheWrapper(
+      cacheKey,
+      async () => {
+        console.log('🔍 Fetching fresh transactions from database');
+        
+        const result = await withRequest(connectionString, async (request) => {
+          const query = `
+            SELECT *
+            FROM transactions
+            ORDER BY transaction_date DESC
+          `;
+          return await request.query(query);
+        });
+
+        return result.recordset;
+      },
+      1800 // 30 minutes TTL - transactions can be added during the day but not frequently
+    );
+
+    // Return the transactions
+    res.json(transactions);
   } catch (error) {
     console.error('[Transactions Route] Error fetching transactions:', error);
     // Don't leak error details to browser

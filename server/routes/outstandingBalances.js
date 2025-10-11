@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
+const { getRedisClient, generateCacheKey, cacheWrapper } = require('../utils/redisClient');
 
 // Cache for Clio access token (reuse across requests to avoid constant refreshes)
 let cachedAccessToken = null;
@@ -20,42 +21,52 @@ router.get('/', async (req, res) => {
   try {
     console.log('[OutstandingBalances] Fetching outstanding client balances from Clio');
 
-    // Get Clio access token (cached or refreshed)
-    const accessToken = await getClioAccessToken();
+    // Generate cache key for outstanding balances (changes daily)
+    const today = new Date().toISOString().split('T')[0];
+    const cacheKey = generateCacheKey('metrics', 'outstanding-balances', today);
 
-    // Clio API configuration
-    const clioApiBaseUrl = 'https://eu.app.clio.com/api/v4';
-    const outstandingFields = 'id,created_at,updated_at,associated_matter_ids,contact{id,etag,name,first_name,middle_name,last_name,date_of_birth,type,created_at,updated_at,prefix,title,initials,clio_connect_email,locked_clio_connect_email,client_connect_user_id,primary_email_address,secondary_email_address,primary_phone_number,secondary_phone_number,ledes_client_id,has_clio_for_clients_permission,is_client,is_clio_for_client_user,is_co_counsel,is_bill_recipient,sales_tax_number,currency},total_outstanding_balance,last_payment_date,last_shared_date,newest_issued_bill_due_date,pending_payments_total,reminders_enabled,currency{id,etag,code,sign,created_at,updated_at},outstanding_bills{id,etag,number,issued_at,created_at,due_at,tax_rate,secondary_tax_rate,updated_at,subject,purchase_order,type,memo,start_at,end_at,balance,state,kind,total,paid,paid_at,pending,due,discount_services_only,can_update,credits_issued,shared,last_sent_at,services_secondary_tax,services_sub_total,services_tax,services_taxable_sub_total,services_secondary_taxable_sub_total,taxable_sub_total,secondary_taxable_sub_total,sub_total,tax_sum,secondary_tax_sum,total_tax,available_state_transitions}';
-    const balancesUrl = `${clioApiBaseUrl}/outstanding_client_balances.json?fields=${encodeURIComponent(outstandingFields)}`;
+    const balancesData = await cacheWrapper(
+      cacheKey,
+      async () => {
+        console.log('🔍 Fetching fresh outstanding balances from Clio API');
+        
+        // Get Clio access token (cached or refreshed)
+        const accessToken = await getClioAccessToken();
 
-    // Fetch from Clio API
-    const response = await fetch(balancesUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
+        // Clio API configuration
+        const clioApiBaseUrl = 'https://eu.app.clio.com/api/v4';
+        const outstandingFields = 'id,created_at,updated_at,associated_matter_ids,contact{id,etag,name,first_name,middle_name,last_name,date_of_birth,type,created_at,updated_at,prefix,title,initials,clio_connect_email,locked_clio_connect_email,client_connect_user_id,primary_email_address,secondary_email_address,primary_phone_number,secondary_phone_number,ledes_client_id,has_clio_for_clients_permission,is_client,is_clio_for_client_user,is_co_counsel,is_bill_recipient,sales_tax_number,currency},total_outstanding_balance,last_payment_date,last_shared_date,newest_issued_bill_due_date,pending_payments_total,reminders_enabled,currency{id,etag,code,sign,created_at,updated_at},outstanding_bills{id,etag,number,issued_at,created_at,due_at,tax_rate,secondary_tax_rate,updated_at,subject,purchase_order,type,memo,start_at,end_at,balance,state,kind,total,paid,paid_at,pending,due,discount_services_only,can_update,credits_issued,shared,last_sent_at,services_secondary_tax,services_sub_total,services_tax,services_taxable_sub_total,services_secondary_taxable_sub_total,taxable_sub_total,secondary_taxable_sub_total,sub_total,tax_sum,secondary_tax_sum,total_tax,available_state_transitions}';
+        const balancesUrl = `${clioApiBaseUrl}/outstanding_client_balances.json?fields=${encodeURIComponent(outstandingFields)}`;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[OutstandingBalances] Clio API error:', errorText);
-      
-      // If token is invalid, clear cache and let user retry
-      if (response.status === 401) {
-        console.log('[OutstandingBalances] Access token invalid, clearing cache');
-        cachedAccessToken = null;
-        tokenExpiresAt = null;
-      }
-      
-      // Don't leak Clio API error details to browser
-      return res.status(500).json({ 
-        error: 'Failed to fetch outstanding client balances'
-      });
-    }
+        // Fetch from Clio API
+        const response = await fetch(balancesUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
 
-    const balancesData = await response.json();
-    console.log('[OutstandingBalances] Successfully retrieved balances data');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[OutstandingBalances] Clio API error:', errorText);
+          
+          // If token is invalid, clear cache and let user retry
+          if (response.status === 401) {
+            console.log('[OutstandingBalances] Access token invalid, clearing cache');
+            cachedAccessToken = null;
+            tokenExpiresAt = null;
+          }
+          
+          throw new Error(`Clio API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('[OutstandingBalances] Successfully retrieved balances data');
+        return data;
+      },
+      1800 // 30 minutes TTL - outstanding balances don't change frequently during the day
+    );
     
     res.json(balancesData);
   } catch (error) {

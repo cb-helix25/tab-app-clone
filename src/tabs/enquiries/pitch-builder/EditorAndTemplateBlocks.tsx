@@ -11,6 +11,9 @@ import { wrapInsertPlaceholders } from './emailUtils';
 import { SCENARIOS, SCENARIOS_VERSION } from './scenarios';
 import EmailSignature from '../EmailSignature';
 import { applyDynamicSubstitutions, convertDoubleBreaksToParagraphs } from './emailUtils';
+import FormattingToolbar from './FormattingToolbar';
+import { processEditorContentForEmail, KEYBOARD_SHORTCUTS, type FormattingCommand } from './emailFormattingUtils';
+import EmailProcessingConfirmDialog from './EmailProcessingConfirmDialog';
 import markUrl from '../../../assets/dark blue mark.svg';
 // Import tab bg image directly for debugging
 const tabBgUrl = require('../../../assets/tab bg.jpg');
@@ -148,17 +151,82 @@ function htmlToPlainText(html: string): string {
 
 // Removed local fallback passcode generation: must use ONLY server-issued passcode.
 
-// Find placeholder tokens like [TOKEN]
+// Find placeholder tokens like [TOKEN] but only in TEXT NODES (avoid attributes)
 function findPlaceholders(text: string): string[] {
-  const matches = text.match(/\[[^\]]+\]/g);
-  return matches ? matches : [];
+  const container = document.createElement('div');
+  container.innerHTML = text;
+  const results: string[] = [];
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const value = (node.nodeValue || '');
+    const matches = value.match(/\[[^\]]+\]/g);
+    if (matches) results.push(...matches);
+  }
+  return results;
 }
 
-// Wrap placeholders in red styling for preview HTML
+// Safely wrap placeholders in preview by operating on TEXT NODES only and
+// stripping editor-only attributes/styles so nothing leaks into the preview.
 function highlightPlaceholdersHtml(html: string): string {
-  return html.replace(/\[[^\]]+\]/g, (m) => {
-    return `<span style="color:#D65541;font-weight:700;">${escapeHtml(m)}</span>`;
+  const container = document.createElement('div');
+  container.innerHTML = html;
+
+  // 1) Strip editor-only attributes/styles and normalize existing placeholder wrappers
+  container.querySelectorAll('[contenteditable], [tabindex], [role="button"]').forEach((el) => {
+    el.removeAttribute('contenteditable');
+    el.removeAttribute('tabindex');
+    if (el.getAttribute('role') === 'button') el.removeAttribute('role');
   });
+
+  container.querySelectorAll('.insert-placeholder, .placeholder-edited, [data-insert], [data-placeholder]').forEach((el) => {
+    // Remove inline styles so preview styling comes from CSS
+    (el as HTMLElement).removeAttribute('style');
+    el.removeAttribute('data-original');
+    el.removeAttribute('data-insert');
+    el.removeAttribute('data-placeholder');
+    const txt = el.textContent || '';
+    if (/^\[[^\]]+\]$/.test(txt.trim())) {
+      // Unresolved placeholder → mark as CTA red
+      (el as HTMLElement).className = 'placeholder-unresolved';
+    } else {
+      // Satisfied placeholder → unwrap to plain text
+      const textNode = document.createTextNode(txt);
+      el.parentNode?.replaceChild(textNode, el);
+    }
+  });
+
+  // 2) Walk text nodes and wrap [TOKEN] occurrences with <span class="insert-placeholder">
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  let t: Node | null;
+  while ((t = walker.nextNode())) {
+    // Collect first; we'll mutate after to avoid breaking traversal
+    textNodes.push(t as Text);
+  }
+
+  const tokenRe = /\[[^\]]+\]/g;
+  for (const node of textNodes) {
+    const value = node.nodeValue || '';
+    if (!tokenRe.test(value)) continue;
+
+    const parts = value.split(/(\[[^\]]+\])/g);
+    const frag = document.createDocumentFragment();
+    for (const part of parts) {
+      if (!part) continue;
+      if (part.startsWith('[') && part.endsWith(']')) {
+        const span = document.createElement('span');
+        span.className = 'placeholder-unresolved';
+        span.textContent = part; // keep literal token text
+        frag.appendChild(span);
+      } else {
+        frag.appendChild(document.createTextNode(part));
+      }
+    }
+    node.parentNode?.replaceChild(frag, node);
+  }
+
+  return container.innerHTML;
 }
 
 // Custom hook: auto-insert [RATE] and [ROLE] values and report inserted ranges
@@ -242,6 +310,9 @@ interface InlineEditableAreaProps {
   passcode?: string;
   enquiry?: any;
   isDarkMode?: boolean;
+  richTextMode?: boolean;
+  bodyEditorRef?: React.RefObject<HTMLDivElement>;
+  handleFormatCommand?: (command: string, value?: string) => void;
 }
 
 interface UndoRedoState {
@@ -249,7 +320,20 @@ interface UndoRedoState {
   currentIndex: number;
 }
 
-const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange, edited, minHeight = 48, externalHighlights, allReplacedRanges, passcode, enquiry, isDarkMode }) => {
+const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ 
+  value, 
+  onChange, 
+  edited, 
+  minHeight = 48, 
+  externalHighlights, 
+  allReplacedRanges, 
+  passcode, 
+  enquiry, 
+  isDarkMode,
+  richTextMode,
+  bodyEditorRef,
+  handleFormatCommand
+}) => {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const preRef = useRef<HTMLPreElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -267,6 +351,19 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
   // Local synced copies of external highlights so we can shift them as user types
   const [syncedExternalRanges, setSyncedExternalRanges] = useState<{ start: number; end: number }[]>([]);
   const [syncedPersistentRanges, setSyncedPersistentRanges] = useState<{ start: number; end: number }[]>([]);
+
+  // Sync contentEditable content with value prop when in rich text mode
+  useEffect(() => {
+    if (richTextMode && bodyEditorRef?.current) {
+      // Only wrap placeholders if content doesn't already contain wrapped placeholders
+      const hasWrappedPlaceholders = value.includes('class="insert-placeholder"');
+      const wrappedContent = hasWrappedPlaceholders ? value : wrapInsertPlaceholders(value);
+      // Only update if the content is different to avoid cursor jumping
+      if (bodyEditorRef.current.innerHTML !== wrappedContent) {
+        bodyEditorRef.current.innerHTML = wrappedContent;
+      }
+    }
+  }, [value, richTextMode]);
 
   // Keep local copies in sync with props when they change from outside (e.g., auto-inserts)
   useEffect(() => {
@@ -671,14 +768,13 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
       ref={wrapperRef}
       style={{
         position: 'relative',
-  fontSize: 13,
-  lineHeight: 1,
+        fontSize: 13,
+        lineHeight: 1,
         border: 'none',
         background: 'transparent',
         borderRadius: 0,
         padding: 0,
-        minHeight,
-        overflow: 'hidden'
+        minHeight
       }}
       onMouseEnter={() => setShowToolbar(true)}
       onMouseLeave={() => setShowToolbar(false)}
@@ -758,142 +854,207 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
         </div>
       )}
       
-    <pre
-        ref={preRef}
-        aria-hidden="true"
-        style={{
-          margin: 0,
-          padding: '4px 6px',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-      font: 'inherit',
-  lineHeight: 1,
-      color: isDarkMode ? colours.dark.text : '#222',
-          pointerEvents: 'none',
-          visibility: 'visible'
+      {/* Rich text editor - WYSIWYG experience */}
+      <div
+        ref={bodyEditorRef}
+        contentEditable={true}
+        className="rich-text-editor"
+        onInput={(e) => {
+          const target = e.currentTarget as HTMLDivElement;
+          onChange(target.innerHTML);
         }}
-        dangerouslySetInnerHTML={{ __html: (() => {
-          // Detect special INSTRUCT_LINK markers ([[INSTRUCT_LINK::href]]) first so we can render the URL in-editor.
-          const linkRegex = /\[\[INSTRUCT_LINK::([^\]]+)\]\]/g;
-          const links: { start: number; end: number; href: string }[] = [];
-          let lm: RegExpExecArray | null;
-          while ((lm = linkRegex.exec(value)) !== null) {
-            links.push({ start: lm.index, end: lm.index + lm[0].length, href: lm[1] });
-          }
-
-          // Simple placeholder highlighting - only show complete [TOKEN] as blue (skip those inside INSTRUCT_LINK ranges)
-          const placeholders: { start: number; end: number }[] = [];
-          const regex = /\[[^\]]+\]/g;
-          let match: RegExpExecArray | null;
-          while ((match = regex.exec(value)) !== null) {
-            const start = match.index;
-            const end = match.index + match[0].length;
-            // Skip if this match falls inside any INSTRUCT_LINK range
-            const insideLink = links.some(l => start >= l.start && end <= l.end);
-            if (!insideLink) placeholders.push({ start, end });
-          }
-          
-          const markers: { start: number; end: number; type: 'placeholder' | 'edited' | 'instructLink'; href?: string }[] = [];
-          placeholders.forEach(p => markers.push({ ...p, type: 'placeholder' }));
-          links.forEach(l => markers.push({ start: l.start, end: l.end, type: 'instructLink', href: l.href }));
-          // Merge internal highlights (active editing), synced external highlights (auto-inserted), and synced persistent ranges
-          const allEdited = [
-            ...highlightRanges,
-            ...((syncedExternalRanges || []).filter((r: { start: number; end: number }) => r && r.end > r.start)),
-            ...((syncedPersistentRanges || []).filter((r: { start: number; end: number }) => r && r.end > r.start))
-          ];
-          allEdited.forEach(r => markers.push({ ...r, type: 'edited' }));
-
-
-          markers.sort((a,b) => a.start - b.start);
-          
-          let cursor = 0;
-          let html = '';
-          const pushPlain = (to: number) => {
-            if (to > cursor) {
-              const chunk = value.slice(cursor, to);
-              // Split on newlines to style leading numeric markers per line
-              let idx = 0;
-              while (idx <= chunk.length) {
-                const nl = chunk.indexOf('\n', idx);
-                const isLast = nl === -1;
-                const line = chunk.slice(idx, isLast ? chunk.length : nl);
-                // Match: start spaces + number + dot + at least one space
-                const m = line.match(/^(\s*)(\d+)\.(\s+)/);
-                if (m) {
-                  const pre = m[1] ?? '';
-                  const num = m[2] ?? '';
-                  const after = m[3] ?? '';
-                  const rest = line.slice(m[0].length);
-                  // Color only; avoid bold to preserve exact text metrics
-                  html += `${escapeHtml(pre)}<span style="color:#D65541;">${escapeHtml(num + '.')}<\/span>${escapeHtml(after + rest)}`;
-                } else {
-                  html += escapeHtml(line);
-                }
-                if (!isLast) html += '\n';
-                if (isLast) break;
-                idx = nl + 1;
+        onBlur={(e) => {
+          // Finalize any active placeholder editing when leaving the editor
+          const editorEl = e.currentTarget as HTMLDivElement;
+          const editing = Array.from(editorEl.querySelectorAll('.placeholder-editing')) as HTMLElement[];
+          if (editing.length) {
+            for (const el of editing) {
+              const original = el.getAttribute('data-original') || '';
+              const current = (el.textContent || '').trim();
+              if (current === original) {
+                // No change → restore original placeholder wrapper
+                const span = document.createElement('span');
+                span.className = 'insert-placeholder';
+                span.setAttribute('data-insert', '');
+                span.textContent = original;
+                el.replaceWith(span);
+              } else {
+                // Changed → persist edited highlight
+                const span = document.createElement('span');
+                span.className = 'placeholder-edited';
+                span.textContent = current;
+                el.replaceWith(span);
               }
             }
-            cursor = to;
-          };
+            onChange(editorEl.innerHTML);
+          }
+        }}
+        onClick={(e) => {
+          // Handle link clicks - allow them to work normally
+          const link = (e.target as HTMLElement).closest('a');
+          if (link && link.href) {
+            // Let links work normally - don't preventDefault
+            return;
+          }
           
-          markers.forEach(mark => {
-            if (mark.start < cursor) return; // skip overlaps
-            pushPlain(mark.start);
-            const segment = value.slice(mark.start, mark.end);
-              if (mark.type === 'placeholder') {
-              // Render the original token (including brackets) so the overlay text width exactly matches the textarea.
-              // Use outline (doesn't affect layout) for dashed box appearance and avoid padding which would change width.
-              html += `<span style="display:inline;background:${isDarkMode ? 'rgba(59,130,246,0.18)' : '#e0f0ff'};outline:1px dashed ${isDarkMode ? 'rgba(96,165,250,0.5)' : '#8bbbe8'};padding:0;margin:0;border-radius:3px;font-style:inherit;color:${isDarkMode ? '#cbd5e1' : '#6b7280'};font-weight:400">${escapeHtml(segment)}</span>`;
-            } else if (mark.type === 'instructLink') {
-              // Render the literal marker text so overlay width exactly matches textarea content
-              // Style it to be recognizable without altering layout
-              html += `<span style="color:#174ea6;text-decoration:underline">${escapeHtml(segment)}</span>`;
-            } else {
-              // Updated edited highlight: subtle green background only (no border/box), accessible text color
-              html += `<span style="display:inline;background:${isDarkMode ? 'rgba(16,185,129,0.20)' : '#e9f9f1'};padding:0;margin:0;border:none;font-style:inherit;color:${isDarkMode ? '#bbf7d0' : '#0b3d2c'}">${escapeHtml(segment)}</span>`;
+          // Handle placeholder clicks - convert to inline editable text
+          const editorEl = e.currentTarget as HTMLDivElement;
+          const targetEl = e.target as HTMLElement;
+          // If clicking elsewhere, finalize any active editing first (except if clicking inside it)
+          const activeEdits = Array.from(editorEl.querySelectorAll('.placeholder-editing')) as HTMLElement[];
+          if (activeEdits.length) {
+            for (const el of activeEdits) {
+              if (el.contains(targetEl)) continue; // keep editing the one being interacted with
+              const original = el.getAttribute('data-original') || '';
+              const current = (el.textContent || '').trim();
+              if (current === original) {
+                const span = document.createElement('span');
+                span.className = 'insert-placeholder';
+                span.setAttribute('data-insert', '');
+                span.textContent = original;
+                el.replaceWith(span);
+              } else {
+                const span = document.createElement('span');
+                span.className = 'placeholder-edited';
+                span.textContent = current;
+                el.replaceWith(span);
+              }
             }
-            cursor = mark.end;
-          });
-          pushPlain(value.length);
-          // Keep markers literal in the overlay to preserve spacing/line wraps
-          return html || '';
-        })() }}
-      />
-    <textarea
-        ref={taRef}
-        value={value}
-        onChange={e => handleContentChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onFocus={selectPlaceholderAtCursor}
-        onClick={selectPlaceholderAtCursor}
-  onMouseDown={selectPlaceholderAtCursor}
-  onMouseUp={selectPlaceholderAtCursor}
+            onChange(editorEl.innerHTML);
+          }
+
+          const span = targetEl.closest('.insert-placeholder');
+          if (span) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Turn placeholder into an editing wrapper retaining original text for comparison
+            const original = span.textContent || '';
+            const wrapper = document.createElement('span');
+            wrapper.className = 'placeholder-editing';
+            wrapper.setAttribute('data-original', original);
+            const inner = document.createElement('span');
+            inner.className = 'edit-text';
+            inner.textContent = original;
+            wrapper.appendChild(inner);
+            span.replaceWith(wrapper);
+            // Select all text for easy replacement
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(inner);
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+            onChange(editorEl.innerHTML);
+          }
+        }}
+        onDoubleClick={(e) => {
+          // Double-click also triggers inline editing
+          const placeholder = (e.target as HTMLElement).closest('.insert-placeholder');
+          if (placeholder) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Trigger the same click behavior
+            (placeholder as HTMLElement).click();
+          }
+        }}
+        onKeyDown={(e) => {
+          // Handle Enter key for placeholder inline editing
+          if (e.key === 'Enter') {
+            const placeholder = (e.target as HTMLElement).closest('.insert-placeholder');
+            if (placeholder) {
+              e.preventDefault();
+              e.stopPropagation();
+              (placeholder as HTMLElement).click();
+              return;
+            }
+          }
+          
+          // Handle keyboard shortcuts for rich text formatting
+          const key = e.key.toLowerCase();
+          const ctrl = e.ctrlKey || e.metaKey;
+          const shift = e.shiftKey;
+          
+          if (ctrl) {
+            switch (key) {
+              case 'b':
+                e.preventDefault();
+                handleFormatCommand?.('bold');
+                break;
+              case 'i':
+                e.preventDefault();
+                handleFormatCommand?.('italic');
+                break;
+              case 'u':
+                e.preventDefault();
+                handleFormatCommand?.('underline');
+                break;
+              case 'k':
+                e.preventDefault();
+                const url = prompt('Enter URL:');
+                if (url) handleFormatCommand?.('createLink', url);
+                break;
+              case 'l':
+                e.preventDefault();
+                handleFormatCommand?.('justifyLeft');
+                break;
+              case 'e':
+                e.preventDefault();
+                handleFormatCommand?.('justifyCenter');
+                break;
+              case 'r':
+                e.preventDefault();
+                handleFormatCommand?.('justifyRight');
+                break;
+              case 'z':
+                if (shift) {
+                  e.preventDefault();
+                  handleFormatCommand?.('redo');
+                } else {
+                  e.preventDefault();
+                  handleFormatCommand?.('undo');
+                }
+                break;
+              case 'y':
+                e.preventDefault();
+                handleFormatCommand?.('redo');
+                break;
+              case '8':
+                if (shift) {
+                  e.preventDefault();
+                  handleFormatCommand?.('insertUnorderedList');
+                }
+                break;
+              case '7':
+                if (shift) {
+                  e.preventDefault();
+                  handleFormatCommand?.('insertOrderedList');
+                }
+                break;
+            }
+          }
+          
+          if (key === 's' && ctrl && shift) {
+            e.preventDefault();
+            handleFormatCommand?.('strikeThrough');
+          }
+        }}
+        suppressContentEditableWarning={true}
         style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      width: '100%',
-      height: '100%',
-      resize: 'none',
-      background: 'transparent',
-      color: 'transparent', // hide raw text, rely on highlighted layer
-    caretColor: isDarkMode ? colours.dark.text : '#222',
-      font: 'inherit',
-  lineHeight: 1.6, // 🎯 Improved line spacing for better readability
-      border: 'none',
-      padding: '8px 12px', // 🎯 Slightly more padding for comfortable editing
-      outline: 'none',
-      whiteSpace: 'pre-wrap',
-      wordBreak: 'break-word',
-      overflow: 'hidden',
-      boxSizing: 'border-box'
+          width: '100%',
+          minHeight: minHeight,
+          background: 'transparent',
+          color: isDarkMode ? colours.dark.text : '#222',
+          font: 'inherit',
+          lineHeight: 1.6,
+          border: 'none',
+          padding: '8px 12px',
+          outline: 'none',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          boxSizing: 'border-box',
+          resize: 'none'
         }}
         spellCheck={true}
-        title="Shortcuts: Ctrl+Z (undo), Ctrl+Y (redo), Ctrl+Backspace (clear all), Alt+Backspace (delete word)"
+        title="Rich text editor - use toolbar or keyboard shortcuts for formatting"
       />
     </div>
   );
@@ -1022,6 +1183,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [showInlinePreview, setShowInlinePreview] = useState(false);
   // Email confirmation modal state
   const [showSendConfirmModal, setShowSendConfirmModal] = useState(false);
+  // Email processing method selection state
+  const [showEmailProcessingDialog, setShowEmailProcessingDialog] = useState(false);
+  const [selectedEmailMethod, setSelectedEmailMethod] = useState<'v1' | 'v2' | null>(null);
+  // Track which action is requesting processing selection: 'send' or 'draft'
+  const [processingDialogAction, setProcessingDialogAction] = useState<'send' | 'draft' | null>(null);
   const [confirmReady, setConfirmReady] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
   // Copy feedback flags
@@ -1039,6 +1205,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [showSendValidation, setShowSendValidation] = useState<boolean>(false);
   // Editable To field in modal
   const [editableTo, setEditableTo] = useState<string>(to || '');
+  // Rich text mode is always enabled for WYSIWYG experience
+  const richTextMode = true;
 
   // Update editable To when prop changes
   React.useEffect(() => {
@@ -1065,15 +1233,15 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   }, [setBody, setSubject]);
 
   // Keep modal open - let user close when ready (more reassuring UX)
-  // Auto-reset editor when both saving and sending complete successfully
+  // Auto-reset editor only after a real SEND completes successfully (not for DRAFT)
   useEffect(() => {
     const saved = dealStatus === 'ready';
     const sent = emailStatus === 'sent';
-    // Only auto-reset editor if both operations completed successfully AND modal is closed
-    if (!showSendConfirmModal && saved && sent) {
+    // Only auto-reset editor if both operations completed successfully AND modal is closed AND a send occurred
+    if (!showSendConfirmModal && saved && sent && hasSentEmail) {
       resetEditor();
     }
-  }, [showSendConfirmModal, dealStatus, emailStatus, resetEditor]);
+  }, [showSendConfirmModal, dealStatus, emailStatus, hasSentEmail, resetEditor]);
 
   // Auto-close modal after successful email send
   useEffect(() => {
@@ -1393,9 +1561,80 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     setAllBodyReplacedRanges(ranges.slice());
   }, []);
   
+  // Handle formatting commands from toolbar
+  const handleFormatCommand = useCallback((command: string, value?: string) => {
+    if (!richTextMode) return;
+    
+    try {
+      const success = document.execCommand(command, false, value);
+      if (success) {
+        // Trigger change detection to update body state
+        setTimeout(() => {
+          if (bodyEditorRef.current) {
+            setBody(bodyEditorRef.current.innerHTML);
+          }
+        }, 10);
+      }
+    } catch (error) {
+      console.warn(`Failed to execute format command ${command}:`, error);
+    }
+  }, [richTextMode, setBody]);
+
+  // Keyboard shortcut handler for rich text formatting
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!richTextMode || !bodyEditorRef.current?.contains(e.target as Node)) return;
+
+      const { ctrlKey, metaKey, shiftKey, key } = e;
+      const cmdKey = ctrlKey || metaKey;
+
+      if (cmdKey) {
+        const shortcutKey = [
+          cmdKey ? 'ctrl' : '',
+          shiftKey ? 'shift' : '',
+          key.toLowerCase()
+        ].filter(Boolean).join('+');
+
+        const command = KEYBOARD_SHORTCUTS[shortcutKey as keyof typeof KEYBOARD_SHORTCUTS];
+        
+        if (command) {
+          e.preventDefault();
+          handleFormatCommand(command);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [richTextMode, handleFormatCommand]);
+  
   useAutoInsertRateRole(body, setBody, userData, handleAutoInsertHighlights);
   // Also apply to subject so switching templates gets replacements too
   useAutoInsertRateRole(subject, setSubject, userData);
+
+  // Email send wrapper that handles V1/V2 processing based on selected method
+  const handleSendEmailWithProcessing = useCallback(async () => {
+    if (!sendEmail) return;
+    
+    // Store the selected method in window for PitchBuilder to access
+    if (selectedEmailMethod === 'v2') {
+      (window as any).__helixEmailProcessingV2__ = true;
+      console.log('V2 email processing enabled for this send operation');
+    } else {
+      (window as any).__helixEmailProcessingV2__ = false;
+      console.log('V1 email processing (production method) selected');
+    }
+    
+    try {
+      // Call the original sendEmail function
+      await sendEmail();
+    } finally {
+      // Clean up the flag after sending
+      delete (window as any).__helixEmailProcessingV2__;
+      // Reset selection after sending
+      setSelectedEmailMethod(null);
+    }
+  }, [sendEmail, selectedEmailMethod]);
 
   return (
     <>
@@ -1577,7 +1816,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
             borderRadius: '16px',
             padding: '24px',
-            border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.26)' : 'rgba(148, 163, 184, 0.16)'}`,
+            border: `1px solid ${isDarkMode ? 'rgba(54, 144, 206, 0.26)' : 'rgba(148, 163, 184, 0.16)'}`,
             boxShadow: isDarkMode 
               ? '0 20px 44px rgba(2, 6, 17, 0.72)'
               : '0 16px 40px rgba(13, 47, 96, 0.18)',
@@ -1595,8 +1834,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               width: '60px',
               height: '3px',
               background: isDarkMode 
-                ? 'linear-gradient(90deg, #3B82F6, #60A5FA)'
-                : 'linear-gradient(90deg, #3690CE, #60A5FA)',
+                ? `linear-gradient(90deg, ${colours.blue}, ${colours.darkBlue})`
+                : `linear-gradient(90deg, ${colours.blue}, ${colours.darkBlue})`,
               borderRadius: '0 0 8px 8px'
             }}></div>
             
@@ -1624,11 +1863,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               onMouseEnter={(e) => {
                 if (isDarkMode) {
                   e.currentTarget.style.background = 'linear-gradient(135deg, rgba(10, 20, 40, 0.96) 0%, rgba(15, 35, 65, 0.9) 100%)';
-                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                  e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.4)';
                   e.currentTarget.style.transform = 'translateY(-1px)';
                 } else {
                   e.currentTarget.style.background = 'linear-gradient(135deg, #FAFBFC 0%, #F1F5F9 100%)';
-                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                  e.currentTarget.style.borderColor = 'rgba(54, 144, 206, 0.3)';
                   e.currentTarget.style.transform = 'translateY(-1px)';
                 }
               }}
@@ -1653,7 +1892,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       switch(selectedScenarioId) {
                         case 'before-call-call':
                           return isDarkMode 
-                            ? 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%)'
+                            ? 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(54, 144, 206, 0.15) 100%)'
                             : 'linear-gradient(135deg, rgba(54, 144, 206, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%)';
                         case 'before-call-no-call':
                           return isDarkMode
@@ -1675,7 +1914,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     } else {
                       // Default blue background when no template selected
                       return isDarkMode 
-                        ? 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%)'
+                        ? 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(54, 144, 206, 0.15) 100%)'
                         : 'linear-gradient(135deg, rgba(54, 144, 206, 0.1) 0%, rgba(96, 165, 250, 0.08) 100%)';
                     }
                   })(),
@@ -1709,7 +1948,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       // Get the specific color for the selected template
                       const iconColor = (() => {
                         switch(selectedScenarioId) {
-                          case 'before-call-call': return isDarkMode ? '#60A5FA' : '#3690CE';
+                          case 'before-call-call': return isDarkMode ? colours.blue : colours.blue;
                           case 'before-call-no-call': return isDarkMode ? '#FBBF24' : '#D97706';
                           case 'after-call-probably-cant-assist': return isDarkMode ? '#F87171' : '#DC2626';
                           case 'after-call-want-instruction': return isDarkMode ? '#4ADE80' : '#059669';
@@ -1757,7 +1996,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       }
                     } else {
                       // Default lightning bolt icon when no template is selected
-                      const defaultIconColor = isDarkMode ? '#60A5FA' : '#3690CE';
+                      const defaultIconColor = colours.blue;
                       return <FaBolt style={{ fontSize: iconSize, color: defaultIconColor }} />;
                     }
                   })()}
@@ -1867,7 +2106,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           ? 'linear-gradient(135deg, rgba(11, 22, 43, 0.88) 0%, rgba(13, 30, 56, 0.8) 100%)'
                           : 'linear-gradient(135deg, rgba(248, 250, 252, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%)'),
                       border: `2px solid ${selectedScenarioId === s.id
-                        ? (isDarkMode ? '#60A5FA' : '#3690CE')
+                        ? colours.blue
                         : (isDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.16)')}`,
                       borderRadius: '12px',
                       padding: '24px',
@@ -1890,7 +2129,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     }}
                     onMouseEnter={(e) => {
                       if (selectedScenarioId !== s.id) {
-                        e.currentTarget.style.borderColor = isDarkMode ? '#60A5FA' : '#3690CE';
+                        e.currentTarget.style.borderColor = colours.blue;
                         e.currentTarget.style.boxShadow = isDarkMode
                           ? '0 12px 28px rgba(96, 165, 250, 0.28)'
                           : '0 8px 24px rgba(54, 144, 206, 0.2)';
@@ -1919,7 +2158,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         left: '-2px',
                         right: '-2px',
                         bottom: '-2px',
-                        background: `linear-gradient(135deg, ${isDarkMode ? '#3B82F6' : '#2563EB'}, ${isDarkMode ? '#60A5FA' : '#3B82F6'})`,
+                        background: `linear-gradient(135deg, ${colours.blue}, ${colours.darkBlue})`,
                         borderRadius: '14px',
                         zIndex: -1,
                         animation: 'pulseGlow 2s infinite'
@@ -1942,7 +2181,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           background: (() => {
                             const baseColor = (() => {
                               switch (s.id) {
-                                case 'before-call-call': return isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
+                                case 'before-call-call': return isDarkMode ? 'rgba(54, 144, 206, 0.2)' : 'rgba(54, 144, 206, 0.1)';
                                 case 'before-call-no-call': return isDarkMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(251, 191, 36, 0.1)';
                                 case 'after-call-probably-cant-assist': return isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)';
                                 case 'after-call-want-instruction': return isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)';
@@ -1958,8 +2197,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                               switch (s.id) {
                                 case 'before-call-call':
                                   return isDarkMode
-                                    ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.35) 0%, rgba(96, 165, 250, 0.3) 100%)'
-                                    : 'linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(96, 165, 250, 0.18) 100%)';
+                                    ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.35) 0%, rgba(96, 165, 250, 0.3) 100%)'
+                                    : 'linear-gradient(135deg, rgba(54, 144, 206, 0.22) 0%, rgba(96, 165, 250, 0.18) 100%)';
                                 case 'before-call-no-call':
                                   return isDarkMode
                                     ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.35) 0%, rgba(250, 204, 21, 0.28) 100%)'
@@ -1983,7 +2222,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           })(),
                           border: `1px solid ${(() => {
                             switch(s.id) {
-                              case 'before-call-call': return isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)';
+                              case 'before-call-call': return isDarkMode ? 'rgba(54, 144, 206, 0.3)' : 'rgba(54, 144, 206, 0.2)';
                               case 'before-call-no-call': return isDarkMode ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.2)';
                               case 'after-call-probably-cant-assist': return isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)';
                               case 'after-call-want-instruction': return isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)';
@@ -2000,12 +2239,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                             const iconColor = (() => {
                               // If this template is selected, use brand highlight blue
                               if (selectedScenarioId === s.id) {
-                                return isDarkMode ? '#60A5FA' : '#3690CE';
+                                return colours.blue;
                               }
                               
                               // Otherwise, use theme-appropriate colors per template type
                               switch(s.id) {
-                                case 'before-call-call': return isDarkMode ? '#60A5FA' : '#3690CE';
+                                case 'before-call-call': return colours.blue;
                                 case 'before-call-no-call': return isDarkMode ? '#FBBF24' : '#D97706';
                                 case 'after-call-probably-cant-assist': return isDarkMode ? '#F87171' : '#DC2626';
                                 case 'after-call-want-instruction': return isDarkMode ? '#4ADE80' : '#059669';
@@ -2099,11 +2338,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           width: '24px',
                           height: '24px',
                           border: `2px solid ${selectedScenarioId === s.id 
-                            ? (isDarkMode ? '#3B82F6' : '#2563EB') 
+                            ? colours.blue
                             : (isDarkMode ? 'rgba(148, 163, 184, 0.4)' : 'rgba(148, 163, 184, 0.3)')}`,
                           borderRadius: '50%',
                           background: selectedScenarioId === s.id 
-                            ? (isDarkMode ? '#3B82F6' : '#2563EB') 
+                            ? colours.blue
                             : 'transparent',
                           position: 'relative',
                           transition: 'all 0.2s ease',
@@ -2169,7 +2408,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   alignItems: 'center',
                   border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)'}`
                 }}>
-                  <FaEdit style={{ fontSize: 14, color: isDarkMode ? '#60A5FA' : '#3690CE' }} />
+                  <FaEdit style={{ fontSize: 14, color: colours.blue }} />
                 </div>
                 Subject Line
               </div>
@@ -2310,7 +2549,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       border: copiedToolbar 
                         ? '1px solid #16a34a' 
                         : `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)'}`,
-                      color: copiedToolbar ? '#166534' : (isDarkMode ? '#60A5FA' : '#3690CE'),
+                      color: copiedToolbar ? '#166534' : colours.blue,
                       background: copiedToolbar
                         ? (isDarkMode ? 'linear-gradient(135deg, rgba(22, 101, 52, 0.35) 0%, rgba(21, 128, 61, 0.25) 100%)' : 'linear-gradient(135deg, #e8f5e8 0%, #dcfce7 100%)')
                         : (isDarkMode
@@ -2373,7 +2612,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       border: showInlinePreview
                         ? `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)'}`
                         : `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.55)' : 'rgba(54, 144, 206, 0.55)'}`,
-                      color: showInlinePreview ? (isDarkMode ? '#60A5FA' : '#3690CE') : '#ffffff',
+                      color: showInlinePreview ? colours.blue : '#ffffff',
                       background: showInlinePreview
                         ? (isDarkMode
                           ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(59, 130, 246, 0.18) 100%)'
@@ -2393,8 +2632,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     }}
                     onMouseEnter={(e) => {
                       if (showInlinePreview) {
-                        e.currentTarget.style.borderColor = isDarkMode ? '#60A5FA' : '#3690CE';
-                        e.currentTarget.style.color = isDarkMode ? '#60A5FA' : '#3690CE';
+                        e.currentTarget.style.borderColor = colours.blue;
+                        e.currentTarget.style.color = colours.blue;
                         e.currentTarget.style.background = isDarkMode
                           ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.34) 0%, rgba(59, 130, 246, 0.28) 100%)'
                           : 'linear-gradient(135deg, rgba(54, 144, 206, 0.26) 0%, rgba(96, 165, 250, 0.28) 100%)';
@@ -2410,7 +2649,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     onMouseLeave={(e) => {
                       if (showInlinePreview) {
                         e.currentTarget.style.borderColor = isDarkMode ? 'rgba(96, 165, 250, 0.35)' : 'rgba(54, 144, 206, 0.3)';
-                        e.currentTarget.style.color = isDarkMode ? '#60A5FA' : '#3690CE';
+                        e.currentTarget.style.color = colours.blue;
                         e.currentTarget.style.background = isDarkMode
                           ? 'linear-gradient(135deg, rgba(54, 144, 206, 0.24) 0%, rgba(59, 130, 246, 0.18) 100%)'
                           : 'linear-gradient(135deg, rgba(54, 144, 206, 0.16) 0%, rgba(96, 165, 250, 0.18) 100%)';
@@ -2434,25 +2673,49 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   background: isDarkMode
                     ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.88) 100%)'
                     : 'linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%)',
-                  padding: '10px',
+                  padding: '0',
                   position: 'relative',
                   overflow: 'hidden',
                   boxShadow: isDarkMode ? '0 12px 28px rgba(4, 9, 20, 0.6)' : '0 8px 20px rgba(13, 47, 96, 0.14)',
                   backdropFilter: 'blur(10px)'
                 }}>
                   {/* Watermark */}
-                  <div aria-hidden="true" style={{ position: 'absolute', top: 8, right: 8, width: 150, height: 150, opacity: 0.06, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none' }} />
-                  <InlineEditableArea
-                    value={body}
-                    onChange={(v) => setBody(v)}
-                    edited={false}
-                    minHeight={140}
-                    externalHighlights={undefined}
-                    allReplacedRanges={allBodyReplacedRanges}
-                    passcode={passcode}
-                    enquiry={enquiry}
-                    isDarkMode={isDarkMode}
-                  />
+                  <div aria-hidden="true" style={{ position: 'absolute', top: 8, right: 8, width: 150, height: 150, opacity: 0.06, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none', zIndex: 1 }} />
+                  
+                  {/* Rich Text Formatting Toolbar */}
+                  <div style={{ 
+                    borderBottom: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.2)' : 'rgba(148, 163, 184, 0.15)'}`,
+                      position: 'relative',
+                      zIndex: 2
+                    }}>
+                      <FormattingToolbar
+                        isDarkMode={isDarkMode}
+                        onFormatChange={handleFormatCommand}
+                        editorRef={bodyEditorRef}
+                        style={{
+                          border: 'none',
+                          borderRadius: '12px 12px 0 0',
+                          backgroundColor: 'transparent'
+                        }}
+                      />
+                    </div>
+                  
+                  <div style={{ padding: '10px' }}>
+                    <InlineEditableArea
+                      value={body}
+                      onChange={(v) => setBody(v)}
+                      edited={false}
+                      minHeight={140}
+                      externalHighlights={undefined}
+                      allReplacedRanges={allBodyReplacedRanges}
+                      passcode={passcode}
+                      enquiry={enquiry}
+                      isDarkMode={isDarkMode}
+                      richTextMode={richTextMode}
+                      bodyEditorRef={bodyEditorRef}
+                      handleFormatCommand={handleFormatCommand}
+                    />
+                  </div>
                 </div>
               )}
 
@@ -2483,7 +2746,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   backdropFilter: 'blur(8px)'
                 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: isDarkMode ? '#E0F2FE' : '#0F172A', letterSpacing: 0.6, textTransform: 'uppercase' }}>Inline Preview</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 11, color: isDarkMode ? 'rgba(224, 242, 254, 0.7)' : '#3B82F6' }}>{subject || 'Your Enquiry - Helix Law'}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: isDarkMode ? 'rgba(224, 242, 254, 0.7)' : colours.blue }}>{subject || 'Your Enquiry - Helix Law'}</span>
                 </div>
                 <div 
                   ref={previewRef} 
@@ -2553,7 +2816,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                             {unresolvedBody.length} placeholder{unresolvedBody.length === 1 ? '' : 's'} to resolve: {unresolvedBody.join(', ')}
                           </div>
                         )}
-                        <EmailSignature bodyHtml={styledFinalHighlighted} userData={userDataLocal} />
+                        {(() => {
+                          // Determine if we should use experimental V2 layout (same logic as EmailPreview)
+                          const isV2Env = process.env.REACT_APP_EMAIL_V2_ENABLED === 'true';
+                          const useV2Layout = (window as any)?.__helixEmailProcessingV2__ === true || isV2Env;
+                          return <EmailSignature bodyHtml={styledFinalHighlighted} userData={userDataLocal} experimentalLayout={useV2Layout} />;
+                        })()}
                       </>
                     );
                   })()}
@@ -2570,10 +2838,63 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   flexWrap: 'wrap',
                   backdropFilter: 'blur(8px)'
                 }}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: isDarkMode ? '#CFE8FF' : '#1E293B', fontWeight: 600 }}>
-                    <input type="checkbox" checked={confirmReady} onChange={e => setConfirmReady(e.currentTarget.checked)} />
-                    Everything looks good, ready to proceed
-                  </label>
+                  <div style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: 12, 
+                    padding: '12px 16px',
+                    background: confirmReady 
+                      ? (isDarkMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)') 
+                      : (isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.05)'),
+                    border: confirmReady 
+                      ? `2px solid ${isDarkMode ? '#22c55e' : '#16a34a'}` 
+                      : `2px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.2)'}`,
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: confirmReady ? 'translateY(-1px)' : 'none',
+                    boxShadow: confirmReady 
+                      ? (isDarkMode ? '0 4px 16px rgba(34, 197, 94, 0.3)' : '0 4px 16px rgba(34, 197, 94, 0.2)') 
+                      : 'none'
+                  }}
+                  onClick={() => setConfirmReady(!confirmReady)}
+                  >
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '4px',
+                      background: confirmReady 
+                        ? (isDarkMode ? '#22c55e' : '#16a34a') 
+                        : 'transparent',
+                      border: confirmReady 
+                        ? 'none' 
+                        : `2px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.4)' : 'rgba(148, 163, 184, 0.3)'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease'
+                    }}>
+                      {confirmReady && (
+                        <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                          <path 
+                            d="M1 4L5 8L11 1" 
+                            stroke="white" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span style={{ 
+                      fontSize: '14px', 
+                      color: isDarkMode ? '#E2E8F0' : '#334155', 
+                      fontWeight: 600,
+                      userSelect: 'none'
+                    }}>
+                      Everything looks good, ready to proceed
+                    </span>
+                  </div>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, position: 'relative' }}>
                     {(() => {
                       // Determine unresolved placeholders across subject and body after substitution
@@ -2598,39 +2919,62 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       return (
                         <>
                           <button
-                            onClick={() => setShowSendConfirmModal(true)}
+                            onClick={() => {
+                              // Always route through processing selector to keep behavior consistent
+                              setProcessingDialogAction('send');
+                              setShowEmailProcessingDialog(true);
+                            }}
                             disabled={disableSend}
                             title={sendBtnTitle}
                             style={{
-                              padding: '8px 16px', 
-                              borderRadius: 6, 
+                              padding: '12px 20px', 
+                              borderRadius: '10px', 
                               border: 'none', 
                               cursor: disableSend ? 'not-allowed' : 'pointer',
-                              background: disableSend ? '#9CA3AF' : '#3B82F6', 
+                              background: disableSend 
+                                ? (isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.2)') 
+                                : `linear-gradient(135deg, ${colours.cta}, #e74c3c)`,
                               color: '#ffffff', 
-                              fontWeight: 600, 
+                              fontWeight: 700, 
+                              fontSize: '14px',
                               opacity: disableSend ? 0.6 : 1,
-                              transition: 'background-color 0.2s ease'
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              transform: disableSend ? 'none' : 'translateY(0px)',
+                              boxShadow: disableSend 
+                                ? 'none' 
+                                : `0 4px 20px rgba(214, 85, 65, 0.4)`,
+                              letterSpacing: '0.02em',
+                              textTransform: 'uppercase',
+                              position: 'relative',
+                              overflow: 'hidden'
                             }}
                             onMouseEnter={(e) => {
                               if (disableSend) {
                                 setShowSendValidation(true);
                               } else {
-                                e.currentTarget.style.background = '#2563EB';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = `0 8px 30px rgba(214, 85, 65, 0.6)`;
+                                e.currentTarget.style.background = `linear-gradient(135deg, #c54a3d, #d63031)`;
                               }
                             }}
                             onMouseLeave={(e) => {
                               if (disableSend) {
                                 setShowSendValidation(false);
                               } else {
-                                e.currentTarget.style.background = '#3B82F6';
+                                e.currentTarget.style.transform = 'translateY(0px)';
+                                e.currentTarget.style.boxShadow = `0 4px 20px rgba(214, 85, 65, 0.4)`;
+                                e.currentTarget.style.background = `linear-gradient(135deg, ${colours.cta}, #e74c3c)`;
                               }
                             }}
                           >
                             <FaPaperPlane style={{ marginRight: 6 }} /> Send Email...
                           </button>
                           <button
-                            onClick={() => handleDraftEmail?.()}
+                            onClick={() => {
+                              // Open processing selection for draft as well (dev shows choice, prod auto-selects V1)
+                              setProcessingDialogAction('draft');
+                              setShowEmailProcessingDialog(true);
+                            }}
                             disabled={disableDraft}
                             style={{
                               padding: '8px 16px', 
@@ -2995,6 +3339,90 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           color: #000000 !important;
         }
         
+        /* Modern placeholder styling for email preview */
+        .email-preview .insert-placeholder,
+        .email-preview span[data-insert],
+        .email-preview span[data-original*="INSERT"] {
+          background: linear-gradient(135deg, ${colours.highlight}08, ${colours.highlight}15) !important;
+          color: ${colours.highlight} !important;
+          padding: 2px 8px !important;
+          border-radius: 6px !important;
+          border: 1px solid ${colours.highlight}40 !important;
+          font-style: normal !important;
+          font-weight: 600 !important;
+          font-size: 0.9em !important;
+          letter-spacing: 0.025em !important;
+          cursor: default !important;
+          display: inline-block !important;
+          max-width: 100% !important;
+          word-wrap: break-word !important;
+          white-space: normal !important;
+          box-shadow: 0 1px 3px ${colours.highlight}15, 0 1px 2px ${colours.highlight}10 !important;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        .email-preview.dark-mode .insert-placeholder,
+        .email-preview.dark-mode span[data-insert],
+        .email-preview.dark-mode span[data-original*="INSERT"] {
+          background: linear-gradient(135deg, ${colours.highlight}12, ${colours.highlight}20) !important;
+          border-color: ${colours.highlight}50 !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px ${colours.highlight}15 !important;
+        }
+        
+        .email-preview.light-mode .insert-placeholder,
+        .email-preview.light-mode span[data-insert],
+        .email-preview.light-mode span[data-original*="INSERT"] {
+          background: linear-gradient(135deg, ${colours.highlight}08, ${colours.highlight}12) !important;
+          border-color: ${colours.highlight}35 !important;
+          box-shadow: 0 1px 3px ${colours.highlight}12, 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        }
+        
+        /* Override any inline styles on placeholders in preview */
+        .email-preview span[style*="background"]:is([data-insert], [data-original*="INSERT"], .insert-placeholder),
+        .email-preview span[style*="color"]:is([data-insert], [data-original*="INSERT"], .insert-placeholder),
+        .email-preview span[style*="background-color"][data-placeholder],
+        .email-preview span[data-placeholder*="INSERT"],
+        .email-preview span[contenteditable="true"],
+        .email-preview span[contenteditable="false"],
+        .email-preview .placeholder-edited {
+          background: linear-gradient(135deg, ${colours.highlight}08, ${colours.highlight}15) !important;
+          color: ${colours.highlight} !important;
+          padding: 2px 8px !important;
+          border-radius: 6px !important;
+          border: 1px solid ${colours.highlight}40 !important;
+          font-style: normal !important;
+          font-weight: 600 !important;
+          font-size: 0.9em !important;
+          letter-spacing: 0.025em !important;
+          cursor: default !important;
+          display: inline-block !important;
+          max-width: 100% !important;
+          word-wrap: break-word !important;
+          white-space: normal !important;
+          box-shadow: 0 1px 3px ${colours.highlight}15, 0 1px 2px ${colours.highlight}10 !important;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        /* Remove interactive attributes from preview placeholders */
+        .email-preview span[contenteditable="true"],
+        .email-preview span[contenteditable="false"],
+        .email-preview span[tabindex],
+        .email-preview span[role="button"] {
+          cursor: default !important;
+          user-select: none !important;
+          pointer-events: none !important;
+        }
+
+        /* Unresolved placeholders: draw attention with CTA red only */
+        .email-preview .placeholder-unresolved {
+          color: ${colours.cta} !important;
+          font-weight: 700 !important;
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+        }
+        
         /* Numbered list styling with CTA red numbers */
         ol:not(.hlx-numlist) {
           counter-reset: list-counter;
@@ -3022,7 +3450,140 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         ol.hlx-numlist li { margin: 0 0 12px 0; line-height: 1.6; position: relative; }
         ol.hlx-numlist li::before { content: none !important; }
         ol.hlx-numlist > li > span:first-child { color: #D65541; font-weight: 700; display: inline-block; min-width: 1.6em; }
+        
+        /* Placeholder highlighting styles */
+        .insert-placeholder {
+          background: ${colours.highlightBlue}20;
+          color: ${isDarkMode ? '#E5E7EB' : colours.darkBlue};
+          padding: 1px 3px;
+          border-radius: 3px;
+          border: 1px dotted ${isDarkMode ? '#93C5FD' : colours.darkBlue + '60'};
+          font-style: italic;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          display: inline-block;
+          max-width: 100%;
+          word-wrap: break-word;
+          white-space: normal;
+          font-size: 0.9em;
+          opacity: ${isDarkMode ? 0.95 : 0.85};
+        }
+        .insert-placeholder:hover,
+        .insert-placeholder:focus {
+          background: ${isDarkMode ? '#1E3A8A' : colours.blue + '40'};
+          color: ${isDarkMode ? '#F8FAFC' : colours.darkBlue};
+          border-color: ${isDarkMode ? '#60A5FA' : colours.blue};
+          box-shadow: 0 0 0 2px ${isDarkMode ? 'rgba(96, 165, 250, 0.35)' : colours.blue + '30'};
+          transform: translateY(-1px);
+          outline: none;
+          opacity: 1;
+        }
+        
+        /* Edited placeholder styles - green highlight for user feedback */
+        .placeholder-edited {
+          background: ${isDarkMode ? 'rgba(16, 185, 129, 0.18)' : 'rgba(34, 197, 94, 0.1)'} !important;
+          color: ${isDarkMode ? '#D1FAE5' : '#059669'} !important;
+          border: 1px solid ${isDarkMode ? 'rgba(16, 185, 129, 0.35)' : 'rgba(34, 197, 94, 0.3)'} !important;
+          font-style: normal !important;
+          cursor: text !important;
+          opacity: 1 !important;
+          transform: none !important;
+        }
+        .placeholder-edited:hover,
+        .placeholder-edited:focus {
+          background: rgba(34, 197, 94, 0.15) !important;
+          border-color: rgba(34, 197, 94, 0.5) !important;
+          box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2) !important;
+        }
+
+        /* Active editing wrapper */
+        .placeholder-editing {
+          background: ${isDarkMode ? 'rgba(54, 144, 206, 0.18)' : 'rgba(54, 144, 206, 0.1)'} !important;
+          border: 1px dashed ${isDarkMode ? 'rgba(96, 165, 250, 0.6)' : colours.blue} !important;
+          border-radius: 4px !important;
+          padding: 1px 2px !important;
+        }
+        
+        /* Link styles for rich text editor */
+        .rich-text-editor a {
+          color: ${colours.blue};
+          text-decoration: underline;
+          cursor: pointer;
+        }
+        .rich-text-editor a:hover {
+          color: ${colours.darkBlue};
+          text-decoration: none;
+        }
+        
+        /* Instruct Helix Law link styling */
+        .rich-text-editor .instruct-link {
+          color: ${colours.highlight} !important;
+          font-weight: 700 !important;
+          text-decoration: underline !important;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .rich-text-editor .instruct-link:hover {
+          color: ${colours.darkBlue} !important;
+          text-decoration: none !important;
+          transform: translateY(-1px);
+        }
+        
+        /* Pending link style (when passcode not available yet) */
+        .rich-text-editor .instruct-link-pending {
+          color: ${colours.highlight} !important;
+          font-weight: 700 !important;
+          text-decoration: underline !important;
+          opacity: 0.7 !important;
+          cursor: help !important;
+          font-style: italic;
+        }
+        .rich-text-editor .instruct-link-pending:hover {
+          opacity: 1 !important;
+        }
+        .rich-text-editor .instruct-link-pending::after {
+          content: " (pending passcode)";
+          font-size: 0.85em;
+          opacity: 0.8;
+          font-weight: 400;
+        }
       `}</style>
+
+      {/* Email Processing Method Selection Dialog - Development Only */}
+      {showEmailProcessingDialog && (
+        <EmailProcessingConfirmDialog
+          isOpen={showEmailProcessingDialog}
+          onConfirm={(useV2: boolean) => {
+            // Persist choice and close selector
+            setSelectedEmailMethod(useV2 ? 'v2' : 'v1');
+            setShowEmailProcessingDialog(false);
+            const action = processingDialogAction || 'send';
+            if (action === 'send') {
+              // Proceed to the normal send confirmation modal
+              setShowSendConfirmModal(true);
+            } else {
+              // Draft flow: set processing flag, run draft, then clean up
+              try {
+                (window as any).__helixEmailProcessingV2__ = !!useV2;
+                void (async () => {
+                  try {
+                    await handleDraftEmail?.();
+                  } finally {
+                    delete (window as any).__helixEmailProcessingV2__;
+                    setSelectedEmailMethod(null);
+                  }
+                })();
+              } finally {
+                // Ensure we clear the action state so future opens default correctly
+                setProcessingDialogAction(null);
+              }
+            }
+          }}
+          onClose={() => setShowEmailProcessingDialog(false)}
+          action={processingDialogAction || 'send'}
+          isDarkMode={isDarkMode}
+        />
+      )}
 
       {/* Email Send Confirmation Modal */}
       {showSendConfirmModal && (
@@ -3042,18 +3603,20 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             background: isDarkMode 
               ? '#1E293B'
               : '#FFFFFF',
-            padding: '32px',
+            padding: '0',
             borderRadius: '8px',
             maxWidth: '580px',
             width: '92%',
             maxHeight: '85vh',
-            overflowY: 'auto',
+            overflow: 'hidden',
             boxShadow: isDarkMode 
               ? '0 10px 25px rgba(0, 0, 0, 0.5)' 
               : '0 10px 25px rgba(0, 0, 0, 0.15)',
             border: isDarkMode 
               ? '1px solid rgba(148, 163, 184, 0.2)' 
-              : '1px solid rgba(226, 232, 240, 0.8)'
+              : '1px solid rgba(226, 232, 240, 0.8)',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             {/* Enhanced Header with Icon */}
             <div style={{
@@ -3062,6 +3625,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               gap: '16px',
               marginBottom: '24px',
               paddingBottom: '20px',
+              padding: '32px 32px 20px 32px',
               borderBottom: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.25)' : 'rgba(148, 163, 184, 0.2)'}`
             }}>
               <div style={{
@@ -3081,7 +3645,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               }}>
                 <FaPaperPlane style={{ 
                   fontSize: '20px', 
-                  color: isDarkMode ? '#60A5FA' : '#3690CE'
+                  color: colours.blue
                 }} />
               </div>
               <div>
@@ -3106,6 +3670,14 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 </p>
               </div>
             </div>
+            
+            {/* Scrollable Content Area */}
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '0 32px',
+              maxHeight: 'calc(85vh - 160px)' // Leave space for header and buttons
+            }}>
             
             {/* Recipients Section - Enhanced Design */}
             <div style={{ 
@@ -3143,7 +3715,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 }}>
                   <FaUsers style={{ 
                     fontSize: '14px', 
-                    color: isDarkMode ? '#60A5FA' : '#3B82F6'
+                    color: colours.blue
                   }} />
                 </div>
                 <h4 style={{
@@ -3225,10 +3797,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = '#3B82F6';
+                      e.target.style.borderColor = colours.blue;
                       e.target.style.boxShadow = isDarkMode 
-                        ? '0 0 0 1px rgba(59, 130, 246, 0.3)' 
-                        : '0 0 0 1px rgba(59, 130, 246, 0.2)';
+                        ? `0 0 0 1px rgba(54, 144, 206, 0.3)` 
+                        : `0 0 0 1px rgba(54, 144, 206, 0.2)`;
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = isDarkMode ? 'rgba(71, 85, 105, 0.4)' : 'rgba(226, 232, 240, 0.6)';
@@ -3667,12 +4239,14 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               </div>
             )}
             
+            </div> {/* End Scrollable Content Area */}
+            
             {/* Enhanced Action Buttons */}
             <div style={{
               display: 'flex',
               gap: '16px',
               justifyContent: 'flex-end',
-              paddingTop: '24px',
+              padding: '24px 32px',
               borderTop: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`
             }}>
               <button
@@ -3746,38 +4320,48 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     if (onRecipientsChange && editableTo !== to) {
                       onRecipientsChange(editableTo, cc, bcc);
                     }
-                    await sendEmail?.();
+                    await handleSendEmailWithProcessing();
                   } finally {
                     setModalSending(false);
                   }
                 }}
                 style={{
-                  padding: '12px 32px',
+                  padding: '14px 36px',
                   border: 'none',
                   background: modalSending 
                     ? 'rgba(148, 163, 184, 0.8)' 
-                    : '#3B82F6',
+                    : `linear-gradient(135deg, ${colours.cta}, #e74c3c)`,
                   color: '#FFFFFF',
-                  borderRadius: '10px',
+                  borderRadius: '12px',
                   cursor: modalSending ? 'not-allowed' : 'pointer',
                   fontSize: '15px',
                   fontWeight: '700',
-                  transition: 'background-color 0.2s ease',
+                  letterSpacing: '0.02em',
+                  textTransform: 'uppercase',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
-                  minWidth: '140px',
-                  justifyContent: 'center'
+                  minWidth: '160px',
+                  justifyContent: 'center',
+                  transform: modalSending ? 'none' : 'translateY(0px)',
+                  boxShadow: modalSending 
+                    ? 'none' 
+                    : `0 6px 25px rgba(214, 85, 65, 0.4)`
                 }}
                 disabled={modalSending}
                 onMouseEnter={(e) => {
                   if (!modalSending) {
-                    e.currentTarget.style.background = '#2563EB';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = `0 10px 35px rgba(214, 85, 65, 0.6)`;
+                    e.currentTarget.style.background = `linear-gradient(135deg, #c54a3d, #d63031)`;
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!modalSending) {
-                    e.currentTarget.style.background = '#3B82F6';
+                    e.currentTarget.style.transform = 'translateY(0px)';
+                    e.currentTarget.style.boxShadow = `0 6px 25px rgba(214, 85, 65, 0.4)`;
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${colours.cta}, #e74c3c)`;
                   }
                 }}
               >

@@ -175,6 +175,25 @@
     margin: 0.5rem 0;
 }
 
+/* Dark mode support for question banner */
+[data-theme="dark"] .question-banner {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
+    color: #f3f4f6;
+    border-left: 3px solid #3b82f6;
+}
+
+/* Dark mode support for select dropdowns */
+[data-theme="dark"] select {
+    background-color: rgba(15, 23, 42, 0.8);
+    color: #f3f4f6;
+    border-color: rgba(125, 211, 252, 0.24);
+}
+
+[data-theme="dark"] select option {
+    background-color: #0f172a;
+    color: #f3f4f6;
+}
+
 .opponent-section {
     border: 1px solid var(--helix-grey);
     background: #fff;

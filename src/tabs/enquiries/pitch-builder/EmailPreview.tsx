@@ -30,6 +30,7 @@ import {
   applyDynamicSubstitutions,
   convertDoubleBreaksToParagraphs,
 } from './emailUtils';
+import { processEmailContentV2 } from './emailFormattingV2';
 import ExperimentalAssistant from './ExperimentalAssistant';
 import { isInTeams } from '../../../app/functionality/isInTeams';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
@@ -126,11 +127,16 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
     passcode
   );
   const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
-  const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);
+  // Use experimental V2 processing in preview when globally enabled or selected for this action; otherwise default to V1
+  const isV2Env = process.env.REACT_APP_EMAIL_V2_ENABLED === 'true';
+  const useV2Preview = (window as any)?.__helixEmailProcessingV2__ === true || isV2Env;
+  const processedBody = useV2Preview
+    ? processEmailContentV2(highlightedBody)
+    : convertDoubleBreaksToParagraphs(highlightedBody);
   const previewHtml = ReactDOMServer.renderToStaticMarkup(
-    <EmailSignature bodyHtml={finalBody} userData={userData} />
+    <EmailSignature bodyHtml={processedBody} userData={userData} experimentalLayout={useV2Preview} />
   );
-const previewRef = React.useRef<HTMLDivElement>(null);
+  const previewRef = React.useRef<HTMLDivElement>(null);
 
   const [isAiOpen, setIsAiOpen] = React.useState(false);
   const [isConfirmed, setIsConfirmed] = React.useState(false);
@@ -139,6 +145,62 @@ const previewRef = React.useRef<HTMLDivElement>(null);
       setIsConfirmed(false);
     }
   }, [isPreviewOpen]);
+
+  const baseBodyStyles: React.CSSProperties = {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '24px',
+    fontFamily: 'Raleway, sans-serif',
+    fontSize: '14px',
+    lineHeight: '1.6',
+    color: colours.light.text,
+    backgroundColor: colours.light.sectionBackground,
+    position: 'relative',
+    borderRadius: '4px',
+    margin: '0 16px 16px 16px',
+    border: `1px solid ${colours.light.border}`,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+  };
+
+  const previewWrapperStyles: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    margin: '0 16px 16px 16px',
+    ...(useV2Preview
+      ? {
+          backgroundColor: 'transparent',
+          border: 'none',
+          boxShadow: 'none'
+        }
+      : {})
+  };
+
+  const previewBodyStyles: React.CSSProperties = useV2Preview
+    ? {
+        flex: 1,
+        overflowY: 'auto',
+        padding: 0,
+        fontFamily: 'Raleway, sans-serif',
+        fontSize: '14px',
+        lineHeight: '1.6',
+        color: 'inherit',
+        backgroundColor: 'transparent',
+        position: 'relative',
+        borderRadius: 0,
+        margin: 0,
+        border: 'none',
+        boxShadow: 'none',
+        width: '100%'
+      }
+    : {
+        ...baseBodyStyles,
+        margin: 0,
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderTop: 'none'
+      };
+
   const inTeams = isInTeams();
   const useLocalData =
     process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
@@ -147,63 +209,46 @@ const previewRef = React.useRef<HTMLDivElement>(null);
   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
   const showAiAssistButton = false;
 
-  // Example follow-up options (you may wish to pass these in or centralise them)
   const followUpOptions: { [key: string]: string } = {
     '1_day': '1 day',
     '2_days': '2 days',
     '3_days': '3 days',
     '7_days': '7 days',
     '14_days': '14 days',
-    '30_days': '30 days',
+    '30_days': '30 days'
   };
 
-function formatCurrency(val?: string): string {
-  if (!val) return 'N/A';
-  const num = parseFloat(val.replace(/,/g, ''));
-  if (isNaN(num)) return val;
-  return num.toLocaleString('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 2,
-  });
-}
+  function formatCurrency(val?: string): string {
+    if (!val) return 'N/A';
+    const num = parseFloat(val.replace(/,/g, ''));
+    if (isNaN(num)) return val;
+    return num.toLocaleString('en-GB', {
+      style: 'currency',
+      currency: 'GBP',
+      minimumFractionDigits: 2,
+    });
+  }
 
   const subjectBannerClass = mergeStyles('subject-banner', {
-    background: '#f8f9fa',
-    border: '1px solid #e8eaed',
+    background: colours.light.previewBackground,
+    border: `1px solid ${colours.light.border}`,
     borderRadius: '4px',
     padding: '12px 16px',
     fontSize: '14px',
     fontWeight: 600,
-    color: '#0078d4',
+    color: colours.highlight,
     margin: '0 16px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
   });
 
   const panelStyles = {
     padding: '0',
-    backgroundColor: '#ffffff',
-    color: '#3c4043',
+    backgroundColor: colours.light.sectionBackground,
+    color: colours.light.text,
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
     overflow: 'hidden'
-  } as const;
-
-  const bodyStyles = {
-    flex: 1,
-    overflowY: 'auto',
-    padding: '24px',
-    fontFamily: 'Raleway, sans-serif',
-    fontSize: '14px',
-    lineHeight: '1.6',
-    color: '#3c4043',
-    backgroundColor: '#ffffff',
-    position: 'relative',
-    borderRadius: '4px',
-    margin: '0 16px 16px 16px',
-    border: '1px solid #e8eaed',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
   } as const;
 
   return (
@@ -357,54 +402,45 @@ function formatCurrency(val?: string): string {
           </div>
         )}
 
-        {/* Email Body Preview */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          margin: '0 16px 16px 16px'
-        }}>
-          <div style={{
-            padding: '12px 16px',
-            backgroundColor: '#f8f9fa',
-            borderBottom: '1px solid #e8eaed',
-            borderTopLeftRadius: '4px',
-            borderTopRightRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: '#5f6368',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase'
-            }}>
-              Email Content
-            </span>
+  {/* Email Body Preview */}
+  <div style={previewWrapperStyles}>
+          {!useV2Preview && (
             <div style={{
-              marginLeft: 'auto',
-              padding: '2px 8px',
-              backgroundColor: colours.highlightBlue,
-              borderRadius: '6px',
-              fontSize: '10px',
-              fontWeight: 500,
-              color: colours.blue
+              padding: '12px 16px',
+              backgroundColor: colours.light.previewBackground,
+              borderBottom: `1px solid ${colours.light.border}`,
+              borderTopLeftRadius: '4px',
+              borderTopRightRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}>
-              Preview
+              <span style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#5f6368',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase'
+              }}>
+                Email Content
+              </span>
+              <div style={{
+                marginLeft: 'auto',
+                padding: '2px 8px',
+                backgroundColor: colours.highlightBlue,
+                borderRadius: '6px',
+                fontSize: '10px',
+                fontWeight: 500,
+                color: colours.blue
+              }}>
+                Preview
+              </div>
             </div>
-          </div>
+          )}
 
           <div
             ref={previewRef}
-            style={{
-              ...bodyStyles,
-              margin: 0,
-              borderTopLeftRadius: 0,
-              borderTopRightRadius: 0,
-              borderTop: 'none'
-            }}
+            style={previewBodyStyles}
             dangerouslySetInnerHTML={{ __html: previewHtml }}
           />
         </div>
@@ -444,8 +480,8 @@ function formatCurrency(val?: string): string {
       {/* Footer Actions */}
       <div style={{
         padding: '16px 24px',
-        backgroundColor: '#f8f9fa',
-        borderTop: '1px solid #e8eaed',
+        backgroundColor: colours.light.previewBackground,
+        borderTop: `1px solid ${colours.light.border}`,
         display: 'flex',
         flexDirection: 'column',
         gap: '16px'
@@ -457,19 +493,31 @@ function formatCurrency(val?: string): string {
           onChange={(_e, checked) => setIsConfirmed(!!checked)}
           styles={{
             root: {
-              backgroundColor: 'white',
+              backgroundColor: colours.light.sectionBackground,
               padding: '12px 16px',
               borderRadius: '6px',
-              border: '1px solid #e8eaed',
+              border: `1px solid ${colours.light.border}`,
               boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              selectors: {
+                '.is-checked .ms-Checkbox-checkbox': {
+                  background: colours.blue,
+                  borderColor: colours.blue
+                },
+                '.is-checked .ms-Checkbox-checkmark': {
+                  color: '#ffffff'
+                }
+              }
             },
             label: {
               fontWeight: 500,
-              color: '#3c4043'
+              color: colours.light.text
             },
             checkbox: {
               borderColor: colours.blue
+            },
+            checkmark: {
+              color: '#ffffff'
             }
           }}
         />

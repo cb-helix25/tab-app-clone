@@ -43,13 +43,18 @@ const IconAreaFilter: React.FC<IconAreaFilterProps> = ({
 
   // Handle individual area toggle
   const toggleArea = (areaKey: string) => {
+    console.log('🎯 IconAreaFilter: Toggle area clicked:', areaKey, 'current selection:', selectedAreas);
+    
     if (selectedAreas.includes(areaKey)) {
       // Remove from selection
       const newSelection = selectedAreas.filter(a => a !== areaKey);
+      console.log('🎯 IconAreaFilter: Removing area, new selection:', newSelection);
       onAreaChange(newSelection);
     } else {
       // Add to selection
-      onAreaChange([...selectedAreas, areaKey]);
+      const newSelection = [...selectedAreas, areaKey];
+      console.log('🎯 IconAreaFilter: Adding area, new selection:', newSelection);
+      onAreaChange(newSelection);
     }
   };
 
@@ -59,6 +64,10 @@ const IconAreaFilter: React.FC<IconAreaFilterProps> = ({
     <div 
       role="group"
       aria-label={ariaLabel}
+      onClick={(e) => {
+        console.log('🎯 IconAreaFilter: Container clicked');
+        // Don't prevent propagation here - let child buttons handle their own clicks
+      }}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -68,6 +77,7 @@ const IconAreaFilter: React.FC<IconAreaFilterProps> = ({
         background: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
         borderRadius: 14,
         fontFamily: 'Raleway, sans-serif',
+        pointerEvents: 'auto', // Ensure container allows pointer events
       }}
     >
       {/* Individual area buttons */}
@@ -79,7 +89,12 @@ const IconAreaFilter: React.FC<IconAreaFilterProps> = ({
           <button
             key={areaKey}
             type="button"
-            onClick={() => toggleArea(areaKey)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🎯 IconAreaFilter: Button clicked for area:', areaKey);
+              toggleArea(areaKey);
+            }}
             title={`${isSelected ? 'Deselect' : 'Select'} ${area.label}`}
             aria-label={`${isSelected ? 'Deselect' : 'Select'} ${area.label}`}
             aria-pressed={isSelected}
@@ -102,6 +117,15 @@ const IconAreaFilter: React.FC<IconAreaFilterProps> = ({
                     ? '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24)'
                     : '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)')
                 : 'none',
+              pointerEvents: 'auto', // Ensure pointer events are enabled
+              zIndex: 10, // Ensure button is clickable
+            }}
+            onMouseEnter={(e) => {
+              console.log('🎯 IconAreaFilter: Mouse entered button for:', areaKey);
+              e.currentTarget.style.transform = 'scale(1.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
             <Icon

@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { withRequest } = require('../utils/db');
+const { getRedisClient, generateCacheKey, cacheWrapper } = require('../utils/redisClient');
 
 /**
  * GET /api/poid-6years
@@ -30,22 +31,36 @@ router.get('/6years', async (req, res) => {
 
     console.log(`[POID][${req.requestId}] User ${userDisplay} fetching POID entries since ${formattedThresholdDate}`);
 
-    const result = await withRequest(
-      connectionString,
-      async (request) => {
-        const query = `
-          SELECT * FROM poid
-          WHERE submission_date >= @ThresholdDate
-          ORDER BY submission_date DESC
-        `;
+    // Generate cache key based on threshold date (changes daily)
+    const todayStr = today.toISOString().split('T')[0];
+    const cacheKey = generateCacheKey('metrics', 'poid-6years', todayStr);
+
+    const poidData = await cacheWrapper(
+      cacheKey,
+      async () => {
+        console.log('🔍 Fetching fresh POID data from database');
         
-        request.input('ThresholdDate', formattedThresholdDate);
-        return await request.query(query);
-      }
+        const result = await withRequest(
+          connectionString,
+          async (request) => {
+            const query = `
+              SELECT * FROM poid
+              WHERE submission_date >= @ThresholdDate
+              ORDER BY submission_date DESC
+            `;
+            
+            request.input('ThresholdDate', formattedThresholdDate);
+            return await request.query(query);
+          }
+        );
+
+        return result.recordset;
+      },
+      3600 // 1 hour TTL - POID data doesn't change frequently during the day
     );
 
-    console.log(`[POID][${req.requestId}] Retrieved ${result.recordset.length} POID entries for user ${req.user?.initials || 'Unknown'}`);
-    res.json(result.recordset);
+    console.log(`[POID][${req.requestId}] Retrieved ${poidData.length} POID entries for user ${req.user?.initials || 'Unknown'}`);
+    res.json(poidData);
   } catch (error) {
     console.error(`[POID][${req.requestId}] Error for user ${req.user?.initials || 'Unknown'}:`, error);
     // Don't leak error details to browser

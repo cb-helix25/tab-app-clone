@@ -3,6 +3,7 @@ const { withRequest } = require('../utils/db');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 const fetch = require('node-fetch');
+const { getRedisClient, cacheWrapper, generateCacheKey } = require('../utils/redisClient');
 
 const router = express.Router();
 
@@ -10,17 +11,59 @@ const DEFAULT_DATASETS = ['userData', 'teamData', 'enquiries', 'allMatters', 'wi
 const CACHE_TTL_MS = Number(process.env.REPORTING_DATASET_TTL_MS || 2 * 60 * 1000);
 const cache = new Map();
 
+// Dataset fetchers are lazy functions that compute a cache key and then call cacheWrapper
 const datasetFetchers = {
-  userData: fetchUserData,
-  teamData: fetchTeamData,
-  enquiries: fetchEnquiries,
-  allMatters: fetchAllMatters,
-  wip: fetchWip,
-  recoveredFees: fetchRecoveredFees,
-  recoveredFeesSummary: fetchRecoveredFeesSummary,
-  poidData: fetchPoidData,
-  wipClioCurrentWeek: fetchWipClioCurrentWeek,
-  wipDbLastWeek: fetchWipDbLastWeek,
+  // 5 min - user data changes rarely
+  userData: ({ connectionString, entraId }) => {
+    const key = generateCacheKey('rpt', 'userData', entraId || 'anon');
+    return cacheWrapper(key, () => fetchUserData({ connectionString, entraId }), 300);
+  },
+  // 30 min - team data is fairly static
+  teamData: ({ connectionString }) => {
+    const key = generateCacheKey('rpt', 'teamData');
+    return cacheWrapper(key, () => fetchTeamData({ connectionString }), 1800);
+  },
+  // 10 min - enquiries update regularly
+  enquiries: ({ connectionString }) => {
+    const key = generateCacheKey('rpt', 'enquiries');
+    return cacheWrapper(key, () => fetchEnquiries({ connectionString }), 600);
+  },
+  // 15 min - matters update moderately
+  allMatters: ({ connectionString }) => {
+    const key = generateCacheKey('rpt', 'allMatters');
+    return cacheWrapper(key, () => fetchAllMatters({ connectionString }), 900);
+  },
+  // 5 min - WIP data changes frequently (DB-sourced historical)
+  wip: ({ connectionString }) => {
+    const key = generateCacheKey('rpt', 'wip');
+    return cacheWrapper(key, () => fetchWip({ connectionString }), 300);
+  },
+  // 30 min - financial data less frequent
+  recoveredFees: ({ connectionString }) => {
+    const key = generateCacheKey('rpt', 'recoveredFees');
+    return cacheWrapper(key, () => fetchRecoveredFees({ connectionString }), 1800);
+  },
+  // 15 min - per-user summary; include user in key
+  recoveredFeesSummary: ({ connectionString, entraId, clioId }) => {
+    const who = entraId || (typeof clioId === 'number' ? `clio:${clioId}` : 'anon');
+    const key = generateCacheKey('rpt', 'recoveredFeesSummary', who);
+    return cacheWrapper(key, () => fetchRecoveredFeesSummary({ connectionString, entraId, clioId }), 900);
+  },
+  // 30 min - POID data changes infrequently
+  poidData: ({ connectionString }) => {
+    const key = generateCacheKey('rpt', 'poidData');
+    return cacheWrapper(key, () => fetchPoidData({ connectionString }), 1800);
+  },
+  // 5 min - current week WIP from Clio; user-specific when entraId provided
+  wipClioCurrentWeek: ({ connectionString, entraId }) => {
+    const key = generateCacheKey('rpt', 'wipClioCurrentWeek', entraId || 'team');
+    return cacheWrapper(key, () => fetchWipClioCurrentWeek({ connectionString, entraId }), 300);
+  },
+  // 10 min - last week DB snapshot
+  wipDbLastWeek: ({ connectionString }) => {
+    const key = generateCacheKey('rpt', 'wipDbLastWeek');
+    return cacheWrapper(key, () => fetchWipDbLastWeek({ connectionString }), 600);
+  },
 };
 
 router.get('/management-datasets', async (req, res) => {
@@ -317,9 +360,29 @@ const kvClient = new SecretClient(vaultUrl, credential);
 
 async function getClioCredentialsCached() {
   const cacheKey = 'clio:credentials';
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expires > Date.now()) return cached.data;
   
+  // Check Redis first, then fallback to in-memory cache
+  const redisClient = await getRedisClient();
+  if (redisClient) {
+    try {
+      const cached = await redisClient.get(generateCacheKey('rpt', cacheKey));
+      if (cached) {
+        console.log('📋 Clio credentials cache hit (Redis)');
+        return JSON.parse(cached);
+      }
+    } catch (redisError) {
+      console.warn('Redis get failed for Clio credentials, using in-memory fallback:', redisError.message);
+    }
+  }
+  
+  // Fallback to existing in-memory cache
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) {
+    console.log('📋 Clio credentials cache hit (memory)');
+    return cached.data;
+  }
+  
+  console.log('🔄 Fetching fresh Clio credentials from Key Vault');
   const [refreshTokenSecret, clientSecret, clientIdSecret] = await Promise.all([
     kvClient.getSecret('clio-pbi-refreshtoken'),
     kvClient.getSecret('clio-pbi-secret'),
@@ -332,15 +395,47 @@ async function getClioCredentialsCached() {
     clientId: clientIdSecret.value,
   };
   
-  cache.set(cacheKey, { data: credentials, expires: Date.now() + 60 * 60 * 1000 }); // 1h TTL
+  // Store in both Redis and memory cache
+  const expiryTime = Date.now() + 60 * 60 * 1000; // 1h TTL
+  cache.set(cacheKey, { data: credentials, expires: expiryTime });
+  
+  if (redisClient) {
+    try {
+      await redisClient.setEx(generateCacheKey('rpt', cacheKey), 3600, JSON.stringify(credentials)); // 1h TTL
+      console.log('💾 Cached Clio credentials in Redis (1h TTL)');
+    } catch (redisError) {
+      console.warn('Redis set failed for Clio credentials:', redisError.message);
+    }
+  }
+  
   return credentials;
 }
 
 async function getClioAccessToken() {
   const cacheKey = 'clio:accessToken';
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expires > Date.now()) return cached.data;
   
+  // Check Redis first, then fallback to in-memory cache
+  const redisClient = await getRedisClient();
+  if (redisClient) {
+    try {
+      const cached = await redisClient.get(generateCacheKey('rpt', cacheKey));
+      if (cached) {
+        console.log('🔑 Clio access token cache hit (Redis)');
+        return cached; // Redis stores the token directly as string
+      }
+    } catch (redisError) {
+      console.warn('Redis get failed for Clio access token, using in-memory fallback:', redisError.message);
+    }
+  }
+  
+  // Fallback to existing in-memory cache
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) {
+    console.log('🔑 Clio access token cache hit (memory)');
+    return cached.data;
+  }
+  
+  console.log('🔄 Refreshing Clio access token');
   const { clientId, clientSecret, refreshToken } = await getClioCredentialsCached();
   
   const params = new URLSearchParams({
@@ -359,8 +454,15 @@ async function getClioAccessToken() {
     const errorText = await response.text();
     console.error(`[Reporting] Failed to refresh Clio token (${response.status}):`, errorText);
     
-    // Clear cache on failure
+    // Clear both caches on failure
     cache.delete(cacheKey);
+    if (redisClient) {
+      try {
+        await redisClient.del(generateCacheKey('rpt', cacheKey));
+      } catch (delError) {
+        console.warn('Failed to clear Redis cache on token error:', delError.message);
+      }
+    }
     
     throw new Error(`Failed to obtain Clio access token (${response.status}): ${errorText}. You may need to re-authenticate with Clio and update the refresh token in Key Vault.`);
   }
@@ -383,8 +485,22 @@ async function getClioAccessToken() {
   
   // Cache with 30min TTL (tokens usually valid for 1h)
   const expiresInSeconds = tokenData.expires_in || 3600;
-  cache.set(cacheKey, { data: accessToken, expires: Date.now() + Math.min(expiresInSeconds - 300, 30 * 60) * 1000 });
-  console.log(`[Reporting] Successfully refreshed Clio access token (expires in ${expiresInSeconds}s)`);
+  const cacheTtl = Math.min(expiresInSeconds - 300, 30 * 60); // Conservative 30min max
+  const expiryTime = Date.now() + cacheTtl * 1000;
+  
+  // Store in both Redis and memory cache
+  cache.set(cacheKey, { data: accessToken, expires: expiryTime });
+  
+  if (redisClient) {
+    try {
+      await redisClient.setEx(generateCacheKey('rpt', cacheKey), cacheTtl, accessToken);
+      console.log(`💾 Cached Clio access token in Redis (${cacheTtl}s TTL)`);
+    } catch (redisError) {
+      console.warn('Redis set failed for Clio access token:', redisError.message);
+    }
+  }
+  
+  console.log(`✅ Successfully refreshed Clio access token (expires in ${expiresInSeconds}s)`);
   return accessToken;
 }
 

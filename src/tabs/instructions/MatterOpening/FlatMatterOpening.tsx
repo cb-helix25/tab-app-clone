@@ -765,10 +765,14 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [activePoid, setActivePoid] = useDraftedState<POID | null>('activePoid', null);
 
     // When entering via an instruction, try to set an active POID from InstructionRef if none is selected
+    // CRITICAL: Also refresh when effectivePoidData changes to ensure we get fresh instruction data
     useEffect(() => {
-        if (!instructionRef || activePoid) return;
+        if (!instructionRef) return;
         const match = effectivePoidData.find(p => (p as any).InstructionRef === instructionRef || (p as any).instruction_ref === instructionRef);
-        if (match) setActivePoid(match);
+        if (match && (!activePoid || (activePoid as any).InstructionRef !== instructionRef)) {
+            // Set or refresh activePoid when we have fresh instruction data
+            setActivePoid(match);
+        }
     }, [instructionRef, effectivePoidData, activePoid, setActivePoid]);
 
     const filteredPoidData = effectivePoidData.filter((poid) => {
@@ -931,6 +935,7 @@ const handleClearAll = () => {
 
     // Horizontal sliding carousel approach
     const [currentStep, setCurrentStep] = useDraftedState<number>('currentStep', 0); // 0: select, 1: form, 2: review
+    
     // Guarantee a date when entering the Matter or Review steps
     useEffect(() => {
         if ((currentStep === 1 || currentStep === 2) && !selectedDate) {
@@ -1108,8 +1113,13 @@ const handleClearAll = () => {
 
     // Determine completion status for each step
     const clientsStepComplete = (() => {
-        // If the selection UI is hidden (instruction-driven/direct entry), allow progression immediately
-        if (instructionRef || hideClientSections) return true;
+        // For instruction-driven entry, check essential fields only
+        if (instructionRef || hideClientSections) {
+            // In instruction mode, we need at least dispute value and no-conflict confirmation
+            const hasDisputeValue = disputeValue && disputeValue.trim() !== '';
+            const hasNoConflictConfirmed = noConflict === true;
+            return hasDisputeValue && hasNoConflictConfirmed;
+        }
 
         // Otherwise use the user's current choice (pendingClientType) or provided initial type
         const type = (pendingClientType || initialClientType || '').trim();
@@ -1745,6 +1755,11 @@ ${JSON.stringify(debugInfo, null, 2)}
         if (!instructionRef) {
             setPendingClientType(''); // This will reset the client dots
             setSelectedPoidIds([]); // This will reset the client dots
+        } else {
+            // For instruction mode, clear everything and force refresh from instruction data
+            setPendingClientType('');
+            setSelectedPoidIds([]);
+            setActivePoid(null); // Force refresh of instruction data
         }
         setAreaOfWork('');
         setPracticeArea('');
@@ -1786,7 +1801,9 @@ ${JSON.stringify(debugInfo, null, 2)}
         setSolicitorCountry('');
         setSolicitorCompanyNumber('');
         setSummaryConfirmed(false); // Reset summary confirmation
-        setActivePoid(null);
+        if (!instructionRef) {
+            setActivePoid(null);
+        }
         setCurrentStep(0); // This will reset the review dots
         setPoidSearchTerm('');
         
@@ -2474,8 +2491,8 @@ ${JSON.stringify(debugInfo, null, 2)}
                                     />
                                 </div>
                                 
-                                {/* Opponent Details Step - appears after POID selection */}
-                                {(selectedPoidIds.length > 0 && pendingClientType) && (
+                                {/* Opponent Details Step - appears after POID selection OR when in instruction mode */}
+                                {((selectedPoidIds.length > 0 && pendingClientType) || (hideClientSections && initialClientType)) && (
                                     <div style={{ 
                                         width: '100%', 
                                         maxWidth: 1080, 
@@ -2872,28 +2889,116 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                         </div>
                                                         <div style={{ color: '#7c2d12', lineHeight: 1.4 }}>{failureSummary}</div>
                                                         <button
-                                                            onClick={() => {
-                                                                setSupportMessage(`Issue with matter opening: ${failureSummary}\n\nAdditional context:\n- User: ${userInitials}\n- Instruction: ${instructionRef || 'N/A'}\n- Time: ${new Date().toLocaleString()}\n\nPlease investigate this failure.`);
-                                                                setSupportCategory('technical');
-                                                                setSupportPanelOpen(true);
+                                                            onClick={async () => {
+                                                                try {
+                                                                    setSupportSending(true);
+                                                                    
+                                                                    // Prepare detailed report
+                                                                    const reportDetails = {
+                                                                        issue: failureSummary,
+                                                                        user: userInitials,
+                                                                        instruction: instructionRef || 'N/A',
+                                                                        timestamp: new Date().toLocaleString(),
+                                                                        formData: {
+                                                                            client_type: clientType,
+                                                                            area_of_work: areaOfWork,
+                                                                            practice_area: practiceArea,
+                                                                            description: description,
+                                                                            fee_earner: teamMember,
+                                                                            supervising_partner: supervisingPartner
+                                                                        },
+                                                                        processingSteps: processingSteps.map(step => ({
+                                                                            label: step.label,
+                                                                            status: step.status,
+                                                                            message: step.message
+                                                                        })),
+                                                                        userAgent: navigator.userAgent,
+                                                                        url: window.location.href
+                                                                    };
+
+                                                                    const emailBody = `
+                                                                        <h2>Matter Opening Issue Report</h2>
+                                                                        <p><strong>Issue:</strong> ${failureSummary}</p>
+                                                                        <p><strong>User:</strong> ${userInitials}</p>
+                                                                        <p><strong>Instruction Reference:</strong> ${instructionRef || 'N/A'}</p>
+                                                                        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                                                                        
+                                                                        <h3>Form Data</h3>
+                                                                        <ul>
+                                                                            <li><strong>Client Type:</strong> ${clientType}</li>
+                                                                            <li><strong>Area of Work:</strong> ${areaOfWork}</li>
+                                                                            <li><strong>Practice Area:</strong> ${practiceArea}</li>
+                                                                            <li><strong>Description:</strong> ${description}</li>
+                                                                            <li><strong>Fee Earner:</strong> ${teamMember}</li>
+                                                                            <li><strong>Supervising Partner:</strong> ${supervisingPartner}</li>
+                                                                        </ul>
+
+                                                                        <h3>Processing Steps Status</h3>
+                                                                        <table border="1" style="border-collapse: collapse;">
+                                                                            <tr><th>Step</th><th>Status</th><th>Message</th></tr>
+                                                                            ${processingSteps.map(step => 
+                                                                                `<tr>
+                                                                                    <td>${step.label}</td>
+                                                                                    <td>${step.status}</td>
+                                                                                    <td>${step.message || ''}</td>
+                                                                                </tr>`
+                                                                            ).join('')}
+                                                                        </table>
+
+                                                                        <h3>Technical Details</h3>
+                                                                        <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+                                                                        <p><strong>URL:</strong> ${window.location.href}</p>
+                                                                        
+                                                                        <pre>${JSON.stringify(reportDetails, null, 2)}</pre>
+                                                                    `;
+
+                                                                    const response = await fetch('/api/sendEmail', {
+                                                                        method: 'POST',
+                                                                        headers: {
+                                                                            'Content-Type': 'application/json',
+                                                                        },
+                                                                        body: JSON.stringify({
+                                                                            to: 'lz@helix-law.com',
+                                                                            subject: `Matter Opening Issue - ${userInitials} - ${instructionRef || 'Unknown'}`,
+                                                                            html: emailBody,
+                                                                            from_email: 'automations@helix-law.com'
+                                                                        })
+                                                                    });
+
+                                                                    if (response.ok) {
+                                                                        alert('Issue report sent successfully to development team!');
+                                                                    } else {
+                                                                        const error = await response.text();
+                                                                        alert(`Failed to send report: ${error}`);
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error('Failed to send report:', error);
+                                                                    const errorMessage = error instanceof Error ? error.message : String(error);
+                                                                    alert(`Failed to send report: ${errorMessage}`);
+                                                                } finally {
+                                                                    setSupportSending(false);
+                                                                }
                                                             }}
                                                             style={{
                                                                 marginTop: 10,
-                                                                background: 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
+                                                                background: supportSending 
+                                                                    ? 'linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%)' 
+                                                                    : 'linear-gradient(135deg, #D65541 0%, #B83C2B 100%)',
                                                                 border: 'none',
                                                                 borderRadius: 4,
                                                                 padding: '6px 12px',
                                                                 fontSize: 11,
                                                                 fontWeight: 600,
                                                                 color: '#fff',
-                                                                cursor: 'pointer',
+                                                                cursor: supportSending ? 'not-allowed' : 'pointer',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 gap: 4
                                                             }}
+                                                            disabled={supportSending}
                                                         >
-                                                            <i className="ms-Icon ms-Icon--Mail" style={{ fontSize: 10 }} />
-                                                            Report to Development Team
+                                                            <i className={`ms-Icon ${supportSending ? 'ms-Icon--Clock' : 'ms-Icon--Mail'}`} style={{ fontSize: 10 }} />
+                                                            {supportSending ? 'Sending...' : 'Report to Development Team'}
                                                         </button>
                                                     </div>
                                                 ) : (
@@ -2910,6 +3015,119 @@ ${JSON.stringify(debugInfo, null, 2)}
                                                             No Issues Detected
                                                         </div>
                                                         System is running normally. This panel opened for diagnostic purposes.
+                                                        
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    setSupportSending(true);
+                                                                    
+                                                                    // Prepare general feedback report
+                                                                    const reportDetails = {
+                                                                        type: 'general_feedback',
+                                                                        user: userInitials,
+                                                                        instruction: instructionRef || 'N/A',
+                                                                        timestamp: new Date().toLocaleString(),
+                                                                        formData: {
+                                                                            client_type: clientType,
+                                                                            area_of_work: areaOfWork,
+                                                                            practice_area: practiceArea,
+                                                                            description: description,
+                                                                            fee_earner: teamMember,
+                                                                            supervising_partner: supervisingPartner
+                                                                        },
+                                                                        processingSteps: processingSteps.map(step => ({
+                                                                            label: step.label,
+                                                                            status: step.status,
+                                                                            message: step.message
+                                                                        })),
+                                                                        userAgent: navigator.userAgent,
+                                                                        url: window.location.href
+                                                                    };
+
+                                                                    const emailBody = `
+                                                                        <h2>Matter Opening General Feedback</h2>
+                                                                        <p><strong>User:</strong> ${userInitials}</p>
+                                                                        <p><strong>Instruction Reference:</strong> ${instructionRef || 'N/A'}</p>
+                                                                        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                                                                        <p><strong>Type:</strong> General feedback/diagnostic report</p>
+                                                                        
+                                                                        <h3>Form Data</h3>
+                                                                        <ul>
+                                                                            <li><strong>Client Type:</strong> ${clientType}</li>
+                                                                            <li><strong>Area of Work:</strong> ${areaOfWork}</li>
+                                                                            <li><strong>Practice Area:</strong> ${practiceArea}</li>
+                                                                            <li><strong>Description:</strong> ${description}</li>
+                                                                            <li><strong>Fee Earner:</strong> ${teamMember}</li>
+                                                                            <li><strong>Supervising Partner:</strong> ${supervisingPartner}</li>
+                                                                        </ul>
+
+                                                                        <h3>Processing Steps Status</h3>
+                                                                        <table border="1" style="border-collapse: collapse;">
+                                                                            <tr><th>Step</th><th>Status</th><th>Message</th></tr>
+                                                                            ${processingSteps.map(step => 
+                                                                                `<tr>
+                                                                                    <td>${step.label}</td>
+                                                                                    <td>${step.status}</td>
+                                                                                    <td>${step.message || ''}</td>
+                                                                                </tr>`
+                                                                            ).join('')}
+                                                                        </table>
+
+                                                                        <h3>Technical Details</h3>
+                                                                        <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+                                                                        <p><strong>URL:</strong> ${window.location.href}</p>
+                                                                        
+                                                                        <pre>${JSON.stringify(reportDetails, null, 2)}</pre>
+                                                                    `;
+
+                                                                    const response = await fetch('/api/sendEmail', {
+                                                                        method: 'POST',
+                                                                        headers: {
+                                                                            'Content-Type': 'application/json',
+                                                                        },
+                                                                        body: JSON.stringify({
+                                                                            to: 'lz@helix-law.com',
+                                                                            subject: `Matter Opening Feedback - ${userInitials} - ${instructionRef || 'Unknown'}`,
+                                                                            html: emailBody,
+                                                                            from_email: 'automations@helix-law.com'
+                                                                        })
+                                                                    });
+
+                                                                    if (response.ok) {
+                                                                        alert('Feedback sent successfully to development team!');
+                                                                    } else {
+                                                                        const error = await response.text();
+                                                                        alert(`Failed to send feedback: ${error}`);
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error('Failed to send feedback:', error);
+                                                                    const errorMessage = error instanceof Error ? error.message : String(error);
+                                                                    alert(`Failed to send feedback: ${errorMessage}`);
+                                                                } finally {
+                                                                    setSupportSending(false);
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                marginTop: 8,
+                                                                background: supportSending 
+                                                                    ? 'linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%)' 
+                                                                    : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                                                                border: 'none',
+                                                                borderRadius: 4,
+                                                                padding: '4px 8px',
+                                                                fontSize: 10,
+                                                                fontWeight: 600,
+                                                                color: '#fff',
+                                                                cursor: supportSending ? 'not-allowed' : 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 3
+                                                            }}
+                                                            disabled={supportSending}
+                                                        >
+                                                            <i className={`ms-Icon ${supportSending ? 'ms-Icon--Clock' : 'ms-Icon--Feedback'}`} style={{ fontSize: 9 }} />
+                                                            {supportSending ? 'Sending...' : 'Send Feedback'}
+                                                        </button>
                                                     </div>
                                                 )}
 

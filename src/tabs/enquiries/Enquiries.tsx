@@ -364,6 +364,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [activeState, setActiveState] = useState<string>('Claimed');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [userManuallyChangedAreas, setUserManuallyChangedAreas] = useState(false);
 
   // CRITICAL DEBUG: Log incoming enquiries prop
   React.useEffect(() => {
@@ -496,19 +497,69 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   // Initialize selected areas with user's areas + Other/Unsure
   useEffect(() => {
+    console.log('🎯 Enquiries: Area sync useEffect triggered:', {
+      hasUserData: !!userData,
+      userDataLength: userData?.length || 0,
+      userAOW: userData?.[0]?.AOW,
+      currentSelectedAreas: selectedAreas,
+      userManuallyChangedAreas
+    });
+    
+    // Don't override if user has manually changed areas
+    if (userManuallyChangedAreas) {
+      console.log('🎯 Enquiries: Skipping auto-sync because user manually changed areas');
+      return;
+    }
+    
     if (userData && userData.length > 0 && userData[0].AOW) {
       const userAOW = userData[0].AOW.split(',').map(a => a.trim());
-      // If no areas selected yet, select user's areas + Other/Unsure
-      if (selectedAreas.length === 0) {
-        const initialSelection = [...userAOW];
-        // Always include Other/Unsure by default
-        if (!initialSelection.includes('Other/Unsure')) {
-          initialSelection.push('Other/Unsure');
-        }
-        setSelectedAreas(initialSelection);
+      console.log('🎯 Enquiries: Processing user AOW:', userAOW);
+      
+      // Check if this would actually change the selection
+      const newSelection = [...userAOW];
+      if (!newSelection.includes('Other/Unsure')) {
+        newSelection.push('Other/Unsure');
+      }
+      
+      // Only update if the selection would actually change
+      const currentSorted = [...selectedAreas].sort();
+      const newSorted = [...newSelection].sort();
+      const isActuallyDifferent = JSON.stringify(currentSorted) !== JSON.stringify(newSorted);
+      
+      console.log('🎯 Enquiries: Area comparison:', {
+        current: currentSorted,
+        new: newSorted,
+        isDifferent: isActuallyDifferent
+      });
+      
+      if (isActuallyDifferent) {
+        console.log('🎯 Enquiries: Setting selectedAreas to:', newSelection);
+        setSelectedAreas(newSelection);
+      } else {
+        console.log('🎯 Enquiries: No change needed, areas already match');
       }
     }
-  }, [userData, selectedAreas]);
+  }, [userData, userManuallyChangedAreas]); // Added userManuallyChangedAreas to dependencies
+
+  // Custom handler for manual area changes to prevent useEffect overrides
+  const handleManualAreaChange = useCallback((newAreas: string[]) => {
+    console.log('🎯 Enquiries: User manually changed areas to:', newAreas);
+    setUserManuallyChangedAreas(true);
+    setSelectedAreas(newAreas);
+  }, []);
+
+  // Reset manual flag when UserBubble changes userData (allow UserBubble override to work)
+  const prevUserDataRef = useRef<typeof userData>();
+  useEffect(() => {
+    if (prevUserDataRef.current !== userData) {
+      if (process.env.REACT_APP_DEBUG_VERBOSE === 'true') {
+        // eslint-disable-next-line no-console
+        console.log('🎯 Enquiries: userData changed, resetting manual flag to allow UserBubble override');
+      }
+      setUserManuallyChangedAreas(false);
+      prevUserDataRef.current = userData;
+    }
+  }, [userData]);
 
   // Fetch all enquiries when user switches to "All" mode and current dataset is too small
   useEffect(() => {
@@ -1605,7 +1656,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 <IconAreaFilter
                   selectedAreas={selectedAreas}
                   availableAreas={ALL_AREAS_OF_WORK}
-                  onAreaChange={setSelectedAreas}
+                  onAreaChange={handleManualAreaChange}
                   ariaLabel="Filter enquiries by area of work"
                 />
               )}
@@ -1825,6 +1876,10 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         <UnclaimedEnquiries
           enquiries={unclaimedEnquiries}
           onSelect={handleSelectEnquiry}
+          userEmail={userData?.[0]?.Email || ''}
+          onAreaChange={() => { /* no-op in unclaimed view for now */ }}
+          onClaimSuccess={() => { try { handleManualRefresh(); } catch { /* ignore */ } }}
+          getPromotionStatusSimple={getPromotionStatusSimple}
         />
       ) : null}
 

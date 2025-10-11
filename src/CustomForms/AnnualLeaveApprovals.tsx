@@ -11,6 +11,8 @@ import {
 import { mergeStyles } from '@fluentui/react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { colours } from '../app/styles/colours';
+import { useTheme } from '../app/functionality/ThemeContext';
+// Note: Use relative Express API path for attendance endpoints to avoid double `/api` in production
 import HelixAvatar from '../assets/helix avatar.png';
 import { FaUmbrellaBeach } from 'react-icons/fa';
 
@@ -113,7 +115,7 @@ interface AnnualLeaveApprovalsProps {
 }
 
 /* ---------------------------------------------------------------------------
-   Litigation-Grade Professional Styling
+   Theme-Aware Professional Styling
 --------------------------------------------------------------------------- */
 const formContainerStyle = mergeStyles({
   position: 'fixed',
@@ -127,15 +129,20 @@ const formContainerStyle = mergeStyles({
   overflow: 'auto',
 });
 
-const modalContentStyle = mergeStyles({
-  background: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
+const modalContentStyle = (isDarkMode: boolean) => mergeStyles({
+  background: isDarkMode 
+    ? `linear-gradient(135deg, ${colours.dark.sectionBackground} 0%, ${colours.dark.cardBackground} 100%)`
+    : `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
   borderRadius: '16px',
-  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+  boxShadow: isDarkMode 
+    ? '0 12px 40px rgba(0, 0, 0, 0.8)' 
+    : '0 12px 40px rgba(0, 0, 0, 0.5)',
   width: 'min(1200px, 96%)',
   maxHeight: '90vh',
   overflow: 'auto',
   padding: '32px',
   position: 'relative',
+  border: isDarkMode ? `1px solid ${colours.dark.border}` : 'none',
   '@media (max-width: 768px)': {
     padding: '20px',
     borderRadius: '12px',
@@ -144,7 +151,7 @@ const modalContentStyle = mergeStyles({
   },
 });
 
-const closeButtonStyle = mergeStyles({
+const closeButtonStyle = (isDarkMode: boolean) => mergeStyles({
   position: 'absolute',
   top: '16px',
   right: '16px',
@@ -152,7 +159,7 @@ const closeButtonStyle = mergeStyles({
   border: 'none',
   fontSize: '24px',
   cursor: 'pointer',
-  color: colours.greyText,
+  color: isDarkMode ? colours.dark.text : colours.greyText,
   padding: '8px',
   borderRadius: '50%',
   width: '40px',
@@ -162,18 +169,22 @@ const closeButtonStyle = mergeStyles({
   justifyContent: 'center',
   transition: 'all 0.2s ease',
   ':hover': {
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    color: colours.light.text,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+    color: isDarkMode ? colours.dark.text : colours.light.text,
   },
 });
 
-const professionalContainerStyle = mergeStyles({
-  background: `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
-  border: `1px solid ${colours.light.border}`,
+const professionalContainerStyle = (isDarkMode: boolean) => mergeStyles({
+  background: isDarkMode 
+    ? `linear-gradient(135deg, ${colours.dark.cardBackground} 0%, ${colours.dark.sectionBackground} 100%)`
+    : `linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)`,
+  border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
   borderRadius: '16px',
   padding: '32px',
   marginBottom: '24px',
-  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+  boxShadow: isDarkMode 
+    ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
+    : '0 8px 32px rgba(0, 0, 0, 0.12)',
   maxWidth: '100%',
   overflow: 'hidden',
   '@media (max-width: 768px)': {
@@ -205,14 +216,14 @@ const sectionTitleStyle = mergeStyles({
   paddingLeft: '12px',
 });
 
-const notesStyle = mergeStyles({
-  backgroundColor: '#f8fafc',
-  border: `1px solid ${colours.light.border}`,
+const notesStyle = (isDarkMode: boolean) => mergeStyles({
+  backgroundColor: isDarkMode ? colours.dark.inputBackground : colours.light.inputBackground,
+  border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
   borderRadius: '8px',
   padding: '16px',
   fontSize: '14px',
   fontStyle: 'italic',
-  color: colours.light.text,
+  color: isDarkMode ? colours.dark.text : colours.light.text,
   marginBottom: '20px',
   lineHeight: '1.5',
 });
@@ -227,13 +238,13 @@ const conflictsGridStyle = mergeStyles({
   },
 });
 
-const conflictCardStyle = mergeStyles({
-  backgroundColor: '#fff',
-  border: `1px solid ${colours.light.border}`,
+const conflictCardStyle = (isDarkMode: boolean) => mergeStyles({
+  backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.sectionBackground,
+  border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
   borderRadius: '8px',
   padding: '16px',
   textAlign: 'center',
-  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+  boxShadow: isDarkMode ? '0 2px 4px rgba(0, 0, 0, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.05)',
   transition: 'transform 0.2s ease',
   ':hover': {
     transform: 'translateY(-2px)',
@@ -253,7 +264,7 @@ const actionButtonsStyle = mergeStyles({
   },
 });
 
-const statusBadgeStyle = (status: string) => mergeStyles({
+const statusBadgeStyle = (status: string, isDarkMode: boolean) => mergeStyles({
   padding: '6px 12px',
   borderRadius: '20px',
   fontSize: '12px',
@@ -261,14 +272,17 @@ const statusBadgeStyle = (status: string) => mergeStyles({
   textTransform: 'uppercase',
   letterSpacing: '0.5px',
   backgroundColor: 
-    status === 'approved' ? '#e8f5e8' : 
-    status === 'rejected' ? '#fdf2f2' : '#fff3cd',
+    status === 'approved' ? (isDarkMode ? 'rgba(34, 197, 94, 0.2)' : '#e8f5e8') : 
+    status === 'rejected' ? (isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fdf2f2') : 
+    (isDarkMode ? 'rgba(251, 191, 36, 0.2)' : '#fff3cd'),
   color: 
-    status === 'approved' ? '#2d5a2d' : 
-    status === 'rejected' ? '#721c24' : '#856404',
+    status === 'approved' ? (isDarkMode ? '#86efac' : '#2d5a2d') : 
+    status === 'rejected' ? (isDarkMode ? '#fca5a5' : '#721c24') : 
+    (isDarkMode ? '#fcd34d' : '#856404'),
   border: `1px solid ${
-    status === 'approved' ? '#a3d977' : 
-    status === 'rejected' ? '#f5c6cb' : '#ffeaa7'
+    status === 'approved' ? (isDarkMode ? 'rgba(34, 197, 94, 0.4)' : '#a3d977') : 
+    status === 'rejected' ? (isDarkMode ? 'rgba(239, 68, 68, 0.4)' : '#f5c6cb') : 
+    (isDarkMode ? 'rgba(251, 191, 36, 0.4)' : '#ffeaa7')
   }`,
 });
 
@@ -283,32 +297,36 @@ const criticalInfoStyle = mergeStyles({
   },
 });
 
-const infoCardStyle = mergeStyles({
-  backgroundColor: '#f8fafc',
-  border: `1px solid ${colours.light.border}`,
+const infoCardStyle = (isDarkMode: boolean) => mergeStyles({
+  backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.sectionBackground,
+  border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
   borderRadius: '8px',
   padding: '16px',
   textAlign: 'center',
+  transition: 'all 0.2s ease',
+  ':hover': {
+    backgroundColor: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
+  },
 });
 
-const infoLabelStyle = mergeStyles({
+const infoLabelStyle = (isDarkMode: boolean) => mergeStyles({
   fontSize: '12px',
   fontWeight: 600,
-  color: colours.greyText,
+  color: isDarkMode ? colours.dark.subText : colours.greyText,
   textTransform: 'uppercase',
   letterSpacing: '0.5px',
   marginBottom: '6px',
 });
 
-const infoValueStyle = mergeStyles({
+const infoValueStyle = (isDarkMode: boolean) => mergeStyles({
   fontSize: '16px',
   fontWeight: 700,
-  color: colours.light.text,
+  color: isDarkMode ? colours.dark.text : colours.light.text,
 });
 
-const approveButtonStyle = mergeStyles({
-  backgroundColor: '#22c55e',
-  borderColor: '#22c55e',
+const approveButtonStyle = (isDarkMode: boolean) => mergeStyles({
+  backgroundColor: colours.green,
+  borderColor: colours.green,
   color: '#fff',
   fontWeight: 600,
   padding: '12px 24px',
@@ -318,12 +336,15 @@ const approveButtonStyle = mergeStyles({
     backgroundColor: '#16a34a',
     borderColor: '#16a34a',
     transform: 'translateY(-1px)',
+    boxShadow: isDarkMode 
+      ? '0 4px 12px rgba(34, 197, 94, 0.3)' 
+      : '0 4px 12px rgba(34, 197, 94, 0.2)',
   },
 });
 
-const rejectButtonStyle = mergeStyles({
-  backgroundColor: '#ef4444',
-  borderColor: '#ef4444',
+const rejectButtonStyle = (isDarkMode: boolean) => mergeStyles({
+  backgroundColor: colours.red,
+  borderColor: colours.red,
   color: '#fff',
   fontWeight: 600,
   padding: '12px 24px',
@@ -333,17 +354,24 @@ const rejectButtonStyle = mergeStyles({
     backgroundColor: '#dc2626',
     borderColor: '#dc2626',
     transform: 'translateY(-1px)',
+    boxShadow: isDarkMode 
+      ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
+      : '0 4px 12px rgba(239, 68, 68, 0.2)',
   },
 });
 
-const rejectionNotesStyle = mergeStyles({
+const rejectionNotesStyle = (isDarkMode: boolean) => mergeStyles({
   marginTop: '12px',
   '& .ms-TextField-fieldGroup': {
     borderRadius: '8px',
-    border: `2px solid ${colours.light.border}`,
+    border: `2px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    backgroundColor: isDarkMode ? colours.dark.inputBackground : colours.light.inputBackground,
     ':focus-within': {
-      borderColor: colours.cta,
+      borderColor: colours.highlight,
     },
+  },
+  '& .ms-TextField-field': {
+    color: isDarkMode ? colours.dark.text : colours.light.text,
   },
 });
 
@@ -359,6 +387,13 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
   allLeaveEntries,
   onApprovalUpdate,
 }) => {
+  const { isDarkMode } = useTheme();
+  // Maintain a local copy so UI reflects changes immediately
+  const [localApprovals, setLocalApprovals] = useState<ApprovalEntry[]>(approvals);
+  useEffect(() => {
+    setLocalApprovals(approvals);
+  }, [approvals]);
+  
   // Portal container element
   const [portalEl, setPortalEl] = useState<HTMLDivElement | null>(null);
 
@@ -403,7 +438,8 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     newStatus: string,
     reason: string | null
   ): Promise<void> => {
-    const url = `/api/attendance/updateAnnualLeave`;
+  // Always call the Express server directly; CRA proxy handles dev, same-origin handles prod
+  const url = `/api/attendance/updateAnnualLeave`;
     const payload = { id: leaveId, newStatus, rejection_notes: reason || '' };
     const response = await fetch(url, {
       method: 'POST',
@@ -430,7 +466,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     const start = new Date(current.start_date);
     const end = new Date(current.end_date);
 
-    const conflictApprovals = approvals.filter(
+    const conflictApprovals = localApprovals.filter(
       other =>
         other.id !== current.id &&
         other.person !== current.person &&
@@ -491,6 +527,8 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
         if (onApprovalUpdate) {
           onApprovalUpdate(entry.id, newStatus);
         }
+        // Reflect change locally for immediate feedback
+        setLocalApprovals(prev => prev.map(a => a.id === entry.id ? { ...a, status: newStatus } : a));
         
         setConfirmationMessage(
           action === 'approve' 
@@ -499,6 +537,10 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
         );
         
         setTimeout(() => setConfirmationMessage(''), 3000);
+        // Auto-close the modal shortly after a successful action
+        setTimeout(() => {
+          onClose();
+        }, 800);
         
       } catch (error) {
         console.error(`Failed to ${action} leave:`, error);
@@ -510,7 +552,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     };
 
     return (
-      <div className={professionalContainerStyle}>
+      <div className={professionalContainerStyle(isDarkMode)}>
         {/* Header Section */}
         <div className={headerSectionStyle}>
           <div className={requestHeaderStyle}>
@@ -528,13 +570,13 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
             />
             <div style={{ marginLeft: 'auto' }}>
               {entry.status.toLowerCase() === 'approved' && (
-                <div className={statusBadgeStyle('approved')}>Approved</div>
+                <div className={statusBadgeStyle('approved', isDarkMode)}>Approved</div>
               )}
               {entry.status.toLowerCase() === 'rejected' && (
-                <div className={statusBadgeStyle('rejected')}>Rejected</div>
+                <div className={statusBadgeStyle('rejected', isDarkMode)}>Rejected</div>
               )}
               {entry.status.toLowerCase() === 'requested' && (
-                <div className={statusBadgeStyle('requested')}>Pending Review</div>
+                <div className={statusBadgeStyle('requested', isDarkMode)}>Pending Review</div>
               )}
             </div>
           </div>
@@ -542,25 +584,25 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
 
         {/* Critical Information Grid */}
         <div className={criticalInfoStyle}>
-          <div className={infoCardStyle}>
-            <div className={infoLabelStyle}>Request Period</div>
-            <div className={infoValueStyle}>{formatDateRange(entry.start_date, entry.end_date)}</div>
+          <div className={infoCardStyle(isDarkMode)}>
+            <div className={infoLabelStyle(isDarkMode)}>Request Period</div>
+            <div className={infoValueStyle(isDarkMode)}>{formatDateRange(entry.start_date, entry.end_date)}</div>
           </div>
           
-          <div className={infoCardStyle}>
-            <div className={infoLabelStyle}>Business Days</div>
-            <div className={infoValueStyle}>{requestDays} days</div>
+          <div className={infoCardStyle(isDarkMode)}>
+            <div className={infoLabelStyle(isDarkMode)}>Business Days</div>
+            <div className={infoValueStyle(isDarkMode)}>{requestDays} days</div>
           </div>
           
-          <div className={infoCardStyle}>
-            <div className={infoLabelStyle}>FY Days Taken</div>
-            <div className={infoValueStyle}>{daysSoFar} / {entitlement}</div>
+          <div className={infoCardStyle(isDarkMode)}>
+            <div className={infoLabelStyle(isDarkMode)}>FY Days Taken</div>
+            <div className={infoValueStyle(isDarkMode)}>{daysSoFar} / {entitlement}</div>
           </div>
           
-          <div className={infoCardStyle}>
-            <div className={infoLabelStyle}>Remaining After</div>
-            <div className={infoValueStyle} style={{ 
-              color: daysRemaining < 0 ? '#dc2626' : colours.light.text 
+          <div className={infoCardStyle(isDarkMode)}>
+            <div className={infoLabelStyle(isDarkMode)}>Remaining After</div>
+            <div className={infoValueStyle(isDarkMode)} style={{ 
+              color: daysRemaining < 0 ? colours.red : (isDarkMode ? colours.dark.text : colours.light.text)
             }}>
               {daysRemaining} days
             </div>
@@ -571,7 +613,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
         {entry.reason?.trim() && (
           <>
             <div className={sectionTitleStyle}>Request Notes</div>
-            <div className={notesStyle}>
+            <div className={notesStyle(isDarkMode)}>
               "{entry.reason}"
             </div>
           </>
@@ -581,7 +623,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
         {entry.hearing_confirmation !== undefined && (
           <>
             <div className={sectionTitleStyle}>Hearing Confirmation</div>
-            <div className={notesStyle}>
+            <div className={notesStyle(isDarkMode)}>
               <strong>
                 {(() => {
                   const hc = entry.hearing_confirmation;
@@ -619,7 +661,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
         {conflicts.length > 0 ? (
           <div className={conflictsGridStyle}>
             {conflicts.map((conflict, idx) => (
-              <div key={idx} className={conflictCardStyle}>
+              <div key={idx} className={conflictCardStyle(isDarkMode)}>
                 <Persona
                   imageUrl={HelixAvatar}
                   text={getNickname(conflict.person)}
@@ -628,11 +670,11 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
                     primaryText: { 
                       fontWeight: 600, 
                       fontSize: '14px',
-                      color: colours.light.text
+                      color: isDarkMode ? colours.dark.text : colours.light.text
                     } 
                   }}
                 />
-                <div style={{ marginTop: '8px', fontSize: '12px', color: colours.greyText }}>
+                <div style={{ marginTop: '8px', fontSize: '12px', color: isDarkMode ? colours.dark.subText : colours.greyText }}>
                   {formatDateRange(conflict.start_date, conflict.end_date)}
                 </div>
                 <div style={{ 
@@ -640,7 +682,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
                   fontSize: '11px', 
                   fontWeight: 600,
                   textTransform: 'uppercase',
-                  color: conflict.status === 'booked' ? '#16a34a' : '#ea580c'
+                  color: conflict.status === 'booked' ? colours.green : colours.orange
                 }}>
                   {conflict.status}
                 </div>
@@ -648,7 +690,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
             ))}
           </div>
         ) : (
-          <div className={notesStyle} style={{ color: '#16a34a', fontStyle: 'normal' }}>
+          <div className={notesStyle(isDarkMode)} style={{ color: colours.green, fontStyle: 'normal' }}>
             ✓ No team conflicts identified
           </div>
         )}
@@ -661,7 +703,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
                 text={isProcessing ? 'Processing...' : 'Approve Request'}
                 onClick={() => handleAction('approve')}
                 disabled={isProcessing}
-                className={approveButtonStyle}
+                className={approveButtonStyle(isDarkMode)}
                 iconProps={{ 
                   iconName: 'CheckMark',
                   styles: { root: { color: '#fff', fontSize: '14px' } }
@@ -671,7 +713,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
                 text={isProcessing ? 'Processing...' : 'Reject Request'}
                 onClick={() => handleAction('reject')}
                 disabled={isProcessing}
-                className={rejectButtonStyle}
+                className={rejectButtonStyle(isDarkMode)}
                 iconProps={{ 
                   iconName: 'Cancel',
                   styles: { root: { color: '#fff', fontSize: '14px' } }
@@ -679,7 +721,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
               />
             </div>
 
-            <div className={rejectionNotesStyle}>
+            <div className={rejectionNotesStyle(isDarkMode)}>
               <TextField
                 label="Rejection Reason (required for rejections)"
                 placeholder="Provide clear reasoning for rejection..."
@@ -690,7 +732,11 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
                 styles={{
                   fieldGroup: {
                     borderRadius: '8px',
-                    border: `2px solid ${colours.light.border}`,
+                    border: `2px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                    backgroundColor: isDarkMode ? colours.dark.inputBackground : colours.light.inputBackground,
+                  },
+                  field: {
+                    color: isDarkMode ? colours.dark.text : colours.light.text,
                   }
                 }}
               />
@@ -732,22 +778,22 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
       }}
     >
       {/* Modal Content */}
-      <div className={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+      <div className={modalContentStyle(isDarkMode)} onClick={(e) => e.stopPropagation()}>
         {/* Close Button */}
         <button 
-          className={closeButtonStyle}
+          className={closeButtonStyle(isDarkMode)}
           onClick={onClose}
           aria-label="Close"
         >
           ✕
         </button>
 
-        {approvals.length === 0 ? (
+        {localApprovals.length === 0 ? (
           <div style={{ 
             textAlign: 'center', 
             padding: '40px 20px',
             fontSize: '18px',
-            color: colours.greyText
+            color: isDarkMode ? colours.dark.text : colours.greyText
           }}>
             <FaUmbrellaBeach style={{ fontSize: '48px', marginBottom: '16px', color: colours.green }} />
             <div>No leave requests to review</div>
@@ -760,7 +806,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
             <div style={{
               fontSize: '24px',
               fontWeight: 700,
-              color: colours.light.text,
+              color: isDarkMode ? colours.dark.text : colours.light.text,
               textAlign: 'center',
               marginBottom: '8px'
             }}>
@@ -768,14 +814,14 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
             </div>
             <div style={{
               fontSize: '14px',
-              color: colours.greyText,
+              color: isDarkMode ? colours.dark.subText : colours.greyText,
               textAlign: 'center',
               marginBottom: '16px'
             }}>
               {approvals.length} request{approvals.length !== 1 ? 's' : ''} require{approvals.length === 1 ? 's' : ''} your review
             </div>
             
-            {approvals.map(entry => (
+            {localApprovals.map(entry => (
               <ApprovalCard key={entry.request_id ? String(entry.request_id) : entry.id} entry={entry} />
             ))}
           </Stack>

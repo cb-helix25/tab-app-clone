@@ -155,13 +155,26 @@ router.post('/', async (req, res) => {
             console.error(`No Clio ID for ${originatingInitials}`);
             throw new Error('No Clio ID for ' + originatingInitials);
         }
+        
+        // Find practice area ID with case-insensitive matching
+        const practiceAreaId = PRACTICE_AREAS[practice_area] || 
+            Object.entries(PRACTICE_AREAS).find(([key]) => 
+                key.toLowerCase() === practice_area.toLowerCase()
+            )?.[1];
+        
+        if (!practiceAreaId) {
+            console.error(`No practice area ID found for: "${practice_area}"`);
+            console.error('Available practice areas:', Object.keys(PRACTICE_AREAS));
+            throw new Error(`Invalid practice area: ${practice_area}`);
+        }
+        
         const payload = {
             data: {
                 billable: true,
                 client: { id: pid },
                 client_reference: instruction_ref,
                 description,
-                practice_area: { id: PRACTICE_AREAS[practice_area] },
+                practice_area: { id: practiceAreaId },
                 responsible_attorney: { id: responsibleId },
                 originating_attorney: { id: originatingId },
                 status: 'Open',

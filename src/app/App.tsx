@@ -756,7 +756,10 @@ const App: React.FC<AppProps> = ({
             originalAdminUser={originalAdminUser}
             hasImmediateActions={hasImmediateActions}
           />
-          <Navigator />
+          {/* Navigator wrapper ensures correct layering and clickability */}
+          <div className="app-navigator">
+            <Navigator />
+          </div>
           
           {/* App-level Immediate Actions Bar */}
           {activeTab === 'home' && (

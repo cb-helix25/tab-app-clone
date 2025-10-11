@@ -1,14 +1,18 @@
 import React from 'react';
 import { Stack, Text } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
-import EnquiryCardV2 from './EnquiryCardV2';
+import NewUnclaimedEnquiryCard from './NewUnclaimedEnquiryCard';
 
 interface UnclaimedEnquiriesProps {
     enquiries: Enquiry[];
     onSelect: (enquiry: Enquiry) => void;
+    userEmail: string | undefined;
+    onAreaChange: (enquiryId: string, newArea: string) => Promise<void> | void;
+    onClaimSuccess?: () => void;
+    getPromotionStatusSimple?: (enquiry: Enquiry) => 'pitch' | 'instruction' | null;
 }
 
-const UnclaimedEnquiries: React.FC<UnclaimedEnquiriesProps> = ({ enquiries, onSelect }) => {
+const UnclaimedEnquiries: React.FC<UnclaimedEnquiriesProps> = ({ enquiries, onSelect, userEmail, onAreaChange, onClaimSuccess, getPromotionStatusSimple }) => {
 
     if (!enquiries || enquiries.length === 0) {
         return (
@@ -27,11 +31,16 @@ const UnclaimedEnquiries: React.FC<UnclaimedEnquiriesProps> = ({ enquiries, onSe
             styles={{ root: { padding: '20px' } }}
         >
             {enquiries.map((enquiry, index) => (
-                <EnquiryCardV2
+                <NewUnclaimedEnquiryCard
                     key={`${enquiry.ID}-${index}`}
                     enquiry={enquiry}
                     onSelect={onSelect}
-                    onRate={() => { }}
+                    onRate={() => { /* no-op for unclaimed cards */ }}
+                    isLast={index === enquiries.length - 1}
+                    onAreaChange={onAreaChange}
+                    userEmail={userEmail || ''}
+                    onClaimSuccess={onClaimSuccess}
+                    promotionStatus={getPromotionStatusSimple ? getPromotionStatusSimple(enquiry) : null}
                 />
             ))}
         </Stack>

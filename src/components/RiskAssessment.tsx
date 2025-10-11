@@ -11,6 +11,8 @@ import {
     IDatePickerStyles,
     Checkbox,
 } from '@fluentui/react';
+import { useTheme } from '../app/functionality/ThemeContext';
+import { colours } from '../app/styles/colours';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../app/styles/ButtonStyles';
 import '../app/styles/MultiSelect.css';
 import '../app/styles/InstructionCard.css';
@@ -29,6 +31,8 @@ interface QuestionGroupProps {
 }
 
 const QuestionGroup: React.FC<QuestionGroupProps> = ({ label, options, selectedKey, onChange, showPrompt = false }) => {
+    const { isDarkMode } = useTheme();
+    
     // For yes/no questions, use 2-column grid, otherwise 3-column grid
     const isYesNoQuestion = options.length === 2 && 
         options.some(opt => opt.text.toLowerCase() === 'yes') && 
@@ -62,7 +66,7 @@ const QuestionGroup: React.FC<QuestionGroupProps> = ({ label, options, selectedK
                 fontSize: 11, 
                 padding: '4px 8px', 
                 fontWeight: 700, 
-                color: '#374151',
+                color: isDarkMode ? colours.dark.text : '#374151',
                 textTransform: 'uppercase',
                 letterSpacing: '0.25px'
             }}>

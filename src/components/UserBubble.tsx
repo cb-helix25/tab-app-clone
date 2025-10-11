@@ -282,11 +282,31 @@ const UserBubble: React.FC<UserBubbleProps> = ({
     };
     
     const [areasOfWork, setAreasOfWork] = useState<string[]>(getInitialAreas);
+    const [hasUserInitialized, setHasUserInitialized] = useState(false);
     
-    // Update local state when user changes
+    // Initialize areas when user first loads, but don't reset on subsequent user changes
+    // to preserve manual overrides
     useEffect(() => {
-        setAreasOfWork(getInitialAreas());
-    }, [user]);
+        const devVerbose = process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG_VERBOSE === 'true';
+        if (devVerbose) {
+            // eslint-disable-next-line no-console
+            console.info('UserBubble init:', { user: user?.Initials, hasUserInitialized, currentAOW: user?.AOW });
+        }
+        if (user && !hasUserInitialized) {
+            const initialAreas = getInitialAreas();
+            if (devVerbose) {
+                // eslint-disable-next-line no-console
+                console.info('UserBubble: initializing areas for first time:', initialAreas);
+            }
+            setAreasOfWork(initialAreas);
+            setHasUserInitialized(true);
+        } else if (user && hasUserInitialized) {
+            if (devVerbose) {
+                // eslint-disable-next-line no-console
+                console.info('UserBubble: user changed but already initialized - not resetting areas');
+            }
+        }
+    }, [user, hasUserInitialized]);
 
     // Normalize potential fields to lower case and trim whitespace so
     // production data with trailing spaces or nickname variations still match.
@@ -613,8 +633,12 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                                                     const newAreas = e.target.checked
                                                                         ? [...areasOfWork, area]
                                                                         : areasOfWork.filter(a => a !== area);
+                                                                    console.log('🔄 Area change:', { area, checked: e.target.checked, currentAreas: areasOfWork, newAreas });
                                                                     setAreasOfWork(newAreas);
-                                                                    onAreasChange(newAreas);
+                                                                    if (onAreasChange) {
+                                                                        console.log('📤 Calling onAreasChange with:', newAreas);
+                                                                        onAreasChange(newAreas);
+                                                                    }
                                                                 }}
                                                                 style={{ 
                                                                     position: 'absolute',
@@ -663,7 +687,9 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                             <button
                                                 onClick={() => {
                                                     setAreasOfWork([]);
-                                                    onAreasChange([]);
+                                                    if (onAreasChange) {
+                                                        onAreasChange([]);
+                                                    }
                                                 }}
                                                 style={{
                                                     width: '100%',

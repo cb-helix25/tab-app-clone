@@ -291,6 +291,32 @@ const NewEnquiryList: React.FC<NewEnquiryListProps> = ({
         </div>
       ) : (
         <>
+          {/* Area Filter Status */}
+          {userData && userData[0]?.AOW && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '12px 16px',
+              background: isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
+              border: isDarkMode ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(34, 197, 94, 0.2)',
+              borderRadius: '8px',
+              fontSize: '12px',
+              color: isDarkMode ? 'rgba(187, 247, 208, 0.9)' : 'rgba(21, 128, 61, 0.9)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
+              </svg>
+              <span>
+                Filtered by areas: <strong>{userData[0].AOW}</strong>
+                {filteredEnquiries.length !== enquiries.length && (
+                  <span style={{ opacity: 0.8 }}> • Showing {filteredEnquiries.length} of {enquiries.length} enquiries</span>
+                )}
+              </span>
+            </div>
+          )}
+          
           {/* Enquiry Line Items with Inline Expansion */}
           <div>
             {filteredEnquiries.map((enquiry, index) => (

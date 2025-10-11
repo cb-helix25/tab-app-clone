@@ -199,7 +199,10 @@ export const processingActions: ProcessingAction[] = [
         icon: asanaIcon,
         run: async (_form, _i, userData) => {
             const id = userData?.[0]?.ASANAClientID || userData?.[0]?.ASANAClient_ID;
-            if (!id) throw new Error('Asana Client ID missing');
+            if (!id) {
+                console.warn('⚠️ [processingActions] Asana Client ID missing from user profile');
+                throw new Error('Asana Client ID missing from user profile. Please contact support to configure Asana integration.');
+            }
             asanaClientId = id;
             return 'Client ID retrieved';
         }
@@ -209,7 +212,10 @@ export const processingActions: ProcessingAction[] = [
         icon: asanaIcon,
         run: async (_form, _i, userData) => {
             const secret = userData?.[0]?.ASANASecret || userData?.[0]?.ASANA_Secret;
-            if (!secret) throw new Error('Asana Secret missing');
+            if (!secret) {
+                console.warn('⚠️ [processingActions] Asana Secret missing from user profile');
+                throw new Error('Asana Secret missing from user profile. Please contact support to configure Asana integration.');
+            }
             asanaSecret = secret;
             return 'Secret retrieved';
         }
@@ -219,7 +225,10 @@ export const processingActions: ProcessingAction[] = [
         icon: asanaIcon,
         run: async (_form, _i, userData) => {
             const token = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
-            if (!token) throw new Error('Asana Refresh Token missing');
+            if (!token) {
+                console.warn('⚠️ [processingActions] Asana Refresh Token missing from user profile');
+                throw new Error('Asana Refresh Token missing from user profile. Please contact support to configure Asana integration.');
+            }
             asanaRefreshToken = token;
             return 'Refresh Token retrieved';
         }

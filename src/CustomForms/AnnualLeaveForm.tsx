@@ -14,7 +14,7 @@ import HelixAvatar from '../assets/helix avatar.png';
 import GreyHelixMark from '../assets/grey helix mark.png'; // Not currently used
 import '../app/styles/personas.css';
 import { TeamData, AnnualLeaveRecord } from '../app/functionality/types';
-import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
+// Note: Use relative Express API path for attendance endpoints to avoid double `/api` in production
 
 interface AnnualLeaveFormProps {
   futureLeave: AnnualLeaveRecord[];
@@ -46,26 +46,15 @@ const buttonStylesFixedWidthSecondary = {
   rootPressed: { ...(sharedDefaultButtonStyles.rootPressed as object) },
 };
 
-const textFieldStyles = {
-  fieldGroup: {
-    borderRadius: '4px',
-    border: `1px solid ${colours.light.border}`,
-    backgroundColor: colours.light.inputBackground,
-    selectors: {
-      ':hover': { borderColor: colours.light.cta },
-      ':focus': { borderColor: colours.light.cta },
-    },
-  },
-};
-
-const infoBoxStyle: React.CSSProperties = {
-  backgroundColor: colours.light.grey,
-  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+const infoBoxStyle = (isDarkMode: boolean): React.CSSProperties => ({
+  backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.grey,
+  boxShadow: isDarkMode ? '0 2px 6px rgba(0, 0, 0, 0.3)' : '0 2px 6px rgba(0, 0, 0, 0.1)',
   padding: '20px',
   borderRadius: '4px',
   animation: 'dropIn 0.3s ease forwards',
   marginBottom: '20px',
-};
+  border: `1px solid ${isDarkMode ? colours.dark.border : 'transparent'}`,
+});
 
 const labelStyle: React.CSSProperties = {
   fontSize: '14px',
@@ -77,7 +66,7 @@ const labelStyle: React.CSSProperties = {
 const valueStyle: React.CSSProperties = {
   fontSize: '18px',
   fontWeight: 400,
-  color: colours.light.text,
+  // Note: color is applied contextually based on theme
 };
 
 // Columns for the historical leave list
@@ -194,6 +183,7 @@ function AnnualLeaveForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notes, setNotes] = useState<string>('');
   const [confirmationMessage, setConfirmationMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const [selectedLeaveType, setSelectedLeaveType] = useState<string>('standard');
   const [hearingConfirmation, setHearingConfirmation] = useState<string | null>(null);
   const [hearingDetails, setHearingDetails] = useState<string>('');
@@ -232,6 +222,7 @@ function AnnualLeaveForm({
     setNotes('');
     setHearingConfirmation(null);
     setHearingDetails('');
+    setErrorMessage(''); // Clear any error messages
   };
 
   const holidayEntitlement = Number(userData?.[0]?.holiday_entitlement ?? 0);
@@ -273,8 +264,12 @@ function AnnualLeaveForm({
   }, [futureLeave, dateRanges, team]);
 
   const handleSubmit = async () => {
+    // Clear previous messages
+    setErrorMessage('');
+    setConfirmationMessage('');
+    
     if (dateRanges.length === 0) {
-      alert('Please add at least one date range for your leave.');
+      setErrorMessage('Please add at least one date range for your leave.');
       return;
     }
     if (!notes.trim()) setNotes('No additional reason provided.');
@@ -296,9 +291,9 @@ function AnnualLeaveForm({
         hearing_details: hearingConfirmation === 'no' ? hearingDetails : '',
       };
   console.log('Annual Leave Form Payload:', payload);
-  // Use new integrated server route instead of Azure Function
-  const base = getProxyBaseUrl();
-  const url = `${base}/api/attendance/annual-leave`;
+  // Use server route (fully migrated from Azure Functions)
+  // Always call the Express server directly; CRA proxy handles dev, same-origin handles prod
+  const url = `/api/attendance/annual-leave`;
   const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -310,11 +305,11 @@ function AnnualLeaveForm({
       }
       const result = await response.json();
       console.log('Insert Annual Leave Successful:', result);
-      setConfirmationMessage('Your annual leave request has been submitted successfully.');
+      setConfirmationMessage('✅ Your annual leave request has been submitted successfully and is pending approval.');
       handleClear();
     } catch (error) {
       console.error('Error submitting Annual Leave Form:', error);
-      alert(`Error submitting your request: ${error}`);
+      setErrorMessage(`❌ Failed to submit your request: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -469,7 +464,7 @@ function AnnualLeaveForm({
                 style={{
                   animationDelay: `${idx * 0.1}s`,
                   border: `1px solid ${borderColor}`,
-                  backgroundColor: '#ffffff',
+                  backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.sectionBackground,
                   padding: '5px',
                   borderRadius: '4px',
                   display: 'flex',
@@ -482,10 +477,10 @@ function AnnualLeaveForm({
                   <img src={HelixAvatar} alt={item.nickname} style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
                 </div>
                 <div style={{ marginTop: '5px', textAlign: 'center', width: '100%' }}>
-                  <div className="persona-name-text" style={{ fontWeight: 600, fontSize: '16px', color: colours.light.text }}>
+                  <div className="persona-name-text" style={{ fontWeight: 600, fontSize: '16px', color: isDarkMode ? colours.dark.text : colours.light.text }}>
                     {item.nickname}
                   </div>
-                  <div className="persona-range-text" style={{ fontSize: '14px', fontWeight: 400, color: colours.light.text }}>
+                  <div className="persona-range-text" style={{ fontSize: '14px', fontWeight: 400, color: isDarkMode ? colours.dark.text : colours.light.text }}>
                     {formattedRanges}
                   </div>
                 </div>
@@ -502,7 +497,7 @@ function AnnualLeaveForm({
 
   return (
     <>
-      <style>
+      <style key={isDarkMode ? 'dark' : 'light'}>
         {`
           @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-10px); }
@@ -519,6 +514,114 @@ function AnnualLeaveForm({
             display: inline-block !important;
             visibility: visible !important;
             opacity: 1 !important;
+          }
+        `}
+        {isDarkMode && `
+          /* Dark mode styles for react-date-range */
+          .rdrCalendarWrapper {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%) !important;
+            color: ${colours.dark.text} !important;
+            border-radius: 12px !important;
+            border: 1px solid rgba(125, 211, 252, 0.24) !important;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4) !important;
+          }
+          .rdrMonth {
+            background-color: transparent !important;
+          }
+          .rdrMonthAndYearWrapper {
+            background-color: transparent !important;
+            color: ${colours.dark.text} !important;
+          }
+          .rdrMonthAndYearPickers select {
+            background-color: rgba(15, 23, 42, 0.8) !important;
+            color: ${colours.dark.text} !important;
+            border: 1px solid rgba(125, 211, 252, 0.24) !important;
+            border-radius: 6px !important;
+            padding: 4px 8px !important;
+          }
+          .rdrMonthPicker select,
+          .rdrYearPicker select {
+            background-color: ${colours.dark.inputBackground} !important;
+            color: ${colours.dark.text} !important;
+          }
+          .rdrWeekDay {
+            color: ${colours.dark.text} !important;
+          }
+          .rdrDay {
+            color: ${colours.dark.text} !important;
+          }
+          .rdrDayNumber span {
+            color: ${colours.dark.text} !important;
+          }
+          .rdrDayPassive .rdrDayNumber span {
+            color: ${colours.dark.text} !important;
+            opacity: 0.4 !important;
+          }
+          .rdrDayToday .rdrDayNumber span:after {
+            background: ${colours.highlight} !important;
+          }
+          .rdrDayDisabled {
+            background-color: ${colours.dark.sectionBackground} !important;
+          }
+          .rdrDayDisabled .rdrDayNumber span {
+            color: ${colours.dark.border} !important;
+          }
+          .rdrDateDisplayWrapper {
+            background-color: transparent !important;
+          }
+          .rdrDateDisplay {
+            background-color: transparent !important;
+          }
+          .rdrDateDisplayItem {
+            background: rgba(15, 23, 42, 0.8) !important;
+            border: 1px solid rgba(125, 211, 252, 0.24) !important;
+            border-radius: 8px !important;
+            color: ${colours.dark.text} !important;
+            box-shadow: none !important;
+          }
+          .rdrDateDisplayItem input {
+            color: ${colours.dark.text} !important;
+            background: transparent !important;
+          }
+          .rdrDateInput {
+            background-color: transparent !important;
+          }
+          .rdrDateInput input {
+            color: ${colours.dark.text} !important;
+            background-color: transparent !important;
+          }
+          .rdrMonthName {
+            color: ${colours.dark.text} !important;
+          }
+          .rdrNextPrevButton {
+            background-color: ${colours.dark.inputBackground} !important;
+          }
+          .rdrNextPrevButton:hover {
+            background-color: ${colours.dark.border} !important;
+          }
+          .rdrPprevButton i,
+          .rdrNextButton i {
+            border-color: transparent ${colours.dark.text} transparent transparent !important;
+          }
+          .rdrPprevButton i {
+            border-color: transparent transparent transparent ${colours.dark.text} !important;
+          }
+          
+          /* ChoiceGroup (radio buttons) dark mode */
+          .ms-ChoiceField-labelWrapper {
+            color: ${colours.dark.text} !important;
+          }
+          .ms-ChoiceFieldLabel {
+            color: ${colours.dark.text} !important;
+          }
+          .ms-ChoiceField-field:before {
+            border-color: ${colours.dark.border} !important;
+          }
+          .ms-ChoiceField-field:after {
+            border-color: ${colours.highlight} !important;
+          }
+          .ms-ChoiceField:hover .ms-ChoiceField-field:before {
+            border-color: ${colours.highlight} !important;
           }
         `}
       </style>
@@ -552,9 +655,10 @@ function AnnualLeaveForm({
                     tokens={{ childrenGap: 5 }}
                     style={{
                       animation: 'fadeIn 0.5s ease forwards',
-                      border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                      padding: '10px',
-                      borderRadius: '4px',
+                      border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.light.border}`,
+                      padding: '12px',
+                      borderRadius: '12px',
+                      background: isDarkMode ? 'rgba(15, 23, 42, 0.5)' : 'transparent',
                     }}
                   >
                     <DateRangePicker
@@ -596,19 +700,37 @@ function AnnualLeaveForm({
                 ))}
                 <div
                   style={{
-                    border: '2px dashed #ccc',
-                    borderRadius: '4px',
+                    border: `2px dashed ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.light.border}`,
+                    borderRadius: '12px',
                     width: '100%',
-                    height: '50px',
+                    height: '60px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
+                    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.5)' : colours.light.sectionBackground,
+                    transition: 'all 0.2s ease',
                   }}
                   onClick={handleAddDateRange}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(30, 41, 59, 0.6)' : '#f8fafc';
+                    e.currentTarget.style.borderColor = colours.blue;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(15, 23, 42, 0.5)' : colours.light.sectionBackground;
+                    e.currentTarget.style.borderColor = isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.light.border;
+                  }}
                 >
-                  <Icon iconName="Add" style={{ fontSize: 24, color: '#ccc', marginRight: 8 }} />
-                  <Text style={{ color: '#ccc', fontSize: '16px' }}>
+                  <Icon iconName="Add" style={{ 
+                    fontSize: 20, 
+                    color: colours.blue, 
+                    marginRight: 8,
+                  }} />
+                  <Text style={{ 
+                    color: isDarkMode ? colours.dark.text : colours.light.text, 
+                    fontSize: '14px',
+                    fontWeight: 500,
+                  }}>
                     {dateRanges.length === 0 ? 'Add Holiday' : 'Add Another Holiday'}
                   </Text>
                 </div>
@@ -617,13 +739,38 @@ function AnnualLeaveForm({
                   placeholder="Enter any additional notes"
                   value={notes}
                   onChange={(e, newVal) => setNotes(newVal || '')}
-                  styles={textFieldStyles}
+                  styles={{
+                    root: {
+                      '.ms-Label': {
+                        color: `${isDarkMode ? colours.dark.text : colours.light.text} !important`,
+                      },
+                    },
+                    fieldGroup: {
+                      borderRadius: '4px',
+                      border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                      backgroundColor: isDarkMode ? colours.dark.inputBackground : colours.light.inputBackground,
+                      selectors: {
+                        ':hover': { borderColor: isDarkMode ? colours.dark.cta : colours.light.cta },
+                        ':focus': { borderColor: isDarkMode ? colours.dark.cta : colours.light.cta },
+                      },
+                    },
+                    field: {
+                      color: isDarkMode ? colours.dark.text : colours.light.text,
+                    },
+                    subComponentStyles: {
+                      label: {
+                        root: {
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                        },
+                      },
+                    },
+                  }}
                   multiline
                   rows={3}
                 />
                 <Stack tokens={{ childrenGap: 10 }}>
                   <Stack horizontal tokens={{ childrenGap: 5 }} verticalAlign="center">
-                    <Text style={{ fontWeight: 600 }}>
+                    <Text style={{ fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text }}>
                       I confirm there are no hearings during my planned absence...
                     </Text>
                     <TooltipHost content="Usually leave will not be approved...">
@@ -638,12 +785,47 @@ function AnnualLeaveForm({
                     ]}
                     onChange={(ev, option) => setHearingConfirmation(option?.key || null)}
                     label="Please select an option"
+                    styles={{
+                      flexContainer: {
+                        display: 'flex',
+                        gap: '10px',
+                      },
+                      label: {
+                        color: isDarkMode ? colours.dark.text : colours.light.text,
+                      },
+                    }}
                   />
                   {hearingConfirmation === 'no' && (
                     <TextField
                       label="There are the following hearings taking place..."
                       value={hearingDetails}
                       onChange={(e, newVal) => setHearingDetails(newVal || '')}
+                      styles={{
+                        root: {
+                          '.ms-Label': {
+                            color: `${isDarkMode ? colours.dark.text : colours.light.text} !important`,
+                          },
+                        },
+                        fieldGroup: {
+                          borderRadius: '4px',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                          backgroundColor: isDarkMode ? colours.dark.inputBackground : colours.light.inputBackground,
+                          selectors: {
+                            ':hover': { borderColor: isDarkMode ? colours.dark.cta : colours.light.cta },
+                            ':focus': { borderColor: isDarkMode ? colours.dark.cta : colours.light.cta },
+                          },
+                        },
+                        field: {
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                        },
+                        subComponentStyles: {
+                          label: {
+                            root: {
+                              color: isDarkMode ? colours.dark.text : colours.light.text,
+                            },
+                          },
+                        },
+                      }}
                       multiline
                       rows={3}
                     />
@@ -664,8 +846,29 @@ function AnnualLeaveForm({
                   />
                 </Stack>
                 {confirmationMessage && (
-                  <Text style={{ marginTop: 10, fontWeight: 'bold', color: '#009900' }}>
+                  <Text style={{ 
+                    marginTop: 10, 
+                    fontWeight: 'bold', 
+                    color: colours.green,
+                    padding: '8px 12px',
+                    backgroundColor: isDarkMode ? 'rgba(32, 178, 108, 0.1)' : 'rgba(32, 178, 108, 0.05)',
+                    borderRadius: '4px',
+                    border: `1px solid ${colours.green}`
+                  }}>
                     {confirmationMessage}
+                  </Text>
+                )}
+                {errorMessage && (
+                  <Text style={{ 
+                    marginTop: 10, 
+                    fontWeight: 'bold', 
+                    color: colours.red,
+                    padding: '8px 12px',
+                    backgroundColor: isDarkMode ? 'rgba(214, 85, 65, 0.1)' : 'rgba(214, 85, 65, 0.05)',
+                    borderRadius: '4px',
+                    border: `1px solid ${colours.red}`
+                  }}>
+                    {errorMessage}
                   </Text>
                 )}
               </Stack>
@@ -675,7 +878,7 @@ function AnnualLeaveForm({
         </div>
         {groupedLeave.length > 0 && (
           <div style={{ position: 'relative', marginBottom: '20px' }}>
-            <div style={{ ...infoBoxStyle, backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.grey }}>
+            <div style={infoBoxStyle(isDarkMode)}>
               <Icon
                 iconName="Info"
                 style={{ position: 'absolute', right: 10, top: 10, fontSize: 40, opacity: 0.1, color: isDarkMode ? colours.dark.text : colours.light.text }}
@@ -705,7 +908,7 @@ function AnnualLeaveForm({
             selectionMode={SelectionMode.none}
             styles={{
               root: {
-                backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#ffffff',
+                backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
                 borderRadius: '4px',
                 boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
               },

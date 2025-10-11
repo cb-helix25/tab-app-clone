@@ -1,6 +1,7 @@
 import { Enquiry } from '../../../app/functionality/types';
 import { colours } from '../../../app/styles/colours';
 import { templateBlocks, TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
+import { finalizeHTMLForEmail, extractFormattingForEmail } from './emailFormattingUtils';
 
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -21,7 +22,8 @@ export function convertDoubleBreaksToParagraphs(html: string): string {
 // invisible change
     .replace(/\r\n/g, '\n')
     .replace(/(<br \/>){2,}/g, '\n\n')
-    .replace(/<\/div>\s*<br \/>/g, '</div>');
+    // Preserve explicit breaks after block elements; do not strip <br /> following </div>
+    ;
     
   // Convert numbered lists to proper HTML ordered lists
   normalized = convertNumberedListsToHTML(normalized);
@@ -157,6 +159,7 @@ export function markUnfilledPlaceholders(
 /**
  * Strips all the highlight <span> attributes (data-placeholder, data-inserted, etc.)
  * so final email doesn't have bright highlighting.
+ * Enhanced version that preserves rich text formatting while removing editor UI elements.
  */
 export function removeHighlightSpans(html: string): string {
   const tempDiv = document.createElement('div');
@@ -211,7 +214,7 @@ export function removeHighlightSpans(html: string): string {
     parent.removeChild(el);
   });
 
-  // Remove highlight attributes/classes but keep user content
+  // Remove highlight attributes/classes but preserve formatting elements
   const cleanupSelectors =
     '[data-placeholder], [data-inserted], [data-link], [data-sentence], [data-insert], [data-snippet], [data-block-title], .insert-placeholder, .block-main, .block-container';
   tempDiv.querySelectorAll(cleanupSelectors).forEach((el) => {
@@ -222,16 +225,26 @@ export function removeHighlightSpans(html: string): string {
     el.removeAttribute('data-insert');
     el.removeAttribute('data-snippet');
     el.removeAttribute('data-block-title');
-    el.removeAttribute('style');
     el.removeAttribute('contenteditable');
-    if ((el as HTMLElement).classList.contains('block-main')) {
-      (el as HTMLElement).classList.remove('block-main');
+    
+    // Remove highlight-specific styling but preserve rich text formatting
+    const htmlEl = el as HTMLElement;
+    if (htmlEl.style.backgroundColor && 
+        (htmlEl.style.backgroundColor.includes('rgb(255, 255, 0)') || 
+         htmlEl.style.backgroundColor.includes('#ffff00') ||
+         htmlEl.style.backgroundColor.includes('yellow'))) {
+      htmlEl.style.backgroundColor = '';
     }
-    if ((el as HTMLElement).classList.contains('block-container')) {
-      (el as HTMLElement).classList.remove('block-container');
+    
+    // Remove editor-specific classes but keep formatting
+    if (htmlEl.classList.contains('block-main')) {
+      htmlEl.classList.remove('block-main');
     }
-    if ((el as HTMLElement).classList.contains('insert-placeholder')) {
-      (el as HTMLElement).classList.remove('insert-placeholder');
+    if (htmlEl.classList.contains('block-container')) {
+      htmlEl.classList.remove('block-container');
+    }
+    if (htmlEl.classList.contains('insert-placeholder')) {
+      htmlEl.classList.remove('insert-placeholder');
     }
   });
 
@@ -255,7 +268,8 @@ export function removeHighlightSpans(html: string): string {
     .querySelectorAll('.block-label, .block-label-display')
     .forEach((el) => el.remove());
 
-  return tempDiv.innerHTML;
+  // Apply final email formatting conversion
+  return finalizeHTMLForEmail(tempDiv.innerHTML);
 }
 
 /**
@@ -279,11 +293,83 @@ export function cleanTemplateString(template: string): string {
 
 /**
  * Wrap all [INSERT ...] placeholders in a span so we can detect them easily.
+ * Makes them focusable and ready for inline editing.
+ * Also converts link markers back to proper HTML links.
  */
 export function wrapInsertPlaceholders(text: string): string {
-  return text.replace(/\[INSERT[^\]]*\]/gi, (m) => {
-    return `<span class="insert-placeholder" data-insert tabindex="0" role="button">${m}</span>`;
+  if (!text) {
+    return '';
+  }
+
+  const container = document.createElement('div');
+  container.innerHTML = text;
+
+  // Normalise existing wrappers so we can reliably detect duplicates
+  container.querySelectorAll('.insert-placeholder').forEach((el) => {
+    el.className = 'insert-placeholder';
+    (el as HTMLElement).setAttribute('data-insert', '');
   });
+
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    textNodes.push(node as Text);
+  }
+
+  const tokenRegex = /\[INSERT[^\]]*\]/gi;
+
+  for (const textNode of textNodes) {
+    const value = textNode.nodeValue || '';
+    if (!tokenRegex.test(value)) {
+      tokenRegex.lastIndex = 0;
+      continue;
+    }
+    tokenRegex.lastIndex = 0;
+
+    const parentElement = textNode.parentElement;
+    if (parentElement?.closest('.insert-placeholder, .placeholder-editing, .placeholder-edited')) {
+      continue; // Already wrapped or actively being edited
+    }
+
+    const fragment = document.createDocumentFragment();
+    let lastIndex = 0;
+
+    value.replace(/\[INSERT[^\]]*\]/gi, (match, offset: number) => {
+      if (offset > lastIndex) {
+        fragment.appendChild(document.createTextNode(value.slice(lastIndex, offset)));
+      }
+
+      const span = document.createElement('span');
+      span.className = 'insert-placeholder';
+      span.setAttribute('data-insert', '');
+      span.textContent = match;
+      fragment.appendChild(span);
+
+      lastIndex = offset + match.length;
+      return match;
+    });
+
+    if (lastIndex < value.length) {
+      fragment.appendChild(document.createTextNode(value.slice(lastIndex)));
+    }
+
+    textNode.parentNode?.replaceChild(fragment, textNode);
+  }
+
+  let result = container.innerHTML;
+
+  // Then handle Instruct Helix Law link markers on the serialized HTML
+  result = result.replace(/\[\[INSTRUCT_LINK::([^\]]+)\]\]/gi, (_match, href) => {
+    return `<a href="${href}" class="instruct-link" style="color: #3690CE; text-decoration: underline;" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`;
+  });
+
+  // Handle any remaining [InstructLink] placeholders that don't have a passcode yet
+  result = result.replace(/\[InstructLink\]/gi, () => {
+    return `<span class="instruct-link-pending" style="color: #D65541; font-weight: 700; text-decoration: underline; opacity: 0.7; cursor: help;" title="Link will be generated after deal is saved">Instruct Helix Law</span>`;
+  });
+
+  return result;
 }
 
 /**
@@ -291,6 +377,30 @@ export function wrapInsertPlaceholders(text: string): string {
  */
 export function isStringArray(value: string | string[]): value is string[] {
   return Array.isArray(value);
+}
+
+/**
+ * Process editor content for email sending with full formatting preservation
+ * This is the main function to call when preparing rich text content for email
+ */
+export function processEditorContentForEmail(editorElement: HTMLElement | null, fallbackHtml?: string): string {
+  let html = '';
+  
+  if (editorElement) {
+    // Extract formatting-preserved content from the editor
+    html = extractFormattingForEmail(editorElement);
+  } else if (fallbackHtml) {
+    // Use fallback HTML and apply email formatting
+    html = finalizeHTMLForEmail(fallbackHtml);
+  }
+  
+  if (!html) return '';
+  
+  // Remove editor UI elements while preserving formatting
+  html = removeHighlightSpans(html);
+  
+  // Apply final email optimizations
+  return finalizeHTMLForEmail(html);
 }
 
 export function replacePlaceholders(
@@ -405,12 +515,18 @@ export function applyDynamicSubstitutions(
   return text
   // Support explicit marker syntax used in editor content - extract URL from within marker
   .replace(/\[\[INSTRUCT_LINK::([^\]]*)\]\]/gi, (match, url) => {
-    const cleanUrl = url.trim();
-    // If the marker contains the base URL without passcode, use the passcode-based URL instead
-    if (cleanUrl === `${baseUrl}/pitch` && passcode) {
+    // Normalize URL and append passcode if pointing to /pitch or /pitch/
+    const cleanUrlRaw = (url || '').trim();
+    const cleanUrl = cleanUrlRaw.replace(/\/$/, ''); // drop trailing slash for comparison
+    if ((cleanUrl === `${baseUrl}/pitch`) && passcode) {
       return `<a href="${baseUrl}/pitch/${passcode}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`;
     }
-    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`;
+    // If no passcode, keep provided URL as-is
+    return `<a href="${cleanUrlRaw}" target="_blank" rel="noopener noreferrer">Instruct Helix Law</a>`;
+  })
+  // Normalize any existing instruct-link anchors from editor to the final URL and remove red styling
+  .replace(/<a([^>]*?)class=("|')[^"']*instruct-link[^"']*(\2)([^>]*)>(.*?)<\/a>/gi, (_m, pre, q, _q2, post, text) => {
+    return `<a href="${finalInstructionsLink}" target="_blank" rel="noopener noreferrer">${text || 'Instruct Helix Law'}</a>`;
   })
     .replace(/\[FE\]/g, userInitials)
     .replace(/\[ACID\]/g, enquiryID)

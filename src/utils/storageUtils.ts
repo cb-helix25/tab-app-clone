@@ -49,7 +49,10 @@ export const getStorageQuota = (): StorageQuotaInfo => {
  * Clear old/large items from localStorage when quota is exceeded
  */
 export const cleanupLocalStorage = (): void => {
-  console.log('🧹 Starting localStorage cleanup...');
+  if (process.env.REACT_APP_DEBUG_VERBOSE === 'true') {
+    // eslint-disable-next-line no-console
+    console.log('🧹 Starting localStorage cleanup...');
+  }
   
   const itemsToCheck = [];
   
@@ -68,10 +71,13 @@ export const cleanupLocalStorage = (): void => {
   // Sort by size (largest first)
   itemsToCheck.sort((a, b) => b.size - a.size);
   
-  console.log('📊 Current localStorage items:', itemsToCheck.map(item => ({
-    key: item.key,
-    sizeKB: Math.round(item.size / 1024)
-  })));
+  if (process.env.REACT_APP_DEBUG_VERBOSE === 'true') {
+    // eslint-disable-next-line no-console
+    console.log('📊 Current localStorage items:', itemsToCheck.map(item => ({
+      key: item.key,
+      sizeKB: Math.round(item.size / 1024)
+    })));
+  }
   
   // Remove largest items first, prioritizing cache data
   const keysToRemove = [];
@@ -87,17 +93,23 @@ export const cleanupLocalStorage = (): void => {
   }
   
   // Remove items
-  keysToRemove.forEach(key => {
+  keysToRemove.forEach((key: string) => {
     try {
       localStorage.removeItem(key);
-      console.log(`🗑️ Removed localStorage item: ${key}`);
+      if (process.env.REACT_APP_DEBUG_VERBOSE === 'true') {
+        // eslint-disable-next-line no-console
+        console.log(`🗑️ Removed localStorage item: ${key}`);
+      }
     } catch (error) {
       console.warn(`Failed to remove localStorage item ${key}:`, error);
     }
   });
   
   const quota = getStorageQuota();
-  console.log(`✅ Cleanup complete. Storage usage: ${quota.percentUsed.toFixed(1)}%`);
+  if (process.env.REACT_APP_DEBUG_VERBOSE === 'true') {
+    // eslint-disable-next-line no-console
+    console.log(`✅ Cleanup complete. Storage usage: ${quota.percentUsed.toFixed(1)}%`);
+  }
 };
 
 /**
@@ -116,7 +128,10 @@ export const safeSetItem = (key: string, value: string): boolean => {
       
       try {
         localStorage.setItem(key, value);
-        console.log(`✅ Successfully stored ${key} after cleanup`);
+        if (process.env.REACT_APP_DEBUG_VERBOSE === 'true') {
+          // eslint-disable-next-line no-console
+          console.log(`✅ Successfully stored ${key} after cleanup`);
+        }
         return true;
       } catch (retryError) {
         console.error(`❌ Failed to store ${key} even after cleanup:`, retryError);

@@ -2,3 +2,6 @@
 	path = instruct-pitch
 	url = https://github.com/HelixAutomations/instruct-pitch.git
 	ignore = dirty
+[submodule "enquiry-processing-v2"]
+	path = enquiry-processing-v2
+	url = git@github.com:HelixAutomations/enquiry-processing-v2.git

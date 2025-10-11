@@ -577,7 +577,10 @@ async function fetchVNetMatters(fullName?: string): Promise<any[]> {
     const cacheKey = `normalizedMatters-v5-${fullName}`;
     const cached = getMemoryCachedData<NormalizedMatter[]>(cacheKey);
     if (cached) {
-      console.log(`📦 Using cached matters data (${cached.length} matters)`);
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.info(`Matters cache hit (${cached.length} items)`);
+      }
       return cached;
     }
 
@@ -598,7 +601,10 @@ async function fetchVNetMatters(fullName?: string): Promise<any[]> {
       
       // Cache in memory instead of localStorage (too large for localStorage)
       setMemoryCachedData(cacheKey, normalizedMatters);
-      console.log(`✅ Cached ${normalizedMatters.length} matters in memory`);
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.info(`Cached ${normalizedMatters.length} matters in memory`);
+      }
       
       return normalizedMatters;
     } catch (err) {
@@ -617,7 +623,10 @@ async function fetchVNetMatters(fullName?: string): Promise<any[]> {
         
         // Cache in memory instead of localStorage
         setMemoryCachedData(cacheKey, normalizedMatters);
-        console.log(`✅ Cached ${normalizedMatters.length} matters in memory (fallback)`);
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.info(`Cached ${normalizedMatters.length} matters in memory (fallback)`);
+        }
         
         return normalizedMatters;
       } catch {
@@ -658,7 +667,8 @@ async function fetchTeamData(): Promise<TeamData[] | null> {
         if (status === 'active') activeCount++;
         else if (status === 'inactive') inactiveCount++;
       }
-      console.log('✅ Team data:', data.length, 'members |', activeCount, 'active |', inactiveCount, 'inactive');
+  // eslint-disable-next-line no-console
+  console.info('Team data:', data.length, 'members |', activeCount, 'active |', inactiveCount, 'inactive');
     }
     
     setCachedData(cacheKey, data);
@@ -704,6 +714,8 @@ const AppWithContext: React.FC = () => {
 
   // Update user data when local areas change
   const updateLocalUserData = (areas: string[]) => {
+    console.log('📥 updateLocalUserData called with:', areas);
+    console.log('📝 Current userData before update:', userData?.[0]?.AOW);
     setLocalSelectedAreas(areas);
     // Allow area override for all users, not just localhost
     if (userData && userData[0]) {
@@ -711,6 +723,7 @@ const AppWithContext: React.FC = () => {
         ...userData[0],
         AOW: areas.join(', ')
       }];
+      console.log('✅ Setting new userData with AOW:', updatedUserData[0].AOW);
       setUserData(updatedUserData as UserData[]);
     }
   };

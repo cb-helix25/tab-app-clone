@@ -62,7 +62,10 @@ router.post('/', async (req, res) => {
             [Role],
             [AOW],
             [holiday_entitlement],
-            [status]
+            [status],
+            [ASANAClient_ID],
+            [ASANASecret],
+            [ASANARefreshToken]
           FROM [dbo].[team]
           WHERE [Entra ID] = @userObjectId
         `);
@@ -98,6 +101,13 @@ router.post('/', async (req, res) => {
         aow: u?.AOW ?? u?.aow ?? null,
         holiday_entitlement: u?.holiday_entitlement ?? u?.['holiday_entitlement'] ?? null,
         status: u?.status ?? u?.Status ?? null,
+        // Asana credentials - preserve all possible field name variations
+        ASANAClientID: u?.ASANAClient_ID ?? null, // Map from actual DB column
+        ASANAClient_ID: u?.ASANAClient_ID ?? null,
+        ASANASecret: u?.ASANASecret ?? null,
+        ASANA_Secret: u?.ASANASecret ?? null, // Map from actual DB column  
+        ASANARefreshToken: u?.ASANARefreshToken ?? null,
+        ASANARefresh_Token: u?.ASANARefreshToken ?? null, // Map from actual DB column
       };
     });
 

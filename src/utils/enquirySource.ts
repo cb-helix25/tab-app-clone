@@ -61,10 +61,10 @@ function looksLikeFacebookLead(notes: string, campaign: string): boolean {
  * 2) ChatGPT: utm_source chatgpt or referral domain includes chatgpt.com/searchgpt
  * 3) Facebook Lead Ads: indicators in notes/campaign or referral domain facebook
  * 4) Organic search: explicit label or utm_medium=organic
- * 5) Direct email, Phone call, Website form (from method_of_contact)
- * 6) Referral: Contact_Referrer / Referring_Company present
- * 7) Operations (explicit)
- * 8) Website (helix-law domain without UTM)
+ * 5) Referral: Contact_Referrer / Referring_Company present
+ * 6) Operations (explicit)
+ * 7) Website (helix-law domain without UTM)
+ * 8) Direct (fallback for MOC-based values)
  * 9) Unknown
  */
 export function getNormalizedEnquirySource(raw: unknown): NormalizedEnquirySource {
@@ -78,62 +78,102 @@ export function getNormalizedEnquirySource(raw: unknown): NormalizedEnquirySourc
   const gclid = toStr(e.GCLID ?? (e as any).gclid).trim();
   const notes = toStr(e.Initial_first_call_notes ?? (e as any).notes).trim();
 
-  // 1) Google Ads / Paid Search
+  // Skip if ultimate source is actually a contact method (data cleaning)
+  const contactMethods = ['phone call', 'phone', 'call in', 'direct email', 'web form', 'website form', 'online form', 'chat', 'chatgpt'];
+  const isUltimateActuallyMOC = contactMethods.some(method => ultimate.includes(method));
+
+  // 1) Google Ads (paid search)
   const utm = url ? getUtmParams(url) : {};
   const hasPaidMedium = safeLower(utm.medium).includes('cpc') || safeLower(utm.medium).includes('ppc');
   if (
     hasGclid(gclid) ||
     (safeLower(utm.source) === 'google' && (hasPaidMedium || ultimate.includes('paid') || ultimate.includes('ads'))) ||
-    ultimate.includes('google ads')
+    (ultimate.includes('google ads') && !isUltimateActuallyMOC) ||
+    (ultimate.includes('paid search') && !isUltimateActuallyMOC)
   ) {
     return { key: 'google_ads', label: 'Google Ads', detail: campaign || utm.campaign };
   }
 
-  // 2) ChatGPT
+  // 2) ChatGPT (as a source, not MOC)
   const domain = url ? extractDomain(url) : null;
   if (
     domain === 'chatgpt.com' ||
-    ultimate.includes('searchgpt') || safeLower(e['utm_source']).includes('chatgpt') ||
+    ultimate.includes('searchgpt') || 
     url.includes('utm_source=chatgpt')
   ) {
     return { key: 'chatgpt', label: 'ChatGPT', detail: utm.campaign };
   }
 
-  // 3) Facebook Lead Ads
+  // 3) Meta Ads (Facebook/Instagram)
   if (
     domain === 'facebook.com' || domain === 'm.facebook.com' ||
-    looksLikeFacebookLead(notes, campaign)
+    looksLikeFacebookLead(notes, campaign) ||
+    (ultimate.includes('facebook') && !isUltimateActuallyMOC)
   ) {
-    return { key: 'facebook_lead_ads', label: 'Facebook Lead Ads', detail: campaign };
+    return { key: 'meta_ads', label: 'Meta Ads', detail: campaign };
   }
 
-  // 4) Organic Search
-  if (ultimate.includes('organic search') || moc === 'organic search' || safeLower(utm.medium) === 'organic') {
+  // 4) Organic Search (amalgamate organic search and google organic)
+  if ((ultimate.includes('organic search') && !isUltimateActuallyMOC) || 
+      (ultimate.includes('google organic') && !isUltimateActuallyMOC) ||
+      safeLower(utm.medium) === 'organic') {
     return { key: 'organic', label: 'Organic search' };
   }
 
-  // 5) Method-of-contact based
-  if (moc === 'direct email') return { key: 'direct_email', label: 'Direct email' };
-  if (moc === 'call in' || moc === 'phone' || moc === 'phone call') return { key: 'phone', label: 'Phone call' };
-  if (moc === 'web form' || moc === 'website form' || moc === 'online form') return { key: 'web_form', label: 'Website form' };
-
-  // 6) Referral sources
+  // 5) Referral sources
   if (referringCompany) return { key: 'referral_company', label: `Referral: ${referringCompany}`, detail: referringCompany };
   if (contactRef) return { key: 'referral_contact', label: 'Referral', detail: contactRef };
 
-  // 7) Operations (explicit flag often used internally)
+  // 6) Operations (explicit flag often used internally)
   if (ultimate === 'operations') return { key: 'operations', label: 'Operations' };
 
-  // 8) Website (no UTM)
-  if (domain && (domain.endsWith('helix-law.co.uk') || domain.endsWith('helix-law.co.uk/'))) {
-    return { key: 'website', label: 'Website' };
+  // 7) Actual source value (when not a contact method)
+  if (ultimate && !isUltimateActuallyMOC) {
+    return { key: ultimate.replace(/\s+/g, '_'), label: toStr(e.Ultimate_Source as any) || toStr((e as any).Source) };
   }
 
-  // Fallback
-  if (ultimate) return { key: ultimate.replace(/\s+/g, '_'), label: toStr(e.Ultimate_Source as any) || toStr((e as any).Source) };
-  return { key: 'unknown', label: 'Unknown' };
+  // 8) Not Recorded (when source is empty or was actually a contact method)
+  return { key: 'not_recorded', label: 'Not Recorded' };
 }
 
 export function getNormalizedEnquirySourceLabel(raw: unknown): string {
   return getNormalizedEnquirySource(raw).label;
+}
+
+/**
+ * Get normalized Method of Contact from enquiry record
+ */
+export function getNormalizedEnquiryMOC(raw: unknown): NormalizedEnquirySource {
+  const e = (raw ?? {}) as Record<string, unknown>;
+  const moc = safeLower(e.Method_of_Contact ?? (e as any).method_of_contact ?? (e as any).moc);
+  const ultimate = safeLower(e.Ultimate_Source ?? (e as any).source ?? (e as any).Source);
+
+  // If ultimate source is actually a contact method, use it
+  if (ultimate.includes('phone call') || ultimate.includes('phone') || ultimate === 'call in') {
+    return { key: 'phone', label: 'Phone call' };
+  }
+  if (ultimate.includes('website form') || ultimate.includes('web form') || ultimate.includes('online form')) {
+    return { key: 'web_form', label: 'Website form' };
+  }
+  if (ultimate.includes('chatgpt') || ultimate.includes('chat')) {
+    return { key: 'chat', label: 'Live chat' };
+  }
+  if (ultimate.includes('email')) {
+    return { key: 'email', label: 'Email' };
+  }
+
+  // Use MOC field
+  if (moc === 'direct email' || moc === 'email') return { key: 'email', label: 'Email' };
+  if (moc === 'call in' || moc === 'phone' || moc === 'phone call' || moc === 'telephone') return { key: 'phone', label: 'Phone call' };
+  if (moc === 'web form' || moc === 'website form' || moc === 'online form' || moc === 'contact form') return { key: 'web_form', label: 'Website form' };
+  if (moc === 'live chat' || moc === 'chat' || moc === 'chatgpt') return { key: 'chat', label: 'Live chat' };
+  if (moc === 'in-person' || moc === 'walk-in') return { key: 'in_person', label: 'In-person' };
+
+  // Fallback
+  if (moc) return { key: moc.replace(/\s+/g, '_'), label: toStr(e.Method_of_Contact as any) || toStr((e as any).moc) };
+  return { key: 'unknown', label: 'Unknown' };
+}
+
+export function getNormalizedEnquiryMOCLabel(raw: unknown): string {
+  return getNormalizedEnquiryMOC(raw).label;
 }

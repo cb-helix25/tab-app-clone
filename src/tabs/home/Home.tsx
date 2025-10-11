@@ -38,6 +38,7 @@ import { FaCheck } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 // Removed legacy MetricCard usage
 import TimeMetricsV2 from '../../components/modern/TimeMetricsV2';
+import { useHomeMetricsStream } from '../../hooks/useHomeMetricsStream';
 import GreyHelixMark from '../../assets/grey helix mark.png';
 import InAttendanceImg from '../../assets/in_attendance.png';
 import WfhImg from '../../assets/wfh.png';
@@ -1848,6 +1849,42 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     fetchSpaceBookings();
   }, []);
 
+  // Stream Home metrics progressively; update state as each arrives
+  useHomeMetricsStream({
+    autoStart: true,
+    metrics: ['transactions', 'futureBookings', 'outstandingBalances', 'poid6Years'],
+    bypassCache: false,
+    onMetric: (name, data) => {
+      switch (name) {
+        case 'transactions':
+          cachedTransactions = data as any;
+          setTransactions(data as any);
+          onTransactionsFetched?.(data as any);
+          break;
+        case 'futureBookings':
+          setFutureBookings(data as any);
+          onBoardroomBookingsFetched?.((data as any).boardroomBookings || []);
+          onSoundproofBookingsFetched?.((data as any).soundproofBookings || []);
+          break;
+        case 'outstandingBalances':
+          cachedOutstandingBalances = data as any;
+          safeSetItem('outstandingBalancesData', JSON.stringify(data));
+          setOutstandingBalancesData(data as any);
+          onOutstandingBalancesFetched?.(data as any);
+          break;
+        case 'poid6Years':
+          setPoid6Years(data as any);
+          onPOID6YearsFetched?.(data as any);
+          break;
+        default:
+          break;
+      }
+    },
+    onError: (which, err) => {
+      console.warn('Home metrics stream error:', which, err);
+    },
+  });
+
   useEffect(() => {
     async function fetchTransactions() {
       if (useLocalData) {
@@ -2480,6 +2517,24 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       const role = (m as any).role;
       return role === 'responsible' || role === 'both';
     }).length;
+
+    // Debug logging (disabled to prevent console spam and re-render noise)
+    if (false) {
+      console.log('Debug - mattersOpenedCount calculation:', {
+        normalizedMattersLength: normalizedMatters?.length || 0,
+        currentMonth,
+        currentYear,
+        mattersOpenedCount,
+        sampleMatters: (normalizedMatters || []).slice(0, 3).map(m => ({
+          openDate: (m as any).openDate,
+          role: (m as any).role,
+          parsedDate: parseOpenDate((m as any).openDate),
+          isCurrentMonth: parseOpenDate((m as any).openDate) ? 
+            parseOpenDate((m as any).openDate)!.getMonth() === currentMonth && 
+            parseOpenDate((m as any).openDate)!.getFullYear() === currentYear : false
+        }))
+      });
+    }
 
     // Firm-wide matters opened this month (secondary metric)
     const firmMattersOpenedCount = (normalizedMatters || []).filter((m) => {
@@ -3181,6 +3236,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           <UnclaimedEnquiries
             enquiries={unclaimedEnquiries}
             onSelect={() => {}}
+            userEmail={currentUserEmail || ''}
+            onAreaChange={() => { /* no-op for home quick view */ }}
           />
         );
         break;

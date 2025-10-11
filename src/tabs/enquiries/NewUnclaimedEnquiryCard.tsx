@@ -107,6 +107,7 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
   const [selected, setSelected] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const { claimEnquiry, isLoading, error } = useClaimEnquiry();
+  const [justClaimed, setJustClaimed] = useState(false);
 
   const areaColor = getAreaColour(enquiry.Area_of_Work);
 
@@ -193,6 +194,8 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
       const result = await claimEnquiry(enquiry.ID, userEmail);
       if (result.success) {
         console.log('✅ Enquiry claimed successfully');
+        setJustClaimed(true);
+        setShowActions(true);
         // Trigger refresh to move enquiry from unclaimed to claimed list
         if (onClaimSuccess) {
           onClaimSuccess();
@@ -318,17 +321,17 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
               return (
                 <button
                   key={btn.key}
-                  onClick={btn.disabled ? undefined : (btn.key === 'claim' ? handleClaim : (e => { e.stopPropagation(); handleSelect(); }))}
-                  disabled={btn.disabled || (btn.key === 'claim' && isLoading)}
+                  onClick={btn.disabled ? undefined : (btn.key === 'claim' ? (justClaimed ? undefined : handleClaim) : (e => { e.stopPropagation(); handleSelect(); }))}
+                  disabled={btn.disabled || (btn.key === 'claim' && (isLoading || justClaimed))}
                   className={mergeStyles({
-                    background: isClaim && selected ? baseColour : 'transparent',
-                    color: btn.disabled || (btn.key === 'claim' && isLoading) ? '#9aa4b1' : (isClaim ? (selected ? '#fff' : baseColour) : colours.greyText),
+                    background: isClaim && (selected || justClaimed) ? baseColour : 'transparent',
+                    color: btn.disabled || (btn.key === 'claim' && (isLoading || justClaimed)) ? '#9aa4b1' : (isClaim ? ((selected || justClaimed) ? '#fff' : baseColour) : colours.greyText),
                     border: `1.5px solid ${isClaim ? baseColour : 'transparent'}`,
                     padding: '6px 14px',
                     borderRadius: 20,
                     fontSize: 11,
                     fontWeight: 600,
-                    cursor: btn.disabled || (btn.key === 'claim' && isLoading) ? 'not-allowed' : 'pointer',
+                    cursor: btn.disabled || (btn.key === 'claim' && (isLoading || justClaimed)) ? 'not-allowed' : 'pointer',
                     opacity: showActions || selected ? 1 : 0,
                     transform: showActions || selected ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
                     transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s, border-radius .35s cubic-bezier(.4,0,.2,1)',
@@ -338,7 +341,7 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
                         background: '#f4f6f8', 
                         color: colours.blue, 
                         borderRadius: 6 
-                      } : btn.key === 'claim' && !btn.disabled ? {
+                      } : btn.key === 'claim' && !btn.disabled && !justClaimed ? {
                         background: colours.blue,
                         color: '#fff',
                         borderRadius: 6
@@ -349,11 +352,29 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
                       } : {},
                     },
                   })}
-                >{btn.key === 'claim' && isLoading ? 'Claiming...' : btn.label}</button>
+                >{btn.key === 'claim' ? (isLoading ? 'Claiming...' : (justClaimed ? 'Claimed' : 'Claim')) : btn.label}</button>
               );
             });
           })()}
         </div>
+        {justClaimed && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginTop: 8,
+              color: isDarkMode ? '#4CAF50' : '#107C10',
+              fontSize: 12,
+              fontWeight: 600
+            }}
+          >
+            <Icon iconName="CheckMark" styles={{ root: { fontSize: 14 } }} />
+            <span>Claimed. Moving to Claimed list…</span>
+          </div>
+        )}
       </div>
     </div>
   );

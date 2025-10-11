@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { withRequest } = require('../utils/db');
+const { cacheWrapper, generateCacheKey } = require('../utils/redisClient');
 
 /**
  * GET /api/future-bookings
@@ -28,52 +29,64 @@ router.get('/', async (req, res) => {
       'Initial Catalog=helix-project-data'
     );
 
-    // Query boardroom bookings
-    const boardroomResult = await withRequest(
-      projectDataConnectionString,
-      async (request) => {
-        const query = `
-          SELECT id, fee_earner, booking_date, booking_time, duration, reason, created_at, updated_at
-          FROM [dbo].[boardroom_bookings]
-          WHERE booking_date >= CAST(GETDATE() AS date)
-        `;
-        return await request.query(query);
-      }
+    // Generate cache key based on current date (bookings are date-sensitive)
+    const today = new Date().toISOString().split('T')[0];
+    const cacheKey = generateCacheKey('metrics', 'future-bookings', today);
+
+    const bookingsData = await cacheWrapper(
+      cacheKey,
+      async () => {
+        console.log('🔍 Fetching fresh future bookings from database');
+
+        // Query boardroom bookings
+        const boardroomResult = await withRequest(
+          projectDataConnectionString,
+          async (request) => {
+            const query = `
+              SELECT id, fee_earner, booking_date, booking_time, duration, reason, created_at, updated_at
+              FROM [dbo].[boardroom_bookings]
+              WHERE booking_date >= CAST(GETDATE() AS date)
+            `;
+            return await request.query(query);
+          }
+        );
+
+        // Query soundproof pod bookings
+        const soundproofResult = await withRequest(
+          projectDataConnectionString,
+          async (request) => {
+            const query = `
+              SELECT id, fee_earner, booking_date, booking_time, duration, reason, created_at, updated_at
+              FROM [dbo].[soundproofpod_bookings]
+              WHERE booking_date >= CAST(GETDATE() AS date)
+            `;
+            return await request.query(query);
+          }
+        );
+
+        // Format dates properly
+        const formatBooking = (booking, spaceType) => ({
+          ...booking,
+          booking_date: booking.booking_date?.toISOString().substring(0, 10),
+          booking_time: booking.booking_time instanceof Date 
+            ? booking.booking_time.toISOString().substring(11, 19)
+            : booking.booking_time,
+          spaceType
+        });
+
+        const boardroomBookings = boardroomResult.recordset.map(b => formatBooking(b, 'Boardroom'));
+        const soundproofBookings = soundproofResult.recordset.map(b => formatBooking(b, 'Soundproof Pod'));
+
+        return {
+          boardroomBookings,
+          soundproofBookings
+        };
+      },
+      900 // 15 minutes TTL - bookings can change during the day but not frequently
     );
 
-    // Query soundproof pod bookings
-    const soundproofResult = await withRequest(
-      projectDataConnectionString,
-      async (request) => {
-        const query = `
-          SELECT id, fee_earner, booking_date, booking_time, duration, reason, created_at, updated_at
-          FROM [dbo].[soundproofpod_bookings]
-          WHERE booking_date >= CAST(GETDATE() AS date)
-        `;
-        return await request.query(query);
-      }
-    );
-
-    // Format dates properly
-    const formatBooking = (booking, spaceType) => ({
-      ...booking,
-      booking_date: booking.booking_date?.toISOString().substring(0, 10),
-      booking_time: booking.booking_time instanceof Date 
-        ? booking.booking_time.toISOString().substring(11, 19)
-        : booking.booking_time,
-      spaceType
-    });
-
-    const boardroomBookings = boardroomResult.recordset.map(b => formatBooking(b, 'Boardroom'));
-    const soundproofBookings = soundproofResult.recordset.map(b => formatBooking(b, 'Soundproof Pod'));
-
-    const response = {
-      boardroomBookings,
-      soundproofBookings
-    };
-
-    console.log(`[FutureBookings] Retrieved ${boardroomBookings.length} boardroom and ${soundproofBookings.length} soundproof bookings`);
-    res.json(response);
+    console.log(`[FutureBookings] Retrieved ${bookingsData.boardroomBookings.length} boardroom and ${bookingsData.soundproofBookings.length} soundproof bookings`);
+    res.json(bookingsData);
   } catch (error) {
     console.error('[FutureBookings] Error retrieving future bookings:', error);
     // Don't leak error details to browser

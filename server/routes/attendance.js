@@ -3,6 +3,7 @@ const { sql, withRequest } = require('../utils/db');
 const axios = require('axios');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
+const { getRedisClient, generateCacheKey, cacheWrapper, deleteCachePattern } = require('../utils/redisClient');
 const router = express.Router();
 
 const TRANSIENT_SQL_CODES = new Set(['ESOCKET', 'ECONNCLOSED', 'ECONNRESET', 'ETIMEDOUT', 'ETIMEOUT']);
@@ -67,34 +68,45 @@ router.get('/debug-team-schema', async (req, res) => {
 // Helper function to check annual leave
 async function checkAnnualLeave() {
   try {
-    const password = await getSqlPassword();
-    if (!password) {
-      console.warn('Could not retrieve SQL password for annual leave check');
-      return new Set();
-    }
-
-    // Connection to helix-project-data for annual leave
-    const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-
-    // Get people currently on approved annual leave
+    // Cache key based on current date since leave status changes daily
     const today = new Date().toISOString().split('T')[0];
-  const leaveResult = await attendanceQuery(projectDataConnStr, (req, sql) =>
-      req.input('today', sql.Date, today)
-        .query(`
-        SELECT fe AS person
-        FROM annualLeave 
-        WHERE status = 'booked'
-        AND @today BETWEEN start_date AND end_date
-      `)
+    const cacheKey = generateCacheKey('attendance', 'annual-leave-active', today);
+    
+    return await cacheWrapper(
+      cacheKey,
+      async () => {
+        console.log('🔍 Fetching fresh annual leave data');
+        
+        const password = await getSqlPassword();
+        if (!password) {
+          console.warn('Could not retrieve SQL password for annual leave check');
+          return new Set();
+        }
+
+        // Connection to helix-project-data for annual leave
+        const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
+
+        // Get people currently on approved annual leave
+        const leaveResult = await attendanceQuery(projectDataConnStr, (req, sql) =>
+          req.input('today', sql.Date, today)
+            .query(`
+            SELECT fe AS person
+            FROM annualLeave 
+            WHERE status = 'booked'
+            AND @today BETWEEN start_date AND end_date
+          `)
+        );
+        
+        // Prepare a serializable list of initials currently on leave
+        const peopleOnLeaveInitials = [];
+        leaveResult.recordset.forEach(row => {
+          if (row.person) peopleOnLeaveInitials.push(row.person);
+        });
+        
+        return peopleOnLeaveInitials;
+      },
+      600 // 10 minutes TTL - annual leave doesn't change frequently during the day
     );
-    
-    // Create a set of people currently on leave
-    const peopleOnLeave = new Set();
-    leaveResult.recordset.forEach(row => {
-      peopleOnLeave.add(row.person);
-    });
-    
-    return peopleOnLeave;
     
   } catch (error) {
     console.error('Error checking annual leave:', error);
@@ -106,84 +118,101 @@ async function checkAnnualLeave() {
 // Support both GET and POST for flexibility
 const getAttendanceHandler = async (req, res) => {
   try {
+    // Generate cache key based on current date (attendance changes daily)
+    const today = new Date().toISOString().split('T')[0];
+    const cacheKey = generateCacheKey('attendance', 'team-data', today);
     
-    // Get current attendance data from the correct attendance table
-  const result = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
-      WITH LatestAttendance AS (
-        SELECT 
-          [First_Name] AS First,
-          [Level],
-          [Week_Start],
-          [Week_End],
-          [ISO_Week] AS iso,
-          [Attendance_Days] AS Status,
-          ROW_NUMBER() OVER (
-            PARTITION BY [First_Name], [ISO_Week] 
-            ORDER BY [Confirmed_At] DESC
-          ) as rn
-        FROM [dbo].[attendance]
-        WHERE [Week_Start] <= CAST(GETDATE() AS DATE) 
-          AND [Week_End] >= CAST(GETDATE() AS DATE)
-      )
-      SELECT First, Level, Week_Start, Week_End, iso, Status
-      FROM LatestAttendance
-      WHERE rn = 1
-      ORDER BY First
-    `));
+    // Try to get cached data first
+    const cachedData = await cacheWrapper(
+      cacheKey,
+      async () => {
+        console.log('🔍 Fetching fresh attendance data from database');
+        
+        // Get current attendance data from the correct attendance table
+        const result = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
+          WITH LatestAttendance AS (
+            SELECT 
+              [First_Name] AS First,
+              [Level],
+              [Week_Start],
+              [Week_End],
+              [ISO_Week] AS iso,
+              [Attendance_Days] AS Status,
+              ROW_NUMBER() OVER (
+                PARTITION BY [First_Name], [ISO_Week] 
+                ORDER BY [Confirmed_At] DESC
+              ) as rn
+            FROM [dbo].[attendance]
+            WHERE [Week_Start] <= CAST(GETDATE() AS DATE) 
+              AND [Week_End] >= CAST(GETDATE() AS DATE)
+          )
+          SELECT First, Level, Week_Start, Week_End, iso, Status
+          FROM LatestAttendance
+          WHERE rn = 1
+          ORDER BY First
+        `));
 
-    // Get team roster data from the correct team table
-  const teamResult = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
-      SELECT 
-        [First],
-        [Initials],
-        [Entra ID],
-        [Nickname]
-      FROM [dbo].[team]
-      WHERE [status] <> 'inactive'
-      ORDER BY [First]
-    `));
+        // Get team roster data from the correct team table
+        const teamResult = await attendanceQuery(process.env.SQL_CONNECTION_STRING, (req) => req.query(`
+          SELECT 
+            [First],
+            [Initials],
+            [Entra ID],
+            [Nickname]
+          FROM [dbo].[team]
+          WHERE [status] <> 'inactive'
+          ORDER BY [First]
+        `));
 
-    // Check who's on annual leave
-    const peopleOnLeave = await checkAnnualLeave();
-    
-    // Transform attendance results to include leave status
-    const attendanceWithLeave = result.recordset.map(record => {
-      // Find initials from team data for this person
-      const teamMember = teamResult.recordset.find(t => t.First === record.First);
-      const initials = teamMember?.Initials || '';
-      const isOnLeave = peopleOnLeave.has(initials);
-      
-      return {
-        First: record.First,
-        Initials: initials,
-        Status: isOnLeave ? 'away' : record.Status, // Override status if on leave
-        Level: record.Level,
-        IsOnLeave: isOnLeave ? 1 : 0,
-        Week_Start: record.Week_Start,
-        Week_End: record.Week_End,
-        iso: record.iso
-      };
-    });
+        // Check who's on annual leave
+  const peopleOnLeaveList = await checkAnnualLeave();
+  const peopleOnLeave = new Set(Array.isArray(peopleOnLeaveList) ? peopleOnLeaveList : []);
+        
+        // Transform attendance results to include leave status
+        const attendanceWithLeave = result.recordset.map(record => {
+          // Find initials from team data for this person
+          const teamMember = teamResult.recordset.find(t => t.First === record.First);
+          const initials = teamMember?.Initials || '';
+          const isOnLeave = peopleOnLeave.has(initials);
+          
+          return {
+            First: record.First,
+            Initials: initials,
+            Status: isOnLeave ? 'away' : record.Status, // Override status if on leave
+            Level: record.Level,
+            IsOnLeave: isOnLeave ? 1 : 0,
+            Week_Start: record.Week_Start,
+            Week_End: record.Week_End,
+            iso: record.iso
+          };
+        });
 
-    // Transform team data to match expected format
-    const teamData = teamResult.recordset.map(record => ({
-      First: record.First,
-      Initials: record.Initials,
-      'Entra ID': record['Entra ID'],
-      Nickname: record.Nickname || record.First,
-      // Add leave status for team members
-      IsOnLeave: peopleOnLeave.has(record.Initials) ? 1 : 0,
-      // Add status from attendance if available
-      Status: (() => {
-        const attendanceRecord = attendanceWithLeave.find(a => a.Initials === record.Initials);
-        return attendanceRecord?.Status || '';
-      })()
-    }));
+        // Transform team data to match expected format
+        const teamData = teamResult.recordset.map(record => ({
+          First: record.First,
+          Initials: record.Initials,
+          'Entra ID': record['Entra ID'],
+          Nickname: record.Nickname || record.First,
+          // Add leave status for team members
+          IsOnLeave: peopleOnLeave.has(record.Initials) ? 1 : 0,
+          // Add status from attendance if available
+          Status: (() => {
+            const attendanceRecord = attendanceWithLeave.find(a => a.Initials === record.Initials);
+            return attendanceRecord?.Status || '';
+          })()
+        }));
+
+        return {
+          attendance: attendanceWithLeave,
+          team: teamData
+        };
+      },
+      300 // 5 minutes TTL - attendance data changes frequently but not constantly
+    );
 
     res.json({
       success: true,
-      attendance: attendanceWithLeave,
-      team: teamData
+      ...cachedData
     });
 
   } catch (error) {
@@ -311,6 +340,14 @@ router.post('/updateAttendance', async (req, res) => {
       record: updatedResult.recordset[0]
     });
 
+    // Clear attendance cache after successful update
+    try {
+      console.log('🗑️  Clearing attendance cache after update');
+      await deleteCachePattern('attendance:*');
+    } catch (cacheError) {
+      console.warn('Failed to clear attendance cache:', cacheError.message);
+    }
+
   } catch (error) {
     console.error('Error updating attendance:', error);
     res.status(500).json({
@@ -322,7 +359,7 @@ router.post('/updateAttendance', async (req, res) => {
 
 // ===== ANNUAL LEAVE ROUTES =====
 
-// Helper function to get SQL password from Key Vault with simple in-memory cache
+// Helper function to get SQL password from Key Vault with Redis and in-memory cache
 let cachedSqlPassword = null;
 let sqlPasswordExpiry = 0; // epoch ms
 let sqlPasswordPromise = null; // de-dup concurrent fetches
@@ -340,11 +377,42 @@ async function getSqlPassword() {
 
   sqlPasswordPromise = (async () => {
     try {
+      // Try Redis cache first for distributed caching
+      const redisCacheKey = generateCacheKey('attendance', 'sql-password');
+      try {
+        const redisClient = await getRedisClient();
+        if (redisClient) {
+          const cachedPwd = await redisClient.get(redisCacheKey);
+          if (cachedPwd) {
+            console.log('🔑 SQL password cache hit (Redis)');
+            cachedSqlPassword = cachedPwd;
+            sqlPasswordExpiry = Date.now() + 60 * 60 * 1000; // 1h TTL
+            return cachedSqlPassword;
+          }
+        }
+      } catch (redisError) {
+        console.warn('Redis cache miss for SQL password, fetching from Key Vault');
+      }
+
+      // Fetch from Key Vault
+      console.log('🔑 Fetching SQL password from Key Vault');
       const kvUri = "https://helix-keys.vault.azure.net/";
       const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
       const secret = await secretClient.getSecret("sql-databaseserver-password");
       cachedSqlPassword = secret.value;
       sqlPasswordExpiry = Date.now() + 60 * 60 * 1000; // 1 hour cache
+
+      // Store in Redis for distributed caching
+      try {
+        const redisClient = await getRedisClient();
+        if (redisClient) {
+          await redisClient.setEx(redisCacheKey, 3600, cachedSqlPassword); // 1h TTL
+          console.log('💾 Cached SQL password in Redis');
+        }
+      } catch (redisError) {
+        console.warn('Failed to cache SQL password in Redis:', redisError.message);
+      }
+
       return cachedSqlPassword;
     } catch (error) {
       console.error('Error getting SQL password from Key Vault:', error);
@@ -409,142 +477,176 @@ async function getClioAccessToken(clioSecrets) {
 router.post('/getAnnualLeave', async (req, res) => {
   try {
     const { userInitials } = req.body;
-    const password = await getSqlPassword();
-
-    if (!password) {
-      return res.status(500).json({ success: false, error: 'Could not retrieve database credentials' });
-    }
-
-    const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-    const coreDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-core-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-
+    
+    // Generate cache key for general annual leave data (changes less frequently)
     const today = new Date().toISOString().split('T')[0];
+    const generalCacheKey = generateCacheKey('attendance', 'annual-leave-general', today);
+    
+    // Get cached or fresh general annual leave data
+    const generalLeaveData = await cacheWrapper(
+      generalCacheKey,
+      async () => {
+        console.log('🔍 Fetching fresh general annual leave data');
+        
+        const password = await getSqlPassword();
+        if (!password) {
+          throw new Error('Could not retrieve database credentials');
+        }
 
-    // Queries using pooled connections (no global sql.connect)
-    const [currentLeaveResult, futureLeaveResult, allLeaveResult, teamResult] = await Promise.all([
-      attendanceQuery(projectDataConnStr, (reqSql, s) =>
-        reqSql.input('today', s.Date, today).query(`
-          SELECT 
-            request_id,
-            fe AS person,
-            start_date,
-            end_date,
-            reason,
-            status,
-            days_taken,
-            leave_type,
-            rejection_notes,
-            hearing_confirmation,
-            hearing_details
-          FROM [dbo].[annualLeave]
-          WHERE status = 'booked'
-            AND @today BETWEEN start_date AND end_date
-          ORDER BY fe
-        `)
-      ),
-  attendanceQuery(projectDataConnStr, (reqSql, s) =>
-        reqSql.input('today', s.Date, today).query(`
-          SELECT 
-            request_id,
-            fe AS person,
-            start_date,
-            end_date,
-            reason,
-            status,
-            days_taken,
-            leave_type,
-            rejection_notes,
-            hearing_confirmation,
-            hearing_details
-          FROM [dbo].[annualLeave]
-          WHERE start_date > @today
-            AND status IN ('requested', 'approved', 'booked')
-          ORDER BY start_date, fe
-        `)
-      ),
-  attendanceQuery(projectDataConnStr, (reqSql) =>
-        reqSql.query(`
-          SELECT 
-            request_id,
-            fe AS person,
-            start_date,
-            end_date,
-            reason,
-            status,
-            days_taken,
-            leave_type,
-            rejection_notes,
-            hearing_confirmation,
-            hearing_details
-          FROM [dbo].[annualLeave]
-          ORDER BY start_date DESC
-        `)
-      ),
-  attendanceQuery(coreDataConnStr, (reqSql) =>
-        reqSql.query(`
-          SELECT Initials, AOW, holiday_entitlement 
-          FROM [dbo].[team]
-          WHERE status = 'Active'
-        `)
-      )
-    ]);
+        const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
+        const coreDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-core-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
 
-    // Calculate user-specific totals if userInitials provided
+        const [currentLeaveResult, futureLeaveResult, allLeaveResult, teamResult] = await Promise.all([
+          attendanceQuery(projectDataConnStr, (reqSql, s) =>
+            reqSql.input('today', s.Date, today).query(`
+              SELECT 
+                request_id,
+                fe AS person,
+                start_date,
+                end_date,
+                reason,
+                status,
+                days_taken,
+                leave_type,
+                rejection_notes,
+                hearing_confirmation,
+                hearing_details
+              FROM [dbo].[annualLeave]
+              WHERE status = 'booked'
+                AND @today BETWEEN start_date AND end_date
+              ORDER BY fe
+            `)
+          ),
+          attendanceQuery(projectDataConnStr, (reqSql, s) =>
+            reqSql.input('today', s.Date, today).query(`
+              SELECT 
+                request_id,
+                fe AS person,
+                start_date,
+                end_date,
+                reason,
+                status,
+                days_taken,
+                leave_type,
+                rejection_notes,
+                hearing_confirmation,
+                hearing_details
+              FROM [dbo].[annualLeave]
+              WHERE start_date > @today
+                AND status IN ('requested', 'approved', 'booked')
+              ORDER BY start_date, fe
+            `)
+          ),
+          attendanceQuery(projectDataConnStr, (reqSql) =>
+            reqSql.query(`
+              SELECT 
+                request_id,
+                fe AS person,
+                start_date,
+                end_date,
+                reason,
+                status,
+                days_taken,
+                leave_type,
+                rejection_notes,
+                hearing_confirmation,
+                hearing_details
+              FROM [dbo].[annualLeave]
+              ORDER BY start_date DESC
+            `)
+          ),
+          attendanceQuery(coreDataConnStr, (reqSql) =>
+            reqSql.query(`
+              SELECT Initials, AOW, holiday_entitlement 
+              FROM [dbo].[team]
+              WHERE status = 'Active'
+            `)
+          )
+        ]);
+
+        return {
+          annual_leave: currentLeaveResult.recordset,
+          future_leave: futureLeaveResult.recordset,
+          all_data: allLeaveResult.recordset,
+          team: teamResult.recordset
+        };
+      },
+      1800 // 30 minutes TTL - general leave data doesn't change very frequently
+    );
+
+    // Handle user-specific data (not cached since it's user-specific and varies per request)
     let userDetails = { leaveEntries: [], totals: { standard: 0, unpaid: 0, sale: 0, rejected: 0 } };
 
     if (userInitials) {
-      const fiscalStart = getFiscalYearStart(new Date());
-      const fiscalStartStr = fiscalStart.toISOString().split('T')[0];
-      const fiscalEndStr = new Date(fiscalStart.getFullYear() + 1, 2, 31).toISOString().split('T')[0];
+      // User-specific data cache key
+      const userCacheKey = generateCacheKey('attendance', 'annual-leave-user', userInitials, today);
+      
+      userDetails = await cacheWrapper(
+        userCacheKey,
+        async () => {
+          console.log(`🔍 Fetching fresh annual leave data for user: ${userInitials}`);
+          
+          const password = await getSqlPassword();
+          if (!password) {
+            throw new Error('Could not retrieve database credentials');
+          }
 
-  const userLeaveResult = await attendanceQuery(projectDataConnStr, (reqSql, s) =>
-        reqSql
-          .input('initials', s.VarChar(10), userInitials)
-          .input('fiscalStart', s.Date, fiscalStartStr)
-          .input('fiscalEnd', s.Date, fiscalEndStr)
-          .query(`
-            SELECT 
-              request_id,
-              fe AS person,
-              start_date,
-              end_date,
-              reason,
-              status,
-              days_taken,
-              leave_type,
-              rejection_notes,
-              hearing_confirmation,
-              hearing_details
-            FROM [dbo].[annualLeave]
-            WHERE fe = @initials
-              AND start_date >= @fiscalStart 
-              AND end_date <= @fiscalEnd
-            ORDER BY start_date DESC
-          `)
+          const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
+
+          const fiscalStart = getFiscalYearStart(new Date());
+          const fiscalStartStr = fiscalStart.toISOString().split('T')[0];
+          const fiscalEndStr = new Date(fiscalStart.getFullYear() + 1, 2, 31).toISOString().split('T')[0];
+
+          const userLeaveResult = await attendanceQuery(projectDataConnStr, (reqSql, s) =>
+            reqSql
+              .input('initials', s.VarChar(10), userInitials)
+              .input('fiscalStart', s.Date, fiscalStartStr)
+              .input('fiscalEnd', s.Date, fiscalEndStr)
+              .query(`
+                SELECT 
+                  request_id,
+                  fe AS person,
+                  start_date,
+                  end_date,
+                  reason,
+                  status,
+                  days_taken,
+                  leave_type,
+                  rejection_notes,
+                  hearing_confirmation,
+                  hearing_details
+                FROM [dbo].[annualLeave]
+                WHERE fe = @initials
+                  AND start_date >= @fiscalStart 
+                  AND end_date <= @fiscalEnd
+                ORDER BY start_date DESC
+              `)
+          );
+
+          const userDetails = { leaveEntries: userLeaveResult.recordset, totals: { standard: 0, unpaid: 0, sale: 0, rejected: 0 } };
+          userDetails.leaveEntries.forEach(entry => {
+            const days = entry.days_taken || 0;
+            if (entry.status === 'rejected') {
+              userDetails.totals.rejected += days;
+            } else if (entry.leave_type === 'standard') {
+              userDetails.totals.standard += days;
+            } else if (entry.leave_type === 'purchase') {
+              userDetails.totals.unpaid += days; // Maps to 'unpaid' in totals
+            } else if (entry.leave_type === 'sale') {
+              userDetails.totals.sale += days;
+            }
+          });
+
+          return userDetails;
+        },
+        900 // 15 minutes TTL for user-specific data
       );
-
-      userDetails.leaveEntries = userLeaveResult.recordset;
-      userDetails.leaveEntries.forEach(entry => {
-        const days = entry.days_taken || 0;
-        if (entry.status === 'rejected') {
-          userDetails.totals.rejected += days;
-        } else if (entry.leave_type === 'standard') {
-          userDetails.totals.standard += days;
-        } else if (entry.leave_type === 'purchase') {
-          userDetails.totals.unpaid += days; // Maps to 'unpaid' in totals
-        } else if (entry.leave_type === 'sale') {
-          userDetails.totals.sale += days;
-        }
-      });
     }
 
     res.json({
       success: true,
-      annual_leave: currentLeaveResult.recordset,
-      future_leave: futureLeaveResult.recordset,
-      user_details: userDetails,
-      all_data: allLeaveResult.recordset,
-      team: teamResult.recordset
+      ...generalLeaveData,
+      user_details: userDetails
     });
 
   } catch (error) {
@@ -626,6 +728,14 @@ router.post('/annual-leave', async (req, res) => {
       message: "Annual leave entries created successfully.",
       insertedIds
     });
+
+    // Clear annual leave cache after successful creation
+    try {
+      console.log('🗑️  Clearing annual leave cache after creation');
+      await deleteCachePattern('attendance:annual-leave*');
+    } catch (cacheError) {
+      console.warn('Failed to clear annual leave cache:', cacheError.message);
+    }
 
   } catch (error) {
     console.error('Error inserting annual leave:', error);
@@ -744,6 +854,14 @@ router.post('/updateAnnualLeave', async (req, res) => {
       success: true,
       message: `Annual leave ID ${id} updated to status '${newStatus}'.`
     });
+
+    // Clear annual leave cache after successful update
+    try {
+      console.log('🗑️  Clearing annual leave cache after status update');
+      await deleteCachePattern('attendance:annual-leave*');
+    } catch (cacheError) {
+      console.warn('Failed to clear annual leave cache:', cacheError.message);
+    }
 
   } catch (error) {
     console.error('Error updating annual leave:', error);

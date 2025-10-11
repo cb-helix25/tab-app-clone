@@ -38,6 +38,7 @@ module.exports.PRACTICE_AREAS = {
     "Trespass": 948965,
     "Trust Advice": 949031,
     "Trust of Land (TOLATA) Advice": 948860,
+    "Trust of Land (Tolata) Advice": 948860,  // Alternative case for form compatibility
     "Unpaid Invoice/Debt Dispute": 948920,
     "Unpaid Loan Recovery": 948887,
     "Winding Up Petition Advice": 949049

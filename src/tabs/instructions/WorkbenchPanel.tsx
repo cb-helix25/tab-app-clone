@@ -989,6 +989,10 @@ const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({
                     isDarkMode={isDarkMode}
                     onStatusUpdate={() => {
                       console.log('Status updated - refresh instruction data');
+                      // Trigger parent refresh
+                      if (onStatusUpdate) {
+                        onStatusUpdate();
+                      }
                     }}
                   />
                 ) : (

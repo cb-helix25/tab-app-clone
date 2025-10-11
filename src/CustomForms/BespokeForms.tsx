@@ -20,6 +20,7 @@ import {
   sharedDefaultButtonStyles,
 } from '../app/styles/ButtonStyles';
 import { NormalizedMatter } from '../app/functionality/types';
+import { useTheme } from '../app/functionality/ThemeContext';
 import '../app/styles/MultiSelect.css';
 
 export const INPUT_HEIGHT = 40;
@@ -224,6 +225,7 @@ interface MatterReferenceDropdownProps {
   handleInputChange: (fieldName: string, value: any) => void;
   isSubmitting: boolean;
   value: string;
+  isDarkMode: boolean;
 }
 
 const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
@@ -232,6 +234,7 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
   handleInputChange,
   isSubmitting,
   value,
+  isDarkMode,
 }) => {
   const [filterText, setFilterText] = React.useState<string>('');
   const [debouncedFilter, setDebouncedFilter] = React.useState<string>('');
@@ -332,27 +335,38 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
             height: `${INPUT_HEIGHT}px`,
             lineHeight: `${INPUT_HEIGHT}px`,
             padding: '0 12px',
-            border: `1px solid ${colours.highlight}`,
-            borderRadius: 0,
+            border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.highlight}`,
+            borderRadius: '8px',
             fontSize: '14px',
+            backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
+            color: isDarkMode ? colours.dark.text : colours.light.text,
           },
           callout: {
             maxHeight: 320,
             zIndex: 1100,
+            backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
           },
           optionsContainer: {
             maxHeight: 320,
             overflowY: 'auto',
+            backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
             selectors: {
               '.ms-ComboBox-option': {
                 minHeight: '36px !important',
                 padding: '8px 12px !important',
                 fontSize: '14px !important',
                 lineHeight: '1.3 !important',
-                // Truncate long entries for performance and readability
                 whiteSpace: 'nowrap',
                 textOverflow: 'ellipsis',
                 overflow: 'hidden',
+                color: `${isDarkMode ? colours.dark.text : colours.light.text} !important`,
+                backgroundColor: `${isDarkMode ? '#0f172a' : '#ffffff'} !important`,
+              },
+              '.ms-ComboBox-option:hover': {
+                backgroundColor: `${isDarkMode ? '#1e293b' : '#f3f4f6'} !important`,
+              },
+              '.is-checked': {
+                backgroundColor: `${isDarkMode ? '#1e293b' : '#e0f2fe'} !important`,
               },
             },
           },
@@ -374,6 +388,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
   conflict = false,
   submitDisabled = false,
 }) => {
+  const { isDarkMode } = useTheme();
   const [formValues, setFormValues] = React.useState<{ [key: string]: any }>(
     fields.reduce((acc, field) => {
       if (field.defaultValue !== undefined) {
@@ -437,7 +452,24 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} style={style}>
-      <div className={formContainerStyle}>
+      <div 
+        style={{
+          marginTop: '10px',
+          padding: '20px',
+          background: isDarkMode
+            ? 'linear-gradient(135deg, rgba(7, 16, 32, 0.94) 0%, rgba(11, 30, 55, 0.86) 55%, rgba(10, 39, 72, 0.8) 100%)'
+            : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+          borderRadius: '12px',
+          border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : 'rgba(148, 163, 184, 0.22)'}`,
+          boxShadow: isDarkMode
+            ? '0 18px 32px rgba(2, 6, 17, 0.58)'
+            : '0 12px 28px rgba(13, 47, 96, 0.12)',
+          backdropFilter: 'blur(12px)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}
+      >
         <Stack tokens={{ childrenGap: 12 }}>
           {fields.map((field, index) => {
             if (
@@ -453,6 +485,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                   handleInputChange={handleInputChange}
                   isSubmitting={isSubmitting}
                   value={formValues[field.name]?.toString() || ''}
+                  isDarkMode={isDarkMode}
                 />
               );
             }
@@ -481,9 +514,10 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                         position: 'relative',
                         width: '100%',
                         height: `${INPUT_HEIGHT}px`,
-                        border: `1px solid ${colours.highlight}`,
-                        background: '#fff',
+                        border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.highlight}`,
+                        background: isDarkMode ? 'rgba(15, 23, 42, 0.8)' : '#fff',
                         overflow: 'hidden',
+                        borderRadius: '8px',
                       }}
                     >
                       <select
@@ -497,10 +531,11 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                           border: 'none',
                           background: 'transparent',
                           padding: '0 40px 0 16px',
-                          fontSize: '16px',
+                          fontSize: '14px',
                           appearance: 'none',
                           cursor: 'pointer',
                           outline: 'none',
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
                         }}
                       >
                         <option value="" disabled>
@@ -588,10 +623,13 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                       style={{
                         width: '100%',
                         minHeight: '80px',
-                        border: `1px solid ${colours.highlight}`,
-                        borderRadius: 0,
-                        padding: '8px',
+                        border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.highlight}`,
+                        borderRadius: '8px',
+                        padding: '10px 12px',
                         boxSizing: 'border-box',
+                        backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
+                        color: isDarkMode ? colours.dark.text : colours.light.text,
+                        fontSize: '14px',
                       }}
                     />
                     {field.helpText && (
@@ -627,10 +665,13 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                       style={{
                         width: '100%',
                         height: `${INPUT_HEIGHT}px`,
-                        border: `1px solid ${colours.highlight}`,
-                        borderRadius: 0,
-                        padding: '0 10px',
+                        border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.highlight}`,
+                        borderRadius: '8px',
+                        padding: '0 12px',
                         boxSizing: 'border-box',
+                        backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
+                        color: isDarkMode ? colours.dark.text : colours.light.text,
+                        fontSize: '14px',
                       }}
                     />
                     {field.helpText && (
@@ -669,10 +710,13 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                           style={{
                             width: '100%',
                             height: '100%',
-                            border: `1px solid ${colours.highlight}`,
-                            borderRadius: 0,
-                            padding: '0 10px',
+                            border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.highlight}`,
+                            borderRadius: '8px',
+                            padding: '0 12px',
                             boxSizing: 'border-box',
+                            backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
+                            color: isDarkMode ? colours.dark.text : colours.light.text,
+                            fontSize: '14px',
                           }}
                         />
                       </div>
@@ -689,10 +733,13 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                         style={{
                           width: '100%',
                           height: `${INPUT_HEIGHT}px`,
-                          border: `1px solid ${colours.highlight}`,
-                          borderRadius: 0,
-                          padding: '0 10px',
+                          border: `1px solid ${isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.highlight}`,
+                          borderRadius: '8px',
+                          padding: '0 12px',
                           boxSizing: 'border-box',
+                          backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          fontSize: '14px',
                         }}
                       />
                     )}
@@ -780,20 +827,25 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                         marginTop: 8,
                         padding: '16px',
                         minHeight: 90,
-                        border: `2px dashed ${colours.highlight}`,
-                        borderRadius: 8,
-                        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                        border: `2px dashed ${isDragging ? colours.blue : (isDarkMode ? 'rgba(125, 211, 252, 0.24)' : colours.highlight)}`,
+                        borderRadius: 12,
+                        background: isDarkMode 
+                          ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%)'
+                          : 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
                         cursor: 'pointer',
-                        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-                        boxShadow: isDragging ? '0 4px 6px rgba(0, 0, 0, 0.07)' : 'none',
-                        borderColor: isDragging ? colours.light.cta : colours.highlight,
-                        color: '#6b7280',
+                        transition: 'all 0.2s ease',
+                        boxShadow: isDragging 
+                          ? (isDarkMode ? '0 8px 20px rgba(59, 130, 246, 0.3)' : '0 8px 20px rgba(59, 130, 246, 0.15)')
+                          : (isDarkMode ? '0 4px 10px rgba(0, 0, 0, 0.3)' : '0 4px 10px rgba(0, 0, 0, 0.05)'),
+                        color: isDarkMode ? colours.dark.text : '#6b7280',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         textAlign: 'center',
-                        fontSize: 12,
+                        fontSize: 13,
+                        fontWeight: 500,
                         userSelect: 'none',
+                        transform: isDragging ? 'scale(1.02)' : 'scale(1)',
                       }}
                     >
                       Drag & drop a file here, or click to select
@@ -804,6 +856,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                           marginTop: '10px',
                           display: 'block',
                           fontSize: '14px',
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
                         }}
                       >
                         Selected File: {fileValue.fileName}

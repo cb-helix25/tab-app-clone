@@ -14,9 +14,14 @@ import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import type { Enquiry, Matter, POID, TeamData, UserData } from '../../app/functionality/types';
 import ManagementDashboard, { WIP } from './ManagementDashboard';
 import AnnualLeaveReport, { AnnualLeaveRecord } from './AnnualLeaveReport';
+import MetaMetricsReport from './MetaMetricsReport';
 import { debugLog, debugWarn } from '../../utils/debug';
 import HomePreview from './HomePreview';
-import EnquiriesReport from './EnquiriesReport';
+import EnquiriesReport, { MarketingMetrics } from './EnquiriesReport';
+import { useStreamingDatasets } from '../../hooks/useStreamingDatasets';
+
+// Persist streaming progress across navigation
+const STREAM_SNAPSHOT_KEY = 'reporting_stream_snapshot_v1';
 
 interface RecoveredFee {
   payment_date: string;
@@ -33,6 +38,7 @@ interface DatasetMap {
   recoveredFees: RecoveredFee[] | null;
   poidData: POID[] | null;
   annualLeave: AnnualLeaveRecord[] | null;
+  metaMetrics: MarketingMetrics[] | null;
 }
 
 const DATASETS = [
@@ -44,6 +50,7 @@ const DATASETS = [
   { key: 'recoveredFees', name: 'Collected Fees' },
   { key: 'poidData', name: 'ID Submissions' },
   { key: 'annualLeave', name: 'Annual Leave' },
+  { key: 'metaMetrics', name: 'Meta Metrics' },
 ] as const;
 
 type DatasetDefinition = typeof DATASETS[number];
@@ -61,7 +68,7 @@ interface AvailableReport {
   key: string;
   name: string;
   status: string;
-  action?: 'dashboard' | 'annualLeave' | 'enquiries';
+  action?: 'dashboard' | 'annualLeave' | 'enquiries' | 'metaMetrics';
 }
 
 const AVAILABLE_REPORTS: AvailableReport[] = [
@@ -84,6 +91,12 @@ const AVAILABLE_REPORTS: AvailableReport[] = [
     action: 'annualLeave',
   },
   {
+    key: 'metaMetrics',
+    name: 'Meta metrics',
+    status: 'Live today',
+    action: 'metaMetrics',
+  },
+  {
     key: 'matters',
     name: 'Matters snapshot',
     status: 'Matters tab',
@@ -102,6 +115,7 @@ const EMPTY_DATASET: DatasetMap = {
   recoveredFees: null,
   poidData: null,
   annualLeave: null,
+  metaMetrics: null,
 };
 
 let cachedData: DatasetMap = { ...EMPTY_DATASET };
@@ -523,7 +537,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigatorActions();
   const [currentTime, setCurrentTime] = useState(() => new Date());
-  const [activeView, setActiveView] = useState<'overview' | 'dashboard' | 'annualLeave' | 'enquiries'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'dashboard' | 'annualLeave' | 'enquiries' | 'metaMetrics'>('overview');
   const handleBackToOverview = useCallback(() => {
     setActiveView('overview');
   }, [setActiveView]);
@@ -536,6 +550,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     recoveredFees: cachedData.recoveredFees,
     poidData: cachedData.poidData,
     annualLeave: cachedData.annualLeave,
+    metaMetrics: cachedData.metaMetrics,
   }));
   const [datasetStatus, setDatasetStatus] = useState<DatasetStatus>(() => {
     const record: Partial<DatasetStatus> = {};
@@ -555,6 +570,128 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const [error, setError] = useState<string | null>(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState<boolean>(() => Boolean(cachedTimestamp));
   const [refreshStartedAt, setRefreshStartedAt] = useState<number | null>(null);
+
+  // Prepare list of datasets to stream (stable identity across re-renders)
+  const streamableDatasets = useMemo(
+    () => MANAGEMENT_DATASET_KEYS.filter(key => key !== 'annualLeave' && key !== 'metaMetrics'),
+    []
+  );
+
+  // Add streaming datasets hook
+  const {
+    datasets: streamingDatasets,
+    isConnected: isStreamingConnected,
+    isComplete: isStreamingComplete,
+    start: startStreaming,
+    stop: stopStreaming,
+    progress: streamingProgress,
+  } = useStreamingDatasets({
+    datasets: streamableDatasets,
+    entraId: propUserData?.[0]?.EntraID,
+    bypassCache: false, // We'll control this via button
+    autoStart: false,
+  });
+
+  // Restore in-progress streaming state on mount and auto-resume if not complete
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STREAM_SNAPSHOT_KEY);
+      if (!raw) return;
+      const snap = JSON.parse(raw);
+      if (snap && snap.statuses) {
+        setDatasetStatus(prev => ({
+          ...prev,
+          ...snap.statuses,
+        }));
+      }
+      if (snap && snap.isComplete === false) {
+        setIsFetching(true);
+        setRefreshStartedAt(Date.now());
+        // Ensure non-streaming datasets also refresh once during resume
+        // Mark them as loading if not present
+        setDatasetStatus(prev => ({
+          ...prev,
+          annualLeave: { status: 'loading', updatedAt: prev.annualLeave?.updatedAt ?? null },
+          metaMetrics: { status: 'loading', updatedAt: prev.metaMetrics?.updatedAt ?? null },
+        }));
+        // Kick off non-streaming fetchers in parallel
+        (async () => {
+          try {
+            const [annualLeaveResponse, meta] = await Promise.all([
+              fetch('/api/attendance/annual-leave-all', {
+                method: 'GET',
+                credentials: 'include',
+                headers: { Accept: 'application/json' },
+              }),
+              fetchMetaMetrics(),
+            ]);
+
+            let annualLeaveData: AnnualLeaveRecord[] = [];
+            if (annualLeaveResponse.ok) {
+              try {
+                const payload = await annualLeaveResponse.json();
+                if (payload.success && payload.all_data) {
+                  annualLeaveData = payload.all_data.map((record: any) => ({
+                    request_id: record.request_id,
+                    fe: record.person,
+                    start_date: record.start_date,
+                    end_date: record.end_date,
+                    reason: record.reason,
+                    status: record.status,
+                    days_taken: record.days_taken,
+                    leave_type: record.leave_type,
+                    rejection_notes: record.rejection_notes,
+                    hearing_confirmation: record.hearing_confirmation,
+                    hearing_details: record.hearing_details,
+                  }));
+                }
+              } catch {/* ignore parse errors */}
+            }
+
+            const now = Date.now();
+            setDatasetData(prev => ({
+              ...prev,
+              annualLeave: annualLeaveData,
+              metaMetrics: meta,
+            }));
+            setDatasetStatus(prev => ({
+              ...prev,
+              annualLeave: { status: 'ready', updatedAt: now },
+              metaMetrics: { status: 'ready', updatedAt: now },
+            }));
+            cachedData = { ...cachedData, annualLeave: annualLeaveData, metaMetrics: meta };
+            cachedTimestamp = now;
+            setLastRefreshTimestamp(now);
+          } catch {/* ignore resume fetch errors */}
+        })();
+        startStreaming();
+      }
+    } catch {/* ignore */}
+  // startStreaming is stable from hook; using it is intentional
+  }, [startStreaming]);
+
+  // Persist streaming status snapshot whenever it changes
+  useEffect(() => {
+    try {
+      const statuses: Partial<DatasetStatus> = {} as Partial<DatasetStatus>;
+      Object.entries(streamingDatasets).forEach(([name, state]) => {
+        statuses[name as keyof DatasetStatus] = {
+          status: state.status,
+          updatedAt: state.updatedAt || null,
+        } as any;
+      });
+      const snapshot = {
+        statuses,
+        isComplete: isStreamingComplete,
+        ts: Date.now(),
+      };
+      sessionStorage.setItem(STREAM_SNAPSHOT_KEY, JSON.stringify(snapshot));
+      if (isStreamingComplete) {
+        // Clear snapshot once complete to avoid stale resumes later
+        sessionStorage.removeItem(STREAM_SNAPSHOT_KEY);
+      }
+    } catch {/* ignore */}
+  }, [streamingDatasets, isStreamingComplete]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -607,6 +744,178 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     };
   }, [activeView, handleBackToOverview, isDarkMode, setContent]);
 
+  // Marketing metrics fetching function
+  const fetchMetaMetrics = useCallback(async (): Promise<MarketingMetrics[]> => {
+    debugLog('ReportingHome: fetchMetaMetrics called');
+    
+    try {
+      // Use our Express server route for live Facebook data with daily breakdown
+      const url = `/api/marketing-metrics?daysBack=30`; // Get last 30 days of daily data
+      debugLog('ReportingHome: Fetching meta metrics from:', url);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Meta metrics fetch failed: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      if (!result.success) {
+        debugWarn('ReportingHome: Meta metrics API returned error:', result.error);
+        return [];
+      }
+      
+      // The API now returns an array of daily metrics
+      const dailyMetrics = result.data;
+      
+      if (!Array.isArray(dailyMetrics)) {
+        debugWarn('ReportingHome: Expected array of daily metrics, got:', typeof dailyMetrics);
+        return [];
+      }
+      
+      debugLog('ReportingHome: Meta metrics fetched successfully. Days included:', dailyMetrics.length);
+      debugLog('ReportingHome: Date range:', result.dataSource, result.dateRange);
+      
+      return dailyMetrics; // Return the array directly as it's already in the correct format
+      
+    } catch (error) {
+      console.error('ReportingHome: Meta metrics fetch error:', error);
+      debugWarn('ReportingHome: Failed to fetch meta metrics:', error);
+      // Return empty array on error to prevent blocking the dashboard
+      return [];
+    }
+  }, []);
+
+  // Enhanced refresh function with streaming support
+  const refreshDatasetsWithStreaming = useCallback(async () => {
+    debugLog('ReportingHome: refreshDatasetsWithStreaming called');
+    setHasFetchedOnce(true);
+    setIsFetching(true);
+    setError(null);
+    setRefreshStartedAt(Date.now());
+
+    // Initialize all dataset statuses to loading
+    setDatasetStatus((prev) => {
+      const next: DatasetStatus = { ...prev };
+      MANAGEMENT_DATASET_KEYS.forEach((key) => {
+        const previousMeta = prev[key];
+        next[key] = { status: 'loading', updatedAt: previousMeta?.updatedAt ?? null };
+      });
+      return next;
+    });
+
+    try {
+      // Start streaming for main datasets
+  console.log('🌊 Starting streaming with datasets:', streamableDatasets);
+      console.log('🌊 EntraID for streaming:', propUserData?.[0]?.EntraID);
+      startStreaming();
+
+      // Fetch annual leave and meta metrics in parallel (not streamable yet)
+      const [annualLeaveResponse, metaMetrics] = await Promise.all([
+        fetch('/api/attendance/annual-leave-all', {
+          method: 'GET',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        }),
+        fetchMetaMetrics()
+      ]);
+
+      // Handle annual leave response
+      let annualLeaveData: AnnualLeaveRecord[] = [];
+      if (annualLeaveResponse.ok) {
+        try {
+          const annualLeavePayload = await annualLeaveResponse.json();
+          if (annualLeavePayload.success && annualLeavePayload.all_data) {
+            annualLeaveData = annualLeavePayload.all_data.map((record: any) => ({
+              request_id: record.request_id,
+              fe: record.person,
+              start_date: record.start_date,
+              end_date: record.end_date,
+              reason: record.reason,
+              status: record.status,
+              days_taken: record.days_taken,
+              leave_type: record.leave_type,
+              rejection_notes: record.rejection_notes,
+              hearing_confirmation: record.hearing_confirmation,
+              hearing_details: record.hearing_details,
+            }));
+          }
+        } catch (annualLeaveError) {
+          debugWarn('Failed to parse annual leave data:', annualLeaveError);
+        }
+      }
+
+      // Update non-streaming datasets
+      setDatasetData(prev => ({
+        ...prev,
+        annualLeave: annualLeaveData,
+        metaMetrics: metaMetrics,
+      }));
+
+      // Update status for non-streaming datasets
+      const now = Date.now();
+      setDatasetStatus(prev => ({
+        ...prev,
+        annualLeave: { status: 'ready', updatedAt: now },
+        metaMetrics: { status: 'ready', updatedAt: now },
+      }));
+
+      cachedTimestamp = now;
+      setLastRefreshTimestamp(now);
+
+    } catch (fetchError) {
+      debugWarn('Failed to refresh non-streaming datasets:', fetchError);
+      setError(fetchError instanceof Error ? fetchError.message : 'Unknown error');
+    } finally {
+      setIsFetching(false);
+      setRefreshStartedAt(null);
+    }
+  }, [startStreaming, fetchMetaMetrics, streamableDatasets]);
+
+  // Sync streaming dataset updates with local state
+  useEffect(() => {
+    Object.entries(streamingDatasets).forEach(([datasetName, datasetState]) => {
+      if (datasetState.status === 'ready' && datasetState.data) {
+        // Update dataset data
+        setDatasetData(prev => ({
+          ...prev,
+          [datasetName]: datasetState.data,
+        }));
+
+        // Update dataset status
+        setDatasetStatus(prev => ({
+          ...prev,
+          [datasetName]: {
+            status: 'ready',
+            updatedAt: datasetState.updatedAt || Date.now(),
+          },
+        }));
+
+        // Update cache
+        cachedData = { ...cachedData, [datasetName]: datasetState.data };
+        if (datasetState.updatedAt) {
+          cachedTimestamp = datasetState.updatedAt;
+          setLastRefreshTimestamp(datasetState.updatedAt);
+        }
+      } else if (datasetState.status === 'error') {
+        // Update error status
+        setDatasetStatus(prev => ({
+          ...prev,
+          [datasetName]: {
+            status: 'error',
+            updatedAt: datasetState.updatedAt || Date.now(),
+          },
+        }));
+      }
+    });
+  }, [streamingDatasets]);
+
+  // Handle streaming completion
+  useEffect(() => {
+    if (isStreamingComplete) {
+      setIsFetching(false);
+    }
+  }, [isStreamingComplete]);
+
   const refreshDatasets = useCallback(async () => {
     debugLog('ReportingHome: refreshDatasets called');
     setHasFetchedOnce(true);
@@ -624,9 +933,9 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     });
 
     try {
-      // Fetch both management datasets and annual leave data in parallel
+      // Fetch both management datasets, annual leave data, and marketing metrics in parallel
       debugLog('ReportingHome: Starting parallel fetch calls...');
-      const [managementResponse, annualLeaveResponse] = await Promise.all([
+      const [managementResponse, annualLeaveResponse, metaMetrics] = await Promise.all([
         (async () => {
           const url = new URL(REPORTING_ENDPOINT, window.location.origin);
           // Include current week Clio data in addition to standard datasets
@@ -655,7 +964,9 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
           method: 'GET',
           credentials: 'include',
           headers: { Accept: 'application/json' },
-        })
+        }),
+        // Fetch marketing metrics
+        fetchMetaMetrics()
       ]);
 
       if (!managementResponse.ok) {
@@ -731,6 +1042,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         recoveredFees: managementPayload.recoveredFees ?? cachedData.recoveredFees,
         poidData: managementPayload.poidData ?? cachedData.poidData,
         annualLeave: annualLeaveData,
+        metaMetrics: metaMetrics, // Use fetched meta metrics
       };
 
       const now = Date.now();
@@ -771,10 +1083,10 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
   const handleOpenDashboard = useCallback(() => {
     if (!hasFetchedOnce && !isFetching) {
-      void refreshDatasets();
+      void refreshDatasetsWithStreaming(); // Use streaming version
     }
     setActiveView('dashboard');
-  }, [hasFetchedOnce, isFetching, refreshDatasets, setActiveView]);
+  }, [hasFetchedOnce, isFetching, refreshDatasetsWithStreaming, setActiveView]);
 
   useEffect(() => {
     if (propUserData !== undefined) {
@@ -804,23 +1116,33 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
   const datasetSummaries = useMemo(() => (
     DATASETS.map((dataset) => {
-      const value = datasetData[dataset.key];
-      const meta = datasetStatus[dataset.key];
+      // Check if this dataset is being streamed
+      const streamingState = streamingDatasets[dataset.key];
+      const useStreamingState = streamingState && (isStreamingConnected || streamingState.status !== 'idle');
+
+      const value = useStreamingState ? streamingState.data : datasetData[dataset.key];
+      const meta = useStreamingState 
+        ? { status: streamingState.status, updatedAt: streamingState.updatedAt }
+        : datasetStatus[dataset.key];
+
       const hasValue = Array.isArray(value) ? value.length > 0 : Boolean(value);
       const status: DatasetStatusValue = meta.status === 'loading'
         ? 'loading'
         : hasValue
           ? 'ready'
           : meta.status;
-      const count = Array.isArray(value) ? value.length : hasValue ? 1 : 0;
+      const count = useStreamingState ? (streamingState.count || 0) : (Array.isArray(value) ? value.length : hasValue ? 1 : 0);
+      const cached = useStreamingState ? streamingState.cached : false;
+      
       return {
         definition: dataset,
         status,
         updatedAt: meta.updatedAt,
         count,
+        cached,
       };
     })
-  ), [datasetData, datasetStatus]);
+  ), [datasetData, datasetStatus, streamingDatasets, isStreamingConnected]);
 
   const refreshElapsedMs = useMemo(
     () => (refreshStartedAt ? currentTime.getTime() - refreshStartedAt : 0),
@@ -872,7 +1194,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
           userData={datasetData.userData}
           poidData={datasetData.poidData}
           annualLeave={datasetData.annualLeave}
-          triggerRefresh={refreshDatasets}
+          triggerRefresh={refreshDatasetsWithStreaming}
           lastRefreshTimestamp={lastRefreshTimestamp ?? undefined}
           isFetching={isFetching}
         />
@@ -886,7 +1208,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         <AnnualLeaveReport
           data={datasetData.annualLeave || []}
           teamData={datasetData.teamData || []}
-          triggerRefresh={refreshDatasets}
+          triggerRefresh={refreshDatasetsWithStreaming}
           lastRefreshTimestamp={lastRefreshTimestamp ?? undefined}
           isFetching={isFetching}
         />
@@ -900,7 +1222,23 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         <EnquiriesReport 
           enquiries={datasetData.enquiries} 
           teamData={datasetData.teamData}
-          triggerRefresh={refreshDatasets}
+          annualLeave={datasetData.annualLeave}
+          metaMetrics={datasetData.metaMetrics}
+          triggerRefresh={refreshDatasetsWithStreaming}
+          lastRefreshTimestamp={lastRefreshTimestamp ?? undefined}
+          isFetching={isFetching}
+        />
+      </div>
+    );
+  }
+
+  if (activeView === 'metaMetrics') {
+    return (
+      <div style={fullScreenWrapperStyle(isDarkMode)}>
+        <MetaMetricsReport
+          metaMetrics={datasetData.metaMetrics}
+          enquiries={datasetData.enquiries}
+          triggerRefresh={refreshDatasetsWithStreaming}
           lastRefreshTimestamp={lastRefreshTimestamp ?? undefined}
           isFetching={isFetching}
         />
@@ -939,7 +1277,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
           />
           <DefaultButton
             text={isFetching ? 'Refreshing…' : 'Refresh data'}
-            onClick={refreshDatasets}
+            onClick={refreshDatasetsWithStreaming}
             styles={subtleButtonStyles(isDarkMode)}
             disabled={isFetching}
           />
@@ -964,16 +1302,23 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
             </span>
           ))}
         </div>
-        {isFetching && (
+        {(isFetching || isStreamingConnected) && (
           <div style={refreshProgressPanelStyle(isDarkMode)}>
             <div style={refreshProgressHeaderStyle(isDarkMode)}>
               <Spinner size={SpinnerSize.small} />
-              <span>Refreshing reporting datasets…</span>
+              <span>
+                {isStreamingConnected 
+                  ? `Streaming datasets… (${streamingProgress.completed}/${streamingProgress.total})`
+                  : 'Refreshing reporting datasets…'
+                }
+              </span>
             </div>
             <span style={refreshProgressDetailStyle(isDarkMode)}>
-              {refreshStartedAt
+              {refreshStartedAt && !isStreamingConnected
                 ? `Elapsed ${formatDurationMs(refreshElapsedMs)}${refreshPhaseLabel ? ` • ${refreshPhaseLabel}` : ''}`
-                : 'Preparing data sources…'}
+                : isStreamingConnected
+                  ? `Progress: ${Math.round(streamingProgress.percentage)}% • Redis caching active`
+                  : 'Preparing data sources…'}
             </span>
             <div style={refreshProgressDatasetListStyle()}>
               {datasetSummaries.map(({ definition, status }) => {
@@ -1052,6 +1397,16 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
                   />
                 </div>
               )}
+              {report.action === 'metaMetrics' && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <PrimaryButton
+                    text={isFetching ? 'Preparing…' : 'Open Meta metrics'}
+                    onClick={() => setActiveView('metaMetrics')}
+                    styles={primaryButtonStyles(isDarkMode)}
+                    disabled={isFetching}
+                  />
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -1060,9 +1415,12 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       <section style={sectionSurfaceStyle(isDarkMode)}>
         <h2 style={sectionTitleStyle}>Data feeds powering the dashboard</h2>
         <div style={dataFeedListStyle()}>
-          {datasetSummaries.map(({ definition, status, updatedAt, count }) => {
+          {datasetSummaries.map(({ definition, status, updatedAt, count, cached }) => {
             const palette = STATUS_BADGE_COLOURS[status];
             const details: string[] = [count > 0 ? `${count.toLocaleString()} record${count === 1 ? '' : 's'}` : 'No data'];
+            if (cached) {
+              details.push('cached');
+            }
             if (updatedAt) {
               details.push(formatTimestamp(updatedAt));
             }
@@ -1079,6 +1437,13 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
                     <FontIcon iconName={palette.icon} style={statusIconStyle(isDarkMode)} />
                   ) : (
                     <span style={statusDotStyle(palette.dot)} />
+                  )}
+                  {cached && (
+                    <FontIcon
+                      iconName="Database"
+                      style={{ ...statusIconStyle(isDarkMode), marginLeft: 6 }}
+                      title="Cached"
+                    />
                   )}
                   {palette.label}
                 </span>

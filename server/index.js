@@ -24,6 +24,7 @@ const matterRequestsRouter = require('./routes/matterRequests');
 const opponentsRouter = require('./routes/opponents');
 const clioContactsRouter = require('./routes/clioContacts');
 const clioMattersRouter = require('./routes/clioMatters');
+const searchClioContactsRouter = require('./routes/searchClioContacts');
 const clioClientQueryRouter = require('./routes/clio-client-query');
 const clioClientLookupRouter = require('./routes/clio-client-lookup');
 const relatedClientsRouter = require('./routes/related-clients');
@@ -35,6 +36,7 @@ const bundleRouter = require('./routes/bundle');
 const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 const enquiriesRouter = require('./routes/enquiries');
 const enquiryEmailsRouter = require('./routes/enquiryEmails');
+const updateEnquiryPOCRouter = require('./routes/updateEnquiryPOC');
 const pitchesRouter = require('./routes/pitches');
 const paymentsRouter = require('./routes/payments');
 const instructionDetailsRouter = require('./routes/instruction-details');
@@ -53,16 +55,26 @@ const opsRouter = require('./routes/ops');
 const sendEmailRouter = require('./routes/sendEmail');
 const attendanceRouter = require('./routes/attendance');
 const reportingRouter = require('./routes/reporting');
+const reportingStreamRouter = require('./routes/reporting-stream');
+const homeMetricsStreamRouter = require('./routes/home-metrics-stream');
 const poidRouter = require('./routes/poid');
 const futureBookingsRouter = require('./routes/futureBookings');
 const outstandingBalancesRouter = require('./routes/outstandingBalances');
 const transactionsRouter = require('./routes/transactions');
+const marketingMetricsRouter = require('./routes/marketing-metrics');
 const { userContextMiddleware } = require('./middleware/userContext');
 
 const app = express();
-// Enable gzip compression if available
+// Enable gzip compression if available, but skip SSE endpoints
 if (compression) {
-    app.use(compression());
+    app.use((req, res, next) => {
+        // Skip compression for Server-Sent Events to avoid buffering
+        if (req.path.startsWith('/api/reporting-stream') || req.path.startsWith('/api/home-metrics')) {
+            res.setHeader('Cache-Control', 'no-cache, no-transform');
+            return next();
+        }
+        return compression()(req, res, next);
+    });
 }
 const PORT = process.env.PORT || 8080;
 
@@ -112,6 +124,7 @@ app.use('/api/risk-assessments', riskAssessmentsRouter);
 app.use('/api/bundle', bundleRouter);
 app.use('/api/clio-contacts', clioContactsRouter);
 app.use('/api/clio-matters', clioMattersRouter);
+app.use('/api/search-clio-contacts', searchClioContactsRouter);
 app.use('/api/clio-client-query', clioClientQueryRouter);
 app.use('/api/clio-client-lookup', clioClientLookupRouter);
 app.use('/api/related-clients', relatedClientsRouter);
@@ -129,6 +142,7 @@ app.use('/api/getAllMatters', (req, res) => {
 app.use('/api/ccl', cclRouter);
 app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
+app.use('/api/updateEnquiryPOC', updateEnquiryPOCRouter);
 app.use('/api/matters-unified', mattersUnifiedRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 app.use('/api/ops', opsRouter);
@@ -151,6 +165,9 @@ app.use('/api/team-data', teamDataRouter);
 app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api/file-map', fileMapRouter);
 app.use('/api/reporting', reportingRouter);
+app.use('/api/reporting-stream', reportingStreamRouter);
+app.use('/api/home-metrics', homeMetricsStreamRouter);
+app.use('/api/marketing-metrics', marketingMetricsRouter);
 
 // IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
 app.use('/api/attendance', attendanceRouter);

@@ -1,6 +1,63 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function(app) {
+  // Dedicated SSE proxy first to ensure correct behavior for streaming endpoints
+  app.use(
+    '/api/reporting-stream',
+    createProxyMiddleware({
+      target: 'http://localhost:8080',
+      changeOrigin: true,
+      ws: false,
+      timeout: 0,
+      proxyTimeout: 0,
+      selfHandleResponse: false,
+      onProxyReq: (proxyReq) => {
+        proxyReq.setHeader('Cache-Control', 'no-cache, no-transform');
+        proxyReq.setHeader('Connection', 'keep-alive');
+      },
+      onProxyRes: (proxyRes) => {
+        // Ensure proxies and browsers don't buffer SSE
+        try {
+          proxyRes.headers['cache-control'] = 'no-cache, no-transform';
+          proxyRes.headers['x-accel-buffering'] = 'no';
+          // Remove content-length if any (SSE is streamed)
+          delete proxyRes.headers['content-length'];
+        } catch { /* ignore */ }
+      },
+      onError: (err, req, res) => {
+        console.error(`SSE proxy error for ${req.url}:`, err.message);
+        // Do NOT fallback to other backends for SSE
+        try { res.writeHead(502); res.end('SSE proxy error'); } catch { /* ignore */ }
+      },
+    })
+  );
+  // Dedicated SSE proxy for home metrics streaming
+  app.use(
+    '/api/home-metrics',
+    createProxyMiddleware({
+      target: 'http://localhost:8080',
+      changeOrigin: true,
+      ws: false,
+      timeout: 0,
+      proxyTimeout: 0,
+      selfHandleResponse: false,
+      onProxyReq: (proxyReq) => {
+        proxyReq.setHeader('Cache-Control', 'no-cache, no-transform');
+        proxyReq.setHeader('Connection', 'keep-alive');
+      },
+      onProxyRes: (proxyRes) => {
+        try {
+          proxyRes.headers['cache-control'] = 'no-cache, no-transform';
+          proxyRes.headers['x-accel-buffering'] = 'no';
+          delete proxyRes.headers['content-length'];
+        } catch { /* ignore */ }
+      },
+      onError: (err, req, res) => {
+        console.error(`SSE proxy error for ${req.url}:`, err.message);
+        try { res.writeHead(502); res.end('SSE proxy error'); } catch { /* ignore */ }
+      },
+    })
+  );
   // Routes that go to the Express server (port 8080)
   const expressRoutes = [
     '/api/matters',
@@ -23,6 +80,8 @@ module.exports = function(app) {
     '/api/verify-id',
     '/api/sendEmail', // Centralized server email route
     '/api/attendance', // Attendance routes with annual leave integration
+  '/api/reporting-stream', // Streaming datasets endpoint
+  '/api/home-metrics',     // Home metrics SSE endpoint
     '/ccls'
   ];
 
@@ -55,10 +114,16 @@ module.exports = function(app) {
   const fallbackToFunctions = createProxyMiddleware({
     target: 'http://localhost:7072',
     changeOrigin: true,
+    onProxyRes: (proxyRes, req, res) => {
+      try { res.setHeader('x-dev-proxy-target', 'functions-7072'); } catch { /* ignore */ }
+    }
   });
   const fallbackToExpress = createProxyMiddleware({
     target: 'http://localhost:8080',
     changeOrigin: true,
+    onProxyRes: (proxyRes, req, res) => {
+      try { res.setHeader('x-dev-proxy-target', 'express-8080'); } catch { /* ignore */ }
+    }
   });
 
   // Proxy Express server routes to port 8080
@@ -67,6 +132,18 @@ module.exports = function(app) {
     createProxyMiddleware({
       target: 'http://localhost:8080',
       changeOrigin: true,
+      ws: false,
+      timeout: 0,       // Do not timeout HTTP requests (SSE)
+      proxyTimeout: 0,  // Do not timeout proxy connections
+      onProxyRes: (proxyRes, req, res) => {
+        try { res.setHeader('x-dev-proxy-target', 'express-8080'); } catch { /* ignore */ }
+      },
+      onProxyReq: (proxyReq, req, res) => {
+        // Ensure proxies do not transform SSE responses
+        if (req.url.startsWith('/api/reporting-stream')) {
+          proxyReq.setHeader('Cache-Control', 'no-cache, no-transform');
+        }
+      },
       onError: (err, req, res) => {
         console.error(`Proxy error for ${req.url} (Express server):`, err.message);
         // Fallback to Azure Functions if Express server fails
@@ -84,6 +161,9 @@ module.exports = function(app) {
       changeOrigin: true,
       pathRewrite: {
         '^/(.*)': '/api/$1', // Rewrite /getAttendance to /api/getAttendance
+      },
+      onProxyRes: (proxyRes, req, res) => {
+        try { res.setHeader('x-dev-proxy-target', 'functions-7072'); } catch { /* ignore */ }
       },
       onError: (err, req, res) => {
         console.error(`Proxy error for ${req.url} (Azure Functions):`, err.message);
@@ -103,6 +183,9 @@ module.exports = function(app) {
       pathRewrite: {
         '^/(.*)': '/api/$1', // Rewrite /sendEmail to /api/sendEmail
       },
+      onProxyRes: (proxyRes, req, res) => {
+        try { res.setHeader('x-dev-proxy-target', 'decoupled-7071'); } catch { /* ignore */ }
+      },
       onError: (err, req, res) => {
         console.error(`Proxy error for ${req.url} (Decoupled Functions):`, err.message);
         // Fallback to Express server if Azure Functions fails
@@ -118,6 +201,9 @@ module.exports = function(app) {
     createProxyMiddleware({
       target: 'http://localhost:8080',
       changeOrigin: true,
+      onProxyRes: (proxyRes, req, res) => {
+        try { res.setHeader('x-dev-proxy-target', 'express-8080'); } catch { /* ignore */ }
+      },
       onError: (err, req, res) => {
         console.error(`Proxy error for ${req.url} (Express server):`, err.message);
         console.log('Attempting fallback to Azure Functions...');

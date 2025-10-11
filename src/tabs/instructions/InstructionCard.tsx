@@ -104,6 +104,8 @@ export interface InstructionCardProps {
   animationDelay?: number;
   getClientNameByProspectId?: (prospectId: string | number | undefined) => { firstName: string; lastName: string };
   teamData?: TeamData[] | null;
+  /** Called after successful actions to trigger parent data refresh */
+  onRefreshData?: () => void;
 }
 
 // Component definition with CopyableText
@@ -208,7 +210,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
   animationDelay = 0,
   getClientNameByProspectId,
   onDealEdit,
-  teamData
+  teamData,
+  onRefreshData
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -314,6 +317,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
       if (Object.keys(updates).length > 0) {
         await onDealEdit(deal.DealId, updates);
+        
+        // Trigger parent data refresh after successful edit
+        if (onRefreshData) {
+          onRefreshData();
+        }
       }
       
       setIsEditingDeal(false);
@@ -375,6 +383,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
         // Auto-hide success toast
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 2000);
+        
+        // Trigger parent data refresh
+        if (onRefreshData) {
+          onRefreshData();
+        }
         
       } else {
         throw new Error(result.error || 'Failed to update status');
@@ -461,6 +474,33 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
       setInstructionData([]);
     }
   }, [showInstructionDetails, instruction?.InstructionRef, instruction?.instructionRef]);
+
+  // Sync payments prop changes to local state
+  useEffect(() => {
+    if (payments && payments.length > 0 && paymentData.length === 0 && !showPaymentDetails) {
+      // If payments prop is updated and we don't have local data, sync it
+      setPaymentData(payments);
+    }
+  }, [payments]);
+
+  // Sync documents prop changes to local state
+  useEffect(() => {
+    if (documents && documents.length > 0 && fetchedDocuments.length === 0) {
+      // If documents prop is updated and we don't have local fetched data, use prop data
+      setFetchedDocuments(documents);
+    }
+  }, [documents]);
+
+  // Clear local data when instruction changes to force refetch
+  useEffect(() => {
+    const currentRef = instruction?.InstructionRef || instruction?.instructionRef;
+    return () => {
+      // Cleanup when instruction changes
+      setPaymentData([]);
+      setInstructionData(null);
+      setFetchedDocuments([]);
+    };
+  }, [instruction?.InstructionRef, instruction?.instructionRef]);
 
   // Inject keyframes once for micro animations
   React.useEffect(() => {
@@ -1663,7 +1703,15 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                      riskStatus === 'review' ? 'High Risk' : 'Pending',
               icon: <FaShieldAlt />,
               clickable: true,
-              onClick: (() => onOpenWorkbench?.('risk')) as any
+              onClick: (() => {
+                // If no risk assessment exists yet, trigger onRiskClick to create one
+                // Otherwise open workbench to view details
+                if (!hasRiskAssessment && onRiskClick) {
+                  onRiskClick();
+                } else {
+                  onOpenWorkbench?.('risk');
+                }
+              }) as any
             });
             
             // Matter Opening

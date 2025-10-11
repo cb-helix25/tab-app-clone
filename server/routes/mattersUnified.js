@@ -1,5 +1,6 @@
 const express = require('express');
 const { withRequest, sql } = require('../utils/db');
+const { cacheUnified, generateCacheKey, CACHE_CONFIG } = require('../utils/redisClient');
 
 const router = express.Router();
 
@@ -35,10 +36,118 @@ function normalizeName(name) {
 router.get('/', async (req, res) => {
   const now = Date.now();
   const bypassCache = String(req.query.bypassCache || '').toLowerCase() === 'true';
+  const fullName = req.query.fullName ? String(req.query.fullName) : '';
   
+  // Generate Redis cache key
+  const cacheKey = generateCacheKey(
+    CACHE_CONFIG.PREFIXES.UNIFIED, 
+    'matters', 
+    fullName || 'all'
+  );
+
+  // Level 1: In-memory cache (fastest)
   if (!bypassCache && unifiedCache.data && (now - unifiedCache.ts) < UNIFIED_CACHE_TTL_MS) {
-    return res.json({ ...unifiedCache.data, cached: true });
+    return res.json({ ...unifiedCache.data, cached: true, source: 'memory' });
   }
+
+  // Level 2: Redis cache (if in-memory expired)
+  if (!bypassCache) {
+    try {
+      const result = await cacheUnified([fullName || 'all'], async () => {
+        return await performMattersUnifiedQuery(req.query);
+      });
+      
+      // Update in-memory cache with Redis result
+      unifiedCache.data = result;
+      unifiedCache.ts = now;
+      
+      return res.json({ ...result, source: 'redis' });
+    } catch (redisError) {
+      console.warn('⚠️ Redis cache unavailable, using in-memory fallback:', redisError.message);
+    }
+  }
+
+  // Level 3: Database query (if both caches unavailable)
+  return await performDirectMattersQuery(req, res);
+});
+
+/**
+ * Extracted database query logic for caching
+ */
+async function performMattersUnifiedQuery(queryParams) {
+  console.log('🔍 Performing fresh matters unified query');
+  
+  const fullName = queryParams.fullName ? String(queryParams.fullName) : '';
+  const norm = normalizeName(fullName);
+
+  // Database connection strings
+  const legacyConn = process.env.SQL_CONNECTION_STRING_LEGACY || process.env.SQL_CONNECTION_STRING;
+  const vnetConn = process.env.SQL_CONNECTION_STRING_VNET || process.env.INSTRUCTIONS_SQL_CONNECTION_STRING;
+
+  if (!legacyConn || !vnetConn) {
+    throw new Error('Missing DB connection strings');
+  }
+
+  // Query both databases
+  let legacyAll = [];
+  let legacyError = null;
+  try {
+    legacyAll = await withRequest(legacyConn, async (request) => {
+      const q = 'SELECT * FROM matters';
+      const r = await request.query(q);
+      return Array.isArray(r.recordset) ? r.recordset : [];
+    });
+  } catch (err) {
+    legacyAll = [];
+    legacyError = err;
+    console.error('❌ Legacy matters query failed:', err?.message || err);
+  }
+
+  let vnetAll = [];
+  let vnetError = null;
+  try {
+    vnetAll = await withRequest(vnetConn, async (request) => {
+      if (!norm) {
+        const r = await request.query('SELECT * FROM Matters');
+        return Array.isArray(r.recordset) ? r.recordset : [];
+      }
+      request.input('name', sql.VarChar(200), norm);
+      request.input('nameLike', sql.VarChar(210), `%${norm}%`);
+      const q = `
+        SELECT * FROM Matters
+        WHERE (
+          LOWER(ResponsibleSolicitor) = @name OR LOWER(OriginatingSolicitor) = @name
+          OR LOWER(ResponsibleSolicitor) LIKE @nameLike OR LOWER(OriginatingSolicitor) LIKE @nameLike
+        )`;
+      const r = await request.query(q);
+      return Array.isArray(r.recordset) ? r.recordset : [];
+    });
+  } catch (err) {
+    vnetAll = [];
+    vnetError = err;
+    console.error('❌ VNet matters query failed:', err?.message || err);
+  }
+
+  // Return fields expected by the frontend (legacyAll/vnetAll) and keep
+  // legacy/vnet aliases for compatibility with any exploratory callers.
+  return {
+    legacyAll: legacyAll,
+    vnetAll: vnetAll,
+    legacy: legacyAll,
+    vnet: vnetAll,
+    legacyAllCount: legacyAll.length,
+    vnetAllCount: vnetAll.length,
+    errors: {
+      legacy: legacyError?.message || null,
+      vnet: vnetError?.message || null
+    }
+  };
+}
+
+/**
+ * Original direct query logic (fallback)
+ */
+async function performDirectMattersQuery(req, res) {
 
   // Check request throttling
   if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
@@ -141,7 +250,8 @@ router.get('/', async (req, res) => {
       });
     }
 
-    unifiedCache = { data: responsePayload, ts: now };
+    // Update in-memory cache timestamp correctly
+    unifiedCache = { data: responsePayload, ts: Date.now() };
     return res.json(responsePayload);
   } catch (err) {
     console.error('❌ /api/matters-unified failed:', err);
@@ -171,6 +281,6 @@ router.get('/', async (req, res) => {
   } finally {
     activeRequests--;
   }
-});
+}
 
 module.exports = router;

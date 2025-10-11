@@ -37,6 +37,7 @@ const proxyToAzureFunctionsRouter = require('./routes/proxyToAzureFunctions');
 const enquiriesRouter = require('./routes/enquiries');
 const enquiriesUnifiedRouter = require('./routes/enquiries-unified');
 const enquiryEmailsRouter = require('./routes/enquiryEmails');
+const updateEnquiryPOCRouter = require('./routes/updateEnquiryPOC');
 const pitchesRouter = require('./routes/pitches');
 const mattersRouter = require('./routes/matters');
 const mattersUnifiedRouter = require('./routes/mattersUnified');
@@ -51,6 +52,8 @@ const pitchTeamRouter = require('./routes/pitchTeam');
 const sendEmailRouter = require('./routes/sendEmail');
 const attendanceRouter = require('./routes/attendance');
 const reportingRouter = require('./routes/reporting');
+const reportingStreamRouter = require('./routes/reporting-stream');
+const marketingMetricsRouter = require('./routes/marketing-metrics');
 const poidRouter = require('./routes/poid');
 const futureBookingsRouter = require('./routes/futureBookings');
 const outstandingBalancesRouter = require('./routes/outstandingBalances');
@@ -60,9 +63,15 @@ const outstandingBalancesRouter = require('./routes/outstandingBalances');
 try { opLog.init(); } catch { /* best effort */ }
 
 const app = express();
-// Enable gzip compression if available
+// Enable gzip compression if available, but skip SSE endpoints
 if (compression) {
-    app.use(compression());
+    app.use((req, res, next) => {
+        if (req.path.startsWith('/api/reporting-stream')) {
+            res.setHeader('Cache-Control', 'no-cache, no-transform');
+            return next();
+        }
+        return compression()(req, res, next);
+    });
 }
 const PORT = process.env.PORT || 8080;
 
@@ -113,6 +122,7 @@ app.use('/api/getMatters', getMattersRouter);
 
 app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiries-unified', enquiriesUnifiedRouter);
+app.use('/api/updateEnquiryPOC', updateEnquiryPOCRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
 
 // Update enquiry endpoint - moved to enquiries-unified/update
@@ -132,6 +142,8 @@ app.use('/api/user-data', userDataRouter);
 app.use('/api/pitch-team', pitchTeamRouter);
 app.use('/api', sendEmailRouter);
 app.use('/api/reporting', reportingRouter);
+app.use('/api/reporting-stream', reportingStreamRouter);
+app.use('/api/marketing-metrics', marketingMetricsRouter);
 
 // IMPORTANT: Attendance routes must come BEFORE proxy routes to avoid conflicts
 app.use('/api/attendance', attendanceRouter);

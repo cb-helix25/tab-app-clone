@@ -532,6 +532,9 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
 
     setSelectedRisk(risk);
+    
+    // Close the risk assessment modal
+    setShowRiskPage(false);
   };
 
   const handleRiskAssessmentDelete = async (instructionRef: string) => {
@@ -807,7 +810,10 @@ const Instructions: React.FC<InstructionsProps> = ({
         })()
       );
 
-      const shouldInclude = belongsToUser || isOtherUnsure;
+  // Only include items that belong to the current user in 'Mine' view.
+  // Previously we also included items with Area of Work containing 'other' & 'unsure' for everyone,
+  // which caused unrelated 'Other' instructions to appear. That logic is removed here.
+  const shouldInclude = belongsToUser;
 
       if (shouldInclude) {
         debugLog('✅ Instruction included:', {
@@ -2860,7 +2866,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
     try {
       await approveVerification(instructionRef);
       
-      // Update local data to reflect the approval
+      // Update local data to reflect the approval - update both instruction AND EID records
       setInstructionData(prevData => 
         prevData.map(prospect => ({
           ...prospect,
@@ -2870,8 +2876,31 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
               return { ...instruction, EIDOverallResult: 'Verified', stage: 'proof-of-id-complete' };
             }
             return instruction;
+          }),
+          // Also update the electronicIDChecks/idVerifications arrays
+          electronicIDChecks: (prospect.electronicIDChecks || []).map((eid: any) => {
+            if ((eid.MatterId || eid.InstructionRef) === instructionRef) {
+              return { ...eid, EIDOverallResult: 'Verified', EIDStatus: 'complete' };
+            }
+            return eid;
+          }),
+          idVerifications: (prospect.idVerifications || []).map((eid: any) => {
+            if ((eid.MatterId || eid.InstructionRef) === instructionRef) {
+              return { ...eid, EIDOverallResult: 'Verified', EIDStatus: 'complete' };
+            }
+            return eid;
           })
         }))
+      );
+      
+      // Also update poidData for consistency
+      setPoidData(prevPoidData =>
+        prevPoidData.map(eid => {
+          if ((eid.matter_id || (eid as any).InstructionRef) === instructionRef) {
+            return { ...eid, EIDOverallResult: 'Verified' as any, EIDStatus: 'complete' as any };
+          }
+          return eid;
+        })
       );
 
       // Update the modal details to show the new status
@@ -3355,6 +3384,18 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                           onProofOfIdClick={() => {
                             // Not applicable for pitches
                           }}
+                          onRefreshData={async () => {
+                            // Refresh deal data after actions complete
+                            try {
+                              const dealId = item.deal?.DealId;
+                              if (!dealId) return;
+                              
+                              debugLog('Refreshing deal data for:', dealId);
+                              // TODO: Add deal refresh API call when needed
+                            } catch (error) {
+                              console.error('Failed to refresh deal data:', error);
+                            }
+                          }}
                         />
                       </div>
                     );
@@ -3426,6 +3467,46 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                         }
                         onEIDClick={() => handleEIDCheck(item.instruction)}
                         idVerificationLoading={idVerificationLoading.has(item.instruction?.InstructionRef || '')}
+                        onRefreshData={async () => {
+                          // Refresh instruction data after actions complete
+                          try {
+                            const instructionRef = item.instruction?.InstructionRef;
+                            if (!instructionRef) return;
+                            
+                            // Fetch updated instruction data
+                            const response = await fetch(`/api/instructions/${instructionRef}`);
+                            if (response.ok) {
+                              const updatedData = await response.json();
+                              
+                              // Update the instruction within the prospect's instructions array
+                              setInstructionData(prev => 
+                                prev.map(prospectData => {
+                                  // Check if any instruction in this prospect matches
+                                  const hasMatchingInstruction = prospectData.instructions?.some(
+                                    (inst: any) => inst.InstructionRef === instructionRef
+                                  );
+                                  
+                                  if (hasMatchingInstruction) {
+                                    return {
+                                      ...prospectData,
+                                      instructions: prospectData.instructions.map((inst: any) =>
+                                        inst.InstructionRef === instructionRef ? { ...inst, ...updatedData } : inst
+                                      )
+                                    };
+                                  }
+                                  return prospectData;
+                                })
+                              );
+                              
+                              // Also update selectedInstruction if it matches
+                              if (selectedInstruction?.InstructionRef === instructionRef) {
+                                setSelectedInstruction((prev: any) => ({ ...prev, ...updatedData }));
+                              }
+                            }
+                          } catch (error) {
+                            console.error('Failed to refresh instruction data:', error);
+                          }
+                        }}
                       />
                     </div>
 
@@ -4226,8 +4307,8 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                                 {[
                                   { label: 'Name', value: `${selectedInstruction.Title || ''} ${selectedInstruction.ClientName || selectedInstruction.FirstName || ''} ${selectedInstruction.LastName || ''}`.trim() },
                                   { label: 'Email', value: selectedInstruction.ClientEmail || selectedInstruction.Email },
-                                  { label: 'Phone', value: selectedInstruction.PhoneNumber || selectedInstruction.MobileNumber },
-                                  { label: 'DOB', value: selectedInstruction.DateOfBirth },
+                                  { label: 'Phone', value: selectedInstruction.Phone },
+                                  { label: 'DOB', value: selectedInstruction.DOB },
                                   { label: 'Gender', value: selectedInstruction.Gender },
                                   { label: 'Nationality', value: selectedInstruction.Nationality || selectedInstruction.Country },
                                   { label: 'Client Type', value: selectedInstruction.ClientType || selectedInstruction.EntityType || 'Individual' }
@@ -4330,7 +4411,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {[
-                                  { label: 'Address', value: `${selectedInstruction.AddressLine1 || ''} ${selectedInstruction.AddressLine2 || ''}`.trim() },
+                                  { label: 'Address', value: `${selectedInstruction.HouseNumber || ''} ${selectedInstruction.Street || ''}`.trim() },
                                   { label: 'City', value: selectedInstruction.City },
                                   { label: 'County', value: selectedInstruction.County || selectedInstruction.State },
                                   { label: 'Postcode', value: selectedInstruction.Postcode || selectedInstruction.PostalCode },
@@ -4385,8 +4466,8 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                                 {[
                                   { label: 'Company', value: selectedInstruction.CompanyName || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
                                   { label: 'Company Number', value: selectedInstruction.CompanyNumber || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
-                                  { label: 'House Number', value: selectedInstruction.CompanyAddressLine1 || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
-                                  { label: 'Address', value: selectedInstruction.CompanyAddressLine2 || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                  { label: 'House Number', value: selectedInstruction.CompanyHouseNumber || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
+                                  { label: 'Address', value: selectedInstruction.CompanyStreet || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
                                   { label: 'Postcode', value: selectedInstruction.CompanyPostcode || (selectedInstruction.ClientType === 'Individual' ? 'Not applicable' : 'Not provided') },
                                   { label: 'Country', value: selectedInstruction.CompanyCountry || (selectedInstruction.ClientType === 'Individual' ? selectedInstruction.Country : 'Not provided') }
                                 ].map((field) => (
@@ -5289,11 +5370,53 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
         }}
         onOverride={async (instructionRef: string) => {
           debugLog('Override verification for:', instructionRef);
-          // Close modal and potentially refresh data
+          
+          // Update local data immediately to reflect the override/skip
+          setInstructionData(prevData => 
+            prevData.map(prospect => ({
+              ...prospect,
+              instructions: prospect.instructions.map((instruction: any) => {
+                if (instruction.InstructionRef === instructionRef) {
+                  debugLog('Override/skip ID verification for:', instructionRef);
+                  // Mark as completed but skipped
+                  return { ...instruction, EIDOverallResult: 'Skipped', stage: 'proof-of-id-complete' };
+                }
+                return instruction;
+              }),
+              // Also update the electronicIDChecks/idVerifications arrays
+              electronicIDChecks: (prospect.electronicIDChecks || []).map((eid: any) => {
+                if ((eid.MatterId || eid.InstructionRef) === instructionRef) {
+                  return { ...eid, EIDOverallResult: 'Skipped', EIDStatus: 'skipped' };
+                }
+                return eid;
+              }),
+              idVerifications: (prospect.idVerifications || []).map((eid: any) => {
+                if ((eid.MatterId || eid.InstructionRef) === instructionRef) {
+                  return { ...eid, EIDOverallResult: 'Skipped', EIDStatus: 'skipped' };
+                }
+                return eid;
+              })
+            }))
+          );
+          
+          // Also update poidData
+          setPoidData(prevPoidData =>
+            prevPoidData.map(eid => {
+              if ((eid.matter_id || (eid as any).InstructionRef) === instructionRef) {
+                return { ...eid, EIDOverallResult: 'Skipped' as any, EIDStatus: 'skipped' as any };
+              }
+              return eid;
+            })
+          );
+          
+          // Close modal and trigger background refresh
           setShowReviewModal(false);
           setReviewModalDetails(null);
-          // Optionally trigger a data refresh if needed
-          await fetchUnifiedEnquiries();
+          
+          // Trigger background data refresh
+          setTimeout(() => {
+            fetchUnifiedEnquiries();
+          }, 1000);
         }}
       />
 
@@ -5531,6 +5654,41 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Risk Assessment Modal */}
+      {showRiskPage && selectedInstruction && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 2000,
+          background: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: isDarkMode ? colours.dark.background : '#ffffff',
+            borderRadius: '12px',
+            maxWidth: '900px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: isDarkMode ? '0 20px 60px rgba(0,0,0,0.8)' : '0 20px 60px rgba(0,0,0,0.3)'
+          }}>
+            <RiskAssessmentPage
+              onBack={() => setShowRiskPage(false)}
+              instructionRef={selectedInstruction.InstructionRef}
+              riskAssessor={(localUserData[0] as any)?.FullName || (localUserData[0] as any)?.["Full Name"] || 'Unknown'}
+              existingRisk={selectedRisk}
+              onSave={handleRiskAssessmentSave}
+            />
           </div>
         </div>
       )}

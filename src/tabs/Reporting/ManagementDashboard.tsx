@@ -1279,9 +1279,9 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   }, [filteredEnquiries]);
 
   // Index Matters by normalized solicitor name (5594 matters)
-  // OPTIMIZED: Use more efficient Map operations
+  // OPTIMIZED: Use more efficient Map operations with deduplication
   const mattersBySolicitor = useMemo(() => {
-    const index = new Map<string, typeof filteredMatters>();
+    const index = new Map<string, Map<string, typeof filteredMatters[0]>>();
     
     filteredMatters.forEach((matter) => {
       const rawOriginating = mapNameIfNeeded((matter as any)['Originating Solicitor'] ?? (matter as any).OriginatingSolicitor);
@@ -1291,28 +1291,33 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
       const normalizedOriginating = normalizeName(rawOriginating);
       const normalizedResponsible = normalizeName(rawResponsible);
       
-      // Index by originating solicitor - use || assignment for efficiency
+      // Use matter ID as unique key to prevent duplicates
+      const matterId = (matter as any).matterId || (matter as any)['Unique ID'] || (matter as any).UniqueID || JSON.stringify(matter);
+      
+      // Index by originating solicitor - use deduplication map
       if (normalizedOriginating) {
-        const arr = index.get(normalizedOriginating);
-        if (arr) {
-          arr.push(matter);
-        } else {
-          index.set(normalizedOriginating, [matter]);
+        if (!index.has(normalizedOriginating)) {
+          index.set(normalizedOriginating, new Map());
         }
+        index.get(normalizedOriginating)!.set(matterId, matter);
       }
       
-      // Index by responsible solicitor
+      // Index by responsible solicitor - use deduplication map
       if (normalizedResponsible) {
-        const arr = index.get(normalizedResponsible);
-        if (arr) {
-          arr.push(matter);
-        } else {
-          index.set(normalizedResponsible, [matter]);
+        if (!index.has(normalizedResponsible)) {
+          index.set(normalizedResponsible, new Map());
         }
+        index.get(normalizedResponsible)!.set(matterId, matter);
       }
     });
     
-    return index;
+    // Convert back to arrays without duplicates
+    const finalIndex = new Map<string, typeof filteredMatters>();
+    index.forEach((matterMap, solicitor) => {
+      finalIndex.set(solicitor, Array.from(matterMap.values()));
+    });
+    
+    return finalIndex;
   }, [filteredMatters]);
 
   const metricsByMember: MemberMetrics[] = useMemo(() => (

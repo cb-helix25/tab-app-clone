@@ -2,7 +2,8 @@
 .app-navigator {
     position: sticky;
     top: 48px;
-    z-index: 900;
+    /* Lower z-index to avoid overlapping Immediate Actions and other content */
+    z-index: 2;
     min-height: 48px;
     display: flex;
     flex-direction: column;

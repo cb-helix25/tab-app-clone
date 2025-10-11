@@ -140,7 +140,10 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
     if (timeStr.length === 5) {
       timeStr = `${timeStr}:00`;
     }
-    const newStart = new Date(`${dateStr}T${timeStr}`);
+    // Parse time parts to avoid timezone conversion
+    const timeParts = timeStr.split(':');
+    const newStart = new Date(dateStr);
+    newStart.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), parseInt(timeParts[2] || '0'), 0);
     const newEnd = new Date(newStart.getTime() + Number(duration) * 3600000);
 
     let relevantBookings: (BoardroomBooking | SoundproofPodBooking)[] = [];
@@ -154,7 +157,10 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
     const dayBookings = relevantBookings.filter((b) => b.booking_date === dateStr);
     let latestConflictEnd: Date | undefined;
     for (const booking of dayBookings) {
-      const existingStart = new Date(`${booking.booking_date}T${booking.booking_time}`);
+      // Parse time parts to create Date without timezone conversion
+      const bookingTimeParts = booking.booking_time.split(':').map(p => p.split('.')[0]);
+      const existingStart = new Date(booking.booking_date);
+      existingStart.setHours(parseInt(bookingTimeParts[0]), parseInt(bookingTimeParts[1]), parseInt(bookingTimeParts[2] || '0'), 0);
       const existingEnd = new Date(existingStart.getTime() + booking.duration * 3600000);
       if (newStart < existingEnd && newEnd > existingStart) {
         if (!latestConflictEnd || existingEnd > latestConflictEnd) {
@@ -189,7 +195,10 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
       let isSlotAvailable = true;
 
       for (const booking of dayBookings) {
-        const existingStart = new Date(`${booking.booking_date}T${booking.booking_time}`);
+        // Parse time parts to create Date without timezone conversion
+        const timeParts = booking.booking_time.split(':').map(p => p.split('.')[0]);
+        const existingStart = new Date(booking.booking_date);
+        existingStart.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), parseInt(timeParts[2] || '0'), 0);
         const existingEnd = new Date(existingStart.getTime() + booking.duration * 3600000);
         if (proposedStart < existingEnd && proposedEnd > existingStart) {
           isSlotAvailable = false;
@@ -346,7 +355,10 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
   }
 
   const formatBookingTime = (booking: BoardroomBooking | SoundproofPodBooking) => {
-    const start = new Date(`${booking.booking_date}T${booking.booking_time}`);
+    // Parse time parts to avoid timezone conversion
+    const timeParts = booking.booking_time.split(':').map(p => p.split('.')[0]);
+    const start = new Date(booking.booking_date);
+    start.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), parseInt(timeParts[2] || '0'), 0);
     const end = new Date(start.getTime() + booking.duration * 3600000);
     return `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   };

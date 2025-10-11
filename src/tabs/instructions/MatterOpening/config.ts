@@ -48,6 +48,7 @@ export const practiceAreasByArea: { [key: string]: string[] } = {
         'Small Claim Advice',
         'Trust Advice',
         'Terms and Conditions - Drafting',
+        'Miscellaneous',
     ],
     Construction: [
         'Final Account Recovery',
@@ -56,6 +57,7 @@ export const practiceAreasByArea: { [key: string]: string[] } = {
         'Construction Contract Advice',
         'Interim Payment Recovery',
         'Contract Dispute',
+        'Miscellaneous',
     ],
     Property: [
         'Landlord & Tenant – Commercial Dispute',
@@ -68,6 +70,7 @@ export const practiceAreasByArea: { [key: string]: string[] } = {
         'Investment Sale and Ownership – Advice',
         'Trespass',
         'Right of Way',
+        'Miscellaneous',
     ],
     Employment: [
         'Employment Contract - Drafting',
@@ -82,6 +85,7 @@ export const practiceAreasByArea: { [key: string]: string[] } = {
         'Restrictive Covenant Advice',
         'Post Termination Dispute',
         'Employment Tribunal Claim - Advising',
+        'Miscellaneous',
     ],
 };
 

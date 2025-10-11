@@ -1,12 +1,13 @@
 const express = require('express');
 const { withRequest, sql } = require('../utils/db');
+const { cacheUnified, generateCacheKey, CACHE_CONFIG } = require('../utils/redisClient');
 const router = express.Router();
 
 // Route: GET /api/enquiries-unified
 // Direct database connections to fetch enquiries from BOTH database sources
 router.get('/', async (req, res) => {
   try {
-  // Unified enquiries route called
+    console.log('📊 Unified enquiries route called');
 
     // Parse query parameters for filtering and pagination
     const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 2500); // Default 1000, max 2500
@@ -16,28 +17,83 @@ router.get('/', async (req, res) => {
     const fetchAll = String(req.query.fetchAll || 'false').toLowerCase() === 'true';
     const dateFrom = req.query.dateFrom || '';
     const dateTo = req.query.dateTo || '';
+    const bypassCache = String(req.query.bypassCache || 'false').toLowerCase() === 'true';
 
-    // Connection strings for both databases
-    const mainConnectionString = process.env.SQL_CONNECTION_STRING; // helix-core-data
-    const instructionsConnectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING; // instructions DB
+    // Generate cache key based on query parameters
+    const cacheParams = [
+      limit,
+      email,
+      initials,
+      includeTeamInbox,
+      fetchAll,
+      dateFrom,
+      dateTo
+    ].filter(p => p !== '' && p !== null && p !== undefined);
 
-    if (!mainConnectionString || !instructionsConnectionString) {
-      console.error('❌ Required connection strings not found in environment');
-      return res.status(500).json({
-        enquiries: [],
-        count: 0,
-        error: 'Database configuration missing'
+    const cacheKey = generateCacheKey(
+      CACHE_CONFIG.PREFIXES.UNIFIED,
+      'enquiries',
+      ...cacheParams
+    );
+
+    // Use Redis cache wrapper if not bypassed
+    if (!bypassCache) {
+      const result = await cacheUnified([cacheKey], async () => {
+        return await performUnifiedEnquiriesQuery(req.query);
       });
+      return res.json(result);
     }
 
-  // Connecting to databases
-    
-    // Sequential database queries to avoid overwhelming connections
-    const mainEnquiries = await withRequest(mainConnectionString, async (request) => {
-      // Build WHERE clause dynamically
+    // Bypass cache - direct query
+    const result = await performUnifiedEnquiriesQuery(req.query);
+    res.json({ ...result, cached: false });
+
+  } catch (error) {
+    console.error('❌ Error in enquiries-unified route:', error);
+    // Return a tolerant 200 with warnings to avoid blocking the UI
+    res.status(200).json({
+      enquiries: [],
+      count: 0,
+      sources: { main: 0, instructions: 0, unique: 0 },
+      warnings: [{ source: 'unified', message: error?.message || 'Unknown error' }],
+      migration: { total: 0, migrated: 0, partial: 0, notMigrated: 0, instructionsOnly: 0, migrationRate: '0.0%', crossReferenceMap: {} }
+    });
+  }
+});
+
+/**
+ * Perform the actual unified enquiries query (extracted for caching)
+ */
+async function performUnifiedEnquiriesQuery(queryParams) {
+  console.log('🔍 Performing fresh unified enquiries query');
+
+  const limit = Math.min(parseInt(queryParams.limit, 10) || 1000, 2500);
+  const email = (queryParams.email || '').trim().toLowerCase();
+  const initials = (queryParams.initials || '').trim().toLowerCase();
+  const includeTeamInbox = String(queryParams.includeTeamInbox || 'true').toLowerCase() === 'true';
+  const fetchAll = String(queryParams.fetchAll || 'false').toLowerCase() === 'true';
+  const dateFrom = queryParams.dateFrom || '';
+  const dateTo = queryParams.dateTo || '';
+
+  // Connection strings for both databases
+  const mainConnectionString = process.env.SQL_CONNECTION_STRING; // helix-core-data
+  const instructionsConnectionString = process.env.INSTRUCTIONS_SQL_CONNECTION_STRING; // instructions DB
+
+  if (!mainConnectionString || !instructionsConnectionString) {
+    console.error('❌ Required connection strings not found in environment');
+    throw new Error('Database configuration missing');
+  }
+
+  // Collect warnings and debug info
+  const warnings = [];
+
+  // Main DB query
+  let mainEnquiries = [];
+  let mainWhereClause = '';
+  try {
+    const result = await withRequest(mainConnectionString, async (request) => {
       const filters = [];
-      
-      // Date range filtering
+
       if (dateFrom) {
         request.input('dateFrom', sql.DateTime2, new Date(dateFrom));
         filters.push('Date_Created >= @dateFrom');
@@ -52,35 +108,24 @@ router.get('/', async (req, res) => {
       // User filtering (unless fetchAll is true)
       if (!fetchAll && (email || initials)) {
         const pocConditions = [];
-        
         if (email) {
           request.input('userEmail', sql.VarChar(255), email);
           pocConditions.push("LOWER(LTRIM(RTRIM(Point_of_Contact))) = @userEmail");
         }
-        
         if (initials) {
           request.input('userInitials', sql.VarChar(50), initials.replace(/\./g, ''));
-          pocConditions.push(
-            "LOWER(REPLACE(REPLACE(LTRIM(RTRIM(Point_of_Contact)), ' ', ''), '.', '')) = @userInitials"
-          );
+          pocConditions.push("LOWER(REPLACE(REPLACE(LTRIM(RTRIM(Point_of_Contact)), ' ', ''), '.', '')) = @userInitials");
         }
-
         if (includeTeamInbox) {
           pocConditions.push("LOWER(LTRIM(RTRIM(Point_of_Contact))) IN ('team@helix-law.com', 'team', 'team inbox')");
         }
-
-        if (pocConditions.length > 0) {
-          filters.push(`(${pocConditions.join(' OR ')})`);
-        }
+        if (pocConditions.length > 0) filters.push(`(${pocConditions.join(' OR ')})`);
       }
 
       request.input('limit', sql.Int, limit);
-      
-      const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+      mainWhereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
 
-      console.log(`📊 Enquiries query: limit=${limit}, filters=${filters.length}, fetchAll=${fetchAll}`);
-
-      const result = await request.query(`
+      return await request.query(`
         SELECT TOP (@limit)
           ID,
           ID as id,
@@ -99,280 +144,218 @@ router.get('/', async (req, res) => {
           Last_Name as last,
           Email as email,
           Phone_Number as phone,
-          Value as value,
+          NULL as uid,
+          NULL as displayNumber,
+          NULL as postcode,
+          Initial_first_call_notes,
           Initial_first_call_notes as notes,
-          Gift_Rank as rank,
-          Rating as rating,
-          ID as acid,
-          ID as card_id,
-          Ultimate_Source as source,
-          Referral_URL as url,
-          Contact_Referrer as contact_referrer,
-          Referring_Company as company_referrer,
-          GCLID as gclid,
-          'main' as db_source
+          NULL as convertDate,
+          'main' as source,
+          'not-checked' as migrationStatus
         FROM enquiries
-        ${whereClause}
+        ${mainWhereClause}
         ORDER BY Date_Created DESC
       `);
-      console.log(`✅ Retrieved ${result.recordset?.length || 0} enquiries from main DB`);
-      return Array.isArray(result.recordset) ? result.recordset : [];
-      return Array.isArray(result.recordset) ? result.recordset : [];
     });
-
-    // Instructions database query - now enabled for cross-reference analysis
-    let instructionsEnquiries = [];
-    
-    try {
-      instructionsEnquiries = await withRequest(instructionsConnectionString, async (request) => {
-        // Simple query to get all instructions enquiries for cross-reference
-        const result = await request.query(`
-          SELECT 
-            id,
-            datetime,
-            stage,
-            claim,
-            poc,
-            pitch,
-            aow,
-            tow,
-            moc,
-            rep,
-            first,
-            last,
-            email,
-            phone,
-            value,
-            notes,
-            rank,
-            rating,
-            acid,
-            card_id,
-            source,
-            url,
-            contact_referrer,
-            company_referrer,
-            gclid,
-            'instructions' as db_source
-          FROM enquiries
-          ORDER BY datetime DESC
-        `);
-        console.log(`✅ Retrieved ${result.recordset?.length || 0} enquiries from instructions DB`);
-        return Array.isArray(result.recordset) ? result.recordset : [];
-      });
-    } catch (instructionsError) {
-      console.warn('⚠️ Instructions DB unavailable, proceeding with main DB only:', instructionsError.message);
-      instructionsEnquiries = [];
-    }
-
-    // Cross-reference analysis: match enquiries between databases
-    const crossReferenceMap = new Map(); // key: main enquiry ID, value: match info
-    
-    mainEnquiries.forEach(mainEnq => {
-      const matches = instructionsEnquiries.filter(instEnq => {
-        // Match criteria: email exact match (highest priority)
-        if (mainEnq.email && instEnq.email && 
-            mainEnq.email.toLowerCase().trim() === instEnq.email.toLowerCase().trim()) {
-          return true;
-        }
-        
-        // Secondary match: name similarity + date proximity
-        const mainFullName = `${mainEnq.first || ''} ${mainEnq.last || ''}`.trim().toLowerCase();
-        const instFullName = `${instEnq.first || ''} ${instEnq.last || ''}`.trim().toLowerCase();
-        
-        if (mainFullName && instFullName && mainFullName === instFullName) {
-          // Check date proximity (within 7 days)
-          const mainDate = new Date(mainEnq.datetime);
-          const instDate = new Date(instEnq.datetime);
-          const daysDiff = Math.abs(mainDate - instDate) / (1000 * 60 * 60 * 24);
-          
-          if (daysDiff <= 7) {
-            return true;
-          }
-        }
-        
-        return false;
-      });
-      
-      let migrationStatus = 'not-migrated';
-      let matchScore = 0;
-      let matchedEnquiry = null;
-      
-      if (matches.length > 0) {
-        // Take the best match (first one for now)
-        matchedEnquiry = matches[0];
-        
-        // Calculate match quality
-        if (mainEnq.email && matchedEnquiry.email && 
-            mainEnq.email.toLowerCase().trim() === matchedEnquiry.email.toLowerCase().trim()) {
-          matchScore = 100; // Perfect email match
-          migrationStatus = 'migrated';
-        } else {
-          matchScore = 70; // Name + date match
-          migrationStatus = 'partial';
-        }
-      }
-      
-      crossReferenceMap.set(mainEnq.ID, {
-        migrationStatus,
-        matchScore,
-        instructionsId: matchedEnquiry?.id || null,
-        matchedData: matchedEnquiry
-      });
-      
-      // Add migration metadata to the main enquiry object
-      mainEnq.migrationStatus = migrationStatus;
-      mainEnq.matchScore = matchScore;
-      mainEnq.instructionsId = matchedEnquiry?.id || null;
-    });
-
-    // Mark instructions enquiries that don't have main counterparts
-    instructionsEnquiries.forEach(instEnq => {
-      const hasMainCounterpart = Array.from(crossReferenceMap.values())
-        .some(ref => ref.instructionsId === instEnq.id);
-      
-      if (!hasMainCounterpart) {
-        instEnq.migrationStatus = 'instructions-only';
-        instEnq.matchScore = 0;
-        instEnq.mainId = null;
-      }
-    });
-
-    // Merge results from both databases
-    const allEnquiries = [
-      ...mainEnquiries,
-      ...instructionsEnquiries
-    ];
-
-    // Remove duplicates based on id (ProspectId)
-    const uniqueEnquiries = [];
-    const seenIds = new Set();
-    
-    for (const enquiry of allEnquiries) {
-      const enquiryId = enquiry.id || enquiry.acid;
-      if (enquiryId && !seenIds.has(enquiryId)) {
-        seenIds.add(enquiryId);
-        uniqueEnquiries.push(enquiry);
-      } else if (!enquiryId) {
-        // Include enquiries without id (they can't be duplicates)
-        uniqueEnquiries.push(enquiry);
-      }
-    }
-
-  // Unified result prepared
-    
-    // Calculate migration statistics
-    const migrationStats = {
-      total: mainEnquiries.length,
-      migrated: 0,
-      partial: 0,
-      notMigrated: 0,
-      instructionsOnly: instructionsEnquiries.filter(e => e.migrationStatus === 'instructions-only').length
-    };
-    
-    mainEnquiries.forEach(enq => {
-      switch (enq.migrationStatus) {
-        case 'migrated':
-          migrationStats.migrated++;
-          break;
-        case 'partial':
-          migrationStats.partial++;
-          break;
-        case 'not-migrated':
-          migrationStats.notMigrated++;
-          break;
-      }
-    });
-    
-    const migrationRate = migrationStats.total > 0 
-      ? ((migrationStats.migrated / migrationStats.total) * 100).toFixed(1)
-      : '0.0';
-    
-    const responsePayload = {
-      enquiries: uniqueEnquiries,
-      count: uniqueEnquiries.length,
-      sources: {
-        main: mainEnquiries.length,
-        instructions: instructionsEnquiries.length,
-        unique: uniqueEnquiries.length
-      },
-      migration: {
-        ...migrationStats,
-        migrationRate: `${migrationRate}%`,
-        crossReferenceMap: Object.fromEntries(crossReferenceMap)
-      }
-    };
-    
-    const payloadSize = JSON.stringify(responsePayload).length;
-    const payloadMB = (payloadSize / 1024 / 1024).toFixed(2);
-    console.log(`📦 Response: ${uniqueEnquiries.length} enquiries, ${payloadMB}MB payload`);
-    
-    // Return data in expected format
-    res.json(responsePayload);
-    
-    // Connection cleanup handled automatically by withRequest utility
-    
+    mainEnquiries = Array.isArray(result.recordset) ? result.recordset : [];
   } catch (err) {
-    console.warn('❌ Error fetching unified enquiries from databases:', err.message);
-    console.error('Full error:', err);
-    // Return empty data instead of 500 error - don't block app
-    res.status(200).json({ 
-      enquiries: [], 
-      count: 0, 
-      error: 'Databases temporarily unavailable',
-      sources: {
-        main: 0,
-        instructions: 0,
-        unique: 0
-      }
-    });
+    console.error('❌ Main DB enquiries query failed:', err?.message || err);
+    warnings.push({ source: 'main', message: err?.message || String(err) });
+    mainEnquiries = [];
   }
-});
+
+  // Instructions DB query
+  let instructionsEnquiries = [];
+  let instWhereClause = '';
+  try {
+    const result = await withRequest(instructionsConnectionString, async (request) => {
+      const filters = [];
+      if (dateFrom) {
+        request.input('dateFrom', sql.DateTime2, new Date(dateFrom));
+        filters.push('datetime >= @dateFrom');
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        request.input('dateTo', sql.DateTime2, endDate);
+        filters.push('datetime <= @dateTo');
+      }
+      if (!fetchAll && (email || initials)) {
+        const pocConditions = [];
+        if (email) {
+          request.input('userEmail', sql.VarChar(255), email);
+          pocConditions.push("LOWER(LTRIM(RTRIM(poc))) = @userEmail");
+        }
+        if (initials) {
+          request.input('userInitials', sql.VarChar(50), initials.replace(/\./g, ''));
+          pocConditions.push("LOWER(REPLACE(REPLACE(LTRIM(RTRIM(poc)), ' ', ''), '.', '')) = @userInitials");
+        }
+        if (includeTeamInbox) {
+          pocConditions.push("LOWER(LTRIM(RTRIM(poc))) IN ('team@helix-law.com', 'team', 'team inbox')");
+        }
+        if (pocConditions.length > 0) filters.push(`(${pocConditions.join(' OR ')})`);
+      }
+      request.input('limit', sql.Int, limit);
+      instWhereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+
+      return await request.query(`
+        SELECT TOP (@limit)
+          id,
+          datetime,
+          stage,
+          claim,
+          poc,
+          pitch,
+          aow,
+          tow,
+          moc,
+          rep,
+          first,
+          last,
+          email,
+          phone,
+          NULL as uid,
+          NULL as displayNumber,
+          NULL as postcode,
+          notes,
+          NULL as convertDate,
+          'instructions' as source,
+          'not-checked' as migrationStatus
+        FROM dbo.enquiries
+        ${instWhereClause}
+        ORDER BY datetime DESC
+      `);
+    });
+    instructionsEnquiries = Array.isArray(result.recordset) ? result.recordset : [];
+  } catch (err) {
+    console.error('❌ Instructions DB enquiries query failed:', err?.message || err);
+    warnings.push({ source: 'instructions', message: err?.message || String(err) });
+    instructionsEnquiries = [];
+  }
+
+  // Cross-reference and merge
+  const crossReferenceMap = new Map();
+  // by uid
+  mainEnquiries.forEach(mainEnq => {
+    if (mainEnq.uid || mainEnq.Unique_ID) {
+      const uid = mainEnq.uid || mainEnq.Unique_ID;
+      const match = instructionsEnquiries.find(inst => inst.uid === uid || inst.uid === String(uid));
+      if (match) {
+        crossReferenceMap.set(mainEnq.id, match.id);
+        mainEnq.migrationStatus = 'migrated';
+        match.migrationStatus = 'migrated';
+      }
+    }
+  });
+  // by email/phone
+  mainEnquiries.forEach(mainEnq => {
+    if (mainEnq.migrationStatus === 'not-checked' && (mainEnq.email || mainEnq.phone)) {
+      const match = instructionsEnquiries.find(inst => inst.migrationStatus === 'not-checked' && (
+        (mainEnq.email && inst.email && mainEnq.email.toLowerCase() === inst.email.toLowerCase()) ||
+        (mainEnq.phone && inst.phone && mainEnq.phone === inst.phone)
+      ));
+      if (match) {
+        crossReferenceMap.set(mainEnq.id, match.id);
+        mainEnq.migrationStatus = 'partial';
+        match.migrationStatus = 'partial';
+      }
+    }
+  });
+
+  const allEnquiries = [...mainEnquiries, ...instructionsEnquiries];
+  const uniqueEnquiries = [];
+  const seenIds = new Set();
+  for (const enquiry of allEnquiries) {
+    const enquiryId = enquiry.id || enquiry.acid; // keep acid fallback for legacy rows
+    if (enquiryId && !seenIds.has(enquiryId)) {
+      seenIds.add(enquiryId);
+      uniqueEnquiries.push(enquiry);
+    } else if (!enquiryId) {
+      uniqueEnquiries.push(enquiry);
+    }
+  }
+
+  const migrationStats = {
+    total: mainEnquiries.length,
+    migrated: 0,
+    partial: 0,
+    notMigrated: 0,
+    instructionsOnly: instructionsEnquiries.filter(e => e.migrationStatus === 'instructions-only').length
+  };
+  mainEnquiries.forEach(enq => {
+    switch (enq.migrationStatus) {
+      case 'migrated':
+        migrationStats.migrated++;
+        break;
+      case 'partial':
+        migrationStats.partial++;
+        break;
+      case 'not-migrated':
+        migrationStats.notMigrated++;
+        break;
+    }
+  });
+
+  const migrationRate = migrationStats.total > 0
+    ? ((migrationStats.migrated / migrationStats.total) * 100).toFixed(1)
+    : '0.0';
+
+  const responsePayload = {
+    enquiries: uniqueEnquiries,
+    count: uniqueEnquiries.length,
+    sources: {
+      main: mainEnquiries.length,
+      instructions: instructionsEnquiries.length,
+      unique: uniqueEnquiries.length
+    },
+    warnings,
+    debug: {
+      mainWhereClause,
+      instWhereClause
+    },
+    migration: {
+      ...migrationStats,
+      migrationRate: `${migrationRate}%`,
+      crossReferenceMap: Object.fromEntries(crossReferenceMap)
+    }
+  };
+
+  const payloadSize = JSON.stringify(responsePayload).length;
+  const payloadMB = (payloadSize / 1024 / 1024).toFixed(2);
+  console.log(`📦 Response: ${uniqueEnquiries.length} enquiries, ${payloadMB}MB payload`);
+
+  return responsePayload;
+}
+
+// (removed corrupted duplicate POST /update route)
 
 // Route: POST /api/enquiries-unified/update
-// Update enquiry fields in both database schemas
+// Update enquiry fields in the main database
 router.post('/update', async (req, res) => {
   const { ID, ...updates } = req.body;
-  
-  if (!ID) {
-    return res.status(400).json({ error: 'Enquiry ID is required' });
-  }
 
-  if (Object.keys(updates).length === 0) {
-    return res.status(400).json({ error: 'No updates provided' });
-  }
+  if (!ID) return res.status(400).json({ error: 'Enquiry ID is required' });
+  if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No updates provided' });
 
   try {
-    // Connection string for main database (helix-core-data) only
     const mainConnectionString = process.env.SQL_CONNECTION_STRING;
-
     if (!mainConnectionString) {
       console.error('❌ Main connection string not found in environment');
       return res.status(500).json({ error: 'Database configuration missing' });
     }
 
-    // Check if enquiry exists in main database using withRequest utility
     const checkMainQuery = `SELECT COUNT(*) as count FROM enquiries WHERE ID = @id`;
-    
     const mainResult = await withRequest(mainConnectionString, async (request) => {
       request.input('id', sql.VarChar(50), ID);
       return await request.query(checkMainQuery);
     });
-    
     const mainCount = mainResult.recordset[0]?.count || 0;
-    
+    if (mainCount === 0) return res.status(404).json({ error: 'Enquiry not found' });
 
-    if (mainCount === 0) {
-      return res.status(404).json({ error: 'Enquiry not found' });
-    }
-
-    // Update in main database (helix-core-data) only
-    
-    const updateResult = await withRequest(mainConnectionString, async (request) => {
+    await withRequest(mainConnectionString, async (request) => {
       const setClause = [];
       request.input('id', sql.VarChar(50), ID);
-      
-      // Map updates to main schema
+
       if (updates.First_Name !== undefined) {
         setClause.push('First_Name = @firstName');
         request.input('firstName', sql.VarChar(100), updates.First_Name);
@@ -400,13 +383,12 @@ router.post('/update', async (req, res) => {
 
       if (setClause.length > 0) {
         const updateQuery = `UPDATE enquiries SET ${setClause.join(', ')} WHERE ID = @id`;
-        return await request.query(updateQuery);
+        await request.query(updateQuery);
       }
-      return null;
     });
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       message: 'Enquiry updated successfully',
       enquiryId: ID,
       updatedTables: { main: true }
@@ -414,10 +396,7 @@ router.post('/update', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error updating enquiry:', error);
-    res.status(500).json({ 
-      error: 'Failed to update enquiry', 
-      details: error.message 
-    });
+    res.status(500).json({ error: 'Failed to update enquiry', details: error?.message || 'Unknown error' });
   }
 });
 
