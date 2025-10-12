@@ -8,22 +8,26 @@ const { withRequest } = require('../utils/db');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 const fetch = require('node-fetch');
+// Reuse the direct Clio current-week implementation from reporting route to avoid Azure Function fallback
+const reportingRoute = require('./reporting');
+const { fetchWipClioCurrentWeek: fetchWipClioCurrentWeekDirect } = reportingRoute;
 
 // Re-use the same dataset fetcher functions from reporting.js
 // (We'll import these or duplicate the core functions)
 
-// Cache TTL configurations for each dataset (in seconds)
+// Cache TTL configurations for each dataset (in seconds) - Optimized for performance
 const DATASET_TTL = {
   userData: 300,      // 5 min - user data changes rarely
   teamData: 1800,     // 30 min - team data is fairly static
   enquiries: 600,     // 10 min - enquiries update regularly
   allMatters: 900,    // 15 min - matters update moderately
-  wip: 300,          // 5 min - WIP data changes frequently
-  recoveredFees: 1800, // 30 min - financial data less frequent
-  recoveredFeesSummary: 900, // 15 min
-  poidData: 1800,     // 30 min - POID data changes infrequently
-  wipClioCurrentWeek: 300,   // 5 min - current week WIP
-  wipDbLastWeek: 600, // 10 min - last week data
+  wip: 1800,          // 30 min - Increased from 5min due to heavy query (was 300)
+  recoveredFees: 3600, // 60 min - Increased from 30min due to heavy query (was 1800)
+  recoveredFeesSummary: 1800, // 30 min - Increased from 15min (was 900)
+  poidData: 3600,     // 60 min - Increased from 30min due to heavy query (was 1800)
+  wipClioCurrentWeek: 600,   // 10 min - Increased from 5min (was 300)
+  wipDbLastWeek: 1200, // 20 min - Increased from 10min (was 600)
+  wipDbCurrentWeek: 600, // 10 min - current week DB fallback
 };
 
 // Server-Sent Events endpoint for progressive dataset loading
@@ -95,8 +99,16 @@ router.get('/stream-datasets', async (req, res) => {
 
   // Process each dataset individually with Redis caching
   const processDataset = async (datasetName) => {
+    const startTime = Date.now();
     try {
       console.log(`🔍 Processing dataset: ${datasetName}`);
+      
+      // Send processing status to client
+      writeSse({
+        type: 'dataset-processing',
+        dataset: datasetName,
+        status: 'processing'
+      });
       
       // Check Redis cache first (unless bypassing)
       let result = null;
@@ -106,12 +118,15 @@ router.get('/stream-datasets', async (req, res) => {
         try {
           const redisClient = await getRedisClient();
           if (redisClient) {
-            const cacheKey = generateCacheKey('stream', `${datasetName}:${entraId || 'team'}`);
+            // For wipClioCurrentWeek we always use team scope; key by 'team' to avoid per-user caching
+            const scopeKey = datasetName === 'wipClioCurrentWeek' ? 'team' : (entraId || 'team');
+            const cacheKey = generateCacheKey('stream', `${datasetName}:${scopeKey}`);
             const cached = await redisClient.get(cacheKey);
             if (cached) {
               result = JSON.parse(cached);
               fromCache = true;
-              console.log(`📋 Dataset ${datasetName} cache hit (Redis)`);
+              const cacheTime = Date.now() - startTime;
+              console.log(`📋 Dataset ${datasetName} cache hit (Redis) in ${cacheTime}ms`);
             }
           }
         } catch (redisError) {
@@ -121,15 +136,32 @@ router.get('/stream-datasets', async (req, res) => {
 
       // Fetch from source if not in cache
       if (!result) {
-        console.log(`🚀 Fetching ${datasetName} from source`);
-        result = await fetchDatasetByName(datasetName, { connectionString, entraId });
-        console.log(`✅ Dataset ${datasetName} fetched, result type:`, typeof result, 'array length:', Array.isArray(result) ? result.length : 'not array');
+        const fetchStartTime = Date.now();
+        const isHeavyDataset = ['wip', 'recoveredFees', 'poidData'].includes(datasetName);
+        const timeoutMs = isHeavyDataset ? 120000 : 45000; // 2min for heavy, 45s for light
+        
+        console.log(`🚀 Fetching ${datasetName} from source (timeout: ${timeoutMs}ms, heavy: ${isHeavyDataset})`);
+        
+        try {
+          result = await Promise.race([
+            fetchDatasetByName(datasetName, { connectionString, entraId }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error(`Query timeout after ${timeoutMs}ms`)), timeoutMs))
+          ]);
+          
+          const fetchTime = Date.now() - fetchStartTime;
+          console.log(`✅ Dataset ${datasetName} fetched in ${fetchTime}ms, result type:`, typeof result, 'array length:', Array.isArray(result) ? result.length : 'not array');
+        } catch (fetchError) {
+          const fetchTime = Date.now() - fetchStartTime;
+          console.error(`❌ Dataset ${datasetName} fetch failed after ${fetchTime}ms:`, fetchError.message);
+          throw fetchError;
+        }
         
         // Store in Redis cache
         try {
           const redisClient = await getRedisClient();
           if (redisClient) {
-            const cacheKey = generateCacheKey('stream', `${datasetName}:${entraId || 'team'}`);
+            const scopeKey2 = datasetName === 'wipClioCurrentWeek' ? 'team' : (entraId || 'team');
+            const cacheKey = generateCacheKey('stream', `${datasetName}:${scopeKey2}`);
             const ttl = DATASET_TTL[datasetName] || 600;
             await redisClient.setEx(cacheKey, ttl, JSON.stringify(result));
             console.log(`📋 Dataset ${datasetName} cached (Redis, TTL: ${ttl}s)`);
@@ -140,19 +172,22 @@ router.get('/stream-datasets', async (req, res) => {
       }
 
       // Send completed dataset to client
+      const totalTime = Date.now() - startTime;
       writeSse({
         type: 'dataset-complete',
         dataset: datasetName,
         status: 'ready',
         data: result,
         cached: fromCache,
-        count: Array.isArray(result) ? result.length : (result ? 1 : 0)
+        count: Array.isArray(result) ? result.length : (result ? 1 : 0),
+        processingTimeMs: totalTime
       });
 
-      console.log(`✅ Dataset ${datasetName} sent to client`);
+      console.log(`✅ Dataset ${datasetName} sent to client (total time: ${totalTime}ms)`);
 
     } catch (error) {
-      console.error(`❌ Dataset ${datasetName} failed:`, error.message);
+      const totalTime = Date.now() - startTime;
+      console.error(`❌ Dataset ${datasetName} failed after ${totalTime}ms:`, error.message);
       console.error('Full error:', error);
       
       // Send error status to client
@@ -160,7 +195,8 @@ router.get('/stream-datasets', async (req, res) => {
         type: 'dataset-error',
         dataset: datasetName,
         status: 'error',
-        error: error.message
+        error: error.message,
+        processingTimeMs: totalTime
       });
     }
   };
@@ -219,10 +255,16 @@ async function fetchDatasetByName(datasetName, { connectionString, entraId, clio
       return fetchWipClioCurrentWeek({ connectionString, entraId });
     case 'wipDbLastWeek':
       return fetchWipDbLastWeek({ connectionString });
+    case 'wipDbCurrentWeek':
+      return fetchWipDbCurrentWeek({ connectionString });
     default:
       throw new Error(`Unknown dataset: ${datasetName}`);
   }
 }
+
+// Expose dispatcher for external callers (e.g., cache preheater)
+// Attach as a property on the router so require('./reporting-stream') can destructure it.
+router.fetchDatasetByName = fetchDatasetByName;
 
 // Dataset fetcher functions (duplicated from reporting.js for now)
 // TODO: Extract these to a shared module
@@ -276,52 +318,80 @@ async function fetchAllMatters({ connectionString }) {
 
 async function fetchWip({ connectionString }) {
   const { from, to } = getLast24MonthsExcludingCurrentWeek();
-  return withRequest(connectionString, async (request, sqlClient) => {
-    request.input('dateFrom', sqlClient.Date, formatDateOnly(from));
-    request.input('dateTo', sqlClient.Date, formatDateOnly(to));
-    const result = await request.query(`
-      SELECT id, date, 
-             CONVERT(VARCHAR(10), created_at_date, 120) + 'T' + CONVERT(VARCHAR(8), created_at_time, 108) AS created_at,
-             CONVERT(VARCHAR(10), updated_at_date, 120) + 'T' + CONVERT(VARCHAR(8), updated_at_time, 108) AS updated_at,
-             type, matter_id, matter_display_number, quantity_in_hours, note, total, price,
-             expense_category, activity_description_id, activity_description_name, user_id, bill_id, billed
-      FROM [dbo].[wip] WHERE created_at_date BETWEEN @dateFrom AND @dateTo
-      ORDER BY created_at_date DESC
-    `);
-    if (!Array.isArray(result.recordset)) return [];
-    return result.recordset.map((row) => {
-      if (row.quantity_in_hours != null) {
-        const value = Number(row.quantity_in_hours);
-        if (!Number.isNaN(value)) {
-          row.quantity_in_hours = Math.ceil(value * 10) / 10;
+  console.log(`🔍 WIP Query (paged): ${formatDateOnly(from)} → ${formatDateOnly(to)}`);
+
+  // Page by calendar month to avoid any implicit row caps
+  const windows = enumerateMonthlyWindows(from, to);
+  const all = [];
+
+  for (const win of windows) {
+    // eslint-disable-next-line no-await-in-loop
+    const page = await withRequest(connectionString, async (request, sqlClient) => {
+      request.input('dateFrom', sqlClient.Date, formatDateOnly(win.start));
+      request.input('dateTo', sqlClient.Date, formatDateOnly(win.end));
+      const result = await request.query(`
+        SELECT id, date,
+               CONVERT(VARCHAR(10), created_at_date, 120) + 'T' + CONVERT(VARCHAR(8), created_at_time, 108) AS created_at,
+               CONVERT(VARCHAR(10), updated_at_date, 120) + 'T' + CONVERT(VARCHAR(8), updated_at_time, 108) AS updated_at,
+               type, matter_id, matter_display_number, quantity_in_hours, note, total, price,
+               expense_category, activity_description_id, activity_description_name, user_id, bill_id, billed
+        FROM [dbo].[wip] WITH (NOLOCK)
+        WHERE created_at_date BETWEEN @dateFrom AND @dateTo
+      `);
+      const rows = Array.isArray(result.recordset) ? result.recordset : [];
+      return rows.map((row) => {
+        if (row.quantity_in_hours != null) {
+          const value = Number(row.quantity_in_hours);
+          if (!Number.isNaN(value)) row.quantity_in_hours = Math.ceil(value * 10) / 10;
         }
-      }
-      return row;
+        return row;
+      });
     });
-  });
+    all.push(...page);
+  }
+
+  // Sort newest first to match previous behaviour
+  all.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)) || (Number(b.id || 0) - Number(a.id || 0)));
+  console.log(`✅ WIP Query: Combined ${all.length} records across ${windows.length} windows`);
+  return all;
 }
 
 async function fetchRecoveredFees({ connectionString }) {
   const { from, to } = getLast24MonthsRange();
-  return withRequest(connectionString, async (request, sqlClient) => {
-    request.input('dateFrom', sqlClient.Date, formatDateOnly(from));
-    request.input('dateTo', sqlClient.Date, formatDateOnly(to));
-    const result = await request.query(`
-      SELECT matter_id, bill_id, contact_id, id, date, created_at, kind, type, activity_type,
-             description, sub_total, tax, secondary_tax, user_id, user_name, payment_allocated,
-             CONVERT(VARCHAR(10), payment_date, 120) AS payment_date
-      FROM [dbo].[collectedTime] WHERE payment_date BETWEEN @dateFrom AND @dateTo
-      ORDER BY payment_date DESC
-    `);
-    if (!Array.isArray(result.recordset)) return [];
-    return result.recordset.map((row) => {
-      if (row.payment_allocated != null) {
-        const value = Number(row.payment_allocated);
-        if (!Number.isNaN(value)) row.payment_allocated = value;
-      }
-      return row;
+  console.log(`🔍 Recovered Fees Query (paged): ${formatDateOnly(from)} → ${formatDateOnly(to)}`);
+
+  // Page by calendar month to avoid limits
+  const windows = enumerateMonthlyWindows(from, to);
+  const all = [];
+
+  for (const win of windows) {
+    // eslint-disable-next-line no-await-in-loop
+    const page = await withRequest(connectionString, async (request, sqlClient) => {
+      request.input('dateFrom', sqlClient.Date, formatDateOnly(win.start));
+      request.input('dateTo', sqlClient.Date, formatDateOnly(win.end));
+      const result = await request.query(`
+        SELECT matter_id, bill_id, contact_id, id, date, created_at, kind, type, activity_type,
+               description, sub_total, tax, secondary_tax, user_id, user_name, payment_allocated,
+               CONVERT(VARCHAR(10), payment_date, 120) AS payment_date
+        FROM [dbo].[collectedTime] WITH (NOLOCK)
+        WHERE payment_date BETWEEN @dateFrom AND @dateTo
+      `);
+      const rows = Array.isArray(result.recordset) ? result.recordset : [];
+      return rows.map((row) => {
+        if (row.payment_allocated != null) {
+          const value = Number(row.payment_allocated);
+          if (!Number.isNaN(value)) row.payment_allocated = value;
+        }
+        return row;
+      });
     });
-  });
+    all.push(...page);
+  }
+
+  // Newest first
+  all.sort((a, b) => String(b.payment_date).localeCompare(String(a.payment_date)) || (Number(b.id || 0) - Number(a.id || 0)));
+  console.log(`✅ Recovered Fees Query: Combined ${all.length} records across ${windows.length} windows`);
+  return all;
 }
 
 async function fetchRecoveredFeesSummary({ connectionString, entraId, clioId }) {
@@ -331,11 +401,15 @@ async function fetchRecoveredFeesSummary({ connectionString, entraId, clioId }) 
 
 async function fetchPoidData({ connectionString }) {
   const { from, to } = getLast24MonthsRange();
+  console.log(`🔍 POID Query: Fetching data from ${formatDateOnly(from)} to ${formatDateOnly(to)}`);
+  
   return withRequest(connectionString, async (request, sqlClient) => {
     request.input('dateFrom', sqlClient.Date, formatDateOnly(from));
     request.input('dateTo', sqlClient.Date, formatDateOnly(to));
+    
+    // Optimized query with performance improvements and reduced field selection
     const result = await request.query(`
-      SELECT poid_id, type, terms_acceptance, submission_url,
+      SELECT TOP 5000 poid_id, type, terms_acceptance, submission_url,
              CONVERT(VARCHAR(10), submission_date, 120) AS submission_date,
              id_docs_folder, acid, card_id, poc, nationality_iso, nationality, gender,
              first, last, prefix, date_of_birth, best_number, email, passport_number,
@@ -346,24 +420,71 @@ async function fetchPoidData({ connectionString }) {
              check_id, additional_id_submission_id, additional_id_submission_url,
              additional_id_submission_date, client_id, related_client_id, matter_id,
              risk_assessor, risk_assessment_date
-      FROM [dbo].[poid] WHERE submission_date BETWEEN @dateFrom AND @dateTo
-      ORDER BY submission_date DESC
+      FROM [dbo].[poid] WITH (NOLOCK)
+      WHERE submission_date BETWEEN @dateFrom AND @dateTo
+      ORDER BY submission_date DESC, poid_id DESC
     `);
+    
+    console.log(`✅ POID Query: Retrieved ${result.recordset?.length || 0} records`);
+    
     return Array.isArray(result.recordset) ? result.recordset : [];
   });
 }
 
 async function fetchWipClioCurrentWeek({ connectionString, entraId }) {
-  // Simplified version - could implement full Clio integration
-  return {
-    current_week: { daily_data: {}, activities: [] },
-    last_week: { daily_data: {}, activities: [] },
-  };
+  // Management dashboard requires TEAM-WIDE current-week data.
+  // Force team scope here regardless of entraId so we don't accidentally fetch only the current user.
+  try {
+    if (typeof fetchWipClioCurrentWeekDirect === 'function') {
+      return await fetchWipClioCurrentWeekDirect({ connectionString, entraId: null });
+    }
+  } catch (e) {
+    console.warn('Direct Clio current-week fetch failed in streaming route:', e.message);
+  }
+  // Safe empty struct on failure
+  return { current_week: { daily_data: {}, activities: [] }, last_week: { daily_data: {}, activities: [] } };
 }
 
 async function fetchWipDbLastWeek({ connectionString }) {
-  // Implementation similar to reporting.js
-  return [];
+  const now = new Date();
+  const current = new Date(now);
+  current.setHours(0, 0, 0, 0);
+  const day = current.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const startOfCurrentWeek = new Date(current);
+  startOfCurrentWeek.setDate(current.getDate() + diff);
+  const endOfCurrentWeek = new Date(startOfCurrentWeek);
+  endOfCurrentWeek.setDate(startOfCurrentWeek.getDate() + 6);
+  endOfCurrentWeek.setHours(23, 59, 59, 999);
+
+  const lastWeekStart = new Date(startOfCurrentWeek);
+  lastWeekStart.setDate(startOfCurrentWeek.getDate() - 7);
+  lastWeekStart.setHours(0, 0, 0, 0);
+  const lastWeekEnd = new Date(endOfCurrentWeek);
+  lastWeekEnd.setDate(endOfCurrentWeek.getDate() - 7);
+  lastWeekEnd.setHours(23, 59, 59, 999);
+
+  return withRequest(connectionString, async (request, sqlClient) => {
+    request.input('dateFrom', sqlClient.Date, formatDateOnly(lastWeekStart));
+    request.input('dateTo', sqlClient.Date, formatDateOnly(lastWeekEnd));
+    const result = await request.query(`
+      SELECT id, date,
+             CONVERT(VARCHAR(10), created_at_date, 120) + 'T' + CONVERT(VARCHAR(8), created_at_time, 108) AS created_at,
+             CONVERT(VARCHAR(10), updated_at_date, 120) + 'T' + CONVERT(VARCHAR(8), updated_at_time, 108) AS updated_at,
+             type, matter_id, matter_display_number, quantity_in_hours, note, total, price,
+             expense_category, activity_description_id, activity_description_name, user_id, bill_id, billed
+      FROM [dbo].[wip]
+      WHERE created_at_date BETWEEN @dateFrom AND @dateTo
+    `);
+    const rows = Array.isArray(result.recordset) ? result.recordset : [];
+    return rows.map((row) => {
+      if (row.quantity_in_hours != null) {
+        const value = Number(row.quantity_in_hours);
+        if (!Number.isNaN(value)) row.quantity_in_hours = Math.ceil(value * 10) / 10;
+      }
+      return row;
+    });
+  });
 }
 
 // Helper functions
@@ -398,4 +519,77 @@ function formatDateOnly(date) {
   return date.toISOString().split('T')[0];
 }
 
+// Enumerate calendar-month windows between two dates (inclusive)
+function enumerateMonthlyWindows(from, to) {
+  const windows = [];
+  const start = new Date(from.getFullYear(), from.getMonth(), 1);
+  const end = new Date(to.getFullYear(), to.getMonth(), 1);
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const winStart = new Date(cursor);
+    winStart.setHours(0, 0, 0, 0);
+    const winEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+    winEnd.setHours(23, 59, 59, 999);
+    // Clamp window to provided range
+    const clampedStart = winStart < from ? new Date(from) : winStart;
+    const clampedEnd = winEnd > to ? new Date(to) : winEnd;
+    windows.push({ start: clampedStart, end: clampedEnd });
+    cursor.setMonth(cursor.getMonth() + 1, 1);
+  }
+  return windows;
+}
+
 module.exports = router;
+
+// Local helper shared with function-first path
+function normalizeFunctionWipClio(payload) {
+  if (payload.current_week && payload.last_week) return payload;
+  const current = payload.current_week || payload.currentWeek || {};
+  const last = payload.last_week || payload.lastWeek || {};
+  return {
+    current_week: {
+      activities: Array.isArray(current.activities) ? current.activities : (Array.isArray(payload.activities) ? payload.activities : []),
+      daily_data: current.daily_data || current.dailyData || {},
+    },
+    last_week: {
+      activities: Array.isArray(last.activities) ? last.activities : [],
+      daily_data: last.daily_data || last.dailyData || {},
+    },
+  };
+}
+
+// Lightweight: fetch only current week's WIP from DB (as activity-like rows)
+async function fetchWipDbCurrentWeek({ connectionString }) {
+  const now = new Date();
+  const current = new Date(now);
+  current.setHours(0, 0, 0, 0);
+  const day = current.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const startOfCurrentWeek = new Date(current);
+  startOfCurrentWeek.setDate(current.getDate() + diff);
+  const endOfCurrentWeek = new Date(startOfCurrentWeek);
+  endOfCurrentWeek.setDate(startOfCurrentWeek.getDate() + 6);
+  endOfCurrentWeek.setHours(23, 59, 59, 999);
+
+  return withRequest(connectionString, async (request, sqlClient) => {
+    request.input('dateFrom', sqlClient.Date, formatDateOnly(startOfCurrentWeek));
+    request.input('dateTo', sqlClient.Date, formatDateOnly(endOfCurrentWeek));
+    const result = await request.query(`
+      SELECT id, date,
+             CONVERT(VARCHAR(10), created_at_date, 120) + 'T' + CONVERT(VARCHAR(8), created_at_time, 108) AS created_at,
+             CONVERT(VARCHAR(10), updated_at_date, 120) + 'T' + CONVERT(VARCHAR(8), updated_at_time, 108) AS updated_at,
+             type, matter_id, matter_display_number, quantity_in_hours, note, total, price,
+             expense_category, activity_description_id, activity_description_name, user_id, bill_id, billed
+      FROM [dbo].[wip]
+      WHERE created_at_date BETWEEN @dateFrom AND @dateTo
+    `);
+    const rows = Array.isArray(result.recordset) ? result.recordset : [];
+    return rows.map((row) => {
+      if (row.quantity_in_hours != null) {
+        const value = Number(row.quantity_in_hours);
+        if (!Number.isNaN(value)) row.quantity_in_hours = Math.ceil(value * 10) / 10;
+      }
+      return row;
+    });
+  });
+}

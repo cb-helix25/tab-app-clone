@@ -875,40 +875,50 @@ router.post('/updateAnnualLeave', async (req, res) => {
 // GET /api/attendance/annual-leave-all - Get all annual leave data for reporting
 router.get('/annual-leave-all', async (req, res) => {
   try {
-    const password = await getSqlPassword();
+    // Generate cache key for annual leave data (daily TTL since leave data doesn't change frequently)
+    const today = new Date().toISOString().split('T')[0];
+    const cacheKey = generateCacheKey('attendance', 'annual-leave-all', today);
     
-    if (!password) {
-      return res.status(500).json({
-        success: false,
-        error: 'Could not retrieve database credentials'
-      });
-    }
+    // Use cache wrapper with 24-hour TTL
+    const result = await cacheWrapper(
+      cacheKey,
+      async () => {
+        const password = await getSqlPassword();
+        
+        if (!password) {
+          throw new Error('Could not retrieve database credentials');
+        }
 
-    const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
-    
-  const result = await attendanceQuery(projectDataConnStr, (req) =>
-      req.query(`
-        SELECT 
-          request_id,
-          fe AS person,
-          start_date,
-          end_date,
-          reason,
-          status,
-          days_taken,
-          leave_type,
-          rejection_notes,
-          hearing_confirmation,
-          hearing_details
-        FROM annualLeave 
-        ORDER BY start_date DESC
-      `)
+        const projectDataConnStr = `Server=tcp:helix-database-server.database.windows.net,1433;Initial Catalog=helix-project-data;Persist Security Info=False;User ID=helix-database-server;Password=${password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;`;
+        
+        const queryResult = await attendanceQuery(projectDataConnStr, (req) =>
+          req.query(`
+            SELECT 
+              request_id,
+              fe AS person,
+              start_date,
+              end_date,
+              reason,
+              status,
+              days_taken,
+              leave_type,
+              rejection_notes,
+              hearing_confirmation,
+              hearing_details
+            FROM annualLeave 
+            ORDER BY start_date DESC
+          `)
+        );
+
+        return {
+          success: true,
+          all_data: queryResult.recordset
+        };
+      },
+      86400 // 24-hour TTL in seconds
     );
 
-    res.json({
-      success: true,
-      all_data: result.recordset
-    });
+    res.json(result);
 
   } catch (error) {
     console.error('Error fetching all annual leave:', error);

@@ -1098,23 +1098,55 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   ), [matters, activeStart, activeEnd]);
 
   const filteredWip = useMemo(() => {
-    // OPTIMIZED: Cache range timestamps to avoid repeated Date operations
-    const startTime = activeStart.getTime();
-    const endTime = activeEnd.getTime();
-    
+    // Normalize a date-like input to a local-day Date at 00:00
+    const toLocalDay = (input: unknown): Date | null => {
+      if (typeof input !== 'string') {
+        const d = input instanceof Date ? input : new Date(input as any);
+        if (!Number.isNaN(d.getTime())) {
+          return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        }
+        return null;
+      }
+      const s = input.trim();
+      // Extract leading YYYY-MM-DD if present
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) {
+        const y = Number(m[1]);
+        const mo = Number(m[2]) - 1;
+        const da = Number(m[3]);
+        return new Date(y, mo, da); // local midnight
+      }
+      // Fallback: parse and clamp to local midnight
+      const d = new Date(s);
+      if (!Number.isNaN(d.getTime())) {
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      }
+      return null;
+    };
+
+    const startTime = new Date(activeStart.getFullYear(), activeStart.getMonth(), activeStart.getDate()).getTime();
+    const endOfDay = new Date(activeEnd);
+    endOfDay.setHours(23, 59, 59, 999);
+    const endTime = endOfDay.getTime();
+
     const filtered = wip.filter((entry) => {
-      // Prefer date field (YYYY-MM-DD from Clio) over created_at for more accurate filtering
-      const dateValue = entry.date || entry.created_at;
-      const parsed = parseDateValue(dateValue);
-      if (!parsed) return false;
-      
-      // Direct time comparison (faster than withinRange function call)
-      const time = parsed.getTime();
-      return time >= startTime && time <= endTime;
+      const when = toLocalDay(entry.date || entry.created_at || (entry as any).updated_at);
+      if (!when) return false;
+      const t = when.getTime();
+      return t >= startTime && t <= endTime;
     });
-    
+
+    if (rangeKey === 'week') {
+      // eslint-disable-next-line no-console
+      console.log('[ManagementDashboard] Filtered WIP for This Week:', filtered.map(e => ({ date: e.date, created_at: e.created_at, hours: e.quantity_in_hours, value: e.total })));
+      if (filtered.length === 0 && wip.length > 0) {
+        const sample = wip.slice(0, 5).map(e => ({ rawDate: e.date, rawCreated: e.created_at }));
+        // eslint-disable-next-line no-console
+        console.log('[ManagementDashboard] WIP sample (first 5) with dates:', sample, 'Range:', { start: activeStart, end: activeEnd });
+      }
+    }
     return filtered;
-  }, [wip, activeStart, activeEnd]);
+  }, [wip, activeStart, activeEnd, rangeKey]);
 
   const filteredFees = useMemo(() => (
     fees.filter((entry) => {

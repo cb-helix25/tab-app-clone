@@ -16,6 +16,7 @@ interface UseStreamingDatasetsOptions {
   entraId?: string;
   bypassCache?: boolean;
   autoStart?: boolean;
+  maxConcurrent?: number; // Maximum number of datasets to fetch in parallel
 }
 
 interface DatasetState {
@@ -25,13 +26,14 @@ interface DatasetState {
   count: number;
   error?: string;
   updatedAt?: number;
+  elapsedMs?: number;
 }
 
 interface UseStreamingDatasetsResult {
   datasets: Record<string, DatasetState>;
   isConnected: boolean;
   isComplete: boolean;
-  start: () => void;
+  start: (override?: { datasets?: string[]; bypassCache?: boolean }) => void;
   stop: () => void;
   progress: {
     completed: number;
@@ -46,23 +48,29 @@ export function useStreamingDatasets(options: UseStreamingDatasetsOptions = {}):
     entraId,
     bypassCache = false,
     autoStart = false,
+    maxConcurrent = 3, // Process up to 3 datasets in parallel for optimal performance
   } = options;
 
   const [datasetStates, setDatasetStates] = useState<Record<string, DatasetState>>({});
   const [isConnected, setIsConnected] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const stop = useCallback(() => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     setIsConnected(false);
     setIsComplete(false);
   }, []);
 
-  const start = useCallback(() => {
+  const start = useCallback((override?: { datasets?: string[]; bypassCache?: boolean }) => {
     // Close existing connection first
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -72,13 +80,19 @@ export function useStreamingDatasets(options: UseStreamingDatasetsOptions = {}):
     setIsComplete(false);
 
     // Build URL with query parameters
+    const effectiveDatasets = override?.datasets && override.datasets.length > 0 ? override.datasets : datasets;
+    const effectiveBypass = override?.bypassCache ?? bypassCache;
+
     const url = new URL('/api/reporting-stream/stream-datasets', window.location.origin);
-    url.searchParams.set('datasets', datasets.join(','));
+    url.searchParams.set('datasets', effectiveDatasets.join(','));
     if (entraId) {
       url.searchParams.set('entraId', entraId);
     }
-    if (bypassCache) {
+    if (effectiveBypass) {
       url.searchParams.set('bypassCache', 'true');
+    }
+    if (maxConcurrent) {
+      url.searchParams.set('maxConcurrent', maxConcurrent.toString());
     }
 
     // Create EventSource connection
@@ -86,8 +100,8 @@ export function useStreamingDatasets(options: UseStreamingDatasetsOptions = {}):
     eventSourceRef.current = eventSource;
 
     // Track timings for a concise summary at the end
-    const streamStart = Date.now();
-    const starts: Record<string, number> = {};
+  const streamStart = Date.now();
+  const starts: Record<string, number> = {};
     let cachedCount = 0;
     let cachedElapsed = 0;
     let freshCount = 0;
@@ -96,6 +110,28 @@ export function useStreamingDatasets(options: UseStreamingDatasetsOptions = {}):
     eventSource.onopen = () => {
       setIsConnected(true);
       setIsComplete(false);
+      
+      // Set a timeout to mark stuck datasets as error after 5 minutes
+      timeoutRef.current = setTimeout(() => {
+        console.warn('Streaming timeout reached - marking incomplete datasets as error');
+        setDatasetStates(prev => {
+          const next = { ...prev };
+          Object.keys(next).forEach(dataset => {
+            if (next[dataset].status === 'loading') {
+              next[dataset] = {
+                ...next[dataset],
+                status: 'error',
+                error: 'Timeout: Dataset took too long to load (>5min)',
+                updatedAt: Date.now(),
+                elapsedMs: starts[dataset] ? Date.now() - starts[dataset] : undefined,
+              };
+            }
+          });
+          return next;
+        });
+        setIsComplete(true);
+        stop();
+      }, 300000); // 5 minutes timeout (300 seconds)
     };
 
     eventSource.onmessage = (event) => {
@@ -115,6 +151,7 @@ export function useStreamingDatasets(options: UseStreamingDatasetsOptions = {}):
                     cached: false,
                     count: 0,
                     updatedAt: undefined,
+                    elapsedMs: 0,
                   };
                 });
                 return next;
@@ -143,6 +180,7 @@ export function useStreamingDatasets(options: UseStreamingDatasetsOptions = {}):
                   cached: update.cached || false,
                   count: update.count || 0,
                   updatedAt: Date.now(),
+                  elapsedMs: started ? Date.now() - started : undefined,
                 },
               }));
             }
@@ -150,6 +188,7 @@ export function useStreamingDatasets(options: UseStreamingDatasetsOptions = {}):
 
           case 'dataset-error':
             if (update.dataset) {
+              const started = starts[update.dataset!];
               setDatasetStates(prev => ({
                 ...prev,
                 [update.dataset!]: {
@@ -157,6 +196,7 @@ export function useStreamingDatasets(options: UseStreamingDatasetsOptions = {}):
                   status: 'error',
                   error: update.error,
                   updatedAt: Date.now(),
+                  elapsedMs: started ? Date.now() - started : undefined,
                 },
               }));
             }
@@ -164,6 +204,11 @@ export function useStreamingDatasets(options: UseStreamingDatasetsOptions = {}):
 
           case 'complete':
             setIsComplete(true);
+            // Clear timeout since we completed successfully
+            if (timeoutRef.current) {
+              clearTimeout(timeoutRef.current);
+              timeoutRef.current = null;
+            }
             // Print one concise summary
             const totalElapsed = Date.now() - streamStart;
             const avgFresh = freshCount ? Math.round(freshElapsed / freshCount) : 0;

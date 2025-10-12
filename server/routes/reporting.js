@@ -7,7 +7,8 @@ const { getRedisClient, cacheWrapper, generateCacheKey } = require('../utils/red
 
 const router = express.Router();
 
-const DEFAULT_DATASETS = ['userData', 'teamData', 'enquiries', 'allMatters', 'wip', 'recoveredFees', 'poidData', 'wipClioCurrentWeek'];
+// Use lightweight last-week snapshot instead of full WIP to keep management fast
+const DEFAULT_DATASETS = ['userData', 'teamData', 'enquiries', 'allMatters', 'wipDbLastWeek', 'recoveredFees', 'poidData', 'wipClioCurrentWeek'];
 const CACHE_TTL_MS = Number(process.env.REPORTING_DATASET_TTL_MS || 2 * 60 * 1000);
 const cache = new Map();
 
@@ -129,19 +130,46 @@ router.get('/management-datasets', async (req, res) => {
     }
   }
 
-  // Join: Merge Clio current-week into payload for frontend consumption
+  // Join: Merge current-week (prefer Clio; fallback to DB if Clio unavailable) into payload for frontend consumption
   try {
+    console.log('🔍 Starting current-week merge process...');
+    
     // Extract activities array from the object structure returned by fetchWipClioCurrentWeek
-    const clioActivities = responsePayload.wipClioCurrentWeek?.current_week?.activities 
+    let clioActivities = responsePayload.wipClioCurrentWeek?.current_week?.activities 
       || (Array.isArray(responsePayload.wipClioCurrentWeek) ? responsePayload.wipClioCurrentWeek : null);
+    
+    console.log('📊 Clio activities found:', clioActivities ? clioActivities.length : 0);
+    
     // Prefer lightweight last-week dataset when present; fallback to full wip if explicitly requested
     const dbWipActivities = Array.isArray(responsePayload.wipDbLastWeek)
       ? responsePayload.wipDbLastWeek
       : (Array.isArray(responsePayload.wip) ? responsePayload.wip : null);
 
+    console.log('📊 DB WIP activities found:', dbWipActivities ? dbWipActivities.length : 0);
+
+    // If Clio data is missing or empty, populate current week from DB as a fallback
+    if (!clioActivities || clioActivities.length === 0) {
+      console.log('⚠️ No Clio activities, trying DB fallback for current week...');
+      // Prefer a direct DB query for the current week window
+      try {
+        const dbCurrentWeek = await fetchWipDbCurrentWeek({ connectionString });
+        if (Array.isArray(dbCurrentWeek) && dbCurrentWeek.length > 0) {
+          clioActivities = dbCurrentWeek;
+          console.log('✅ DB fallback successful, activities:', dbCurrentWeek.length);
+        } else {
+          console.log('❌ DB fallback returned no activities');
+        }
+      } catch (fallbackErr) {
+        console.warn('DB fallback for current-week WIP failed:', fallbackErr.message);
+      }
+    }
+
     if (clioActivities || dbWipActivities) {
+      console.log('🔄 Computing weekly aggregations...');
       // Compute current and last week bounds
       const { start: currentStart, end: currentEnd } = getCurrentWeekBounds();
+      console.log('📅 Current week bounds:', formatDateOnly(currentStart), 'to', formatDateOnly(currentEnd));
+      
       const lastWeekStart = new Date(currentStart);
       lastWeekStart.setDate(currentStart.getDate() - 7);
       lastWeekStart.setHours(0, 0, 0, 0);
@@ -157,10 +185,26 @@ router.get('/management-datasets', async (req, res) => {
         ? aggregateDailyData(dbWipActivities, lastWeekStart, lastWeekEnd)
         : {};
 
+      console.log('📈 Current week daily data days:', Object.keys(currentWeekDaily).length);
+      console.log('📈 Last week daily data days:', Object.keys(lastWeekDaily).length);
+
+      // If Clio data was missing and we used DB fallback, also shape wipClioCurrentWeek to satisfy UI merge
+      if ((!responsePayload.wipClioCurrentWeek || !responsePayload.wipClioCurrentWeek.current_week?.activities?.length) && clioActivities && clioActivities.length > 0) {
+        console.log('🔧 Shaping wipClioCurrentWeek from DB fallback');
+        responsePayload.wipClioCurrentWeek = {
+          current_week: { activities: clioActivities, daily_data: currentWeekDaily },
+          last_week: { activities: [], daily_data: {} },
+        };
+      }
+
       responsePayload.wipCurrentAndLastWeek = {
-        current_week: { daily_data: currentWeekDaily },
-        last_week: { daily_data: lastWeekDaily },
+        current_week: { daily_data: currentWeekDaily, activities: clioActivities || [] },
+        last_week: { daily_data: lastWeekDaily, activities: dbWipActivities || [] },
       };
+      
+      console.log('✅ wipCurrentAndLastWeek created with current week activities:', (clioActivities || []).length);
+    } else {
+      console.log('❌ No activities found for current or last week');
     }
   } catch (e) {
     console.error('Failed to merge current-week WIP from Clio', e);
@@ -176,6 +220,9 @@ router.get('/management-datasets', async (req, res) => {
 });
 
 module.exports = router;
+
+// Expose selected helpers for reuse in streaming route
+module.exports.fetchWipClioCurrentWeek = fetchWipClioCurrentWeek;
 
 async function fetchUserData({ connectionString, entraId }) {
   if (!entraId) {
@@ -353,6 +400,49 @@ async function fetchWipDbLastWeek({ connectionString }) {
   });
 }
 
+// Lightweight: fetch only current week's WIP from DB (as activity-like rows)
+async function fetchWipDbCurrentWeek({ connectionString }) {
+  const { start, end } = getCurrentWeekBounds();
+  return withRequest(connectionString, async (request, sqlClient) => {
+    request.input('dateFrom', sqlClient.Date, formatDateOnly(start));
+    request.input('dateTo', sqlClient.Date, formatDateOnly(end));
+    const result = await request.query(`
+      SELECT 
+        id,
+        date,
+        CONVERT(VARCHAR(10), created_at_date, 120) + 'T' + CONVERT(VARCHAR(8), created_at_time, 108) AS created_at,
+        CONVERT(VARCHAR(10), updated_at_date, 120) + 'T' + CONVERT(VARCHAR(8), updated_at_time, 108) AS updated_at,
+        type,
+        matter_id,
+        matter_display_number,
+        quantity_in_hours,
+        note,
+        total,
+        price,
+        expense_category,
+        activity_description_id,
+        activity_description_name,
+        user_id,
+        bill_id,
+        billed
+      FROM [dbo].[wip]
+      WHERE created_at_date BETWEEN @dateFrom AND @dateTo
+    `);
+    if (!Array.isArray(result.recordset)) {
+      return [];
+    }
+    return result.recordset.map((row) => {
+      if (row.quantity_in_hours != null) {
+        const value = Number(row.quantity_in_hours);
+        if (!Number.isNaN(value)) {
+          row.quantity_in_hours = Math.ceil(value * 10) / 10;
+        }
+      }
+      return row;
+    });
+  });
+}
+
 // --- Direct Clio API Integration (replaced Azure Function call) ---
 const credential = new DefaultAzureCredential();
 const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
@@ -445,10 +535,14 @@ async function getClioAccessToken() {
     refresh_token: refreshToken,
   });
   
+  // Abort after 20s to avoid hanging requests
+  const tokenAbort = new AbortController();
+  const tokenTimeout = setTimeout(() => tokenAbort.abort(), 20000);
   const response = await fetch(`https://eu.app.clio.com/oauth/token?${params.toString()}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-  });
+    signal: tokenAbort.signal,
+  }).finally(() => clearTimeout(tokenTimeout));
   
   if (!response.ok) {
     const errorText = await response.text();
@@ -639,13 +733,17 @@ async function fetchAllClioActivities(startDate, endDate, accessToken, userId = 
     
     const url = `${activitiesUrl}?${params.toString()}`;
     
+    // Abort each page after 20s to prevent indefinite waits
+    const pageAbort = new AbortController();
+    const pageTimeout = setTimeout(() => pageAbort.abort(), 20000);
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-    });
+      signal: pageAbort.signal,
+    }).finally(() => clearTimeout(pageTimeout));
     
     if (!response.ok) {
       const errorText = await response.text();
