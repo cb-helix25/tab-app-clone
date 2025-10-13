@@ -97,7 +97,7 @@
         "dev:all": "concurrently \"npm run start:azurite\" \"npm run start:decoupled-functions\" \"npm run start:api-functions\" \"npm run start:server\" \"npm run start:dev\"",
         "dev:backend": "concurrently \"npm run start:azurite\" \"npm run start:decoupled-functions\" \"npm run start:api-functions\" \"npm run start:server\"",
         "dev:functions": "concurrently \"npm run start:azurite\" \"npm run start:decoupled-functions\" \"npm run start:api-functions\"",
-        "start": "node server.js",
+        "start": "react-scripts start",
         "start:dev": "react-scripts start",
         "start:3001": "set PORT=3001 && react-scripts start",
         "start:quiet": "BROWSER=none react-scripts start",

@@ -1,168 +1,177 @@
-# Helix Hub v1 - Teams App
-*Legal Services Platform for Microsoft Teams*
+# Helix Hub v1 - Teams App Clone
+*Minimal UI-Only Demo - Legal Services Platform for Microsoft Teams*
 
-## 🚀 Quick Start for New Agents
+## 🚀 Quick Start for UI Demo
 
-**PRIORITY**: Execute database cleanup to remove 67% test data noise.  
-**See**: [`docs/AGENT_ONBOARDING_GUIDE.md`](docs/AGENT_ONBOARDING_GUIDE.md) for 5-minute setup.
+**SETUP**: This is a trimmed-down clone for UI demonstration purposes only.  
+**Configuration**: Uses local JSON fixtures via `REACT_APP_USE_LOCAL_DATA=true`.  
+**Purpose**: Showcase Team Hub interface and home tab layout without live integrations.
 
-### Current State (Oct 1, 2025)
-- ✅ **Teams Mobile Fix**: ECONNRESET errors resolved with enhanced connection pooling
-- ✅ **Connection Resilience**: Health checks, queue timeouts, and retry logic implemented
-- ✅ **Pill System**: Interactive status pills with expandable details implemented
-- ✅ **Risk Display**: Fixed color coding (green for low risk, not red)
-- ✅ **Email Updates**: Deal capture notifications sent to both lz@ and cb@helix-law.com
-- ✅ **Unified API**: Instructions loading optimized via `/api/instructions` endpoint
-- ✅ **Architecture**: Documented and stable (see `/docs` folder)
-- ⚠️ **Database**: 45 records with 30 test noise records ready for cleanup
-- ⚠️ **Luke Test**: Health indicator preserved at `HLX-27367-94842`
+### Current State - UI Demo Version (Oct 13, 2025)
+- ✅ **UI-Only Mode**: Configured to use local JSON fixtures instead of live API calls
+- ✅ **Minimal Footprint**: Removed backend services, Azure Functions, and database dependencies  
+- ✅ **Core Interface**: Team Hub section and home tab layout preserved for demonstration
+- ✅ **Sample Data**: Bundled JSON fixtures provide realistic UI interaction
+- ✅ **Pill System**: Interactive status pills with expandable details (UI only)
+- ✅ **Clean Structure**: Only essential files kept (public/, src/, config files)
+- 📦 **Dependencies**: Optimized for frontend-only development and demonstration
 
-### Recent Updates
+### Clone Setup History
 
-#### October 1, 2025 - Teams Mobile Connection Fix
-- ✅ **ECONNRESET Resolution** - Fixed database connection errors affecting Teams mobile users
-- ✅ **Enhanced Pooling** - Increased concurrency from 6 to 25 parallel requests
-- ✅ **Health Monitoring** - Automatic connection validation every 2 minutes
-- ✅ **Queue Protection** - 30s timeout prevents indefinite request waiting
-- ✅ **Mobile Optimization** - Reduced timeouts for faster mobile client failures
-- 📖 **See**: [`docs/TEAMS_MOBILE_FIX_SUMMARY.md`](docs/TEAMS_MOBILE_FIX_SUMMARY.md)
+#### October 13, 2025 - UI Demo Clone Creation
+- ✅ **Repository Clone** - Forked from main tab-app repository for demo purposes
+- ✅ **Backend Removal** - Deleted server/, api/, database/ and other backend directories
+- ✅ **Local Data Mode** - Configured `.env.local` with `REACT_APP_USE_LOCAL_DATA=true`
+- ✅ **File Cleanup** - Removed deployment scripts, Azure configs, and development tools
+- ✅ **Dependencies** - Reinstalled npm packages for frontend-only operation
+- 📦 **Structure** - Minimal footprint: public/, src/, docs/, and essential config files
 
-#### September 9, 2025
-- ✅ **Pill Functionality** - Interactive status pills replace action tabs
-- ✅ **Expandable Details** - Click completed pills to view detailed information
-- ✅ **Document Integration** - Documents clickable within detail sections
-- ✅ **Smart Interactions** - Next action pills trigger actions, completed pills show details
+### Available Documentation
+- **📖 [Documentation](docs/)** - Various guides and technical details preserved from original repository
+- **⚠️ Note**: Documentation reflects the full system; this clone only includes the UI components
 
-### Important Documentation
-- **� [Teams Mobile Fix Summary](docs/TEAMS_MOBILE_FIX_SUMMARY.md)** - Connection error resolution
-- **⚡ [Azure Config Quick Reference](docs/AZURE_CONFIG_QUICK_REFERENCE.md)** - Deployment guide
-- **�📋 [Instructions Component Guide](docs/QUICKSTART_INSTRUCTIONS.md)** - Fast track for next agent
-- **📊 [Database Analysis](docs/INSTRUCTIONS_DATABASE_ANALYSIS.md)** - Complete technical details
-- **🏗️ [Architecture Analysis](ARCHITECTURE_ANALYSIS.md)** - System overview
+### UI Demo Features
+The interface demonstrates:
+- **Team Hub Section**: Main dashboard interface with sample data
+- **Interactive Pills**: Status pills with expandable details (static demo)
+- **Sample Instructions**: Mock client and deal data for UI testing
+- **Responsive Design**: Teams-optimized layout and components
 
-### Instructions Tab Status
-The Instructions tab now correctly separates:
-- **Pitches Tab**: 161 unconverted deals (potential clients)
-- **Clients Tab**: 6 actual instructions (converted clients)
+## Overview of the Teams Tab App Clone
 
-## Overview of the Teams Tab App template
+This is a UI-only demonstration clone of the Helix Hub Teams app. It showcases the interface and user experience without requiring backend services or database connections.
 
-The Teams Tab app template is a Hello World app for Microsoft Teams. It can help you get started with your first Teams app and it can be a base for creating more complex apps.
+### Demo Features (UI Only)
+- **Interface Preview**: Team Hub section with realistic sample data
+- **Component Showcase**: Interactive pills, status displays, and navigation
+- **Layout Demonstration**: Teams-optimized responsive design
+- **Sample Data**: JSON fixtures simulate real instruction and deal data
+- **Static Interactions**: UI components respond without backend processing
 
-### Key Features
-- **Instructions Management**: Unified endpoint for client instruction data
-- **Enquiry Processing**: Automated enquiry capture and routing  
-- **Document Handling**: Secure document storage and management
-- **Workflow Automation**: Streamlined legal processes
-- **Teams Integration**: Native Microsoft Teams experience
+**Note**: This clone uses local JSON fixtures instead of live data. No authentication, database connections, or Azure services are required.
 
-This app uses [On-Behalf-Of flow](https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) for SSO and Azure Functions as middleware for authenticated Microsoft Graph requests.
-
-## Get started with the React with Fluent UI template
+## Get started with the UI Demo Clone
 
 > **Prerequisites**
 >
-> To run the command bot template in your local dev machine, you will need:
+> To run this UI demo clone, you only need:
 >
 > - [Node.js](https://nodejs.org/), supported versions: 18, 20
-> - A [Microsoft 365 account for development](https://docs.microsoft.com/microsoftteams/platform/toolkit/accounts)
-> - [Set up your dev environment for extending Teams apps across Microsoft 365](https://aka.ms/teamsfx-m365-apps-prerequisites)
->   Please note that after you enrolled your developer tenant in Office 365 Target Release, it may take couple days for the enrollment to take effect.
-> - [Teams Toolkit Visual Studio Code Extension](https://aka.ms/teams-toolkit) version 5.0.0 and higher or [Teams Toolkit CLI](https://aka.ms/teamsfx-toolkit-cli)
+> - A web browser (Chrome, Edge, Firefox, etc.)
+> 
+> **Not Required for this clone:**
+> - Microsoft 365 account
+> - Teams Toolkit
+> - Azure subscriptions
+> - Database connections
 
-1. First, select the Teams Toolkit icon on the left in the VS Code toolbar.
-2. In the Account section, sign in with your [Microsoft 365 account](https://docs.microsoft.com/microsoftteams/platform/toolkit/accounts) if you haven't already.
-3. Press F5 to start debugging which launches your app in Teams using a web browser. Select `Debug in Teams (Edge)` or `Debug in Teams (Chrome)`.
-4. When Teams launches in the browser, select the Add button in the dialog to install your app to Teams.
-5. To load the sample data used for local development, set `REACT_APP_USE_LOCAL_DATA=true` before starting the app.
-6. To mock Key Vault credentials locally, set `USE_LOCAL_SECRETS=true` and define variables in your `.env` file using the secret name with hyphens replaced by underscores.
-   You can copy `.env.example` to `.env` as a starting point.
-   For example:
+### Quick Start Steps
 
-   ```env
-   USE_LOCAL_SECRETS=true
-   AC_AUTOMATIONS_APITOKEN=token
-   LZ_CLIO_V1_CLIENTID=id
-   LZ_CLIO_V1_CLIENTSECRET=secret
-   LZ_CLIO_V1_REFRESHTOKEN=refresh
+1. **Install Dependencies** (if not already done):
+   ```bash
+   npm install
    ```
-7. To refresh the local attendance dataset with dummy values derived from `data/team-sql-data.json`, run `npm run generate:attendance`.
-8. To refresh risk, compliance and ID verification data for the dashboard, run `npm run generate:risk` and `npm run generate:tiller`.
-9. To regenerate the POID records derived from instructions, run `npm run generate:idverifications`.
-10. To create sample snippet edit requests for local testing, run `npm run generate:snippets`.
-11. Sample transactions and outstanding balances are provided when using local data.
-12. When running the Azure Functions backend locally, ensure a storage emulator like [Azurite](https://github.com/Azure/Azurite) is running. Otherwise set the `AzureWebJobsStorage` environment variable to a valid Storage connection string so the Functions runtime can acquire its host lock.
 
-**Congratulations**! You are running an application that can now show a beautiful web page in Teams, Outlook and the Microsoft 365 app.
+2. **Verify Configuration**: 
+   The `.env.local` file should contain:
+   ```env
+   REACT_APP_USE_LOCAL_DATA=true
+   ```
 
-![Personal tab demo](https://github.com/OfficeDev/TeamsFx/assets/63089166/9599b53c-8f89-493f-9f7e-9edae1f9be54)
+3. **Start the Demo**:
+   ```bash
+   npm start
+   ```
 
-## What's included in the template
+4. **View in Browser**:
+   Open http://localhost:3000 to see the UI demo
+
+5. **Explore the Interface**:
+   - Navigate through the Team Hub sections
+   - Click on interactive pills to see expanded details
+   - Review sample instruction and deal data
+   - Test responsive design by resizing the browser
+
+**Congratulations**! You are now running a UI demonstration of the Helix Hub interface with sample data.
+
+## What's included in this clone
 
 | Folder       | Contents                                                                                                               |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| `.vscode`    | VSCode files for debugging                                                                                             |
-| `appPackage` | Templates for the Teams application manifest                                                                           |
-| `env`        | Environment files                                                                                                      |
-| `infra`      | Templates for provisioning Azure resources                                                                             |
-| `src`        | The source code for the frontend of the Tab application. Implemented with Fluent UI Framework.                         |
-| `api`        | The source code for the backend of the Tab application. Implemented single-sign-on with OBO flow using Azure Functions. |
+| `src`        | The source code for the frontend UI components. Implemented with React and Fluent UI Framework.                       |
+| `public`     | Static assets and HTML templates for the React application.                                                           |
+| `docs`       | Documentation from the original repository (some may not apply to this UI-only clone).                               |
 
-The following are Teams Toolkit specific project files. You can [visit a complete guide on Github](https://github.com/OfficeDev/TeamsFx/wiki/Teams-Toolkit-Visual-Studio-Code-v5-Guide#overview) to understand how Teams Toolkit works.
+**Removed from clone**: `api/`, `server/`, `appPackage/`, `infra/`, `.vscode/`, and other backend/deployment related folders.
 
-| File                 | Contents                                                                                                                                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `teamsapp.yml`       | This is the main Teams Toolkit project file. The project file defines two primary things: Properties and configuration Stage definitions.                                                                                                               |
-| `teamsapp.local.yml` | This overrides `teamsapp.yml` with actions that enable local execution and debugging.                                                                                                                                                                   |
-| `aad.manifest.json`  | This file defines the configuration of Microsoft Entra app. This template will only provision [single tenant](https://learn.microsoft.com/azure/active-directory/develop/single-and-multi-tenant-apps#who-can-sign-in-to-your-app) Microsoft Entra app. |
+### Configuration Files
 
-## Extend the React with Fluent UI template
+| File                 | Contents                                                                                                                |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `package.json`       | Project dependencies and scripts for the React application.                                                            |
+| `tsconfig.json`      | TypeScript configuration for the frontend code.                                                                        |
+| `config-overrides.js`| React build configuration overrides.                                                                                  |
+| `.env.local`         | Environment configuration set to use local JSON fixtures (`REACT_APP_USE_LOCAL_DATA=true`).                          |
+| `teamsapp.yml`       | Teams Toolkit configuration (preserved but not required for UI demo).                                                 |
+| `teamsapp.local.yml` | Local Teams Toolkit overrides (preserved but not required for UI demo).                                               |
 
-Following documentation will help you to extend the React with Fluent UI template.
+## Using this UI Demo Clone
 
-- [Add or manage the environment](https://learn.microsoft.com/microsoftteams/platform/toolkit/teamsfx-multi-env)
-- [Create multi-capability app](https://learn.microsoft.com/microsoftteams/platform/toolkit/add-capability)
-- [Use an existing Microsoft Entra application](https://learn.microsoft.com/microsoftteams/platform/toolkit/use-existing-aad-app)
-- [Customize the Teams app manifest](https://learn.microsoft.com/microsoftteams/platform/toolkit/teamsfx-preview-and-customize-app-manifest)
-- Host your app in Azure by [provision cloud resources](https://learn.microsoft.com/microsoftteams/platform/toolkit/provision) and [deploy the code to cloud](https://learn.microsoft.com/microsoftteams/platform/toolkit/deploy)
-- [Collaborate on app development](https://learn.microsoft.com/microsoftteams/platform/toolkit/teamsfx-collaboration)
-- [Set up the CI/CD pipeline](https://learn.microsoft.com/microsoftteams/platform/toolkit/use-cicd-template)
-- [Publish the app to your organization or the Microsoft Teams app store](https://learn.microsoft.com/microsoftteams/platform/toolkit/publish)
-- [Enable the app for multi-tenant](https://github.com/OfficeDev/TeamsFx/wiki/Multi-tenancy-Support-for-Azure-AD-app)
-- [Preview the app on mobile clients](https://github.com/OfficeDev/TeamsFx/wiki/Run-and-debug-your-Teams-application-on-iOS-or-Android-client)
+This clone is designed for:
 
-## Architecture Overview
+### Demonstration Purposes
+- **UI Showcase**: Present the Team Hub interface to stakeholders
+- **Design Review**: Evaluate layout, components, and user experience
+- **Component Testing**: Test individual UI elements with sample data
+- **Responsive Testing**: Check interface behavior across different screen sizes
 
-This application uses a unified API architecture to efficiently serve instruction data:
+### Development Reference
+- **Component Structure**: Understand React component organization
+- **Fluent UI Usage**: See how Microsoft's design system is implemented
+- **State Management**: Review local data handling patterns
+- **Layout Patterns**: Reference responsive design approaches
 
-### Data Flow
-1. **Frontend** (React on port 3000) requests instruction data
-2. **Express Server** (port 8080) receives requests and routes to appropriate services
-3. **VNet Azure Functions** (in Azure Virtual Network) access production database
-4. **Production Database** (Azure SQL) stores all instruction, deal, and document data
+### Limitations
+- **No Backend**: Database calls, authentication, and API endpoints are not functional
+- **Static Data**: All information comes from JSON fixtures in the codebase
+- **No Persistence**: Changes are not saved and reset on page refresh
+- **Demo Only**: Not suitable for production use or real data processing
 
-### Key Features
-- **Unified Instruction Endpoint**: Single API call (`/api/instructions`) replaces multiple separate calls
-- **VNet Integration**: Database access through Azure Virtual Network for security
-- **Environment-Driven Configuration**: Use `REACT_APP_USE_LOCAL_DATA=false` to access production data
-- **Server-Side Processing**: Business logic and data transformation handled by Express server
+## Clone Architecture
+
+This UI-only clone has a simplified architecture focused on demonstration:
+
+### Data Flow (Demo Mode)
+1. **React Application** loads at http://localhost:3000
+2. **Local JSON Fixtures** provide sample data instead of API calls
+3. **Component State** manages UI interactions without persistence
+4. **Browser Storage** handles temporary session data only
+
+### Key Differences from Full System
+- **No Backend Services**: Express server, Azure Functions, and databases removed
+- **Static Data**: JSON fixtures replace dynamic database queries
+- **No Authentication**: Microsoft Graph and Azure AD integration disabled
+- **Local Only**: No network calls to external services or APIs
 
 ### Environment Configuration
-- Production data: `REACT_APP_USE_LOCAL_DATA=false` (default)
-- Local test data: `REACT_APP_USE_LOCAL_DATA=true`
-- VNet function authentication via `INSTRUCTIONS_FUNC_CODE` environment variable
+- **Demo Mode**: `REACT_APP_USE_LOCAL_DATA=true` (configured by default)
+- **Sample Data**: Located in `src/` directory as JSON fixtures
+- **No Secrets**: No API keys, connection strings, or credentials required
 
-### Security: Do NOT expose Function keys in frontend
-- Frontend must not reference `REACT_APP_*_CODE` or call Function URLs with `?code=...`.
-- Always call server routes under `/api/...`; the Express server uses Key Vault or env to call Functions.
-- Configure CORS for production via `ALLOWED_ORIGINS` (comma-separated) so only trusted origins are allowed.
+### File Structure
+```
+tab-app-clone/
+├── public/           # Static assets
+├── src/             # React components and JSON fixtures
+├── docs/            # Documentation (reference only)
+├── package.json     # Dependencies
+├── .env.local       # Demo configuration
+└── README.md        # This file
+```
 
-Migration plan (summary):
-1) Replace any frontend `fetch` that includes `?code=` with an equivalent `/api/...` route.
-2) If a route doesn’t exist, add a proxy in `server/routes` that reads the key from Key Vault (or env) and forwards the request.
-3) Remove `REACT_APP_*_CODE` from client env and rotate exposed keys.
 
-## Local development flow (concise)
+
+## Local Development (UI Demo)
 
 Topology
 - React dev server (http://localhost:3000) → Express API (http://localhost:8080) under `/api/*`.
@@ -178,106 +187,73 @@ Start locally
   - “Watch backend” → watches `api` functions (background)
   - “Start backend” → `npm run dev:teamsfx` (Express) (background)
 
-Ports/CORS
-- Functions Core Tools: do not set `cors` in `api/host.json`.
-- Local CORS is configured via `api/local.settings.json` under `Host: { CORS, CORSCredentials }` to allow 3000/8080.
+### Simple Setup
+- **Single Command**: `npm start` starts the React development server
+- **Port**: Application runs on http://localhost:3000
+- **No Backend**: No need to start API servers or database connections
+- **Hot Reload**: Changes to components automatically refresh the browser
 
-Deprecations
-- `/api/getAllMatters` is removed (410 Gone). Use `/api/matters-unified`.
-- Frontend must not call Function URLs with `?code=`; always call Express `/api/...` routes.
+### Development Flow
+1. **Install Dependencies**: `npm install` (if not already done)
+2. **Start Demo**: `npm start`
+3. **Open Browser**: Navigate to http://localhost:3000
+4. **Make Changes**: Edit files in `src/` to see live updates
+5. **Test UI**: Interact with components using sample data
 
-Troubleshooting
-- ECONNREFUSED to 8080: backend not running → start “Start backend”.
-- 410 Gone for `/api/getAllMatters`: update callers to `/api/matters-unified`.
-- CORS error from Functions: ensure `api/host.json` has no `cors` key and `api/local.settings.json` Host.CORS includes `http://localhost:3000` and `http://localhost:8080`.
+### Troubleshooting
+- **Port in use**: If port 3000 is busy, the dev server will prompt to use another port
+- **Build errors**: Run `npm install` to ensure all dependencies are installed
+- **Missing data**: Sample data is embedded in the `src/` directory as JSON fixtures
 
-## Deployment
+## Running the Demo
 
-When deploying to Azure Web Apps on Windows, build the project first so that the root directory contains `index.js` and the compiled React files. The provided [build-and-deploy.ps1](build-and-deploy.ps1) script automates this by running the build, copying the server files and their dependencies along with `web.config`, and then zipping the result for deployment. Deploying the repository directly without building will result in a 500 error because IIS cannot locate `index.js` or the required Node modules.
-
-Once built you can also run the server locally using:
-
+### Quick Start
 ```bash
-npm start
+npm install    # Install dependencies
+npm start      # Start the development server
 ```
 
-This starts the Express server which serves the built application from the root folder.
+### What You'll See
+- **Team Hub Interface**: Main dashboard with sample data
+- **Interactive Components**: Pills, status displays, and navigation elements
+- **Sample Data**: Realistic instruction and deal information for demonstration
+- **Responsive Design**: Layout optimized for various screen sizes
 
-## Draft CCL Workflow
-
-The Draft Client Care Letter (CCL) feature lets you automatically produce a branded Word document for a matter.
-
-Draft CCL lives alongside Overview & Risk in the matter-opening tabs. Partners & Solicitors will see a **Draft CCL** tab where they can edit, save, generate and download the CCL.
-Navigation: `Instructions ▸ Draft CCL`.
-
-### API
-
-* `POST /api/ccl` – generate a new CCL. Payload `{ matterId, draftJson }`.
-* `GET /api/ccl/:matterId` – retrieve the latest draft JSON and download URL.
-* `PATCH /api/ccl/:matterId` – regenerate the Word file after editing the JSON.
-
-Generated files are stored under `public/ccls` and served statically. The matter opening workflow includes a **Generate Draft CCL** step which calls this API and surfaces the resulting download link. Each generation overwrites the previous file.
-
-Example payload using the merge-field schema from `src/app/functionality/cclSchema.js`:
-
-```json
-{
-  "matterId": "123",
-  "draftJson": {
-    "insert_clients_name": "ACME Ltd",
-    "insert_heading_eg_matter_description": "Share purchase",
-    "matter": "HLX-00001-12345",
-    "name_of_person_handling_matter": "Jane Doe",
-    "status": "Solicitor",
-    "names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries": "John Example <john@example.com>",
-    "insert_current_position_and_scope_of_retainer": "Initial advice",
-    "next_steps": "Draft agreement",
-    "realistic_timescale": "2 weeks",
-    "estimate": "Fixed fee",
-    "figure": "1000",
-    "next_stage": "Exchange",
-    "we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible": "TBC"
-  }
-}
-```
-
-Manual entry is required for:
-
-* `names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries`
-* `insert_current_position_and_scope_of_retainer`
-* `next_steps`
-* `realistic_timescale`
-* `estimate`
-* `figure`
-* `next_stage`
-* `we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible`
-
-Token mapping:
-
-| Token | Source |
-| ----- | ------ |
-| `insert_clients_name` | `poid.prefix` + first + last if available, otherwise `company_details.name` |
-| `insert_heading_eg_matter_description` | `matter_details.description` |
-| `matter` | `matter_details.matter_ref` → fallback to `instruction_ref` → fetch `/api/matters/:id` and use `display_number` |
-| `name_of_person_handling_matter` | `team_assignments.fee_earner` |
-| `status` | role of the fee earner from `localUserData` |
-| `names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries` | combined string of fee earner, originating solicitor and supervising partner with emails |
-| `identify_the_other_party_eg_your_opponents` | first opponent name if provided |
-| `email` | email of the fee earner |
-| `insert_current_position_and_scope_of_retainer` | manual entry |
-| `next_steps` | manual entry |
-| `realistic_timescale` | manual entry |
-| `estimate` | manual entry |
-| `figure` | manual entry |
-| `next_stage` | manual entry |
-| `we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible` | manual entry |
-
-If the `/api/matters/:id` request fails, `instruction_ref` is used as the `matter` value.
-
-Quick demo using `curl`:
-
+### Building for Production (Static)
 ```bash
-curl -X POST http://localhost:8080/api/ccl \
-  -H "Content-Type: application/json" \
-  -d '{"matterId":"123","draftJson":{"insert_clients_name":"ACME","insert_heading_eg_matter_description":"Share purchase","matter":"HLX-00001-12345","name_of_person_handling_matter":"Jane Doe","status":"Solicitor"}}'
+npm run build  # Creates optimized build in 'build/' folder
 ```
+The build folder can be served by any static web server for demonstration purposes.
+
+## UI Components Demonstrated
+
+This clone showcases the main interface components of the Helix Hub system:
+
+### Team Hub Sections
+- **Instructions Management**: Client instruction display and navigation
+- **Interactive Pills**: Status indicators with expandable detail views
+- **Dashboard Layout**: Responsive grid system with Teams-optimized styling
+- **Navigation**: Tab-based interface with smooth transitions
+
+### Sample Data Features
+- **Mock Instructions**: Realistic client instruction data for demonstration
+- **Status Pills**: Interactive status indicators showing different workflow states  
+- **Responsive Design**: Interface adapts to different screen sizes and Teams layouts
+- **Fluent UI Components**: Microsoft's design system components used throughout
+
+### Technology Stack (UI Only)
+- **React**: Frontend framework for component-based UI
+- **TypeScript**: Type-safe JavaScript development
+- **Fluent UI**: Microsoft's design system for Teams integration
+- **Local Data**: JSON fixtures for realistic demo content
+
+## Summary
+
+This tab-app-clone repository provides a streamlined, UI-only demonstration of the Helix Hub Teams application. Perfect for:
+
+- **Stakeholder Presentations**: Show interface and user flow without technical setup
+- **Design Reviews**: Evaluate visual design and user experience
+- **Component Testing**: Interact with UI elements using sample data
+- **Reference Implementation**: Study React and Fluent UI patterns
+
+The clone maintains the look and feel of the full system while removing all backend complexity, making it easy to run and demonstrate anywhere.
