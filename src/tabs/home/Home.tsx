@@ -67,6 +67,7 @@ import HomePanel from './HomePanel';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 
 import BespokePanel from '../../app/functionality/BespokePanel';
+import RecentWorkFeed from './RecentWorkFeed';
 
 import ActionSection from './ActionSection';
 import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
@@ -3730,8 +3731,16 @@ const conversionRate = enquiriesMonthToDate
         }}
       />
 
+      {/* Recent Work Feed */}
+      <div style={{ margin: '12px 16px' }}>
+        <RecentWorkFeed 
+          maxItems={8}
+          showHeader={true}
+          compact={false}
+        />
+      </div>
 
-  {/* Contexts Panel */}
+      {/* Contexts Panel */}
       <BespokePanel
         isOpen={isContextPanelOpen}
         onClose={() => {

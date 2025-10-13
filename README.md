@@ -30,6 +30,44 @@
 - **📖 [Documentation](docs/)** - Various guides and technical details preserved from original repository
 - **⚠️ Note**: Documentation reflects the full system; this clone only includes the UI components
 
+### 🆕 Recent Work Feed Feature
+
+**Added October 13, 2025** - Git Commit History Integration
+
+The demo now includes a "Recent Work Completed" feed that displays git commit history:
+
+#### Features
+- **Live Git Data**: Displays actual commit history from the repository
+- **Real-time Updates**: Shows recent commits with author, timestamp, and change statistics
+- **Rich Formatting**: Commit messages formatted with file change indicators
+- **Responsive Design**: Adapts to different screen sizes with compact mode option
+- **Error Handling**: Graceful fallback to mock data if git commands fail
+
+#### Development Setup
+To run with full git history functionality:
+
+1. **Start the Express Server** (Terminal 1):
+   ```bash
+   npm run start:server
+   ```
+
+2. **Start the React App** (Terminal 2):
+   ```bash
+   npm start
+   ```
+
+The proxy configuration routes `/api/*` calls from the React app (port 3000) to the Express server (port 3001).
+
+#### API Endpoints
+- **Git History**: `GET /api/git/history?limit=10`
+- **Health Check**: `GET /api/health`
+
+#### Components Added
+- **RecentWorkFeed**: Main component displaying commit history
+- **gitHistoryService**: Service layer for API communication
+- **Express Server**: Backend API serving git data
+- **Proxy Configuration**: Development setup for API routing
+
 ### UI Demo Features
 The interface demonstrates:
 - **Team Hub Section**: Main dashboard interface with sample data
