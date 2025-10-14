@@ -68,6 +68,56 @@ The proxy configuration routes `/api/*` calls from the React app (port 3000) to 
 - **Express Server**: Backend API serving git data
 - **Proxy Configuration**: Development setup for API routing
 
+### 🔧 Team Issues Board Feature
+
+**Added October 14, 2025** - Lightweight Issues Tracking
+
+The home tab now includes a team issues board for tracking blockers and work ownership:
+
+#### Features
+- **Kanban-style Board**: Four columns (New, In Progress, Blocked, Resolved)
+- **Issue Management**: Track title, description, priority, assignee, and tags
+- **Real-time Updates**: Refresh capability with visual feedback
+- **Local Data Mode**: Uses `src/localData/localIssues.json` for demo data
+- **API Integration**: Optional `/api/team-issues` endpoint for live data
+- **Responsive Design**: Adapts to mobile and desktop layouts
+
+#### Data Structure
+Issues contain:
+- **Basic Info**: ID, title, description, status, priority
+- **Assignment**: Assignee, reporter with display names and initials
+- **Metadata**: Created/updated timestamps, estimated hours, tags
+- **Blocking**: Blocked reason for blocked issues
+
+#### Usage
+- **Local Mode**: Edit `src/localData/localIssues.json` to update demo issues
+- **API Mode**: Set `REACT_APP_USE_LOCAL_DATA=false` and implement `/api/team-issues`
+- **Hybrid**: Falls back to mock data if API endpoint is unavailable
+
+#### API Endpoint
+- **Team Issues**: `GET /api/team-issues` (returns full issues dataset with metadata)
+
+#### Future Database Integration
+In the future, the team issue board form will write directly to a database, which will update the board in real-time. The planned database schema is:
+
+```sql
+CREATE TABLE [dbo].[create_new_issue] (
+    [id]                 UNIQUEIDENTIFIER CONSTRAINT [DF_create_new_issue_id] DEFAULT (newid()) PRIMARY KEY,
+    [title]              TEXT             NULL,
+    [description]        TEXT             NULL,
+    [priority]           TEXT             NULL,
+    [reporter]           NVARCHAR (5)     NULL,  
+    [tags]               TEXT             NULL,
+    [created_at]         DATETIME2 (0)    CONSTRAINT [DF_create_new_issue_created_at] DEFAULT (getdate()) NOT NULL
+);
+```
+
+This will enable:
+- **Persistent Storage**: Issues will be saved permanently to the database
+- **Multi-user Support**: Team members can create and view issues across sessions
+- **Real-time Updates**: Board will refresh automatically when new issues are added
+- **Data Analytics**: Historical issue tracking and reporting capabilities
+
 ### UI Demo Features
 The interface demonstrates:
 - **Team Hub Section**: Main dashboard interface with sample data
@@ -295,3 +345,8 @@ This tab-app-clone repository provides a streamlined, UI-only demonstration of t
 - **Reference Implementation**: Study React and Fluent UI patterns
 
 The clone maintains the look and feel of the full system while removing all backend complexity, making it easy to run and demonstrate anywhere.
+
+FURTHER EDITS:
+
+The Home tab also includes a lightweight issues board so the team can log blockers and track ownership alongside other hub updates. By default it hydrates from `src/localData/localIssues.json`, showing columns for **New**, **In Progress**, **Blocked**, and **Resolved** work. Update the JSON dataset or connect the optional `/api/team-issues` endpoint to surface live data.
+Vision - Seeded a local team issues dataset and loader service that can also fall back to a future /api/team-issues endpoint + Embedded the new board on the Home tab, surfaced the data through the optional Express server, and documented the workflow in the README for local users.

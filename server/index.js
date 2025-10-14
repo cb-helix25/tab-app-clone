@@ -202,12 +202,73 @@ app.get('/api/git/history', async (req, res) => {
   }
 });
 
+// Team issues endpoint
+app.get('/api/team-issues', (req, res) => {
+  try {
+    // In a real implementation, this would fetch from a database or issue tracking system
+    // For demo purposes, return the local JSON data
+    const fs = require('fs');
+    const path = require('path');
+    
+    const issuesPath = path.join(__dirname, '../src/localData/localIssues.json');
+    
+    if (fs.existsSync(issuesPath)) {
+      const issuesData = JSON.parse(fs.readFileSync(issuesPath, 'utf8'));
+      console.log(`Serving ${issuesData.issues.length} team issues`);
+      res.json(issuesData);
+    } else {
+      console.warn('Local issues file not found, returning mock data');
+      
+      // Fallback mock data
+      const mockData = {
+        issues: [
+          {
+            id: 'MOCK-001',
+            title: 'Sample issue from API',
+            description: 'This is a mock issue served from the Express API',
+            status: 'new',
+            priority: 'medium',
+            assignee: 'DEV',
+            assigneeName: 'Developer',
+            reporter: 'API',
+            reporterName: 'API Server',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            tags: ['api', 'mock'],
+            estimatedHours: 2
+          }
+        ],
+        metadata: {
+          lastUpdated: new Date().toISOString(),
+          totalIssues: 1,
+          statusCounts: { new: 1, 'in-progress': 0, blocked: 0, resolved: 0 },
+          priorityCounts: { high: 0, medium: 1, low: 0 }
+        }
+      };
+      
+      res.json(mockData);
+    }
+  } catch (error) {
+    console.error('Error serving team issues:', error);
+    res.status(500).json({
+      error: 'Failed to load team issues',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    service: 'tab-app-git-server'
+    service: 'tab-app-git-server',
+    endpoints: [
+      '/api/git/history',
+      '/api/team-issues',
+      '/api/health'
+    ]
   });
 });
 

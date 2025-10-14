@@ -68,6 +68,7 @@ import { Context as TeamsContextType } from '@microsoft/teams-js';
 
 import BespokePanel from '../../app/functionality/BespokePanel';
 import RecentWorkFeed from './RecentWorkFeed';
+import TeamIssuesBoard from './TeamIssuesBoard';
 
 import ActionSection from './ActionSection';
 import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
@@ -3737,6 +3738,15 @@ const conversionRate = enquiriesMonthToDate
           maxItems={8}
           showHeader={true}
           compact={false}
+        />
+      </div>
+
+      {/* Team Issues Board */}
+      <div style={{ margin: '12px 16px' }}>
+        <TeamIssuesBoard 
+          showHeader={true}
+          compact={false}
+          maxItemsPerColumn={3}
         />
       </div>
 
