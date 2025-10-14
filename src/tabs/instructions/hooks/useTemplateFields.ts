@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { InstructionData } from '../../../app/functionality/types';
-import localUserData from '../../../localData/localUserData.json';
+import teamData from '../../../localData/team-sql-data.json';
 
 const INITIAL_FIELDS: Record<string, string> = {
     insert_clients_name: '',
@@ -44,7 +44,7 @@ export function useTemplateFields(selectedInstruction?: InstructionData | null) 
             updatedFields.email = (selectedInstruction as any).Email;
         }
 
-        const currentUser = (localUserData as any[])[0] || {};
+        const currentUser = (teamData as any[])[0] || {};
         if (!updatedFields.name_of_person_handling_matter && currentUser['Full Name']) {
             updatedFields.name_of_person_handling_matter = currentUser['Full Name'];
         }

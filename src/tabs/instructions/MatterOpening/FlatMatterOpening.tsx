@@ -15,7 +15,7 @@ import {
     partnerOptions as defaultPartners,
 } from './config';
 import localTeamDataJson from '../../../localData/team-sql-data.json';
-import localUserData from '../../../localData/localUserData.json';
+import teamData from '../../../localData/team-sql-data.json';
 
 import ClientInfoStep from './ClientInfoStep';
 import PoidSelectionStep from './PoidSelectionStep';
@@ -859,10 +859,10 @@ const handleClearAll = () => {
   }
 };
 
-    // Helper to get nickname from localUserData
+    // Helper to get nickname from team data
     function getLocalUserNickname(userInitials: string): string {
         if (!userInitials) return '';
-        const found = (localUserData as any[]).find(
+        const found = (teamData as any[]).find(
             (u) => (u.Initials || '').toLowerCase() === userInitials.toLowerCase()
         );
         return found ? found.Nickname || found.First || found['Full Name'] || '' : '';

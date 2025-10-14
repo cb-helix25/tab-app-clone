@@ -2,7 +2,7 @@ import React from 'react';
 // invisible change 2.1
 //
 import { mergeStyles, PrimaryButton } from '@fluentui/react';
-import localUserData from '../../localData/localUserData.json';
+import teamData from '../../localData/team-sql-data.json';
 import { cardStyles } from './componentTokens';
 import { ClientInfo } from './JointClientCard';
 import '../../app/styles/InstructionOverviewCard.css';
@@ -38,7 +38,7 @@ const InstructionOverviewCard: React.FC<OverviewCardProps> = ({
     const riskStatus = risk?.RiskAssessmentResult || '-';
     const eidStatus = eid?.EIDStatus || '-';
     const complianceStatus = compliance?.Status || '-';
-    const currentUser = (localUserData as any[])[0] || {};
+    const currentUser = (teamData as any[])[0] || {};
     const showDraft = currentUser.Role === 'Partner';
 
     return (

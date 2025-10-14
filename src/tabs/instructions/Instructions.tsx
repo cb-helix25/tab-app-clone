@@ -52,7 +52,7 @@ import "../../app/styles/InstructionsBanner.css";
 // invisible change 2.2
 import DocumentEditorPage from "./DocumentEditorPage";
 import DocumentsV3 from "./DocumentsV3";
-import localUserData from "../../localData/localUserData.json";
+import teamData from "../../localData/team-sql-data.json";
 import SegmentedControl from '../../components/filter/SegmentedControl';
 import TwoLayerFilter, { TwoLayerFilterOption } from '../../components/filter/TwoLayerFilter';
 import FilterBanner from '../../components/filter/FilterBanner';
@@ -696,7 +696,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Layout: 1 or 2 columns for overview grid
   const [twoColumn, setTwoColumn] = useState<boolean>(false);
   
-  const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
+  const currentUser: UserData | undefined = userData?.[0] || (teamData as UserData[])[0];
   // Admin detection using proper utility
   const isAdmin = isAdminUser(userData?.[0] || null);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -5685,7 +5685,7 @@ const workbenchButtonHover = (isDarkMode: boolean): string => (
             <RiskAssessmentPage
               onBack={() => setShowRiskPage(false)}
               instructionRef={selectedInstruction.InstructionRef}
-              riskAssessor={(localUserData[0] as any)?.FullName || (localUserData[0] as any)?.["Full Name"] || 'Unknown'}
+              riskAssessor={(teamData?.[0] as any)?.FullName || (teamData?.[0] as any)?.["Full Name"] || 'Unknown'}
               existingRisk={selectedRisk}
               onSave={handleRiskAssessmentSave}
             />

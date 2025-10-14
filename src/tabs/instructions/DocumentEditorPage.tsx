@@ -3,7 +3,7 @@ import { Stack, PrimaryButton, Dropdown, IDropdownOption, TextField, Label, Defa
 import { useParams } from 'react-router-dom';
 import { InstructionData, CCLJson, UserData } from '../../app/functionality/types';
 import { schema as cclSchema, tokens as cclTokens } from '../../app/functionality/cclSchema';
-import localUserData from '../../localData/localUserData.json';
+import teamData from '../../localData/team-sql-data.json';
 import { dashboardTokens } from './componentTokens';
 import '../../app/styles/MatterOpeningCard.css';
 
@@ -78,7 +78,7 @@ const DocumentEditorPage: React.FC<DocumentEditorPageProps> = ({
     const [generatedUrl, setGeneratedUrl] = useState<string>('');
     const [editMode, setEditMode] = useState<'content' | 'ccl'>('content');
 
-    const currentUser: UserData | undefined = (localUserData as UserData[])[0];
+    const currentUser: UserData | undefined = (teamData as UserData[])[0];
     const canGenerate = currentUser?.Role === 'Partner';
 
     // Extract placeholders from content

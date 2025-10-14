@@ -15,6 +15,7 @@ import { getProxyBaseUrl } from "./utils/getProxyBaseUrl";
 import { initializeIcons } from "@fluentui/react";
 import Loading from "./app/styles/Loading";
 import ErrorBoundary from "./components/ErrorBoundary";
+import UserSelectionDialog from "./components/UserSelectionDialog";
 const Data = lazy(() => import("./tabs/Data"));
 
 // Initialize icons once, but defer to idle to speed first paint
@@ -690,6 +691,7 @@ const AppWithContext: React.FC = () => {
   const [teamData, setTeamData] = useState<TeamData[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showUserSelection, setShowUserSelection] = useState(false);
   
   // Local development state for area selection
   const [localSelectedAreas, setLocalSelectedAreas] = useState<string[]>(['Commercial', 'Construction', 'Property']);
@@ -711,6 +713,116 @@ const AppWithContext: React.FC = () => {
       console.error('❌ Error refreshing enquiries:', error);
     }
   };
+
+  // Handle user selection from dialog
+  // Function to show user selection dialog
+  const showUserSelectionDialog = () => {
+    setShowUserSelection(true);
+  };
+
+  const handleUserSelected = async (userKey: string) => {
+    setShowUserSelection(false);
+    setLoading(true);
+
+    try {
+      // Initialize user data from team data with selected areas
+      const { default: teamUserData } = await import('./localData/team-sql-data.json');
+      
+      // Find the selected user's data by initials (case insensitive)
+      const selectedUserData = teamUserData.find((user: any) => 
+        user.Initials?.toLowerCase() === userKey.toLowerCase()
+      ) || teamUserData.find((user: any) => user.status === 'active') || teamUserData[0];
+
+      setTeamsContext({
+        userObjectId: "local",
+        userPrincipalName: selectedUserData?.Email || 'lz@helix-law.com',
+        theme: "default",
+      } as microsoftTeams.Context);
+
+      const initialUserData = [{
+        ...selectedUserData,
+        AOW: localSelectedAreas.join(', ')
+      }];
+
+      setUserData(initialUserData as UserData[]);
+      
+      // For local development, also test the dual enquiries fetching
+      const { dateFrom, dateTo } = getDateRange();
+      const fullName = `${initialUserData[0].First} ${initialUserData[0].Last}`.trim();
+
+      try {
+        // Try to fetch enquiries independently first
+        let enquiriesRes: Enquiry[] = [];
+        try {
+          // Use actual user's email and initials - no overrides
+          const userInitials = initialUserData[0].Initials || "";
+          const enquiriesEmail = initialUserData[0].Email || "";
+          
+          enquiriesRes = await fetchEnquiries(
+            enquiriesEmail,
+            dateFrom,
+            dateTo,
+            initialUserData[0].AOW || "",
+            userInitials,
+          );
+          
+        } catch (enquiriesError) {
+          console.warn('⚠️ Enquiries API failed, using fallback:', enquiriesError);
+          const { getLiveLocalEnquiries } = await import('./tabs/home/Home');
+          enquiriesRes = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
+        }
+        
+        // Try to fetch matters separately (don't block enquiries)
+        let normalizedMatters: NormalizedMatter[] = [];
+        try {
+          normalizedMatters = await fetchAllMatterSources(fullName);
+          
+        } catch (mattersError) {
+          console.warn('⚠️ Matters API failed, using fallback:', mattersError);
+          // Create fallback normalized matters from local data
+          const { default: localMatters } = await import('./localData/localMatters.json');
+          const fallbackMatters = mergeMattersFromSources([], localMatters as unknown as Matter[], [], fullName);
+          normalizedMatters = fallbackMatters;
+        }
+
+        setEnquiries(enquiriesRes);
+        setMatters(normalizedMatters);
+      } catch (err) {
+        console.error('❌ Unexpected error in local dev:', err);
+        
+        // Fallback to local sample data with normalization
+        const { getLiveLocalEnquiries } = await import('./tabs/home/Home');
+        const { default: localMatters } = await import('./localData/localMatters.json');
+        const fallbackEnquiries = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
+        const fallbackMatters = mergeMattersFromSources([], localMatters as unknown as Matter[], [], fullName);
+        
+        setEnquiries(fallbackEnquiries);
+        setMatters(fallbackMatters);
+      }
+      
+      // Prefer live team data via server route even in local dev; fallback to local JSON
+      try {
+        const liveTeam = await fetchTeamData();
+        if (liveTeam && Array.isArray(liveTeam) && liveTeam.length > 0) {
+          setTeamData(liveTeam);
+        } else {
+          const { default: localTeamData } = await import('./localData/team-sql-data.json');
+          setTeamData(localTeamData as TeamData[]);
+        }
+      } catch {
+        const { default: localTeamData } = await import('./localData/team-sql-data.json');
+        setTeamData(localTeamData as TeamData[]);
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('❌ Error setting up user:', error);
+      setError('Failed to initialize user data');
+      setLoading(false);
+    }
+  };
+
+
 
   // Update user data when local areas change
   const updateLocalUserData = (areas: string[]) => {
@@ -885,96 +997,14 @@ const AppWithContext: React.FC = () => {
           setLoading(false);
         }
       } else {
-
-
-        setTeamsContext({
-          userObjectId: "local",
-          userPrincipalName: "lz@helix-law.com",
-          theme: "default",
-        } as microsoftTeams.Context);
-        
-        // Initialize local user data with selected areas
-        const { default: localUserData } = await import('./localData/localUserData.json');
-        const initialUserData = [{
-          ...localUserData[0],
-          AOW: localSelectedAreas.join(', ')
-        }];
-
-        setUserData(initialUserData as UserData[]);
-        
-        // For local development, also test the dual enquiries fetching
-        const { dateFrom, dateTo } = getDateRange();
-        const fullName = `${initialUserData[0].First} ${initialUserData[0].Last}`.trim();
-
-        try {
-
-          // Try to fetch enquiries independently first
-          let enquiriesRes: Enquiry[] = [];
-          try {
-            // Use actual user's email and initials - no overrides
-            const userInitials = initialUserData[0].Initials || "";
-            const enquiriesEmail = initialUserData[0].Email || "";
-            
-            enquiriesRes = await fetchEnquiries(
-              enquiriesEmail,
-              dateFrom,
-              dateTo,
-              initialUserData[0].AOW || "",
-              userInitials,
-            );
-            
-          } catch (enquiriesError) {
-            console.warn('⚠️ Enquiries API failed, using fallback:', enquiriesError);
-            const { getLiveLocalEnquiries } = await import('./tabs/home/Home');
-            enquiriesRes = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
-          }
-          
-          // Try to fetch matters separately (don't block enquiries)
-          let normalizedMatters: NormalizedMatter[] = [];
-          try {
-            normalizedMatters = await fetchAllMatterSources(fullName);
-            
-          } catch (mattersError) {
-            console.warn('⚠️ Matters API failed, using fallback:', mattersError);
-            // Create fallback normalized matters from local data
-            const { default: localMatters } = await import('./localData/localMatters.json');
-            const fallbackMatters = mergeMattersFromSources([], localMatters as unknown as Matter[], [], fullName);
-            normalizedMatters = fallbackMatters;
-          }
-
-          // Removed extra local-dev fetchAllMatters test call to avoid duplicate requests
-
-          setEnquiries(enquiriesRes);
-          setMatters(normalizedMatters);
-        } catch (err) {
-          console.error('❌ Unexpected error in local dev:', err);
-          
-          // Fallback to local sample data with normalization
-          const { getLiveLocalEnquiries } = await import('./tabs/home/Home');
-          const { default: localMatters } = await import('./localData/localMatters.json');
-          const fallbackEnquiries = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
-          const fallbackMatters = mergeMattersFromSources([], localMatters as unknown as Matter[], [], fullName);
-          
-          setEnquiries(fallbackEnquiries);
-          setMatters(fallbackMatters);
-        }
-        
-        // Prefer live team data via server route even in local dev; fallback to local JSON
-        try {
-          const liveTeam = await fetchTeamData();
-          if (liveTeam && Array.isArray(liveTeam) && liveTeam.length > 0) {
-            setTeamData(liveTeam);
-          } else {
-            const { default: localTeamData } = await import('./localData/team-sql-data.json');
-            setTeamData(localTeamData as TeamData[]);
-          }
-        } catch {
-          const { default: localTeamData } = await import('./localData/team-sql-data.json');
-          setTeamData(localTeamData as TeamData[]);
-        }
+        // No Teams context found - show user selection dialog
         setLoading(false);
+        setShowUserSelection(true);
+        return;
       }
     };
+
+
 
     initializeTeamsAndFetchData();
   }, [localSelectedAreas]); // Add dependency so it re-runs when areas change
@@ -995,6 +1025,10 @@ const AppWithContext: React.FC = () => {
         onReturnToAdmin={returnToAdmin}
         originalAdminUser={originalAdminUser}
         onRefreshEnquiries={refreshEnquiries}
+      />
+      <UserSelectionDialog
+        isOpen={showUserSelection}
+        onUserSelected={handleUserSelected}
       />
     </>
   );
