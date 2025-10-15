@@ -1,5 +1,6 @@
 // src/services/teamIssuesService.ts
 // Service for loading team issues data from local JSON or API endpoint
+import localIssuesData from '../localData/localIssues.json';
 
 export interface TeamIssue {
   id: string;
@@ -39,10 +40,9 @@ export const fetchTeamIssues = async (): Promise<TeamIssuesResponse> => {
   const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
   
   if (useLocalData) {
-    // Load from local JSON file - use require for better compatibility
+    // Load from local JSON file using static import
     try {
-      const localIssues = require('../localData/localIssues.json');
-      return localIssues as TeamIssuesResponse;
+      return localIssuesData as TeamIssuesResponse;
     } catch (error) {
       console.error('Error loading local issues data:', error);
       throw error;

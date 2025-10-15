@@ -1,0 +1,110 @@
+{
+  "issues": [
+    {
+      "id": "ISSUE-001",
+      "title": "Client portal login timeout",
+      "description": "Users experiencing session timeouts after 15 minutes instead of expected 30 minutes",
+      "status": "new",
+      "priority": "high",
+      "reporter": "JW",
+      "createdAt": "2025-10-14T09:30:00Z",
+      "tags": ["client-portal", "authentication"]
+    },
+    {
+      "id": "ISSUE-002",
+      "title": "Document template merge failing",
+      "description": "Word document templates not merging client data correctly for property transactions",
+      "status": "in-progress",
+      "priority": "medium",
+      "reporter": "LZ",
+      "createdAt": "2025-10-13T14:20:00Z",
+      "tags": ["documents", "templates", "property"]
+    },
+    {
+      "id": "ISSUE-003",
+      "title": "Teams app crashing on mobile",
+      "description": "Hub app crashes when opening matter details on iOS Teams mobile app",
+      "status": "blocked",
+      "priority": "high",
+      "reporter": "AC",
+      "createdAt": "2025-10-12T16:45:00Z",
+      "tags": ["teams", "mobile", "ios"]
+    },
+    {
+      "id": "ISSUE-004",
+      "title": "Slow database queries on matters search",
+      "description": "Search functionality taking 5+ seconds for matters with large document sets",
+      "status": "new",
+      "priority": "medium",
+      "reporter": "SP",
+      "createdAt": "2025-10-14T11:00:00Z",
+      "tags": ["database", "performance", "search"]
+    },
+    {
+      "id": "ISSUE-005",
+      "title": "Email notification duplicates",
+      "description": "Clients receiving duplicate notification emails for matter updates",
+      "status": "resolved",
+      "priority": "low",
+      "reporter": "JW",
+      "createdAt": "2025-10-11T10:15:00Z",
+      "tags": ["email", "notifications"]
+    },
+    {
+      "id": "ISSUE-006",
+      "title": "Calendar sync missing appointments",
+      "description": "Some client appointments not syncing to Outlook calendars",
+      "status": "in-progress",
+      "priority": "high",
+      "reporter": "SP",
+      "createdAt": "2025-10-13T09:45:00Z",
+      "tags": ["calendar", "outlook", "sync"]
+    },
+    {
+      "id": "ISSUE-007",
+      "title": "Time tracking rounding issues",
+      "description": "Recorded time entries showing incorrect rounded values in reports",
+      "status": "new",
+      "priority": "medium",
+      "reporter": "AC",
+      "createdAt": "2025-10-14T13:20:00Z",
+      "tags": ["time-tracking", "reports", "billing"]
+    },
+    {
+      "id": "ISSUE-008",
+      "title": "File upload progress indicator",
+      "description": "Large document uploads showing no progress feedback to users",
+      "status": "resolved",
+      "priority": "low",
+      "reporter": "LZ",
+      "createdAt": "2025-10-10T14:30:00Z",
+      "tags": ["ui", "upload", "progress"]
+    },
+    {
+      "id": "ISSUE-009",
+      "title": "Manually added issue",
+      "description": "This is to test that issue can easily be added manually",
+      "status": "new",
+      "priority": "medium",
+      "reporter": "CB",
+      "createdAt": "2025-10-14T13:20:00Z",
+      "tags": ["time-tracking", "reports", "billing"]
+    }
+  ],
+  "metadata": {
+    "lastUpdated": "2025-10-14T14:00:00Z",
+    "totalIssues": 8,
+    "statusCounts": {
+      "new": 3,
+      "in-progress": 2,
+      "blocked": 1,
+      "resolved": 2
+    },
+    "priorityCounts": {
+      "high": 3,
+      "medium": 3,
+      "low": 2
+    }
+  }
+}
+

@@ -136,5 +136,25 @@
             "last 1 safari version"
         ]
     },
+    "jest": {
+        "preset": "ts-jest",
+        "testEnvironment": "jsdom",
+        "moduleNameMapping": {
+            "^@/(.*)$": "<rootDir>/src/$1"
+        },
+        "transform": {
+            "^.+\\.(ts|tsx)$": "ts-jest",
+            "^.+\\.(js|jsx)$": "babel-jest"
+        },
+        "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
+        "testMatch": [
+            "<rootDir>/src/**/__tests__/**/*.(ts|tsx|js)",
+            "<rootDir>/src/**/?(*.)(spec|test).(ts|tsx|js)"
+        ],
+        "collectCoverageFrom": [
+            "src/**/*.(ts|tsx)",
+            "!src/**/*.d.ts"
+        ]
+    },
     "homepage": "."
 }
