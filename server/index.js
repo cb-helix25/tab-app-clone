@@ -227,10 +227,22 @@ app.get('/api/health', (req, res) => {
 
 // Serve static files from React build (for production)
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../build')));
+  const buildPath = path.join(process.cwd(), 'build');
+  console.log(`[STATIC] Serving static files from: ${buildPath}`);
   
+  // Serve static assets including favicon.ico
+  app.use(express.static(buildPath));
+  
+  // Handle React Router - send all non-API routes to index.html
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../build/index.html'));
+    const indexPath = path.join(buildPath, 'index.html');
+    console.log(`[ROUTE] Serving index.html for: ${req.path}`);
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error(`[ERROR] Failed to serve index.html:`, err);
+        res.status(500).send('Error loading application');
+      }
+    });
   });
 }
 
@@ -243,15 +255,6 @@ app.use((error, req, res, next) => {
     timestamp: new Date().toISOString()
   });
 });
-
-// Optional: Serve static frontend files if co-hosting (per Codex guidelines)
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(process.cwd(), 'build')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'build', 'index.html'));
-  });
-}
 
 // Export the app without binding for reuse by multiple entrypoints
 // The actual server binding is handled by app.js for Azure App Service compatibility
