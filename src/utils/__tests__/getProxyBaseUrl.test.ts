@@ -17,10 +17,10 @@ describe("getProxyBaseUrl", () => {
         expect(getProxyBaseUrl()).toBe("http://localhost:8080");
     });
 
-    it("defaults to remote proxy in development when env url missing", () => {
+    it("defaults to empty string in development when env url missing", () => {
         process.env.NODE_ENV = "development";
         delete process.env.REACT_APP_PROXY_BASE_URL;
-        expect(getProxyBaseUrl()).toBe(DEFAULT_PROXY_BASE_URL);
+        expect(getProxyBaseUrl()).toBe("");
     });
 
     it("ignores localhost env url in production", () => {

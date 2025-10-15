@@ -659,7 +659,6 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
         role="article"
         tabIndex={0}
         aria-label="Unclaimed enquiry (legacy data)"
-        aria-pressed={unclaimedSelected}
       >
         {/* Top-right badge: area + pulse + static date */}
         {enquiry.Area_of_Work && (

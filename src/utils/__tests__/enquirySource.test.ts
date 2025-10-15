@@ -17,7 +17,7 @@ describe('enquirySource normalization', () => {
   test('detects Facebook Lead Ads from notes', () => {
     const e = { Initial_first_call_notes: 'Facebook Lead ID: 12345', Campaign: '' };
     const s = getNormalizedEnquirySource(e);
-    expect(s.key).toBe('facebook_lead_ads');
+    expect(s.key).toBe('meta_ads');
   });
 
   test('detects ChatGPT from utm_source', () => {
@@ -33,15 +33,15 @@ describe('enquirySource normalization', () => {
     expect(s.label).toBe('Referral: Acme Ltd');
   });
 
-  test('method-of-contact bucket: phone', () => {
+  test('method-of-contact bucket: not recorded when no source', () => {
     const e = { Method_of_Contact: 'call in' };
     const s = getNormalizedEnquirySource(e);
-    expect(s.key).toBe('phone');
+    expect(s.key).toBe('not_recorded');
   });
 
-  test('unknown fallback', () => {
+  test('not recorded fallback', () => {
     const s = getNormalizedEnquirySource({});
-    expect(s.key).toBe('unknown');
-    expect(s.label).toBe('Unknown');
+    expect(s.key).toBe('not_recorded');
+    expect(s.label).toBe('Not Recorded');
   });
 });

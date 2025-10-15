@@ -1,4 +1,3 @@
-/** @jest-environment jsdom */
 import { getActionableInstructions } from '../InstructionsPrompt';
 import { InstructionData } from '../../../app/functionality/types';
 
@@ -8,10 +7,19 @@ describe('getActionableInstructions', () => {
             {
                 prospectId: 1,
                 deals: [{ ServiceDescription: 'Service A' }],
-                instructions: [{ InstructionRef: 'REF1', FirstName: 'John', LastName: 'Doe', MatterId: null }],
+                instructions: [{ 
+                    InstructionRef: 'REF1', 
+                    FirstName: 'John', 
+                    LastName: 'Doe', 
+                    MatterId: null,
+                    Stage: 'proof-of-id-complete',
+                    IdVerified: true,
+                    PaymentResult: 'successful',
+                    DocumentsReceived: true
+                }],
                 documents: [],
                 riskAssessments: [],
-                electronicIDChecks: [],
+                electronicIDChecks: [{ EIDOverallResult: 'passed' }],
             } as any,
             {
                 prospectId: 2,

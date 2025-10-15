@@ -271,7 +271,6 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
       role="article"
       tabIndex={0}
       aria-label="Claimed enquiry"
-      aria-pressed={selected}
       onMouseEnter={() => {
         if (!hasAnimatedActions) {
           setShowActions(true); setHasAnimatedActions(true);

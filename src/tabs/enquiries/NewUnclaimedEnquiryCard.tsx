@@ -217,7 +217,6 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onAreaCha
       role="article"
       tabIndex={0}
       aria-label="Unclaimed enquiry (new data)"
-      aria-pressed={selected}
     >
       {/* Left accent */}
       <span style={{
