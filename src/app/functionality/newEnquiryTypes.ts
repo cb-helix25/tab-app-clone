@@ -28,3 +28,4 @@ export interface NewEnquiry {
 }
 
 export const mockNewEnquiries: NewEnquiry[] = [];
+

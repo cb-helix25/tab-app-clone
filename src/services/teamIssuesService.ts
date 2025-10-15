@@ -45,7 +45,7 @@ export const fetchTeamIssues = async (): Promise<TeamIssuesResponse> => {
       return localIssues.default as TeamIssuesResponse;
     } catch (error) {
       console.error('Error loading local issues data:', error);
-      return getFallbackIssues();
+      throw error;
     }
   }
 
@@ -61,39 +61,11 @@ export const fetchTeamIssues = async (): Promise<TeamIssuesResponse> => {
     return data;
   } catch (error) {
     console.error('Error fetching team issues from API:', error);
-    
-    // Fallback to mock data if API fails
-    return getFallbackIssues();
+    throw error;
   }
 };
 
-/**
- * Returns fallback issues data when both local and API loading fail
- */
-const getFallbackIssues = (): TeamIssuesResponse => {
-  const fallbackIssues: TeamIssue[] = [
-    {
-      id: 'FALLBACK-001',
-      title: 'Connection issue',
-      description: 'Unable to load team issues data',
-      status: 'new',
-      priority: 'medium',
-      reporter: 'SYSTEM',
-      createdAt: new Date().toISOString(),
-      tags: ['system', 'connectivity']
-    }
-  ];
 
-  return {
-    issues: fallbackIssues,
-    metadata: {
-      lastUpdated: new Date().toISOString(),
-      totalIssues: 1,
-      statusCounts: { new: 1, 'in-progress': 0, blocked: 0, resolved: 0 },
-      priorityCounts: { high: 0, medium: 1, low: 0 }
-    }
-  };
-};
 
 /**
  * Gets the display color for issue priority

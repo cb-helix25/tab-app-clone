@@ -350,3 +350,37 @@ FURTHER EDITS:
 
 The Home tab also includes a lightweight issues board so the team can log blockers and track ownership alongside other hub updates. By default it hydrates from `src/localData/localIssues.json`, showing columns for **New**, **In Progress**, **Blocked**, and **Resolved** work. Update the JSON dataset or connect the optional `/api/team-issues` endpoint to surface live data.
 Vision - Seeded a local team issues dataset and loader service that can also fall back to a future /api/team-issues endpoint + Embedded the new board on the Home tab, surfaced the data through the optional Express server, and documented the workflow in the README for local users.
+
+Merging notes: 
+
+Commit 1: Git history
+
+Added files -
+
+Index.js = File sets up an Express server with CORS and JSON handling. Defines routes that: Run Git commands; get commit history and repo info + return that data, serve local issue data from a JSON file and provide basic health check endpoint.
+
+gitHistoryService.ts = Logic and Data. Fetches commits from an Express API, cleans up the data, and provides helper functions for displaying commit info nicely.
+
+RecentWorkFeed = UI and presentation. Handles displaying the data in the browser. Shows data to the user in a nice interface.
+
+setupProxy = Proxy configuration for development to route API calls to Express server - forwards API requests to express backend
+
+Modified files -
+
+Home.tsx: Additions = Import recent work feed file and div. Deletions = N/A
+
+Commit 2: Team Issues Board
+
+Added files -
+
+TeamIssuesService.ts = Data-fetching logic and helper functions defined here. Featches team issue data from API or local JSON and formats text for display.
+
+TeamIssuesBoard.tsx = UI component that displays and manages team issues in a styled issues board.
+
+Modified files -
+
+index.js: Additions = Define two API endpoints that the frontend calls to get data (team issue data + health/status check). Checks for a local JSON file. Deletions = N/A
+
+Home.tsx: Additions = Import team issues board file and div. Deletions = N/A
+
+Commit 3: User selection

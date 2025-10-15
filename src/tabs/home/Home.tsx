@@ -141,6 +141,8 @@ export function getLiveLocalEnquiries(currentUserEmail?: string) {
   }
 }
 
+
+
 // Lazy-loaded form components
 const Tasking = lazy(() => import('../../CustomForms/Tasking'));
 const TelephoneAttendance = lazy(() => import('../../CustomForms/TelephoneAttendance'));
@@ -3732,14 +3734,21 @@ const conversionRate = enquiriesMonthToDate
         }}
       />
 
-      {/* Recent Work Feed */}
-      <div style={{ margin: '12px 16px' }}>
-        <RecentWorkFeed 
-          maxItems={8}
-          showHeader={true}
-          compact={false}
-        />
-      </div>
+      {/* Recent Work Feed - Only visible to Luke and Cass */}
+      {userData && userData[0] && (
+        userData[0].Initials === 'LZ' || 
+        userData[0].Initials === 'CB' || 
+        userData[0].Email?.toLowerCase().includes('luke') || 
+        userData[0].Email?.toLowerCase().includes('cass')
+      ) && (
+        <div style={{ margin: '12px 16px' }}>
+          <RecentWorkFeed 
+            maxItems={8}
+            showHeader={true}
+            compact={false}
+          />
+        </div>
+      )}
 
       {/* Team Issues Board */}
       <div style={{ margin: '12px 16px' }}>

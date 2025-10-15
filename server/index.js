@@ -154,50 +154,10 @@ app.get('/api/git/history', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching git history:', error);
-    
-    // Return mock data if git fails
-    const mockCommits = [
-      {
-        hash: 'abc123def456',
-        author: 'Developer <dev@example.com>',
-        timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-        message: 'Add recent work feed component',
-        insertions: 145,
-        deletions: 12,
-        filesChanged: 3
-      },
-      {
-        hash: 'def456ghi789',
-        author: 'Team Member <team@example.com>',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-        message: 'Fix styling issues in dashboard',
-        insertions: 67,
-        deletions: 23,
-        filesChanged: 2
-      },
-      {
-        hash: 'ghi789jkl012',
-        author: 'Designer <design@example.com>',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
-        message: 'Update UI components and theme colors',
-        insertions: 89,
-        deletions: 45,
-        filesChanged: 7
-      }
-    ];
-
-    console.log('Returning mock data due to git error');
-    res.status(200).json({
-      commits: mockCommits,
-      totalCommits: mockCommits.length,
-      repository: {
-        url: 'mock repository',
-        branch: 'main'
-      },
-      lastUpdated: new Date().toISOString(),
-      requestedLimit: parseInt(req.query.limit) || 10,
-      mockData: true,
-      error: 'Git command failed, using mock data'
+    res.status(500).json({
+      error: 'Failed to fetch git history',
+      message: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -217,36 +177,12 @@ app.get('/api/team-issues', (req, res) => {
       console.log(`Serving ${issuesData.issues.length} team issues`);
       res.json(issuesData);
     } else {
-      console.warn('Local issues file not found, returning mock data');
-      
-      // Fallback mock data
-      const mockData = {
-        issues: [
-          {
-            id: 'MOCK-001',
-            title: 'Sample issue from API',
-            description: 'This is a mock issue served from the Express API',
-            status: 'new',
-            priority: 'medium',
-            assignee: 'DEV',
-            assigneeName: 'Developer',
-            reporter: 'API',
-            reporterName: 'API Server',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            tags: ['api', 'mock'],
-            estimatedHours: 2
-          }
-        ],
-        metadata: {
-          lastUpdated: new Date().toISOString(),
-          totalIssues: 1,
-          statusCounts: { new: 1, 'in-progress': 0, blocked: 0, resolved: 0 },
-          priorityCounts: { high: 0, medium: 1, low: 0 }
-        }
-      };
-      
-      res.json(mockData);
+      console.error('Local issues file not found');
+      res.status(404).json({
+        error: 'Issues file not found',
+        message: 'Local issues data file does not exist',
+        timestamp: new Date().toISOString()
+      });
     }
   } catch (error) {
     console.error('Error serving team issues:', error);
