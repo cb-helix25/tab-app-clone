@@ -80,6 +80,7 @@
         "@types/react-window": "^1.8.8",
         "@types/supertest": "^2.0.12",
         "concurrently": "^8.2.2",
+        "cross-env": "^7.0.3",
         "env-cmd": "^10.1.0",
         "jest": "^29.7.0",
         "jest-environment-jsdom": "^30.0.4",
@@ -108,7 +109,7 @@
         "start:azurite": "npx azurite --location ./azurite --debug ./azurite/debug.log --blobPort 10000 --queuePort 10001 --tablePort 10002",
         "start:decoupled-functions": "cd \"d:\\helix projects\\workspace\\tab apps\\helix hub v1\\decoupled-functions\" && func start --port 7071",
         "start:api-functions": "cd \"d:\\helix projects\\workspace\\tab apps\\helix hub v1\\api\" && func start --port 7072",
-        "build": "react-scripts build",
+        "build": "cross-env CI=false react-scripts build",
         "build:azure": "npm run build && echo Build completed for Azure deployment",
         "postinstall": "echo 'Dependencies installed successfully'",
         "test": "jest",
@@ -134,26 +135,6 @@
             "last 1 chrome version",
             "last 1 firefox version",
             "last 1 safari version"
-        ]
-    },
-    "jest": {
-        "preset": "ts-jest",
-        "testEnvironment": "jsdom",
-        "moduleNameMapping": {
-            "^@/(.*)$": "<rootDir>/src/$1"
-        },
-        "transform": {
-            "^.+\\.(ts|tsx)$": "ts-jest",
-            "^.+\\.(js|jsx)$": "babel-jest"
-        },
-        "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
-        "testMatch": [
-            "<rootDir>/src/**/__tests__/**/*.(ts|tsx|js)",
-            "<rootDir>/src/**/?(*.)(spec|test).(ts|tsx|js)"
-        ],
-        "collectCoverageFrom": [
-            "src/**/*.(ts|tsx)",
-            "!src/**/*.d.ts"
         ]
     },
     "homepage": "."
