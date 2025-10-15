@@ -60,7 +60,8 @@ export const fetchTeamIssues = async (): Promise<TeamIssuesResponse> => {
     const data: TeamIssuesResponse = await response.json();
     return data;
   } catch (error) {
-    console.error('Error fetching team issues from API:', error);
+    // Log to console for front end debugging
+    console.error('[FRONTEND-ERROR] Error fetching team issues from API:', error);
     throw error;
   }
 };

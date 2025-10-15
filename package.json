@@ -2,7 +2,7 @@
     "name": "teamhub",
     "version": "0.1.0",
     "engines": {
-        "node": "18 || 20"
+        "node": ">=18"
     },
     "private": true,
     "dependencies": {
@@ -97,17 +97,20 @@
         "dev:all": "concurrently \"npm run start:azurite\" \"npm run start:decoupled-functions\" \"npm run start:api-functions\" \"npm run start:server\" \"npm run start:dev\"",
         "dev:backend": "concurrently \"npm run start:azurite\" \"npm run start:decoupled-functions\" \"npm run start:api-functions\" \"npm run start:server\"",
         "dev:functions": "concurrently \"npm run start:azurite\" \"npm run start:decoupled-functions\" \"npm run start:api-functions\"",
-        "start": "react-scripts start",
+        "start": "node app.js",
+        "start:client": "react-scripts start",
         "start:dev": "react-scripts start",
         "start:3001": "set PORT=3001 && react-scripts start",
         "start:quiet": "BROWSER=none react-scripts start",
-        "start:server": "node server/index.js",
-        "start:server:watch": "nodemon --watch server --ext js,ts,json --exec node server/index.js",
+        "start:server": "node app.js",
+        "start:server:watch": "nodemon --watch server --watch app.js --ext js,ts,json --exec node app.js",
+        "start:server:legacy": "node server/index.js",
         "start:azurite": "npx azurite --location ./azurite --debug ./azurite/debug.log --blobPort 10000 --queuePort 10001 --tablePort 10002",
         "start:decoupled-functions": "cd \"d:\\helix projects\\workspace\\tab apps\\helix hub v1\\decoupled-functions\" && func start --port 7071",
         "start:api-functions": "cd \"d:\\helix projects\\workspace\\tab apps\\helix hub v1\\api\" && func start --port 7072",
         "build": "react-scripts build",
         "build:azure": "npm run build && echo Build completed for Azure deployment",
+        "postinstall": "echo 'Dependencies installed successfully'",
         "test": "jest",
         "eject": "react-scripts eject",
         "generate:attendance": "node scripts/generateLocalAttendance.js",

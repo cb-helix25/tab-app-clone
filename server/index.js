@@ -5,13 +5,21 @@ const express = require('express');
 const { exec } = require('child_process');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const morgan = require('morgan');
+const fetch = require('node-fetch'); // For server-side external API calls only
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+
+// Log key operations in server logs for backend debugging
+console.log(`[SERVER-INIT] Starting server in ${process.env.NODE_ENV || 'development'} mode`);
+console.log(`[SERVER-INIT] Git command timeout configured`);
+console.log(`[SERVER-INIT] Environment variables loaded: NODE_ENV=${process.env.NODE_ENV || 'not-set'}`);
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(morgan('combined')); // Basic request logging as per Codex requirements
 
 // Helper function to execute git commands
 const execGitCommand = (command, options = {}) => {
@@ -80,7 +88,9 @@ app.get('/api/git/history', async (req, res) => {
     const maxLimit = 50; // Prevent excessive requests
     const actualLimit = Math.min(limit, maxLimit);
 
-    console.log(`Fetching ${actualLimit} recent commits...`);
+    // Log key operations in server logs for backend debugging
+    console.log(`[GIT-HISTORY] Request received - limit: ${actualLimit}, client: ${req.ip}`);
+    console.log(`[GIT-HISTORY] Fetching ${actualLimit} recent commits...`);
 
     // Use a simple git log command that should work on all systems
     const gitCommand = `git log --pretty=format:"%H|%an|%ad|%s" --date=iso --max-count=${actualLimit}`;
@@ -89,9 +99,9 @@ app.get('/api/git/history', async (req, res) => {
     let gitOutput;
     try {
       gitOutput = await execGitCommand(gitCommand);
-      console.log(`Git command successful, output length: ${gitOutput.length}`);
+      console.log(`[GIT-HISTORY] Git command successful, output length: ${gitOutput.length}`);
     } catch (error) {
-      console.error('Git command failed:', error.message);
+      console.error(`[GIT-HISTORY-ERROR] Git command failed:`, error.message);
       throw error;
     }
 
@@ -149,11 +159,11 @@ app.get('/api/git/history', async (req, res) => {
       requestedLimit: actualLimit
     };
 
-    console.log(`Successfully fetched ${commits.length} commits`);
+    console.log(`[GIT-HISTORY] Successfully fetched ${commits.length} commits for client ${req.ip}`);
     res.json(response);
 
   } catch (error) {
-    console.error('Error fetching git history:', error);
+    console.error(`[GIT-HISTORY-ERROR] Failed to fetch git history for client ${req.ip}:`, error.message);
     res.status(500).json({
       error: 'Failed to fetch git history',
       message: error.message,
@@ -165,19 +175,19 @@ app.get('/api/git/history', async (req, res) => {
 // Team issues endpoint
 app.get('/api/team-issues', (req, res) => {
   try {
-    // In a real implementation, this would fetch from a database or issue tracking system
-    // For demo purposes, return the local JSON data
-    const fs = require('fs');
-    const path = require('path');
+    // Log key operations in server logs for backend debugging
+    console.log(`[TEAM-ISSUES] Request received from client: ${req.ip}`);
     
+    // In a real implementation, this would fetch from a database or issue tracking system
+    // For demo purposes, return the local JSON data using shared filesystem imports
     const issuesPath = path.join(__dirname, '../src/localData/localIssues.json');
     
     if (fs.existsSync(issuesPath)) {
       const issuesData = JSON.parse(fs.readFileSync(issuesPath, 'utf8'));
-      console.log(`Serving ${issuesData.issues.length} team issues`);
+      console.log(`[TEAM-ISSUES] Serving ${issuesData.issues.length} team issues to client ${req.ip}`);
       res.json(issuesData);
     } else {
-      console.error('Local issues file not found');
+      console.error(`[TEAM-ISSUES-ERROR] Local issues file not found at: ${issuesPath}`);
       res.status(404).json({
         error: 'Issues file not found',
         message: 'Local issues data file does not exist',
@@ -185,7 +195,7 @@ app.get('/api/team-issues', (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error serving team issues:', error);
+    console.error(`[TEAM-ISSUES-ERROR] Error serving team issues to client ${req.ip}:`, error.message);
     res.status(500).json({
       error: 'Failed to load team issues',
       message: error.message,
@@ -196,16 +206,23 @@ app.get('/api/team-issues', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({
+  // Log key operations in server logs for backend debugging
+  console.log(`[HEALTH-CHECK] Health check requested by client: ${req.ip}`);
+  
+  const healthData = {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'tab-app-git-server',
+    environment: process.env.NODE_ENV || 'development',
     endpoints: [
       '/api/git/history',
       '/api/team-issues',
       '/api/health'
     ]
-  });
+  };
+  
+  console.log(`[HEALTH-CHECK] Responding with status: ${healthData.status}`);
+  res.json(healthData);
 });
 
 // Serve static files from React build (for production)
@@ -227,11 +244,15 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Git history server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
-  console.log(`Git history API: http://localhost:${PORT}/api/git/history`);
-});
+// Optional: Serve static frontend files if co-hosting (per Codex guidelines)
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(process.cwd(), 'build')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'build', 'index.html'));
+  });
+}
 
+// Export the app without binding for reuse by multiple entrypoints
+// The actual server binding is handled by app.js for Azure App Service compatibility
 module.exports = app;

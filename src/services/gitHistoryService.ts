@@ -49,7 +49,8 @@ export const fetchGitHistory = async (limit: number = 10): Promise<GitHistoryRes
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {
-    console.error('Error fetching git history:', error);
+    // Log to console for front end debugging
+    console.error('[FRONTEND-ERROR] Error fetching git history:', error);
     throw error;
   }
 };

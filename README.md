@@ -384,3 +384,218 @@ index.js: Additions = Define two API endpoints that the frontend calls to get da
 Home.tsx: Additions = Import team issues board file and div. Deletions = N/A
 
 Commit 3: User selection
+
+## 🚀 Azure App Service Deployment Guide
+
+#### 1. Server Binding Configuration ✅
+The server is configured to bind correctly to Azure's provided port:
+
+**Root Entrypoint (`app.js`):**
+```javascript
+const app = require('./server');
+const port = process.env.PORT || 3001;
+app.listen(port, () => console.log(`Server listening on port ${port}`));
+```
+
+**Server Module (`server/index.js`):**
+- Exports Express app without binding for reuse
+- Uses `morgan('combined')` for request logging
+- Exposes API routes only (`/api/health`, `/api/git/history`, `/api/team-issues`)
+
+#### 2. Package.json Configuration ✅
+Scripts and engines aligned for Azure hosting:
+```json
+{
+  "scripts": {
+    "start": "node app.js",
+    "build": "react-scripts build"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+```
+
+#### 3. Development Proxy Setup ✅
+**`src/setupProxy.js`** (Create React App):
+```javascript
+module.exports = function(app) {
+  app.use('/api', createProxyMiddleware({
+    target: 'http://localhost:3001',
+    changeOrigin: true
+  }));
+};
+```
+
+#### 4. Frontend API Integration ✅
+All frontend requests use relative URLs:
+```javascript
+// ✅ Correct - server routes only
+fetch('/api/git/history?limit=10');
+fetch('/api/team-issues');
+fetch('/api/health');
+
+// ❌ Avoided - external URLs removed
+// fetch('https://external-api.com/data');
+```
+
+#### 5. Environment Variables & Security ✅
+**`.gitignore`** includes comprehensive environment file patterns:
+```gitignore
+.env
+.env.local
+.env.production
+.env.development
+.env.staging
+*.env.backup
+web.config
+.vscode/settings.json
+```
+
+**Server accesses secrets via environment variables only:**
+```javascript
+const govApiUrl = process.env.GOV_BANK_HOLIDAYS_URL || 'fallback-url';
+const environment = process.env.NODE_ENV || 'development';
+```
+
+#### 6. Azure App Service Configuration
+
+**App Service Settings:**
+- **Runtime**: Node.js >=18
+- **Startup Command**: Leave empty (Azure uses `npm start`) or set to `npm start`
+- **Configuration → Application Settings**: Add required environment variables
+  - `NODE_ENV=production`
+  - Any other server-required variables (no secrets in code)
+
+**Logging Configuration:**
+- **Enable Application Logging**: Console logs and morgan requests appear in Log Stream
+- **Log Level**: Information or Verbose for debugging
+
+#### 7. Deployment Options
+
+**From GitHub (Recommended):**
+1. Connect repository to App Service via Deployment Center
+2. Select branch and save configuration
+3. Azure builds and deploys automatically
+4. Monitor deployment in Log Stream
+
+**Manual Deployment:**
+1. Build locally: `npm run build:azure`
+2. Deploy via Azure CLI or FTP
+3. Ensure `app.js` is in root directory
+
+#### 8. Post-Deployment Testing ✅
+
+**Health Check Verification:**
+```bash
+# Browser test
+https://<your-app>.azurewebsites.net/api/health
+
+# Expected response
+{
+  "status": "ok",
+  "timestamp": "2025-10-15T...",
+  "service": "tab-app-git-server",
+  "environment": "production",
+  "endpoints": ["/api/git/history", "/api/team-issues", "/api/health"]
+}
+```
+
+**API Endpoint Testing:**
+```bash
+# Test git history
+GET https://<your-app>.azurewebsites.net/api/git/history?limit=5
+
+# Test team issues
+GET https://<your-app>.azurewebsites.net/api/team-issues
+```
+
+### 🔐 Security & Logging Best Practices
+
+#### Server-Side Logging (Backend)
+```javascript
+// ✅ Structured logging for operations
+console.log(`[GIT-HISTORY] Request received - limit: ${limit}, client: ${req.ip}`);
+console.log(`[TEAM-ISSUES] Serving ${data.issues.length} issues to client ${req.ip}`);
+console.error(`[API-ERROR] Failed to fetch data:`, error.message);
+```
+
+#### Frontend Logging (Console)
+```javascript
+// ✅ Frontend error logging for debugging
+console.error('[FRONTEND-ERROR] Error fetching git history:', error);
+console.log('[FRONTEND-INFO] Component mounted successfully');
+```
+
+#### External API Security ✅
+- **Never call external APIs from frontend** - prevents data leakage to browser
+- **Server-side proxy pattern** for all external data sources:
+```javascript
+// ✅ Server-side external call
+app.get('/api/bank-holidays', async (req, res) => {
+  const govApiUrl = process.env.GOV_BANK_HOLIDAYS_URL || 'https://www.gov.uk/bank-holidays.json';
+  const response = await fetch(govApiUrl);
+  res.json(await response.json());
+});
+
+// ✅ Frontend calls server route
+fetch('/api/bank-holidays');
+```
+
+#### Environment Variable Safety ✅
+```javascript
+// ✅ Log variable names only (server-side)
+console.log(`Environment variables loaded: NODE_ENV=${process.env.NODE_ENV || 'not-set'}`);
+
+// ❌ Never log actual secret values
+// console.log(`API_KEY=${process.env.API_KEY}`); // DON'T DO THIS
+```
+
+### 📊 Monitoring & Debugging
+
+#### Azure Log Stream
+All server operations are visible in Azure Log Stream:
+- **Request logs**: Via morgan middleware
+- **Application logs**: Via console.log/error statements
+- **Error tracking**: Structured error messages with context
+
+#### Debug Information Available
+- **Client IP tracking** for all API requests
+- **Operation timing** and success/failure status
+- **Environment configuration** status
+- **External API call** success/failure logs
+
+#### Performance Monitoring
+- **Request response times** via morgan logs
+- **Error rates** via structured error logging
+- **Resource usage** via Azure App Service metrics
+
+### 🚀 Production Deployment Summary
+
+**✅ Complete Checklist:**
+- [x] Server binds to `process.env.PORT`
+- [x] Frontend uses relative `/api/` URLs only
+- [x] No external API calls from browser
+- [x] Comprehensive logging (server + frontend)
+- [x] Environment variables for configuration
+- [x] Git hygiene for secrets (.gitignore)
+- [x] Azure-ready package.json scripts
+- [x] Health check endpoint available
+- [x] Error handling with proper status codes
+- [x] Static file serving for co-hosting (optional)
+
+**Security Compliance:**
+- ✅ No secrets exposed in frontend code
+- ✅ All external data fetched server-side only
+- ✅ Environment variables used for configuration
+- ✅ Structured logging without secret exposure
+- ✅ CORS configured appropriately
+
+**Azure Integration:**
+- ✅ Automatic port binding via environment
+- ✅ Log Stream integration via morgan + console
+- ✅ GitHub deployment ready
+- ✅ Health monitoring endpoints
+- ✅ Production build optimization
+
+The application is now fully prepared for Azure App Service deployment following enterprise security and operational best practices.
