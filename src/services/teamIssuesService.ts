@@ -39,10 +39,10 @@ export const fetchTeamIssues = async (): Promise<TeamIssuesResponse> => {
   const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
   
   if (useLocalData) {
-    // Load from local JSON file
+    // Load from local JSON file - use require for better compatibility
     try {
-      const localIssues = await import('../localData/localIssues.json');
-      return localIssues.default as TeamIssuesResponse;
+      const localIssues = require('../localData/localIssues.json');
+      return localIssues as TeamIssuesResponse;
     } catch (error) {
       console.error('Error loading local issues data:', error);
       throw error;
