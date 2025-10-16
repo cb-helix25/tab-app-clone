@@ -11,6 +11,15 @@ const fetch = require('node-fetch'); // For server-side external API calls only
 
 const app = express();
 
+// CRITICAL: Add logging immediately to verify server is starting
+console.log('='.repeat(50));
+console.log(`[CRITICAL] SERVER STARTING AT ${new Date().toISOString()}`);
+console.log(`[CRITICAL] NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`[CRITICAL] process.cwd(): ${process.cwd()}`);
+console.log(`[CRITICAL] __dirname: ${__dirname}`);
+console.log(`[CRITICAL] PORT: ${process.env.PORT}`);
+console.log('='.repeat(50));
+
 // Log key operations in server logs for backend debugging
 console.log(`[SERVER-INIT] Starting server in ${process.env.NODE_ENV || 'development'} mode`);
 console.log(`[SERVER-INIT] Git command timeout configured`);
