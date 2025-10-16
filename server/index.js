@@ -226,24 +226,74 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve static files from React build (for production)
+console.log(`[DEBUG] NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`[DEBUG] process.cwd(): ${process.cwd()}`);
+console.log(`[DEBUG] __dirname: ${__dirname}`);
+
 if (process.env.NODE_ENV === 'production') {
   const buildPath = path.join(process.cwd(), 'build');
-  console.log(`[STATIC] Serving static files from: ${buildPath}`);
+  console.log(`[STATIC] Attempting to serve static files from: ${buildPath}`);
+  
+  // Check if build directory exists
+  const buildExists = fs.existsSync(buildPath);
+  console.log(`[DEBUG] Build directory exists: ${buildExists}`);
+  
+  if (buildExists) {
+    // List contents of build directory
+    try {
+      const buildContents = fs.readdirSync(buildPath);
+      console.log(`[DEBUG] Build directory contents: ${buildContents.join(', ')}`);
+      
+      // Check specifically for favicon.ico
+      const faviconPath = path.join(buildPath, 'favicon.ico');
+      const faviconExists = fs.existsSync(faviconPath);
+      console.log(`[DEBUG] favicon.ico exists at ${faviconPath}: ${faviconExists}`);
+    } catch (err) {
+      console.error(`[DEBUG] Error reading build directory: ${err.message}`);
+    }
+  } else {
+    console.error(`[ERROR] Build directory not found at: ${buildPath}`);
+    // Try alternative paths
+    const altPath1 = path.join(__dirname, '../build');
+    const altPath2 = path.join(__dirname, '../../build');
+    console.log(`[DEBUG] Checking alternative path 1: ${altPath1} - exists: ${fs.existsSync(altPath1)}`);
+    console.log(`[DEBUG] Checking alternative path 2: ${altPath2} - exists: ${fs.existsSync(altPath2)}`);
+  }
+  
+  // Before using express.static, add request logging
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/static/') || req.path === '/favicon.ico' || req.path.endsWith('.js') || req.path.endsWith('.css')) {
+      console.log(`[STATIC-REQUEST] ${req.method} ${req.path} from ${req.ip}`);
+    }
+    next();
+  });
   
   // Serve static assets including favicon.ico
   app.use(express.static(buildPath));
   
   // Handle React Router - send all non-API routes to index.html
   app.get('*', (req, res) => {
+    console.log(`[ROUTE] Non-API request: ${req.method} ${req.path} from ${req.ip}`);
     const indexPath = path.join(buildPath, 'index.html');
-    console.log(`[ROUTE] Serving index.html for: ${req.path}`);
-    res.sendFile(indexPath, (err) => {
-      if (err) {
-        console.error(`[ERROR] Failed to serve index.html:`, err);
-        res.status(500).send('Error loading application');
-      }
-    });
+    console.log(`[ROUTE] Serving index.html from: ${indexPath}`);
+    
+    // Check if index.html exists before serving
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error(`[ERROR] Failed to serve index.html:`, err);
+          res.status(500).send('Error loading application');
+        } else {
+          console.log(`[SUCCESS] Served index.html for: ${req.path}`);
+        }
+      });
+    } else {
+      console.error(`[ERROR] index.html not found at: ${indexPath}`);
+      res.status(404).send('Application not found');
+    }
   });
+} else {
+  console.log(`[DEBUG] Not in production mode, skipping static file serving`);
 }
 
 // Error handling middleware
