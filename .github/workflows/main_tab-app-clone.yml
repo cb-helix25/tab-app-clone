@@ -34,9 +34,10 @@ jobs:
           mkdir artifact
           # Copy built React app
           xcopy build artifact\build /E /I /H /Y
-          # Copy essential server files only
+          # Copy essential server files
           copy app.js artifact\
           copy package.json artifact\
+          copy web.config artifact\
           xcopy server artifact\server /E /I /H /Y
         shell: cmd
       
