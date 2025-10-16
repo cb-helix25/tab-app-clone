@@ -1,13 +1,28 @@
 // app.js - Root Express entrypoint for Azure App Service
-// This file binds to the Azure-provided port and starts the server
+const express = require("express");
+const path = require("path");
 
-const app = require('./server');
+// Import existing server routes
+const serverRoutes = require('./server');
 
-// Azure App Service provides the port via environment variable
-const port = process.env.PORT || 3001;
+const app = express();
+const port = process.env.PORT || 8080;
 
-// Start the server - following Codex pattern
-app.listen(port, () => {
+// Use existing server routes for APIs
+app.use(serverRoutes);
+
+// Serve the React build (run `npm run build` to create it)
+app.use(express.static(path.join(__dirname, "build")));
+
+// Quick health endpoint
+app.get("/healthz", (_req, res) => res.send("ok"));
+
+// SPA fallback to index.html for React Router
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(__dirname, "build", "index.html"));
+});
+
+app.listen(port, "0.0.0.0", () => {
   console.log(`[SERVER] Started on port ${port} (${process.env.NODE_ENV || 'development'})`);
 });
 

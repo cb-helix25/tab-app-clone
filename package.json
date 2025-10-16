@@ -114,7 +114,7 @@
         "start:api-functions": "cd \"d:\\helix projects\\workspace\\tab apps\\helix hub v1\\api\" && func start --port 7072",
         "build": "cross-env CI=false react-scripts build",
         "build:azure": "npm run build && echo Build completed for Azure deployment",
-        "postinstall": "echo 'Dependencies installed successfully'",
+        "postinstall": "npm run build",
         "test": "react-scripts test --watchAll=false",
         "eject": "react-scripts eject",
         "generate:attendance": "node scripts/generateLocalAttendance.js",
