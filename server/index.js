@@ -225,7 +225,11 @@ app.get('/api/health', (req, res) => {
 
 // Serve static files from React build (for production)
 if (process.env.NODE_ENV === 'production') {
-  const buildPath = path.join(process.cwd(), 'build');
+  // const buildPath = path.join(process.cwd(), 'build');
+  const buildPath = path.resolve(__dirname, '..', 'build');
+  if (!fs.existsSync(buildPath)) {
+    console.warn(`[STATIC] React build directory not found at ${buildPath}. Check deployment packaging.`);
+  }
   console.log(`[STATIC] Serving static files from: ${buildPath}`);
   
   // Serve static assets including favicon.ico
