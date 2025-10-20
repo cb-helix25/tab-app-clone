@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkteamhub=self.webpackChunkteamhub||[]).push([[152],{45152:(e,t,s)=>{s.r(t),s.d(t,{default:()=>h});s(65043);var a=s(70579);const h=()=>(0,a.jsx)("div",{style:{width:"100%",height:"100%"},children:(0,a.jsx)("iframe",{src:"https://www.cognitoforms.com/f/QzaAr_2Q7kesClKq8g229g/90",allow:"payment",style:{border:0,width:"100%",height:"600px"},title:"Create a Task"})})}}]);
+//# sourceMappingURL=152.3665b10c.chunk.js.map

@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkteamhub=self.webpackChunkteamhub||[]).push([[600],{29600:(e,t,h)=>{h.r(t),h.d(t,{default:()=>a});h(65043);var s=h(70579);const a=()=>(0,s.jsx)("div",{style:{width:"100%",height:"100%"},children:(0,s.jsx)("iframe",{src:"https://www.cognitoforms.com/f/QzaAr_2Q7kesClKq8g229g/41",allow:"payment",style:{border:0,width:"100%",height:"600px"},title:"Telephone Attendance"})})}}]);
+//# sourceMappingURL=600.4e64ebed.chunk.js.map
