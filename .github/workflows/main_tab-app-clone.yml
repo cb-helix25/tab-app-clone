@@ -38,11 +38,9 @@ jobs:
           # Copy built React app
           xcopy build artifact\build /E /I /H /Y
           # Copy essential server files
-          xcopy node_modules artifact\node_modules /E /I /H /Y
           copy app.js artifact\
           copy package.json artifact\
           copy package-lock.json artifact\
-          copy web.config artifact\
           xcopy server artifact\server /E /I /H /Y
         shell: cmd
       
