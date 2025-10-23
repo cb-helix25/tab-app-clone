@@ -7,8 +7,6 @@ import {
   Text,
   mergeStyles,
   Icon,
-  Persona,
-  PersonaSize,
   MessageBar,
   MessageBarType,
   Shimmer,
@@ -22,7 +20,6 @@ import {
   Dropdown,
   IDropdownOption,
   PrimaryButton,
-  ActionButton
 } from '@fluentui/react';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
@@ -31,10 +28,7 @@ import {
   TeamIssue,
   TeamIssuesResponse,
   getPriorityColor,
-  getStatusColor,
-  formatStatusText,
   getRelativeTime,
-  getInitials
 } from '../../services/teamIssuesService';
 
 interface TeamIssuesBoardProps {

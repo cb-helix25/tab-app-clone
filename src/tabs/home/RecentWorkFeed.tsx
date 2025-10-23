@@ -22,7 +22,6 @@ import {
   fetchGitHistory,
   formatCommitMessage,
   getRelativeTime,
-  getAuthorInitials,
   getChangeColor,
   GitCommit,
   GitHistoryResponse
