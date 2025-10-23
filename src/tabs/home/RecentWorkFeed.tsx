@@ -45,11 +45,7 @@ const RecentWorkFeed: React.FC<RecentWorkFeedProps> = ({
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
   // Load git history on component mount
-  useEffect(() => {
-    loadGitHistory();
-  }, [maxItems]);
-
-  const loadGitHistory = async () => {
+  const loadGitHistory = React.useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -62,7 +58,11 @@ const RecentWorkFeed: React.FC<RecentWorkFeedProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [maxItems]);
+
+  useEffect(() => {
+    loadGitHistory();
+  }, [loadGitHistory]);
 
   // Styles
   const cardStyle = mergeStyles({
