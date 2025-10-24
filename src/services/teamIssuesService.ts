@@ -2,6 +2,7 @@
 // Service for loading team issues data from local JSON or API endpoint
 import localIssuesData from '../localData/localIssues.json';
 
+
 export interface TeamIssue {
   id: string;
   title: string;
@@ -51,12 +52,10 @@ export const fetchTeamIssues = async (): Promise<TeamIssuesResponse> => {
 
   // Try to fetch from API endpoint
   try {
-    const response = await fetch('/api/team-issues');
-    
+    const response = await fetch('/api/fetchTeamIssues');
     if (!response.ok) {
       throw new Error(`Failed to fetch team issues: ${response.status}`);
     }
-    
     const data: TeamIssuesResponse = await response.json();
     return data;
   } catch (error) {
