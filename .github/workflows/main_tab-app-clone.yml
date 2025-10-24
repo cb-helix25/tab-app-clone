@@ -84,7 +84,7 @@ jobs:
         with:
           app-name: 'tab-app-clone'
           slot-name: 'Production'
-          package: ./artifact
+          package: artifact
 
       
           
