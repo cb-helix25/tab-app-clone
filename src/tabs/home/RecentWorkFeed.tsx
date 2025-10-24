@@ -19,13 +19,13 @@ import {
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import {
-  fetchGitHistory,
+  fetchGitHubCommits,
   formatCommitMessage,
   getRelativeTime,
-  getChangeColor,
-  GitCommit,
-  GitHistoryResponse
+  getChangeColor
 } from '../../services/gitHistoryService';
+
+import type { GitCommit } from '../../services/gitHistoryService';
 
 interface RecentWorkFeedProps {
   maxItems?: number;
@@ -49,9 +49,19 @@ const RecentWorkFeed: React.FC<RecentWorkFeedProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const data: GitHistoryResponse = await fetchGitHistory(maxItems);
-      setCommits(data.commits);
-      setLastUpdated(data.lastUpdated);
+      const data = await fetchGitHubCommits();
+      // Map GitHub API data to GitCommit[]
+      const mappedCommits: GitCommit[] = data.slice(0, maxItems).map((commit: any) => ({
+        hash: commit.sha,
+        author: commit.commit.author.name,
+        message: commit.commit.message,
+        timestamp: commit.commit.author.date,
+        filesChanged: commit.files ? commit.files.length : 0,
+        insertions: commit.stats ? commit.stats.additions : 0,
+        deletions: commit.stats ? commit.stats.deletions : 0
+      }));
+      setCommits(mappedCommits);
+      setLastUpdated(new Date().toISOString());
     } catch (err) {
       console.error('Failed to load git history:', err);
       setError(err instanceof Error ? err.message : 'Failed to load recent work');
@@ -193,7 +203,6 @@ const RecentWorkFeed: React.FC<RecentWorkFeedProps> = ({
                   } 
                 }}
               >
-                {getRelativeTime(commit.timestamp)}
               </Text>
             </Stack>
             

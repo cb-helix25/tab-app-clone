@@ -1,59 +1,20 @@
-// src/services/gitHistoryService.ts
-// Service for fetching and formatting git commit history data
+// Fetch commit history from GitHub API (live data)
+export async function fetchGitHubCommits() {
+  const response = await fetch('https://api.github.com/repos/cb-helix25/tab-app-clone/commits');
+  if (!response.ok) throw new Error('Failed to fetch commits');
+  return response.json();
+}
 
+// Service for fetching and formatting git commit history data
 export interface GitCommit {
   hash: string;
   message: string;
   author: string;
-  date: string;
-  timestamp: number;
+  timestamp: string;
   filesChanged: number;
   insertions: number;
   deletions: number;
 }
-
-export interface GitHistoryResponse {
-  commits: GitCommit[];
-  totalCommits: number;
-  lastUpdated: string;
-}
-
-/**
- * Fetches recent git commit history from the Express server
- * @param limit Number of commits to fetch (default: 10)
- * @returns Promise<GitHistoryResponse>
- */
-export const fetchGitHistory = async (limit: number = 10): Promise<GitHistoryResponse> => {
-  try {
-    const response = await fetch(`/api/git/history?limit=${limit}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch git history: ${response.status} ${response.statusText}`);
-    }
-    
-    const data: GitHistoryResponse = await response.json();
-    
-    // Format dates and ensure data integrity
-    const formattedCommits = data.commits.map(commit => ({
-      ...commit,
-      timestamp: new Date(commit.date).getTime(),
-      // Ensure numeric values are numbers
-      filesChanged: Number(commit.filesChanged) || 0,
-      insertions: Number(commit.insertions) || 0,
-      deletions: Number(commit.deletions) || 0
-    }));
-    
-    return {
-      ...data,
-      commits: formattedCommits,
-      lastUpdated: new Date().toISOString()
-    };
-  } catch (error) {
-    // Log to console for front end debugging
-    console.error('[FRONTEND-ERROR] Error fetching git history:', error);
-    throw error;
-  }
-};
 
 /**
  * Formats a commit message for display
