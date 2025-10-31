@@ -36,7 +36,7 @@ export interface TeamIssuesResponse {
 
 /**
  * Fetches team issues data from API or local JSON
- */
+*/
 export const fetchTeamIssues = async (): Promise<TeamIssuesResponse> => {
   const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
   

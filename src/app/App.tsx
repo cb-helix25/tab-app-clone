@@ -10,19 +10,20 @@ import {
 } from '@fluentui/react';
 import { ThemeProvider, useTheme } from './functionality/ThemeContext';
 import { colours } from './styles/colours';
-import RecentWorkFeed from '../tabs/home/RecentWorkFeed';
-import TeamIssuesBoard from '../tabs/home/TeamIssuesBoard';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import Home from '../tabs/home/Home';
+import Hub from '../tabs/home/Hub';
 
 const resolveInitialDarkMode = (): boolean => {
   if (typeof window === 'undefined') {
     return false;
   }
 
-    try {
+  try {
     const stored = window.localStorage.getItem('helix_theme');
     if (stored === 'dark') {
       return true;
-     }
+    }
 
     if (stored === 'light') {
       return false;
@@ -136,26 +137,44 @@ const AppShell: React.FC = () => {
     [isDarkMode, toggleTheme],
   );
 
+    const renderPage = useCallback(
+    (title: string, content: React.ReactNode) => (
+      <Stack tokens={{ childrenGap: 24 }} styles={stackStyles}>
+        <Stack
+          horizontal
+          horizontalAlign="space-between"
+          verticalAlign="center"
+          wrap
+          tokens={{ childrenGap: 12 }}
+        >
+          <Text variant="xLarge" styles={headingStyles}>
+            {title}
+          </Text>
+          <Toggle
+            label="Theme"
+            checked={isDarkMode}
+            onText="Dark"
+            offText="Light"
+            onChange={handleThemeChange}
+          />
+        </Stack>
+        {content}
+      </Stack>
+    ),
+    [handleThemeChange, headingStyles, isDarkMode, stackStyles],
+  );
+
   return (
     <FluentThemeProvider theme={fluentTheme}>
       <div className={containerClass}>
         <div className={contentClass}>
-          <Stack tokens={{ childrenGap: 24 }} styles={stackStyles}>
-            <Stack horizontal horizontalAlign="space-between" verticalAlign="center" wrap tokens={{ childrenGap: 12 }}>
-              <Text variant="xLarge" styles={headingStyles}>
-                Team operations overview
-              </Text>
-              <Toggle
-                label="Theme"
-                checked={isDarkMode}
-                onText="Dark"
-                offText="Light"
-                onChange={handleThemeChange}
-              />
-            </Stack>
-            <RecentWorkFeed showHeader />
-            <TeamIssuesBoard showHeader />
-          </Stack>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={renderPage('Home', <Home />)} />
+              <Route path="/hub" element={renderPage('Hub', <Hub />)} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
         </div>
       </div>
     </FluentThemeProvider>

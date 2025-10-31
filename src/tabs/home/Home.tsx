@@ -1,29 +1,24 @@
 import React from 'react';
 
-import RecentWorkFeed from './RecentWorkFeed';
-import TeamIssuesBoard from './TeamIssuesBoard';
+import { PrimaryButton, Stack, Text } from '@fluentui/react';
+import { useNavigate } from 'react-router-dom';
 
 const Home: React.FC = () => {
-  return (
-    <div>
-      {/* Recent Work Feed - Only visible to Luke and Cass */}
-      <div style={{ margin: '12px 16px' }}>
-        <RecentWorkFeed 
-          maxItems={8}
-          showHeader={true}
-          compact={false}
-        />
-      </div>
+  const navigate = useNavigate();
 
-      {/* Team Issues Board */}
-      <div style={{ margin: '12px 16px' }}>
-        <TeamIssuesBoard 
-          showHeader={true}
-          compact={false}
-          maxItemsPerColumn={3}
-        />
-      </div>
-    </div>
+  return (
+    <Stack
+      tokens={{ childrenGap: 16 }}
+      horizontalAlign="center"
+      verticalAlign="center"
+      styles={{ root: { minHeight: '50vh' } }}
+    >
+      <Text variant="large" styles={{ root: { textAlign: 'center' } }}>
+        Choose a workspace to explore.
+      </Text>
+      <PrimaryButton text="Hub" onClick={() => navigate('/hub')} />
+    </Stack>
   );
 };
+
 export default Home;

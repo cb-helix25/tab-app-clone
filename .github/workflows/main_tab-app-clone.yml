@@ -42,6 +42,7 @@ jobs:
           copy package.json artifact\ 
           copy package-lock.json artifact\ 
           copy web.config artifact\ 
+          copy node artifact\ 
           xcopy server artifact\server /E /I /H /Y
         shell: cmd
       
