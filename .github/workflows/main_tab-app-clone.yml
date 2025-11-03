@@ -44,6 +44,8 @@ jobs:
           copy web.config artifact\ 
           copy node artifact\ 
           xcopy server artifact\server /E /I /H /Y
+          # Copy node_modules for production dependencies
+          xcopy node_modules artifact\node_modules /E /I /H /Y
         shell: cmd
       
       - name: Upload artifact for deployment job

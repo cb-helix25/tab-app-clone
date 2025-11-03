@@ -16,7 +16,10 @@ const Home: React.FC = () => {
       <Text variant="large" styles={{ root: { textAlign: 'center' } }}>
         Choose a workspace to explore.
       </Text>
-      <PrimaryButton text="Hub" onClick={() => navigate('/hub')} />
+      <Stack tokens={{ childrenGap: 12 }}>
+        <PrimaryButton text="Hub" onClick={() => navigate('/hub')} />
+        <PrimaryButton text="Harvey" onClick={() => navigate('/harvey')} />
+      </Stack>
     </Stack>
   );
 };

@@ -13,6 +13,7 @@ import { colours } from './styles/colours';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Home from '../tabs/home/Home';
 import Hub from '../tabs/home/Hub';
+import Harvey from '../tabs/home/Harvey';
 
 const resolveInitialDarkMode = (): boolean => {
   if (typeof window === 'undefined') {
@@ -172,6 +173,7 @@ const AppShell: React.FC = () => {
             <Routes>
               <Route path="/" element={renderPage('Home', <Home />)} />
               <Route path="/hub" element={renderPage('Hub', <Hub />)} />
+              <Route path="/harvey" element={renderPage('Harvey', <Harvey />)} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
