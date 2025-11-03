@@ -1,6 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   DefaultButton,
+  Dropdown,
+  IconButton,
+  IDropdownOption,
   PrimaryButton,
   Stack,
   Text,
@@ -20,7 +23,10 @@ interface HarveyFormData {
   internalMatterReference: string;
   date: string;
   matterTitle: string;
+  retainerDetails: Record<string, string>;
 }
+
+type HarveyStandardField = Exclude<keyof HarveyFormData, 'retainerDetails'>;
 
 const initialFormData: HarveyFormData = {
   firstName: '',
@@ -31,7 +37,24 @@ const initialFormData: HarveyFormData = {
   internalMatterReference: '',
   date: '',
   matterTitle: '',
+  retainerDetails: {},
 };
+
+const RETAINER_OPTIONS: IDropdownOption[] = [
+  { key: 'termination', text: 'Termination' },
+  { key: 'allegedBreach', text: 'Alleged breach' },
+  { key: 'application', text: 'Application' },
+  { key: 'funding', text: 'Funding' },
+  { key: 'rightsBreaches', text: 'Rights and Breaches' },
+  { key: 'paymentStatus', text: 'Payment status and evidence' },
+  { key: 'exposureSecurity', text: 'Exposure and security' },
+  { key: 'strategyTimelines', text: 'Provisional strategy and timelines' },
+];
+
+const RETAINER_OPTION_LABELS = RETAINER_OPTIONS.reduce<Record<string, string>>((accumulator, option) => {
+  accumulator[String(option.key)] = option.text;
+  return accumulator;
+}, {});
 
 const Harvey: React.FC = () => {
   const navigate = useNavigate();
@@ -53,7 +76,7 @@ const Harvey: React.FC = () => {
   );
 
   const handleFieldChange = useCallback(
-    (field: keyof HarveyFormData) =>
+    (field: HarveyStandardField) =>
       (_event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setFormData((current) => ({
           ...current,
@@ -61,6 +84,80 @@ const Harvey: React.FC = () => {
         }));
       },
     [],
+  );
+
+  const handleRetainerSectionSelect = useCallback(
+    (_event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+      if (!option) {
+        return;
+      }
+
+      const key = String(option.key);
+      setFormData((current) => {
+        if (key in current.retainerDetails) {
+          return current;
+        }
+
+        return {
+          ...current,
+          retainerDetails: {
+            ...current.retainerDetails,
+            [key]: '',
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const handleRetainerDetailChange = useCallback(
+    (key: string) =>
+      (_event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+        setFormData((current) => ({
+          ...current,
+          retainerDetails: {
+            ...current.retainerDetails,
+            [key]: newValue ?? '',
+          },
+        }));
+      },
+    [],
+  );
+
+  const handleRetainerSectionRemove = useCallback((key: string) => {
+    setFormData((current) => {
+      if (!(key in current.retainerDetails)) {
+        return current;
+      }
+
+      const { [key]: _removed, ...remainingDetails } = current.retainerDetails;
+
+      return {
+        ...current,
+        retainerDetails: remainingDetails,
+      };
+    });
+  }, []);
+
+  const retainerDropdownOptions = useMemo(
+    () =>
+      RETAINER_OPTIONS.map((option) => ({
+        ...option,
+        disabled: option.key in formData.retainerDetails,
+      })),
+    [formData.retainerDetails],
+  );
+
+  const retainerDetailContainerStyles = useMemo(
+    () => ({
+      root: {
+        border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}`,
+        borderRadius: 8,
+        padding: 12,
+        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
+      },
+    }),
+    [isDarkMode],
   );
 
   const handleSubmit = useCallback(
@@ -170,6 +267,43 @@ const Harvey: React.FC = () => {
             </Stack>
           </Stack>
         </form>
+      </Stack>
+      
+      <Stack styles={sectionStyles} tokens={{ childrenGap: 16 }}>
+        <Text variant="xLarge">Current position, next steps &amp; scope of retainer</Text>
+        <Dropdown
+          placeholder="Select a section to add"
+          label="Add a focus area"
+          options={retainerDropdownOptions}
+          onChange={handleRetainerSectionSelect}
+          selectedKey={undefined}
+        />
+        <Stack tokens={{ childrenGap: 12 }}>
+          {Object.entries(formData.retainerDetails).map(([key, value]) => (
+            <Stack key={key} tokens={{ childrenGap: 8 }} styles={retainerDetailContainerStyles}>
+              <Stack horizontal verticalAlign="center" horizontalAlign="space-between">
+                <Text variant="large">{RETAINER_OPTION_LABELS[key] ?? key}</Text>
+                <IconButton
+                  iconProps={{ iconName: 'Delete' }}
+                  ariaLabel={`Remove ${RETAINER_OPTION_LABELS[key] ?? key}`}
+                  onClick={() => handleRetainerSectionRemove(key)}
+                />
+              </Stack>
+              <TextField
+                multiline
+                autoAdjustHeight
+                value={value}
+                onChange={handleRetainerDetailChange(key)}
+                placeholder={`Enter details for ${(RETAINER_OPTION_LABELS[key] ?? key).toLowerCase()}`}
+              />
+            </Stack>
+          ))}
+          {Object.keys(formData.retainerDetails).length === 0 && (
+            <Text variant="medium" styles={{ root: { fontStyle: 'italic' } }}>
+              Use the dropdown above to add the areas you want to cover.
+            </Text>
+          )}
+        </Stack>
       </Stack>
     </Stack>
   );
