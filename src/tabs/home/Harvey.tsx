@@ -40,6 +40,12 @@ const initialFormData: HarveyFormData = {
   retainerDetails: {},
 };
 
+const FOCUS_OPTIONS: IDropdownOption[] = [
+  { key: 'adjudicationAdviceDispute', text: 'Adjudication Advice & Dispute' },
+  { key: 'shareholderRightsDisputeAdvice', text: 'Shareholder Rights and Dispute Advice' },
+];
+
+
 const RETAINER_OPTIONS: IDropdownOption[] = [
   { key: 'termination', text: 'Termination' },
   { key: 'allegedBreach', text: 'Alleged breach' },
@@ -60,6 +66,7 @@ const Harvey: React.FC = () => {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const [formData, setFormData] = useState<HarveyFormData>(initialFormData);
+  const [selectedFocus, setSelectedFocus] = useState<string | undefined>(undefined);
 
   const sectionStyles = useMemo(
     () => ({
@@ -173,34 +180,50 @@ const Harvey: React.FC = () => {
   const handleReset = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormData({ ...initialFormData });
+    setSelectedFocus(undefined);
   }, []);
 
-  return (
-    <Stack tokens={{ childrenGap: 24 }}>
-      <DefaultButton
-        text="Back to Home"
-        onClick={() => navigate('/')}
-        styles={{
-          root: {
-            alignSelf: 'flex-start',
-            backgroundColor: isDarkMode ? colours.dark.buttonBackground : colours.light.buttonBackground,
-            color: isDarkMode ? colours.dark.buttonText : colours.light.buttonText,
-            borderColor: 'transparent',
-          },
-          rootHovered: {
-            backgroundColor: isDarkMode ? colours.dark.hoverBackground : colours.light.hoverBackground,
-            color: isDarkMode ? colours.dark.buttonText : colours.light.buttonText,
-          },
-          rootPressed: {
-            backgroundColor: isDarkMode ? colours.dark.hoverBackground : colours.light.hoverBackground,
-            color: isDarkMode ? colours.dark.buttonText : colours.light.buttonText,
-          },
-        }}
-      />
+  const handleFocusChange = useCallback(
+    (_event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+      setSelectedFocus(option ? String(option.key) : undefined);
+    },
+    [],
+  );
 
-      <Stack styles={sectionStyles} tokens={{ childrenGap: 16 }}>
-        <Text variant="xLarge">Introduction</Text>
-        <form onSubmit={handleSubmit} onReset={handleReset} style={{ display: 'contents' }}>
+  return (
+    <form onSubmit={handleSubmit} onReset={handleReset} style={{ display: 'contents' }}>
+      <Stack tokens={{ childrenGap: 24 }}>
+        <DefaultButton
+          text="Back to Home"
+          onClick={() => navigate('/')}
+          styles={{
+            root: {
+              alignSelf: 'flex-start',
+              backgroundColor: isDarkMode ? colours.dark.buttonBackground : colours.light.buttonBackground,
+              color: isDarkMode ? colours.dark.buttonText : colours.light.buttonText,
+              borderColor: 'transparent',
+            },
+            rootHovered: {
+              backgroundColor: isDarkMode ? colours.dark.hoverBackground : colours.light.hoverBackground,
+              color: isDarkMode ? colours.dark.buttonText : colours.light.buttonText,
+            },
+            rootPressed: {
+              backgroundColor: isDarkMode ? colours.dark.hoverBackground : colours.light.hoverBackground,
+              color: isDarkMode ? colours.dark.buttonText : colours.light.buttonText,
+            },
+          }}
+        />
+
+        <Dropdown
+          label="Select matter focus"
+          placeholder="Choose an option"
+          options={FOCUS_OPTIONS}
+          selectedKey={selectedFocus}
+          onChange={handleFocusChange}
+        />
+
+        <Stack styles={sectionStyles} tokens={{ childrenGap: 16 }}>
+          <Text variant="xLarge">Introduction</Text>
           <Stack tokens={{ childrenGap: 16 }}>
             <Stack tokens={{ childrenGap: 12 }}>
               <Text variant="large">Client Details</Text>
@@ -261,51 +284,57 @@ const Harvey: React.FC = () => {
               />
             </Stack>
 
-            <Stack horizontal tokens={{ childrenGap: 12 }}>
-              <PrimaryButton type="submit" text="Submit" />
-              <DefaultButton type="reset" text="Reset" />
-            </Stack>
           </Stack>
-        </form>
-      </Stack>
-      
-      <Stack styles={sectionStyles} tokens={{ childrenGap: 16 }}>
-        <Text variant="xLarge">Current position, next steps &amp; scope of retainer</Text>
-        <Dropdown
-          placeholder="Select a section to add"
-          label="Add a focus area"
-          options={retainerDropdownOptions}
-          onChange={handleRetainerSectionSelect}
-          selectedKey={undefined}
-        />
-        <Stack tokens={{ childrenGap: 12 }}>
-          {Object.entries(formData.retainerDetails).map(([key, value]) => (
-            <Stack key={key} tokens={{ childrenGap: 8 }} styles={retainerDetailContainerStyles}>
-              <Stack horizontal verticalAlign="center" horizontalAlign="space-between">
-                <Text variant="large">{RETAINER_OPTION_LABELS[key] ?? key}</Text>
-                <IconButton
-                  iconProps={{ iconName: 'Delete' }}
-                  ariaLabel={`Remove ${RETAINER_OPTION_LABELS[key] ?? key}`}
-                  onClick={() => handleRetainerSectionRemove(key)}
+        </Stack>
+
+        <Stack styles={sectionStyles} tokens={{ childrenGap: 16 }}>
+          <Text variant="xLarge">Current position, next steps &amp; scope of retainer</Text>
+          <Dropdown
+            placeholder="Select a section to add"
+            label="Add a focus area"
+            options={retainerDropdownOptions}
+            onChange={handleRetainerSectionSelect}
+            selectedKey={undefined}
+          />
+          <Stack tokens={{ childrenGap: 12 }}>
+            {Object.entries(formData.retainerDetails).map(([key, value]) => (
+              <Stack key={key} tokens={{ childrenGap: 8 }} styles={retainerDetailContainerStyles}>
+                <Stack horizontal verticalAlign="center" horizontalAlign="space-between">
+                  <Text variant="large">{RETAINER_OPTION_LABELS[key] ?? key}</Text>
+                  <IconButton
+                    iconProps={{ iconName: 'Delete' }}
+                    ariaLabel={`Remove ${RETAINER_OPTION_LABELS[key] ?? key}`}
+                    onClick={() => handleRetainerSectionRemove(key)}
+                  />
+                </Stack>
+                <TextField
+                  multiline
+                  autoAdjustHeight
+                  value={value}
+                  onChange={handleRetainerDetailChange(key)}
+                  placeholder={`Enter details for ${(RETAINER_OPTION_LABELS[key] ?? key).toLowerCase()}`}
                 />
               </Stack>
-              <TextField
-                multiline
-                autoAdjustHeight
-                value={value}
-                onChange={handleRetainerDetailChange(key)}
-                placeholder={`Enter details for ${(RETAINER_OPTION_LABELS[key] ?? key).toLowerCase()}`}
-              />
-            </Stack>
-          ))}
-          {Object.keys(formData.retainerDetails).length === 0 && (
-            <Text variant="medium" styles={{ root: { fontStyle: 'italic' } }}>
-              Use the dropdown above to add the areas you want to cover.
-            </Text>
-          )}
+            ))}
+            {Object.keys(formData.retainerDetails).length === 0 && (
+              <Stack tokens={{ childrenGap: 8 }}>
+                <Text variant="medium" styles={{ root: { fontStyle: 'italic' } }}>
+                  Use the dropdown above to add the areas you want to cover.
+                </Text>
+                <Text variant="smallPlus">
+                  [prompt: In a few sentences, describe the commercial relationship and what has recently happened (missed payments, suspension/termination events, key applications/claims and amounts, any counterparty notices served).   List the client’s immediate objectives and any risks (e.g., insolvency risk).  Outline the initial scope of work you want done (documents to review, analyses to provide, initial letters to send) and any proposed strategy steps (e.g., adjudication type(s), “smash and grab,” “true value,” letter before action).   Include any assumptions or dependencies and identify counterparties/contract types.]
+                </Text>
+              </Stack>
+            )}
+          </Stack>
+        </Stack>
+
+        <Stack horizontal tokens={{ childrenGap: 12 }}>
+          <PrimaryButton type="submit" text="Submit" />
+          <DefaultButton type="reset" text="Reset" />
         </Stack>
       </Stack>
-    </Stack>
+    </form>
   );
 };
 
