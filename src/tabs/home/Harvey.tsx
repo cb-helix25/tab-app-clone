@@ -401,6 +401,19 @@ const Harvey: React.FC = () => {
                 </Text>
               </Stack>
             )}
+            <Stack tokens={{ childrenGap: 8 }}>
+              <Stack horizontal tokens={{ childrenGap: 12 }}>
+                <PrimaryButton type="button" text="Submit" />
+                <DefaultButton type="button" text="Reset" />
+              </Stack>
+              <TextField
+                label="Output"
+                multiline
+                readOnly
+                resizable={false}
+                placeholder="Submitted details will appear here."
+              />
+            </Stack>
           </Stack>
         </Stack>
 
@@ -443,6 +456,19 @@ const Harvey: React.FC = () => {
                 </Text>
               </Stack>
             )}
+            <Stack tokens={{ childrenGap: 8 }}>
+              <Stack horizontal tokens={{ childrenGap: 12 }}>
+                <PrimaryButton type="button" text="Submit" />
+                <DefaultButton type="button" text="Reset" />
+              </Stack>
+              <TextField
+                label="Output"
+                multiline
+                readOnly
+                resizable={false}
+                placeholder="Submitted timelines will appear here."
+              />
+            </Stack>
           </Stack>
         </Stack>
 
