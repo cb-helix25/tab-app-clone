@@ -24,9 +24,10 @@ interface HarveyFormData {
   date: string;
   matterTitle: string;
   retainerDetails: Record<string, string>;
+  timeToCompleteDetails: Record<string, string>;
 }
 
-type HarveyStandardField = Exclude<keyof HarveyFormData, 'retainerDetails'>;
+type HarveyStandardField = Exclude<keyof HarveyFormData, 'retainerDetails' | 'timeToCompleteDetails'>;
 
 const initialFormData: HarveyFormData = {
   firstName: '',
@@ -38,6 +39,7 @@ const initialFormData: HarveyFormData = {
   date: '',
   matterTitle: '',
   retainerDetails: {},
+  timeToCompleteDetails: {},
 };
 
 const FOCUS_OPTIONS: IDropdownOption[] = [
@@ -58,6 +60,17 @@ const RETAINER_OPTIONS: IDropdownOption[] = [
 ];
 
 const RETAINER_OPTION_LABELS = RETAINER_OPTIONS.reduce<Record<string, string>>((accumulator, option) => {
+  accumulator[String(option.key)] = option.text;
+  return accumulator;
+}, {});
+
+const TIME_TO_COMPLETE_OPTIONS: IDropdownOption[] = [
+  { key: 'adjudications', text: 'Adjudications' },
+  { key: 'enforcement', text: 'Enforcement' },
+  { key: 'scope', text: 'Scope' },
+];
+
+const TIME_TO_COMPLETE_LABELS = TIME_TO_COMPLETE_OPTIONS.reduce<Record<string, string>>((accumulator, option) => {
   accumulator[String(option.key)] = option.text;
   return accumulator;
 }, {});
@@ -146,6 +159,59 @@ const Harvey: React.FC = () => {
     });
   }, []);
 
+  const handleTimeToCompleteSelect = useCallback(
+    (_event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+      if (!option) {
+        return;
+      }
+
+      const key = String(option.key);
+      setFormData((current) => {
+        if (key in current.timeToCompleteDetails) {
+          return current;
+        }
+
+        return {
+          ...current,
+          timeToCompleteDetails: {
+            ...current.timeToCompleteDetails,
+            [key]: '',
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const handleTimeToCompleteDetailChange = useCallback(
+    (key: string) =>
+      (_event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+        setFormData((current) => ({
+          ...current,
+          timeToCompleteDetails: {
+            ...current.timeToCompleteDetails,
+            [key]: newValue ?? '',
+          },
+        }));
+      },
+    [],
+  );
+
+  const handleTimeToCompleteRemove = useCallback((key: string) => {
+    setFormData((current) => {
+      if (!(key in current.timeToCompleteDetails)) {
+        return current;
+      }
+
+      const { [key]: _removed, ...remainingDetails } = current.timeToCompleteDetails;
+
+      return {
+        ...current,
+        timeToCompleteDetails: remainingDetails,
+      };
+    });
+  }, []);
+
   const retainerDropdownOptions = useMemo(
     () =>
       RETAINER_OPTIONS.map((option) => ({
@@ -153,6 +219,15 @@ const Harvey: React.FC = () => {
         disabled: option.key in formData.retainerDetails,
       })),
     [formData.retainerDetails],
+  );
+
+  const timeToCompleteDropdownOptions = useMemo(
+    () =>
+      TIME_TO_COMPLETE_OPTIONS.map((option) => ({
+        ...option,
+        disabled: option.key in formData.timeToCompleteDetails,
+      })),
+    [formData.timeToCompleteDetails],
   );
 
   const retainerDetailContainerStyles = useMemo(
@@ -323,6 +398,48 @@ const Harvey: React.FC = () => {
                 </Text>
                 <Text variant="smallPlus">
                   [prompt: In a few sentences, describe the commercial relationship and what has recently happened (missed payments, suspension/termination events, key applications/claims and amounts, any counterparty notices served).   List the client’s immediate objectives and any risks (e.g., insolvency risk).  Outline the initial scope of work you want done (documents to review, analyses to provide, initial letters to send) and any proposed strategy steps (e.g., adjudication type(s), “smash and grab,” “true value,” letter before action).   Include any assumptions or dependencies and identify counterparties/contract types.]
+                </Text>
+              </Stack>
+            )}
+          </Stack>
+        </Stack>
+
+        <Stack styles={sectionStyles} tokens={{ childrenGap: 16 }}>
+          <Text variant="xLarge">Time to complete your case</Text>
+          <Dropdown
+            placeholder="Select a section to add"
+            label="Add a focus area"
+            options={timeToCompleteDropdownOptions}
+            onChange={handleTimeToCompleteSelect}
+            selectedKey={undefined}
+          />
+          <Stack tokens={{ childrenGap: 12 }}>
+            {Object.entries(formData.timeToCompleteDetails).map(([key, value]) => (
+              <Stack key={key} tokens={{ childrenGap: 8 }} styles={retainerDetailContainerStyles}>
+                <Stack horizontal verticalAlign="center" horizontalAlign="space-between">
+                  <Text variant="large">{TIME_TO_COMPLETE_LABELS[key] ?? key}</Text>
+                  <IconButton
+                    iconProps={{ iconName: 'Delete' }}
+                    ariaLabel={`Remove ${TIME_TO_COMPLETE_LABELS[key] ?? key}`}
+                    onClick={() => handleTimeToCompleteRemove(key)}
+                  />
+                </Stack>
+                <TextField
+                  multiline
+                  autoAdjustHeight
+                  value={value}
+                  onChange={handleTimeToCompleteDetailChange(key)}
+                  placeholder={`Enter details for ${(TIME_TO_COMPLETE_LABELS[key] ?? key).toLowerCase()}`}
+                />
+              </Stack>
+            ))}
+            {Object.keys(formData.timeToCompleteDetails).length === 0 && (
+              <Stack tokens={{ childrenGap: 8 }}>
+                <Text variant="medium" styles={{ root: { fontStyle: 'italic' } }}>
+                  Use the dropdown above to add timelines for your matter.
+                </Text>
+                <Text variant="smallPlus">
+                  [prompt: [Prompt: Give an expected timeframe for the immediate scope and any procedural steps (e.g., target completion date for initial review, adjudication duration range in months, and any additional time for enforcement if needed).  Add any dependency notes that could extend or shorten these timings]]
                 </Text>
               </Stack>
             )}
