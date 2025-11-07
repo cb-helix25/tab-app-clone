@@ -1,11 +1,63 @@
-# Helix Hub v1 - Teams App Clone
-*Minimal UI-Only Demo - Legal Services Platform for Microsoft Teams*
+# Tab App Clone - Playground Repository
+*Experimental Development & Testing Environment*
 
-## 🚀 Quick Start for UI Demo
+## 🎯 Purpose
 
-**SETUP**: This is a trimmed-down clone for UI demonstration purposes only.  
-**Configuration**: Uses local JSON fixtures via `REACT_APP_USE_LOCAL_DATA=true`.  
-**Purpose**: Showcase Team Hub interface and home tab layout without live integrations.
+This repository serves as a **playground and testing ground** for developing new features and experimenting with UI components before integration into production systems. It provides a safe, isolated environment for rapid prototyping and iteration.
+
+## � What This Repository Includes
+
+### Pages Overview
+
+#### **Home Page**
+The landing page provides navigation to different sections of the application:
+- Simple navigation interface
+- Links to Hub and Harvey pages
+- Clean, minimal design for quick access
+
+#### **Hub Page**
+Development workspace featuring:
+- **Recent Work Feed**: Displays git commit history with author, timestamp, and change statistics
+- **Team Issues Board**: Kanban-style board for tracking work items across New, In Progress, Blocked, and Resolved states
+- **Issue Management**: Track title, description, priority, assignee, and tags
+- **Real-time Updates**: Refresh capability with visual feedback
+
+#### **Harvey Page**
+Legal document drafting assistant (LLM integration testing):
+- **Matter Focus Selection**: Choose between different legal matter types (Adjudication, Shareholder Rights, etc.)
+- **Client Details Form**: Capture client information and matter details
+- **Dynamic Section Builder**: Add/remove focus areas for retainer scope and timelines
+- **Template Testing**: Experimental interface for testing LLM prompts and data formatting
+- **Output Preview**: View formatted outputs before LLM integration
+
+##### Harvey Example Data
+```
+[Example data will be inserted here showing:
+- Sample client details
+- Retainer focus areas with populated fields
+- Time to complete sections with realistic timelines
+- Expected output format]
+```
+Current position, next steps & scope of retainer
+Northern Angel - Termination Account (data)
+- Termination = 11 Sep 2025, ASF (via C.E Law) terminated for alleged repudiatory breach; ASF engaged your subcontractors to continue the varied scope.
+
+- Alleged breach = You suspended works by email on 26 Aug 2025. Claimed repudiatory because payment not at final date and no 7 days’ notice under s.112 HGCRA 1996.
+
+- Application = 26 Aug 2025 for £17,460; omitted >£100k variations. ASF disputes validity but issued pay less notice on 5 Sep 2025. Possible your application valid and their pay less invalid.
+
+- Funding = You instruct under a DBA.
+
+- Strategy (provisional) = Smash & grab for £17,460, then adjudication on true value/termination account; further info needed.
+
+Helix Construct - Unpaid Applications
+- Rights and breaches = HC’s repeated non‑payment (including retention) likely breaches payment terms, subject to any valid/timely pay less notices. Suspension already exercised on one contract; any termination rights for continuing non‑payment depend on contract review.
+
+- Payment status and evidence = Focus on clean, certified sums. Verify certifications, due dates/final dates for payment, and pay less notice validity. Assemble applications, certificates, notices, correspondence, and cost records.
+
+- Exposure and security = £20k/week cash drain on the non‑suspendable contract. No confirmed security (PBA/escrow/bond/parent guarantee). Avoid unfunded change/acceleration; protect title/ROO and avoid high‑value offsite deliveries without security.
+
+- Provisional strategy and timelines = Maintain valid suspension. Run rapid adjudication on the cleanest, highest‑value applications. Map payment timelines to spot “no pay less” wins. Seek immediate security or payment on account. Pursue due retention with interest.
 
 ### Current State - UI Demo Version (Oct 13, 2025)
 - ✅ **UI-Only Mode**: Configured to use local JSON fixtures instead of live API calls

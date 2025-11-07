@@ -289,6 +289,18 @@ const Harvey: React.FC = () => {
           }}
         />
 
+        <Stack styles={sectionStyles} tokens={{ childrenGap: 16 }}>
+          <Text variant="xLarge">Temp Testing!</Text>
+          <Text variant="large">Testing prompts prior to LLM integration.</Text>
+          <Stack tokens={{ childrenGap: 8 }}>
+            <Text variant="medium">1. Go to Harvey Draft assistant and insert the template 'Using the Data provided, draft a paragraph based on the included PROMPT. Purely for the sake of context, this paragraph is under the scope of 'Current position, next steps & scope of retainer'. PROMPT: DATA: Termination = Alleged breach = Application = Funding = Rights and breaches = Payment status and evidence = Exposure and security = Provisional strategy and timelines = '</Text>
+            <Text variant="medium">2. Place the prompt for the form into the 'Prompt' section</Text>
+            <Text variant="medium">3. Place the data from form into the 'Data' section.</Text>
+            <Text variant="medium">4. Submitted content (in future will appear in 'outputs section')</Text>
+            <Text variant="medium">5. (Extra) Example data in git repo README</Text>
+          </Stack>
+        </Stack>
+
         <Dropdown
           label="Select matter focus"
           placeholder="Choose an option"
@@ -397,7 +409,7 @@ const Harvey: React.FC = () => {
                   Use the dropdown above to add the areas you want to cover.
                 </Text>
                 <Text variant="smallPlus">
-                  [prompt: In a few sentences, describe the commercial relationship and what has recently happened (missed payments, suspension/termination events, key applications/claims and amounts, any counterparty notices served).   List the client’s immediate objectives and any risks (e.g., insolvency risk).  Outline the initial scope of work you want done (documents to review, analyses to provide, initial letters to send) and any proposed strategy steps (e.g., adjudication type(s), “smash and grab,” “true value,” letter before action).   Include any assumptions or dependencies and identify counterparties/contract types.]
+                  [prompt: Write a single cohesive paragraph (110–190 words) in formal UK legal English, using clear, declarative sentences and chronological order where helpful. Avoid headings and bullet points. Refer to parties on first mention by full name with a defined term in bold in brackets (e.g., Helix Construct (HC)); thereafter, use the defined term. Use day–month–year dates if provided. Open with the most material current development(s) (e.g., missed payments, suspensions, retention withheld, cash burn, termination), then summarise the relevant applications/certificates/pay less notices, and any notices served. Identify immediate objectives, key risks (including insolvency risk if relevant), funding (if given), and a provisional strategy. Where validity is disputed, use cautious language (e.g., “denies,” “alleges,” “it is possible that”). Cite statutes or use technical terms (e.g., Section 112 HGCRA, “smash and grab”, “true value”) only if included in the data. Express currency as “£[amount]”. Do not use headings, lists, or content beyond the data.]
                 </Text>
               </Stack>
             )}
