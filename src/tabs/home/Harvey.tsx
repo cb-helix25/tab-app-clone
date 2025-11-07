@@ -81,6 +81,8 @@ const Harvey: React.FC = () => {
   const [formData, setFormData] = useState<HarveyFormData>(initialFormData);
   const [selectedFocus, setSelectedFocus] = useState<string | undefined>(undefined);
 
+  const isAdjudicationFocus = selectedFocus === 'adjudicationAdviceDispute';
+
   const sectionStyles = useMemo(
     () => ({
       root: {
@@ -214,20 +216,24 @@ const Harvey: React.FC = () => {
 
   const retainerDropdownOptions = useMemo(
     () =>
-      RETAINER_OPTIONS.map((option) => ({
-        ...option,
-        disabled: option.key in formData.retainerDetails,
-      })),
-    [formData.retainerDetails],
+      isAdjudicationFocus
+        ? RETAINER_OPTIONS.map((option) => ({
+            ...option,
+            disabled: option.key in formData.retainerDetails,
+          }))
+        : [],
+    [formData.retainerDetails, isAdjudicationFocus],
   );
 
   const timeToCompleteDropdownOptions = useMemo(
     () =>
-      TIME_TO_COMPLETE_OPTIONS.map((option) => ({
-        ...option,
-        disabled: option.key in formData.timeToCompleteDetails,
-      })),
-    [formData.timeToCompleteDetails],
+      isAdjudicationFocus
+        ? TIME_TO_COMPLETE_OPTIONS.map((option) => ({
+            ...option,
+            disabled: option.key in formData.timeToCompleteDetails,
+          }))
+        : [],
+    [formData.timeToCompleteDetails, isAdjudicationFocus],
   );
 
   const retainerDetailContainerStyles = useMemo(
@@ -260,7 +266,16 @@ const Harvey: React.FC = () => {
 
   const handleFocusChange = useCallback(
     (_event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
-      setSelectedFocus(option ? String(option.key) : undefined);
+      const nextFocus = option ? String(option.key) : undefined;
+      setSelectedFocus(nextFocus);
+
+      if (nextFocus !== 'adjudicationAdviceDispute') {
+        setFormData((current) => ({
+          ...current,
+          retainerDetails: {},
+          timeToCompleteDetails: {},
+        }));
+      }
     },
     [],
   );
@@ -377,11 +392,12 @@ const Harvey: React.FC = () => {
         <Stack styles={sectionStyles} tokens={{ childrenGap: 16 }}>
           <Text variant="xLarge">Current position, next steps &amp; scope of retainer</Text>
           <Dropdown
-            placeholder="Select a section to add"
+            placeholder={isAdjudicationFocus ? 'Select a section to add' : 'Unavailable for this focus'}
             label="Add a focus area"
             options={retainerDropdownOptions}
             onChange={handleRetainerSectionSelect}
             selectedKey={undefined}
+            disabled={!isAdjudicationFocus}
           />
           <Stack tokens={{ childrenGap: 12 }}>
             {Object.entries(formData.retainerDetails).map(([key, value]) => (
@@ -403,7 +419,7 @@ const Harvey: React.FC = () => {
                 />
               </Stack>
             ))}
-            {Object.keys(formData.retainerDetails).length === 0 && (
+            {isAdjudicationFocus && Object.keys(formData.retainerDetails).length === 0 && (
               <Stack tokens={{ childrenGap: 8 }}>
                 <Text variant="medium" styles={{ root: { fontStyle: 'italic' } }}>
                   Use the dropdown above to add the areas you want to cover.
@@ -432,11 +448,12 @@ const Harvey: React.FC = () => {
         <Stack styles={sectionStyles} tokens={{ childrenGap: 16 }}>
           <Text variant="xLarge">Time to complete your case</Text>
           <Dropdown
-            placeholder="Select a section to add"
+            placeholder={isAdjudicationFocus ? 'Select a section to add' : 'Unavailable for this focus'}
             label="Add a focus area"
             options={timeToCompleteDropdownOptions}
             onChange={handleTimeToCompleteSelect}
             selectedKey={undefined}
+            disabled={!isAdjudicationFocus}
           />
           <Stack tokens={{ childrenGap: 12 }}>
             {Object.entries(formData.timeToCompleteDetails).map(([key, value]) => (
@@ -458,7 +475,7 @@ const Harvey: React.FC = () => {
                 />
               </Stack>
             ))}
-            {Object.keys(formData.timeToCompleteDetails).length === 0 && (
+            {isAdjudicationFocus && Object.keys(formData.timeToCompleteDetails).length === 0 && (
               <Stack tokens={{ childrenGap: 8 }}>
                 <Text variant="medium" styles={{ root: { fontStyle: 'italic' } }}>
                   Use the dropdown above to add timelines for your matter.
