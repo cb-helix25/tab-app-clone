@@ -481,7 +481,7 @@ const Harvey: React.FC = () => {
                   Use the dropdown above to add timelines for your matter.
                 </Text>
                 <Text variant="smallPlus">
-                  [prompt: [Prompt: Give an expected timeframe for the immediate scope and any procedural steps (e.g., target completion date for initial review, adjudication duration range in months, and any additional time for enforcement if needed).  Add any dependency notes that could extend or shorten these timings]]
+                  [prompt: Give an expected timeframe for the immediate scope and any procedural steps (e.g., target completion date for initial review, adjudication duration range in months, and any additional time for enforcement if needed).  Add any dependency notes that could extend or shorten these timings]
                 </Text>
               </Stack>
             )}
