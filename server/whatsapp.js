@@ -121,8 +121,30 @@ function registerWhatsAppRoutes(app) {
 
   // WhatsApp webhook event receiver (POST)
   app.post('/webhook', (req, res) => {
-    console.log('📩 Webhook event received:', JSON.stringify(req.body, null, 2));
-    res.sendStatus(200);
+    const body = req.body;
+    console.log('📩 Webhook event received:', JSON.stringify(body, null, 2));
+
+    if (body.object) {
+      const entry = body.entry?.[0];
+      const changes = entry?.changes?.[0]?.value?.messages;
+      
+      if (changes) {
+        const message = changes[0];
+        const from = message.from; // WhatsApp number
+        const text = message.text?.body;
+        const messageType = message.type;
+        
+        console.log(`[WEBHOOK] Received ${messageType} message from ${from}: ${text || '(no text)'}`);
+        
+        // You can add auto-reply logic here if needed
+        // Example: await sendWhatsAppMessage(from, 'Thanks for your message!');
+      }
+      
+      res.sendStatus(200);
+    } else {
+      console.warn('[WEBHOOK] Invalid webhook payload received');
+      res.sendStatus(404);
+    }
   });
 }
 
