@@ -1,12 +1,27 @@
 const express = require("express");
 const path = require("path");
 const morgan = require("morgan");
+const { DefaultAzureCredential } = require('@azure/identity');
+const { SecretClient } = require('@azure/keyvault-secrets');
 
 // Import existing server routes
 const serverRoutes = require('./server');
 
 const app = express();
 const port = process.env.PORT || 8080;
+
+// Initialize Azure Key Vault client with error handling
+try {
+  const keyVaultUrl = 'https://secret-keys-helix.vault.azure.net/';
+  const credential = new DefaultAzureCredential();
+  const secretClient = new SecretClient(keyVaultUrl, credential);
+  app.locals.secretClient = secretClient;
+  console.log('[KEY-VAULT] Client initialized successfully');
+} catch (error) {
+  console.warn('[KEY-VAULT] Failed to initialize Key Vault client:', error.message);
+  console.warn('[KEY-VAULT] Falling back to environment variables');
+  app.locals.secretClient = null;
+}
 
 app.use(morgan("tiny"));
 

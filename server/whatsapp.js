@@ -3,13 +3,27 @@ const fetch = require('node-fetch');
 const DEFAULT_PHONE_NUMBER = '447700900123';
 const DEFAULT_USER_NAME = 'User';
 
-// Helper to get secret from Key Vault
-async function getSecret(secretClient, secretName) {
+// Helper to get secret from Key Vault with fallback to environment variables
+async function getSecret(secretClient, secretName, envVarName) {
+  if (!secretClient) {
+    const envValue = process.env[envVarName];
+    if (envValue) {
+      console.log(`[KEY-VAULT] Using environment variable ${envVarName}`);
+      return envValue;
+    }
+    throw new Error(`Key Vault unavailable and environment variable ${envVarName} not set`);
+  }
+  
   try {
     const secret = await secretClient.getSecret(secretName);
+    console.log(`[KEY-VAULT] Retrieved secret: ${secretName}`);
     return secret.value;
   } catch (error) {
-    console.error(`[KEY-VAULT] Failed to get ${secretName}:`, error.message);
+    console.warn(`[KEY-VAULT] Failed to get ${secretName}, trying environment variable ${envVarName}`);
+    const envValue = process.env[envVarName];
+    if (envValue) {
+      return envValue;
+    }
     throw error;
   }
 }
@@ -37,8 +51,8 @@ function registerWhatsAppRoutes(app) {
         },
       };
 
-      // Get phone number ID and access token from Key Vault
-      const phoneNumberId = await getSecret(secretClient, 'whatsapp-phone-number-id');
+      // Get phone number ID from Key Vault (or env var fallback)
+      const phoneNumberId = await getSecret(secretClient, 'whatsapp-phone-number-id', 'WHATSAPP_PHONE_NUMBER_ID');
       const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
 
       if (!accessToken) {
@@ -91,8 +105,8 @@ function registerWhatsAppRoutes(app) {
       const token = req.query['hub.verify_token'];
       const challenge = req.query['hub.challenge'];
 
-      // Get verify token from Key Vault
-      const verifyToken = await getSecret(secretClient, 'whatsapp-verify-token');
+      // Get verify token from Key Vault (or env var fallback)
+      const verifyToken = await getSecret(secretClient, 'whatsapp-verify-token', 'WHATSAPP_VERIFY_TOKEN');
 
       if (mode && token === verifyToken) {
         res.status(200).send(challenge);
