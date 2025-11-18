@@ -7,9 +7,17 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const morgan = require('morgan');
-const fetch = require('node-fetch'); // For server-side external API calls only
+const { DefaultAzureCredential } = require('@azure/identity');
+const { SecretClient } = require('@azure/keyvault-secrets');
+const { registerWhatsAppRoutes } = require('./whatsapp');
 
 const app = express();
+
+// Initialize Azure Key Vault client
+const keyVaultUrl = 'https://secret-keys-helix.vault.azure.net/';
+const credential = new DefaultAzureCredential();
+const secretClient = new SecretClient(keyVaultUrl, credential);
+app.locals.secretClient = secretClient;
 
 // Log key operations in server logs for backend debugging
 console.log(`[SERVER-INIT] Starting server in ${process.env.NODE_ENV || 'development'} mode`);
@@ -18,6 +26,9 @@ console.log(`[SERVER-INIT] Starting server in ${process.env.NODE_ENV || 'develop
 app.use(cors());
 app.use(express.json());
 app.use(morgan('combined')); // Basic request logging as per Codex requirements
+
+// Register WhatsApp message and webhook routes
+registerWhatsAppRoutes(app);
 
 // Helper function to execute git commands
 const execGitCommand = (command, options = {}) => {
