@@ -98,23 +98,18 @@ function registerWhatsAppRoutes(app) {
   app.post('/messages', handleOutboundMessage);
 
   // WhatsApp webhook verification (GET)
-  app.get('/webhook', async (req, res) => {
-    try {
-      const secretClient = req.app.locals.secretClient;
-      const mode = req.query['hub.mode'];
-      const token = req.query['hub.verify_token'];
-      const challenge = req.query['hub.challenge'];
+  app.get('/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
 
-      // Get verify token from Key Vault (or env var fallback)
-      const verifyToken = await getSecret(secretClient, 'whatsapp-verify-token', 'WHATSAPP_VERIFY_TOKEN');
+    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'Supersecrettoken2011';
 
-      if (mode && token === verifyToken) {
-        res.status(200).send(challenge);
-      } else {
-        res.sendStatus(403);
-      }
-    } catch (error) {
-      console.error('[WEBHOOK] Verification error:', error.message);
+    if (mode && token === verifyToken) {
+      console.log('[WEBHOOK] Verification successful');
+      res.status(200).send(challenge);
+    } else {
+      console.warn('[WEBHOOK] Verification failed - invalid token');
       res.sendStatus(403);
     }
   });

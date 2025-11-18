@@ -23,7 +23,7 @@ const WhatsAppForm: React.FC = () => {
   );
 
   const handleSubmit = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
+    async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
 
       const trimmedName = name.trim();
@@ -34,11 +34,33 @@ const WhatsAppForm: React.FC = () => {
         return;
       }
 
-      setStatusMessage(
-        `Submitted contact details for ${trimmedName} with phone number ${trimmedPhone}. We will reach out soon!`,
-      );
-      setName('');
-      setPhoneNumber('');
+      try {
+        setStatusMessage('Sending message...');
+
+        const response = await fetch('/message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: trimmedName,
+            phone: trimmedPhone,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          setStatusMessage(`Success! WhatsApp message sent to ${trimmedPhone}. We'll be in touch soon!`);
+          setName('');
+          setPhoneNumber('');
+        } else {
+          setStatusMessage(`Error: ${result.error || 'Failed to send message'}. Please try again.`);
+        }
+      } catch (error) {
+        console.error('Error sending WhatsApp message:', error);
+        setStatusMessage('Failed to send message. Please check your connection and try again.');
+      }
     },
     [name, phoneNumber],
   );

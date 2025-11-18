@@ -13,7 +13,8 @@ import { colours } from './styles/colours';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Home from '../tabs/home/Home';
 import Hub from '../tabs/home/Hub';
-import Harvey from '../tabs/home/Harvey';
+import DocumentDraftingV1 from '../tabs/home/DocumentDraftingV1';
+import DocumentDraftingV2 from '../tabs/home/DocumentDraftingV2';
 import WhatsAppForm from '../tabs/home/WhatsAppForm';
 
 const resolveInitialDarkMode = (): boolean => {
@@ -174,7 +175,14 @@ const AppShell: React.FC = () => {
             <Routes>
               <Route path="/" element={renderPage('Home', <Home />)} />
               <Route path="/hub" element={renderPage('Hub', <Hub />)} />
-              <Route path="/harvey" element={renderPage('Harvey', <Harvey />)} />
+              <Route
+                path="/document-drafting-v1"
+                element={renderPage('Document drafting v1', <DocumentDraftingV1 />)}
+              />
+              <Route
+                path="/document-drafting-v2"
+                element={renderPage('Document drafting v2', <DocumentDraftingV2 />)}
+              />
               <Route path="/whatsapp" element={renderPage('WhatsApp', <WhatsAppForm />)} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

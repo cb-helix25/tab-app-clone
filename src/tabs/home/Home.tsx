@@ -18,7 +18,8 @@ const Home: React.FC = () => {
       </Text>
       <Stack tokens={{ childrenGap: 12 }}>
         <PrimaryButton text="Hub" onClick={() => navigate('/hub')} />
-        <PrimaryButton text="Harvey" onClick={() => navigate('/harvey')} />
+        <PrimaryButton text="Document drafting v1" onClick={() => navigate('/document-drafting-v1')} />
+        <PrimaryButton text="Document drafting v2" onClick={() => navigate('/document-drafting-v2')} />
         <PrimaryButton text="WhatsApp" onClick={() => navigate('/whatsapp')} />
       </Stack>
     </Stack>

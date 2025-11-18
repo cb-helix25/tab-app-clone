@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 
-interface HarveyFormData {
+interface DocumentDraftingV1FormData{
   firstName: string;
   lastName: string;
   email: string;
@@ -27,9 +27,12 @@ interface HarveyFormData {
   timeToCompleteDetails: Record<string, string>;
 }
 
-type HarveyStandardField = Exclude<keyof HarveyFormData, 'retainerDetails' | 'timeToCompleteDetails'>;
+type DocumentDraftingV1StandardField = Exclude<
+  keyof DocumentDraftingV1FormData,
+  'retainerDetails' | 'timeToCompleteDetails'
+>;
 
-const initialFormData: HarveyFormData = {
+const initialFormData: DocumentDraftingV1FormData = {
   firstName: '',
   lastName: '',
   email: '',
@@ -75,10 +78,10 @@ const TIME_TO_COMPLETE_LABELS = TIME_TO_COMPLETE_OPTIONS.reduce<Record<string, s
   return accumulator;
 }, {});
 
-const Harvey: React.FC = () => {
+const DocumentDraftingV1: React.FC = () => {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
-  const [formData, setFormData] = useState<HarveyFormData>(initialFormData);
+  const [formData, setFormData] = useState<DocumentDraftingV1FormData>(initialFormData);
   const [selectedFocus, setSelectedFocus] = useState<string | undefined>(undefined);
 
   const isAdjudicationFocus = selectedFocus === 'adjudicationAdviceDispute';
@@ -98,7 +101,7 @@ const Harvey: React.FC = () => {
   );
 
   const handleFieldChange = useCallback(
-    (field: HarveyStandardField) =>
+    (field: DocumentDraftingV1StandardField) =>
       (_event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setFormData((current) => ({
           ...current,
@@ -253,7 +256,7 @@ const Harvey: React.FC = () => {
       event.preventDefault();
       // Placeholder for future submission handling logic
       // eslint-disable-next-line no-console
-      console.log('Harvey form submitted', formData);
+      console.log('Document drafting v1 form submitted', formData);
     },
     [formData],
   );
@@ -510,4 +513,4 @@ const Harvey: React.FC = () => {
   );
 };
 
-export default Harvey;
+export default DocumentDraftingV1;
