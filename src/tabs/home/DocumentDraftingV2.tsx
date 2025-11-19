@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
+import SchemaPanel from '../../components/instructions/SchemaPanel';
+import InstructionExplorer from '../../components/instructions/InstructionExplorer';
 
 const DocumentDraftingV2: React.FC = () => {
   const navigate = useNavigate();
@@ -33,7 +35,7 @@ const DocumentDraftingV2: React.FC = () => {
       />
 
       <Stack
-        tokens={{ childrenGap: 12 }}
+        tokens={{ childrenGap: 24 }}
         styles={{
           root: {
             backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
@@ -45,6 +47,21 @@ const DocumentDraftingV2: React.FC = () => {
           },
         }}
       >
+        <Stack tokens={{ childrenGap: 8 }}>
+          <Text variant="xxLarge">Instructions Explorer</Text>
+          <Text>
+            Use the schema reference to understand the data model and load live instruction details via the
+            read-only explorer.
+          </Text>
+        </Stack>
+        <Stack horizontal wrap tokens={{ childrenGap: 24 }}>
+          <Stack.Item grow styles={{ root: { minWidth: 320, flexBasis: '40%' } }}>
+            <SchemaPanel />
+          </Stack.Item>
+          <Stack.Item grow styles={{ root: { minWidth: 320, flexBasis: '60%' } }}>
+            <InstructionExplorer />
+          </Stack.Item>
+        </Stack>
       </Stack>
     </Stack>
   );
