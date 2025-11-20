@@ -1,11 +1,6 @@
-import { SecretClient } from "@azure/keyvault-secrets";
-import { getInstructionsPool } from "./instructionsDb";
+const { getInstructionsPool } = require("./instructionsDb");
 
-export async function queryReadOnly<T = any>(
-  secretClient: SecretClient,
-  sqlText: string,
-  params?: Record<string, any>
-): Promise<T[]> {
+async function queryReadOnly(secretClient, sqlText, params) {
   const normalized = sqlText.trim().toUpperCase();
 
   if (!normalized.startsWith("SELECT")) {
@@ -21,6 +16,8 @@ export async function queryReadOnly<T = any>(
     }
   }
 
-  const result = await request.query<T>(sqlText);
+  const result = await request.query(sqlText);
   return result.recordset;
 }
+
+module.exports = { queryReadOnly };

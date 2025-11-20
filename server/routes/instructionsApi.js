@@ -1,18 +1,14 @@
-import type { Express, Request, Response } from "express";
-import { SecretClient } from "@azure/keyvault-secrets";
-import {
+const {
   getInstructionByRef,
   getDealForInstruction,
   getEnquiryById,
   getPaymentsForInstruction,
   getDocumentsForInstruction,
   getPitchContentForAcid,
-  Enquiry,
-  PitchContent
-} from "../repositories/instructionsRepo";
+} = require("../repositories/instructionsRepo");
 
-export function registerInstructionsApi(app: Express, secretClient: SecretClient): void {
-  app.get("/api/instructions/:instructionRef", async (req: Request, res: Response) => {
+function registerInstructionsApi(app, secretClient) {
+  app.get("/api/instructions/:instructionRef", async (req, res) => {
     try {
       const { instructionRef } = req.params;
       const instruction = await getInstructionByRef(secretClient, instructionRef);
@@ -23,19 +19,19 @@ export function registerInstructionsApi(app: Express, secretClient: SecretClient
 
       const deal = await getDealForInstruction(secretClient, instructionRef);
 
-      let enquiry: Enquiry | null = null;
+      let enquiry = null;
       if (deal?.enquiryId !== undefined && deal.enquiryId !== null) {
         enquiry = await getEnquiryById(secretClient, deal.enquiryId);
       }
 
-      let pitchContent: PitchContent[] = [];
+      let pitchContent = [];
       if (enquiry?.acid) {
         pitchContent = await getPitchContentForAcid(secretClient, enquiry.acid);
       }
 
       const [payments, documents] = await Promise.all([
         getPaymentsForInstruction(secretClient, instructionRef),
-        getDocumentsForInstruction(secretClient, instructionRef)
+        getDocumentsForInstruction(secretClient, instructionRef),
       ]);
 
       return res.json({
@@ -44,7 +40,7 @@ export function registerInstructionsApi(app: Express, secretClient: SecretClient
         enquiry,
         payments,
         documents,
-        pitchContent
+        pitchContent,
       });
     } catch (error) {
       console.error("Failed to load instruction", error);
@@ -52,3 +48,5 @@ export function registerInstructionsApi(app: Express, secretClient: SecretClient
     }
   });
 }
+
+module.exports = { registerInstructionsApi };

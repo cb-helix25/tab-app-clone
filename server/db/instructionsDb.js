@@ -1,15 +1,12 @@
-import sql from "mssql";
-import { SecretClient } from "@azure/keyvault-secrets";
+const sql = require("mssql");
 
 const sqlServer = "instructions.database.windows.net";
 const sqlUser = "instructionsadmin";
 const sqlDatabase = "instructions";
 
-let instructionsPool: sql.ConnectionPool | null = null;
+let instructionsPool = null;
 
-export async function getInstructionsPool(
-  secretClient: SecretClient
-): Promise<sql.ConnectionPool> {
+async function getInstructionsPool(secretClient) {
   if (instructionsPool) {
     return instructionsPool;
   }
@@ -19,22 +16,19 @@ export async function getInstructionsPool(
   }
 
   const secretName = "helix-instructions-password";
-  let sqlPassword: string | undefined;
+  let sqlPassword
 
   try {
-    sqlPassword = (await secretClient.getSecret(secretName)).value;
+    const secret = await secretClient.getSecret(secretName);
+    sqlPassword = secret && secret.value;
   } catch (error) {
     throw new Error(
-      `Failed to retrieve SQL password secret "${secretName}": ${
-        (error as Error).message || error
-      }`
+      `Failed to connect to SQL Server for instructions DB: ${error.message || error}`
     );
   }
 
   if (!sqlPassword) {
-    throw new Error(
-      `SQL password secret "${secretName}" does not contain a value.`
-    );
+    throw new Error(`SQL password secret "${secretName}" does not contain a value.`);
   }
 
   try {
@@ -51,9 +45,9 @@ export async function getInstructionsPool(
     return instructionsPool;
   } catch (error) {
     throw new Error(
-      `Failed to connect to SQL Server for instructions DB: ${
-        (error as Error).message || error
-      }`
+      `Failed to connect to SQL Server for instructions DB: ${error.message || error}`
     );
   }
 }
+
+module.exports = { getInstructionsPool };
