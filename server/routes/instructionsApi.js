@@ -9,8 +9,12 @@ const {
 
 function registerInstructionsApi(app, secretClient) {
   app.get("/api/instructions/:instructionRef", async (req, res) => {
+        const instructionRef = req.params.instructionRef?.trim();
+
+    if (!instructionRef) {
+      return res.status(400).json({ error: "Instruction reference is required" });
+    }
     try {
-      const { instructionRef } = req.params;
       const instruction = await getInstructionByRef(secretClient, instructionRef);
 
       if (!instruction) {
@@ -45,6 +49,18 @@ function registerInstructionsApi(app, secretClient) {
     } catch (error) {
       console.error("Failed to load instruction", error);
       return res.status(500).json({ error: "Internal server error" });
+      console.error(
+        `[INSTRUCTIONS] Failed to load instruction ${instructionRef}: ${error.message}`,
+        {
+          instructionRef,
+          stack: error.stack,
+        }
+      );
+
+      return res.status(500).json({
+        error: "Internal server error",
+        detail: error.message,
+      });
     }
   });
 }
