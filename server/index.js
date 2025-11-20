@@ -10,6 +10,7 @@ const morgan = require('morgan');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 const { registerWhatsAppRoutes } = require('./whatsapp');
+const { registerInstructionsApi } = require('./routes/instructionsApi');
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use(morgan('combined')); // Basic request logging as per Codex requirements
 
 // Register WhatsApp message and webhook routes
 registerWhatsAppRoutes(app);
+registerInstructionsApi(app, secretClient);
 
 // Helper function to execute git commands
 const execGitCommand = (command, options = {}) => {
