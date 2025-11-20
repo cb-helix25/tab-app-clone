@@ -115,7 +115,7 @@ function registerWhatsAppRoutes(app) {
   });
 
   // WhatsApp webhook event receiver (POST)
-  app.post('/webhook', (req, res) => {
+  app.post('/webhook', async(req, res) => {
     const body = req.body;
     console.log('📩 Webhook event received:', JSON.stringify(body, null, 2));
 
@@ -128,11 +128,63 @@ function registerWhatsAppRoutes(app) {
         const from = message.from; // WhatsApp number
         const text = message.text?.body;
         const messageType = message.type;
+
+        const incomingText = typeof text === 'string' ? text.trim() : '';
         
         console.log(`[WEBHOOK] Received ${messageType} message from ${from}: ${text || '(no text)'}`);
         
-        // You can add auto-reply logic here if needed
-        // Example: await sendWhatsAppMessage(from, 'Thanks for your message!');
+
+        // Simple FAQ / icebreaker mapping for questions 1, 2, and 3
+        if (incomingText === 'Question 1' || incomingText === 'Question 2' || incomingText === 'Question 3') {
+          const replyTextMap = {
+            'Question 1': 'This is the answer to Q1.',
+            'Question 2': 'This is the answer to Q2.',
+            'Question 3': 'This is the answer to Q3.',
+          };
+
+          try {
+            const secretClient = req.app.locals.secretClient;
+            const phoneNumberId = await getSecret(
+              secretClient,
+              'whatsapp-phone-number-id',
+              'WHATSAPP_PHONE_NUMBER_ID'
+            );
+            const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+
+            if (!accessToken) {
+              console.error('Missing WhatsApp access token');
+            } else {
+              const response = await fetch(
+                `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
+                {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    messaging_product: 'whatsapp',
+                    to: from,
+                    type: 'text',
+                    text: {
+                      body: replyTextMap[incomingText],
+                    },
+                  }),
+                }
+              );
+
+              const result = await response.json();
+              console.log('Message API result:', result);
+
+              if (!response.ok) {
+                console.warn('Failed to send WhatsApp FAQ reply', result);
+              }
+            }
+          } catch (error) {
+            console.error('Error sending FAQ response:', error);
+          }
+        }
+
       }
       
       res.sendStatus(200);
@@ -143,4 +195,4 @@ function registerWhatsAppRoutes(app) {
   });
 }
 
-module.exports = { registerWhatsAppRoutes };
+module.exports = { registerWhatsAppRoutes }
