@@ -47,12 +47,10 @@ function registerInstructionsApi(app, secretClient) {
         pitchContent,
       });
     } catch (error) {
-      console.error("Failed to load instruction", error);
-      return res.status(500).json({ error: "Internal server error" });
       console.error(
-        `[INSTRUCTIONS] Failed to load instruction ${instructionRef}: ${error.message}`,
+        `[INSTRUCTIONS] Failed to load instruction ${req.params.instructionRef}: ${error.message}`,
         {
-          instructionRef,
+          instructionRef: req.params.instructionRef,
           stack: error.stack,
         }
       );

@@ -1,12 +1,28 @@
 const { queryReadOnly } = require("../db/readOnlyQuery");
 
+const toCamelCase = (key) =>
+  key
+    .replace(/[_\s]+(.)?/g, (_, chr) => (chr ? chr.toUpperCase() : ""))
+    .replace(/^(\w)/, (match) => match.toLowerCase());
+
+const normalizeRecord = (record) => {
+  if (!record || typeof record !== "object") {
+    return record;
+  }
+
+  return Object.entries(record).reduce((acc, [key, value]) => {
+    acc[toCamelCase(key)] = value;
+    return acc;
+  }, {});
+};
+
 async function getInstructionByRef(secretClient, instructionRef) {
   const results = await queryReadOnly(
     secretClient,
     "SELECT * FROM dbo.Instructions WHERE InstructionRef = @instructionRef",
     { instructionRef }
   );
-  return results[0] ?? null;
+  return results[0] ?normalizeRecord(results[0]) : null;
 }
 
 async function getDealForInstruction(secretClient, instructionRef) {
@@ -15,7 +31,7 @@ async function getDealForInstruction(secretClient, instructionRef) {
     "SELECT * FROM dbo.Deals WHERE InstructionRef = @instructionRef",
     { instructionRef }
   );
-  return results[0] ?? null;
+  return results[0] ?normalizeRecord(results[0]) : null;
 }
 
 async function getEnquiryById(secretClient, enquiryId) {
@@ -24,7 +40,7 @@ async function getEnquiryById(secretClient, enquiryId) {
     "SELECT * FROM dbo.enquiries WHERE enquiryId = @enquiryId",
     { enquiryId }
   );
-  return results[0] ?? null;
+  return results[0] ?normalizeRecord(results[0]) : null;
 }
 
 async function getPaymentsForInstruction(secretClient, instructionRef) {
