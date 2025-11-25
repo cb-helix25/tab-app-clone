@@ -1,12 +1,24 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { PrimaryButton, Stack, Text, TextField } from '@fluentui/react';
+import { Dropdown, IDropdownOption, PrimaryButton, Stack, Text, TextField } from '@fluentui/react';
 import { useNavigate } from 'react-router-dom';
 
 const WhatsAppForm: React.FC = () => {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [worktype, setWorktype] = useState('construction');
   const [statusMessage, setStatusMessage] = useState('');
+
+    const worktypeOptions: IDropdownOption[] = useMemo(
+    () => [
+      { key: 'construction', text: 'Construction' },
+      { key: 'commercial', text: 'Commercial' },
+      { key: 'property', text: 'Property' },
+      { key: 'employment', text: 'Employment' },
+    ],
+    [],
+  );
+
 
   const containerStyles = useMemo(
     () => ({
@@ -45,6 +57,7 @@ const WhatsAppForm: React.FC = () => {
           body: JSON.stringify({
             name: trimmedName,
             phone: trimmedPhone,
+            worktype,
           }),
         });
 
@@ -60,9 +73,12 @@ const WhatsAppForm: React.FC = () => {
         }
 
         if (response.ok) {
-          setStatusMessage(`Success! WhatsApp message sent to ${trimmedPhone}. We'll be in touch soon!`);
+          setStatusMessage(
+            `Success! WhatsApp message sent to ${trimmedPhone} about your ${worktype} enquiry. We'll be in touch soon!`,
+          );
           setName('');
           setPhoneNumber('');
+          setWorktype(worktypeOptions[0].key as string);
         } else {
           setStatusMessage(`Error: ${result.error || 'Failed to send message'}. Check console for details.`);
         }
@@ -71,7 +87,7 @@ const WhatsAppForm: React.FC = () => {
         setStatusMessage('Failed to send message. Please check your connection and try again.');
       }
     },
-    [name, phoneNumber],
+    [name, phoneNumber, worktype, worktypeOptions],
   );
 
   return (
@@ -91,6 +107,14 @@ const WhatsAppForm: React.FC = () => {
             placeholder="Enter your full name"
             value={name}
             onChange={(_event, newValue) => setName(newValue ?? '')}
+          />
+          <Dropdown
+            label="Work type"
+            required
+            placeholder="Select work type"
+            options={worktypeOptions}
+            selectedKey={worktype}
+            onChange={(_event, option) => option?.key && setWorktype(option.key.toString())}
           />
           <TextField
             label="Phone number"

@@ -2,6 +2,7 @@ const fetch = require('node-fetch');
 
 const DEFAULT_PHONE_NUMBER = '447700900123';
 const DEFAULT_USER_NAME = 'User';
+const WORKTYPE_OPTIONS = ['construction', 'commercial', 'property', 'employment'];
 
 // Helper to get secret from Key Vault with fallback to environment variables
 async function getSecret(secretClient, secretName, envVarName) {
@@ -41,13 +42,18 @@ function registerWhatsAppRoutes(app) {
       const formData = req.body || {};
       const userPhone = formData.phone || DEFAULT_PHONE_NUMBER;
       const userName = formData.name || DEFAULT_USER_NAME;
+      const worktype =
+        typeof formData.worktype === 'string'
+          ? formData.worktype.trim().toLowerCase()
+          : '';
+      const chosenWorktype = WORKTYPE_OPTIONS.includes(worktype) ? worktype : 'legal';
 
       const payload = {
         messaging_product: 'whatsapp',
         to: userPhone,
         type: 'text',
         text: {
-          body: `Hi ${userName}, thanks for contacting Helix Law! We'll be in touch soon.`,
+          body: `Hi ${userName}, thanks for your ${chosenWorktype} enquiry to Helix Law! We'll be in touch soon.`,
         },
       };
 
