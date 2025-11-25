@@ -34,11 +34,11 @@ async function getDealForInstruction(secretClient, instructionRef) {
   return results[0] ?normalizeRecord(results[0]) : null;
 }
 
-async function getEnquiryById(secretClient, enquiryId) {
+async function getEnquiryById(secretClient, id) {
   const results = await queryReadOnly(
     secretClient,
-    "SELECT * FROM dbo.enquiries WHERE enquiryId = @enquiryId",
-    { enquiryId }
+    "SELECT * FROM dbo.enquiries WHERE id = @id",
+    { id }
   );
   return results[0] ?normalizeRecord(results[0]) : null;
 }
@@ -46,7 +46,7 @@ async function getEnquiryById(secretClient, enquiryId) {
 async function getPaymentsForInstruction(secretClient, instructionRef) {
   return queryReadOnly(
     secretClient,
-    "SELECT * FROM dbo.Payments WHERE instruction_ref = @instructionRef ORDER BY id DESC",
+    "SELECT * FROM dbo.Payments WHERE instructionRef = @instructionRef ORDER BY id DESC",
     { instructionRef }
   );
 }
@@ -59,11 +59,11 @@ async function getDocumentsForInstruction(secretClient, instructionRef) {
   );
 }
 
-async function getPitchContentForAcid(secretClient, acid) {
+async function getPitchContentForPitch(secretClient, instructionRef) {
   return queryReadOnly(
     secretClient,
-    "SELECT * FROM dbo.PitchContent WHERE acid = @acid ORDER BY id DESC",
-    { acid }
+    "SELECT * FROM dbo.PitchContent WHERE InstructionRef = @instructionRef ORDER BY id DESC",
+    { instructionRef }
   );
 }
 
@@ -73,5 +73,5 @@ module.exports = {
   getEnquiryById,
   getPaymentsForInstruction,
   getDocumentsForInstruction,
-  getPitchContentForAcid,
+  getPitchContentForPitch,
 };

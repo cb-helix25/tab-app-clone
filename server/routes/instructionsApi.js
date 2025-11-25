@@ -4,7 +4,7 @@ const {
   getEnquiryById,
   getPaymentsForInstruction,
   getDocumentsForInstruction,
-  getPitchContentForAcid,
+  getPitchContentForPitch,
 } = require("../repositories/instructionsRepo");
 
 function registerInstructionsApi(app, secretClient) {
@@ -24,13 +24,13 @@ function registerInstructionsApi(app, secretClient) {
       const deal = await getDealForInstruction(secretClient, instructionRef);
 
       let enquiry = null;
-      if (deal?.enquiryId !== undefined && deal.enquiryId !== null) {
-        enquiry = await getEnquiryById(secretClient, deal.enquiryId);
+      if (deal?.ProspectId !== undefined && deal.ProspectId !== null) {
+        enquiry = await getEnquiryById(secretClient, deal.ProspectId);
       }
 
       let pitchContent = [];
-      if (enquiry?.acid) {
-        pitchContent = await getPitchContentForAcid(secretClient, enquiry.acid);
+      if (enquiry?.instructionRef) {
+        pitchContent = await getPitchContentForPitch(secretClient, instructionRef);
       }
 
       const [payments, documents] = await Promise.all([
