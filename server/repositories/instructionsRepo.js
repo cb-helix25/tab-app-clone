@@ -46,7 +46,7 @@ async function getEnquiryById(secretClient, id) {
 async function getPaymentsForInstruction(secretClient, instructionRef) {
   return queryReadOnly(
     secretClient,
-    "SELECT * FROM dbo.Payments WHERE InstructionRef = @instructionRef ORDER BY id DESC",
+    "SELECT * FROM dbo.Payments WHERE instruction_ref = @instructionRef ORDER BY id DESC",
     { instructionRef }
   );
 }
