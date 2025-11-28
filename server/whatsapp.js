@@ -3,6 +3,22 @@ const fetch = require('node-fetch');
 const DEFAULT_PHONE_NUMBER = '447700900123';
 const DEFAULT_USER_NAME = 'User';
 const WORKTYPE_OPTIONS = ['construction', 'commercial', 'property', 'employment'];
+const userWorktypes = new Map();
+
+const ICEBREAKER_ANSWERS = {
+  property: {
+    'Question 1': 'This is the PROPERTY answer to Question 1',
+  },
+  employment: {
+    'Question 2': 'This is the EMPLOYMENT answer to Question 2',
+  },
+  commercial: {
+    'Question 3': 'This is the COMMERCIAL answer to Question 3',
+  },
+  construction: {
+    'Question 4': 'This is the CONSTRUCTION answer to Question 4',
+  },
+};
 
 // Helper to get secret from Key Vault with fallback to environment variables
 async function getSecret(secretClient, secretName, envVarName) {
@@ -47,6 +63,8 @@ function registerWhatsAppRoutes(app) {
           ? formData.worktype.trim().toLowerCase()
           : '';
       const chosenWorktype = WORKTYPE_OPTIONS.includes(worktype) ? worktype : 'legal';
+
+      userWorktypes.set(userPhone, chosenWorktype);
 
       const payload = {
         messaging_product: 'whatsapp',
@@ -139,56 +157,58 @@ function registerWhatsAppRoutes(app) {
         
         console.log(`[WEBHOOK] Received ${messageType} message from ${from}: ${text || '(no text)'}`);
         
+        const userWorktype = userWorktypes.get(from);
 
-        // Simple FAQ / icebreaker mapping for questions 1, 2, and 3
-        if (incomingText === 'Question 1' || incomingText === 'Question 2' || incomingText === 'Question 3') {
-          const replyTextMap = {
-            'Question 1': 'This is the answer to Q1.',
-            'Question 2': 'This is the answer to Q2.',
-            'Question 3': 'This is the answer to Q3.',
-          };
+        if (!userWorktype) {
+          return res.sendStatus(200);
+        }
 
-          try {
-            const secretClient = req.app.locals.secretClient;
-            const phoneNumberId = await getSecret(
-              secretClient,
-              'whatsapp-phone-number-id',
-              'WHATSAPP_PHONE_NUMBER_ID'
-            );
-            const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+        const answer =
+          ICEBREAKER_ANSWERS[userWorktype] &&
+          ICEBREAKER_ANSWERS[userWorktype][incomingText];
 
-            if (!accessToken) {
-              console.error('Missing WhatsApp access token');
-            } else {
-              const response = await fetch(
-                `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
-                {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    messaging_product: 'whatsapp',
-                    to: from,
-                    type: 'text',
-                    text: {
-                      body: replyTextMap[incomingText],
-                    },
-                  }),
-                }
-              );
+        if (!answer) {
+          return res.sendStatus(200);
+        }
 
-              const result = await response.json();
-              console.log('Message API result:', result);
+        try {
+          const secretClient = req.app.locals.secretClient;
+          const phoneNumberId = await getSecret(
+            secretClient,
+            'whatsapp-phone-number-id',
+            'WHATSAPP_PHONE_NUMBER_ID'
+          );
+          const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
 
-              if (!response.ok) {
-                console.warn('Failed to send WhatsApp FAQ reply', result);
-              }
-            }
-          } catch (error) {
-            console.error('Error sending FAQ response:', error);
+          if (!accessToken) {
+            console.error('Missing WhatsApp access token');
+            return res.sendStatus(200);
           }
+
+          const response = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              to: from,
+              type: 'text',
+              text: {
+                body: answer,
+              },
+            }),
+          });
+
+          const result = await response.json();
+          console.log('Message API result:', result);
+
+          if (!response.ok) {
+            console.warn('Failed to send WhatsApp FAQ reply', result);
+          }
+        } catch (error) {
+          console.error('Error sending FAQ response:', error);
         }
 
       }

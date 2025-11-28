@@ -62,7 +62,7 @@ async function getDocumentsForInstruction(secretClient, instructionRef) {
 async function getPitchContentForPitch(secretClient, instructionRef) {
   return queryReadOnly(
     secretClient,
-    "SELECT * FROM dbo.PitchContent WHERE InstructionRef = @instructionRef ORDER BY id DESC",
+    "SELECT * FROM dbo.PitchContent WHERE InstructionRef = @instructionRef ORDER BY PitchContentId DESC",
     { instructionRef }
   );
 }
