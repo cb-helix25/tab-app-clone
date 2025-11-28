@@ -13,7 +13,7 @@ export interface Deal {
 }
 
 export interface Enquiry {
-  enquiryId: string;
+  id: string;
   acid: string;
   prospectId?: string;
   [key: string]: unknown;

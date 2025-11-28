@@ -121,6 +121,32 @@ function registerWhatsAppRoutes(app) {
   // WhatsApp outbound message route (plural alias for user convenience)
   app.post('/messages', handleOutboundMessage);
 
+  // Get icebreaker questions for a specific worktype
+  app.get('/api/icebreakers/:worktype', (req, res) => {
+    const worktype = req.params.worktype?.toLowerCase();
+    
+    if (!WORKTYPE_OPTIONS.includes(worktype)) {
+      return res.status(400).json({ 
+        error: 'Invalid worktype',
+        validOptions: WORKTYPE_OPTIONS 
+      });
+    }
+
+    const questions = ICEBREAKER_ANSWERS[worktype];
+    
+    if (!questions) {
+      return res.status(404).json({ 
+        error: 'No icebreakers found for this worktype' 
+      });
+    }
+
+    // Return just the question keys
+    res.json({
+      worktype,
+      questions: Object.keys(questions)
+    });
+  });
+
   // WhatsApp webhook verification (GET)
   app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];

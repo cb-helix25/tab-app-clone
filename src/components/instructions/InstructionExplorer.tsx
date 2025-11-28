@@ -195,7 +195,7 @@ const InstructionExplorer: React.FC = () => {
           >
             {[{ label: 'Instruction Ref', value: data.instruction?.instructionRef },
               { label: 'Deal ID', value: data.deal?.dealId },
-              { label: 'Enquiry ID', value: data.enquiry?.enquiryId },
+              { label: 'Enquiry ID', value: data.enquiry?.id },
               { label: 'Stage', value: data.instruction?.stage ?? data.deal?.stage }].map(
               ({ label, value }) => (
                 <div

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dropdown, IDropdownOption, PrimaryButton, Stack, Text, TextField } from '@fluentui/react';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,7 @@ const WhatsAppForm: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [worktype, setWorktype] = useState('construction');
   const [statusMessage, setStatusMessage] = useState('');
+  const [icebreakerQuestions, setIcebreakerQuestions] = useState<string[]>([]);
 
     const worktypeOptions: IDropdownOption[] = useMemo(
     () => [
@@ -33,6 +34,26 @@ const WhatsAppForm: React.FC = () => {
     }),
     [],
   );
+
+  // Fetch icebreaker questions when worktype changes
+  useEffect(() => {
+    const fetchIcebreakers = async () => {
+      try {
+        const response = await fetch(`/api/icebreakers/${worktype}`);
+        if (response.ok) {
+          const data = await response.json();
+          setIcebreakerQuestions(data.questions || []);
+        } else {
+          setIcebreakerQuestions([]);
+        }
+      } catch (error) {
+        console.error('Error fetching icebreaker questions:', error);
+        setIcebreakerQuestions([]);
+      }
+    };
+
+    fetchIcebreakers();
+  }, [worktype]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -123,6 +144,45 @@ const WhatsAppForm: React.FC = () => {
             value={phoneNumber}
             onChange={(_event, newValue) => setPhoneNumber(newValue ?? '')}
           />
+          
+          {icebreakerQuestions.length > 0 && (
+            <Stack 
+              tokens={{ childrenGap: 8 }} 
+              styles={{ 
+                root: { 
+                  padding: 16, 
+                  background: '#f3f2f1', 
+                  borderRadius: 6,
+                  border: '1px solid #edebe9'
+                } 
+              }}
+            >
+              <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
+                💬 Available Questions
+              </Text>
+              <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
+                After we send you the initial WhatsApp message, you can reply with one of these questions:
+              </Text>
+              {icebreakerQuestions.map((question, index) => (
+                <Text 
+                  key={index} 
+                  variant="small" 
+                  styles={{ 
+                    root: { 
+                      padding: '8px 12px',
+                      background: '#ffffff',
+                      borderRadius: 4,
+                      fontWeight: 500,
+                      color: '#323130'
+                    } 
+                  }}
+                >
+                  • {question}
+                </Text>
+              ))}
+            </Stack>
+          )}
+          
           <PrimaryButton type="submit" text="Send via WhatsApp" />
           {statusMessage && (
             <Text variant="small" styles={{ root: { color: '#106ebe' } }}>
