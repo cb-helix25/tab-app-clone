@@ -1,14 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { PrimaryButton, Stack, Text, TextField } from '@fluentui/react';
-import {
-  Deal,
-  DocumentRecord,
-  Enquiry,
-  Instruction,
-  InstructionResponse,
-  Payment,
-  PitchContentRecord,
-} from './types';
+import { Deal, DocumentRecord, Enquiry, InstructionResponse, Payment, PitchContentRecord } from './types';
 
 const cardStyles = {
   root: {
@@ -52,42 +44,25 @@ const InstructionExplorer: React.FC = () => {
     }
   }, [instructionRef]);
 
-  const renderOverview = (instruction?: Instruction, deal?: Deal, enquiry?: Enquiry) => (
-    <Stack tokens={{ childrenGap: 8 }} styles={cardStyles}>
-      <Text variant="large" styles={{ root: { fontWeight: 600 } }}>
-        Overview
-      </Text>
-      <Text>
-        <strong>Instruction Ref:</strong> {instruction?.instructionRef ?? '—'}
-      </Text>
-      <Text>
-        <strong>Instruction Status:</strong> {(instruction?.status as string) ?? '—'}
-      </Text>
-      <Text>
-        <strong>Deal ID:</strong> {deal?.dealId ?? instruction?.dealId ?? '—'}
-      </Text>
-      <Text>
-        <strong>Linked Enquiry:</strong> {deal?.enquiryId ?? enquiry?.enquiryId ?? '—'}
-      </Text>
-      <Text>
-        <strong>ACID:</strong> {enquiry?.acid ?? '—'}
-      </Text>
-      <Text>
-        <strong>Prospect ID:</strong> {enquiry?.prospectId ?? '—'}
-      </Text>
-    </Stack>
-  );
-
   const renderList = <T extends { [key: string]: unknown }>(title: string, records?: T[]) => {
-    const hasRecords = Boolean(records && records.length > 0);
-    const columns = hasRecords && records ? Object.keys(records[0] as T) : [];
+    const rows = records && records.length > 0 ? records : [];
+    const columns = rows.length
+      ? Array.from(
+          new Set(
+            rows.reduce<string[]>((acc, record) => {
+              acc.push(...Object.keys(record));
+              return acc;
+            }, [])
+          )
+        )
+      : [];
 
     return (
       <Stack tokens={{ childrenGap: 8 }} styles={cardStyles}>
         <Text variant="large" styles={{ root: { fontWeight: 600 } }}>
           {title}
         </Text>
-        {!hasRecords || !records ? (
+        {rows.length === 0 ? (
           <Text>No records</Text>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -108,7 +83,7 @@ const InstructionExplorer: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {records!.map((record, rowIndex) => (
+              {rows.map((record, rowIndex) => (
                 <tr key={rowIndex}>
                   {columns.map((key) => (
                     <td
@@ -126,6 +101,8 @@ const InstructionExplorer: React.FC = () => {
       </Stack>
     );
   };
+
+  const toRows = <T extends Record<string, unknown>>(record?: T) => (record ? [record] : undefined);
 
   return (
     <Stack tokens={{ childrenGap: 16 }}>
@@ -150,7 +127,9 @@ const InstructionExplorer: React.FC = () => {
       {!loading && !error && !data && <Text>Enter an instruction reference to load details.</Text>}
       {data && (
         <Stack tokens={{ childrenGap: 16 }}>
-          {renderOverview(data.instruction, data.deal, data.enquiry)}
+          {renderList('Instructions', toRows(data.instruction))}
+          {renderList<Deal>('Deals', toRows(data.deal))}
+          {renderList<Enquiry>('Enquiries', toRows(data.enquiry))}
           {renderList<Payment>('Payments', data.payments)}
           {renderList<DocumentRecord>('Documents', data.documents)}
           {renderList<PitchContentRecord>('Pitch Content', data.pitchContent)}
