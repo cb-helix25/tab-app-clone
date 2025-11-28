@@ -24,18 +24,14 @@ function registerInstructionsApi(app, secretClient) {
       const deal = await getDealForInstruction(secretClient, instructionRef);
 
       let enquiry = null;
-      if (deal?.ProspectId !== undefined && deal.ProspectId !== null) {
-        enquiry = await getEnquiryById(secretClient, deal.ProspectId);
+      if (deal?.leadClientId !== undefined && deal.leadClientId !== null) {
+        enquiry = await getEnquiryById(secretClient, deal.leadClientId);
       }
 
-      let pitchContent = [];
-      if (enquiry?.instructionRef) {
-        pitchContent = await getPitchContentForPitch(secretClient, instructionRef);
-      }
-
-      const [payments, documents] = await Promise.all([
+      const [payments, documents, pitchContent] = await Promise.all([
         getPaymentsForInstruction(secretClient, instructionRef),
         getDocumentsForInstruction(secretClient, instructionRef),
+        getPitchContentForPitch(secretClient, instructionRef),
       ]);
 
       return res.json({
