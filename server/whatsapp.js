@@ -69,21 +69,37 @@ function registerWhatsAppRoutes(app) {
 
       userWorktypes.set(userPhone, chosenWorktype);
 
-      const baseMessage = `Hi ${userName}, thanks for your ${chosenWorktype} enquiry to Helix Law! We'll be in touch soon.`;
+      const baseMessage = `Hi ${userName}.`;
       const icebreakerMessage = icebreakers.length
         ? `\n\nYou can reply with any of these quick questions:\n${icebreakers
             .map((question) => `- ${question}`)
             .join('\n')}`
         : '';
+      
+      const useFlowTemplate = !!formData.useFlowTemplate; // e.g. boolean from frontend
 
-      const payload = {
-        messaging_product: 'whatsapp',
-        to: userPhone,
-        type: 'text',
-        text: {
-          body: `${baseMessage}${icebreakerMessage}`,
-        },
-      };
+      let payload;
+
+      if (useFlowTemplate) {
+        payload = {
+          messaging_product: 'whatsapp',
+          to: userPhone,
+          type: 'template',
+          template: {
+            name: 'message_templates_hello_helix_marketing_163ba', // your approved template name
+            language: { code: 'en_GB' },
+          },
+        };
+      } else {
+        payload = {
+          messaging_product: 'whatsapp',
+          to: userPhone,
+          type: 'text',
+          text: {
+            body: `${baseMessage}${icebreakerMessage}`,
+          },
+        };
+      }
 
       // Get phone number ID from Key Vault (or env var fallback)
       const phoneNumberId = await getSecret(secretClient, 'whatsapp-phone-number-id', 'WHATSAPP_PHONE_NUMBER_ID');
