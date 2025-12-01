@@ -80,6 +80,7 @@ const WhatsAppForm: React.FC = () => {
             phone: trimmedPhone,
             worktype,
             icebreakerQuestions,
+            useFlowTemplate: true,
           }),
         });
 
