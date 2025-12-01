@@ -58,6 +58,9 @@ function registerWhatsAppRoutes(app) {
       const formData = req.body || {};
       const userPhone = formData.phone || DEFAULT_PHONE_NUMBER;
       const userName = formData.name || DEFAULT_USER_NAME;
+      const icebreakers = Array.isArray(formData.icebreakerQuestions)
+        ? formData.icebreakerQuestions.filter((question) => typeof question === 'string' && question.trim())
+        : [];
       const worktype =
         typeof formData.worktype === 'string'
           ? formData.worktype.trim().toLowerCase()
@@ -66,12 +69,19 @@ function registerWhatsAppRoutes(app) {
 
       userWorktypes.set(userPhone, chosenWorktype);
 
+      const baseMessage = `Hi ${userName}, thanks for your ${chosenWorktype} enquiry to Helix Law! We'll be in touch soon.`;
+      const icebreakerMessage = icebreakers.length
+        ? `\n\nYou can reply with any of these quick questions:\n${icebreakers
+            .map((question) => `- ${question}`)
+            .join('\n')}`
+        : '';
+
       const payload = {
         messaging_product: 'whatsapp',
         to: userPhone,
         type: 'text',
         text: {
-          body: `Hi ${userName}, thanks for your ${chosenWorktype} enquiry to Helix Law! We'll be in touch soon.`,
+          body: `${baseMessage}${icebreakerMessage}`,
         },
       };
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { MessageBar, MessageBarType, PrimaryButton, Stack, Text, TextField } from '@fluentui/react';
 import { Deal, DocumentRecord, Enquiry, InstructionResponse, Payment, PitchContentRecord } from './types';
 
@@ -53,12 +53,69 @@ const InstructionExplorer: React.FC = () => {
     }
   }, [instructionRef]);
 
-    const formatValue = (value: unknown): string => {
+  const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) return '—';
     if (value instanceof Date) return value.toLocaleString();
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
   };
+
+  const tableData = useMemo(() => {
+    if (!data) {
+      return null;
+    }
+
+    const getValue = (source: Record<string, unknown> | undefined, key: string) => {
+      if (!source) {
+        return null;
+      }
+
+      if (source[key] !== undefined) {
+        return source[key];
+      }
+
+      const lowerKey = key.toLowerCase();
+      if (source[lowerKey] !== undefined) {
+        return source[lowerKey];
+      }
+
+      const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
+      if (source[camelKey] !== undefined) {
+        return source[camelKey];
+      }
+
+      return null;
+    };
+
+    const enquiryData = data.enquiry || {};
+    const instructionData = data.instruction || {};
+    const payments = data.payments || [];
+    const pitchContent = data.pitchContent || [];
+
+    return {
+      enquiries: {
+        Poc: getValue(enquiryData, 'Poc'),
+        Aow: getValue(enquiryData, 'Aow'),
+        Tow: getValue(enquiryData, 'Tow'),
+        First: getValue(enquiryData, 'First'),
+        Last: getValue(enquiryData, 'Last'),
+        Email: getValue(enquiryData, 'Email'),
+        Phone: getValue(enquiryData, 'Phone'),
+      },
+      instructions: {
+        Stage: getValue(instructionData, 'Stage'),
+        ClientType: getValue(instructionData, 'ClientType'),
+      },
+      payments: payments.map((payment) => ({
+        Amount: getValue(payment as Record<string, unknown>, 'Amount'),
+        Payment_status: getValue(payment as Record<string, unknown>, 'Payment_status'),
+        Internal_status: getValue(payment as Record<string, unknown>, 'Internal_status'),
+      })),
+      pitchContent: pitchContent.map((record) => ({
+        EmailBody: getValue(record as Record<string, unknown>, 'EmailBody'),
+      })),
+    };
+  }, [data]);
 
   const renderList = <T extends { [key: string]: unknown }>(title: string, records?: T[]) => {
     const rows = records && records.length > 0 ? records : [];
@@ -223,6 +280,30 @@ const InstructionExplorer: React.FC = () => {
             {renderList<DocumentRecord>('Documents', data.documents)}
             {renderList<PitchContentRecord>('Pitch Content', data.pitchContent)}
           </Stack>
+
+          {tableData && (
+            <Stack tokens={{ childrenGap: 8 }} styles={cardStyles}>
+              <Text variant="large" styles={{ root: { fontWeight: 700 } }}>
+                Table data
+              </Text>
+              <Text styles={{ root: { color: '#6b6b6b' } }}>
+                Combined JSON extracted from the loaded tables.
+              </Text>
+              <pre
+                style={{
+                  margin: 0,
+                  padding: 12,
+                  background: 'rgba(0,0,0,0.04)',
+                  borderRadius: 10,
+                  overflowX: 'auto',
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                }}
+              >
+                {JSON.stringify(tableData, null, 2)}
+              </pre>
+            </Stack>
+          )}
         </Stack>
       )}
     </Stack>

@@ -10,7 +10,7 @@ const WhatsAppForm: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState('');
   const [icebreakerQuestions, setIcebreakerQuestions] = useState<string[]>([]);
 
-    const worktypeOptions: IDropdownOption[] = useMemo(
+  const worktypeOptions: IDropdownOption[] = useMemo(
     () => [
       { key: 'construction', text: 'Construction' },
       { key: 'commercial', text: 'Commercial' },
@@ -79,6 +79,7 @@ const WhatsAppForm: React.FC = () => {
             name: trimmedName,
             phone: trimmedPhone,
             worktype,
+            icebreakerQuestions,
           }),
         });
 
@@ -108,7 +109,7 @@ const WhatsAppForm: React.FC = () => {
         setStatusMessage('Failed to send message. Please check your connection and try again.');
       }
     },
-    [name, phoneNumber, worktype, worktypeOptions],
+    [icebreakerQuestions, name, phoneNumber, worktype, worktypeOptions],
   );
 
   return (
@@ -144,44 +145,6 @@ const WhatsAppForm: React.FC = () => {
             value={phoneNumber}
             onChange={(_event, newValue) => setPhoneNumber(newValue ?? '')}
           />
-          
-          {icebreakerQuestions.length > 0 && (
-            <Stack 
-              tokens={{ childrenGap: 8 }} 
-              styles={{ 
-                root: { 
-                  padding: 16, 
-                  background: '#f3f2f1', 
-                  borderRadius: 6,
-                  border: '1px solid #edebe9'
-                } 
-              }}
-            >
-              <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
-                💬 Available Questions
-              </Text>
-              <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                After we send you the initial WhatsApp message, you can reply with one of these questions:
-              </Text>
-              {icebreakerQuestions.map((question, index) => (
-                <Text 
-                  key={index} 
-                  variant="small" 
-                  styles={{ 
-                    root: { 
-                      padding: '8px 12px',
-                      background: '#ffffff',
-                      borderRadius: 4,
-                      fontWeight: 500,
-                      color: '#323130'
-                    } 
-                  }}
-                >
-                  • {question}
-                </Text>
-              ))}
-            </Stack>
-          )}
           
           <PrimaryButton type="submit" text="Send via WhatsApp" />
           {statusMessage && (
