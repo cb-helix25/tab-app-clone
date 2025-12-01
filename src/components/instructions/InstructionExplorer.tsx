@@ -1,5 +1,15 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { MessageBar, MessageBarType, PrimaryButton, Stack, Text, TextField } from '@fluentui/react';
+import {
+  IconButton,
+  MessageBar,
+  MessageBarType,
+  Panel,
+  PanelType,
+  PrimaryButton,
+  Stack,
+  Text,
+  TextField,
+} from '@fluentui/react';
 import { Deal, DocumentRecord, Enquiry, InstructionResponse, Payment, PitchContentRecord } from './types';
 
 const layoutStyles = {
@@ -25,6 +35,10 @@ const InstructionExplorer: React.FC = () => {
   const [data, setData] = useState<InstructionResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSection, setExpandedSection] = useState<{ title: string; rows: Record<string, unknown>[] } | null>(
+    null
+  );
+
 
   const loadInstruction = useCallback(async () => {
     const trimmed = instructionRef.trim();
@@ -101,6 +115,7 @@ const InstructionExplorer: React.FC = () => {
         Last: getValue(enquiryData, 'Last'),
         Email: getValue(enquiryData, 'Email'),
         Phone: getValue(enquiryData, 'Phone'),
+        Notes: getValue(enquiryData, 'Notes'),
       },
       instructions: {
         Stage: getValue(instructionData, 'Stage'),
@@ -117,6 +132,58 @@ const InstructionExplorer: React.FC = () => {
     };
   }, [data]);
 
+  const renderTable = (rows: Record<string, unknown>[], columns: string[]) => (
+    <div
+      style={{
+        border: '1px solid rgba(128,128,128,0.12)',
+        borderRadius: 10,
+        overflow: 'hidden',
+      }}
+    >
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead style={{ background: 'rgba(0,0,0,0.03)' }}>
+          <tr>
+            {columns.map((key) => (
+              <th
+                key={key}
+                style={{
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  textTransform: 'capitalize',
+                  fontWeight: 700,
+                  color: '#323130',
+                  borderBottom: '1px solid rgba(128,128,128,0.12)',
+                }}
+              >
+                {key}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((record, rowIndex) => (
+            <tr key={rowIndex} style={{ background: rowIndex % 2 ? 'rgba(0,0,0,0.01)' : 'white' }}>
+              {columns.map((key) => (
+                <td
+                  key={key}
+                  style={{
+                    padding: '10px 12px',
+                    borderBottom: '1px solid rgba(128,128,128,0.08)',
+                    color: '#323130',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {formatValue(record[key])}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+
   const renderList = <T extends { [key: string]: unknown }>(title: string, records?: T[]) => {
     const rows = records && records.length > 0 ? records : [];
     const columns = rows.length
@@ -130,76 +197,50 @@ const InstructionExplorer: React.FC = () => {
         )
       : [];
 
+    const handleExpand = () => {
+      if (rows.length) {
+        setExpandedSection({ title, rows: rows as Record<string, unknown>[] });
+      }
+    };
+
     return (
       <Stack tokens={{ childrenGap: 12 }} styles={cardStyles}>
         <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
           <Text variant="large" styles={{ root: { fontWeight: 700 } }}>
             {title}
           </Text>
-          <span
-            style={{
-              background: 'rgba(0,120,212,0.1)',
-              color: '#005a9e',
-              borderRadius: 999,
-              padding: '2px 10px',
-              fontWeight: 600,
-              fontSize: 12,
-            }}
-          >
-            {rows.length} {rows.length === 1 ? 'record' : 'records'}
-          </span>
+          <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+            <span
+              style={{
+                background: 'rgba(0,120,212,0.1)',
+                color: '#005a9e',
+                borderRadius: 999,
+                padding: '2px 10px',
+                fontWeight: 600,
+                fontSize: 12,
+              }}
+            >
+              {rows.length} {rows.length === 1 ? 'record' : 'records'}
+            </span>
+            {rows.length > 0 && (
+              <IconButton
+                iconProps={{ iconName: 'FullScreen' }}
+                title={`Expand ${title}`}
+                ariaLabel={`Expand ${title}`}
+                onClick={handleExpand}
+              />
+            )}
+          </Stack>
         </Stack>
         {rows.length === 0 ? (
           <Text styles={{ root: { color: '#6b6b6b' } }}>No records</Text>
         ) : (
-          <div
-            style={{
-              border: '1px solid rgba(128,128,128,0.12)',
-              borderRadius: 10,
-              overflow: 'hidden',
-            }}
-          >
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead style={{ background: 'rgba(0,0,0,0.03)' }}>
-                <tr>
-                  {columns.map((key) => (
-                    <th
-                      key={key}
-                      style={{
-                        textAlign: 'left',
-                        padding: '10px 12px',
-                        textTransform: 'capitalize',
-                        fontWeight: 700,
-                        color: '#323130',
-                        borderBottom: '1px solid rgba(128,128,128,0.12)',
-                      }}
-                    >
-                      {key}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((record, rowIndex) => (
-                  <tr key={rowIndex} style={{ background: rowIndex % 2 ? 'rgba(0,0,0,0.01)' : 'white' }}>
-                    {columns.map((key) => (
-                      <td
-                        key={key}
-                        style={{
-                          padding: '10px 12px',
-                          borderBottom: '1px solid rgba(128,128,128,0.08)',
-                          color: '#323130',
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {formatValue(record[key])}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Stack tokens={{ childrenGap: 8 }}>
+            {renderTable(rows as Record<string, unknown>[], columns)}
+            <Text styles={{ root: { color: '#6b6b6b', fontSize: 12 } }}>
+              Expand to view this table in a full-screen panel.
+            </Text>
+          </Stack>
         )}
       </Stack>
     );
@@ -306,6 +347,35 @@ const InstructionExplorer: React.FC = () => {
           )}
         </Stack>
       )}
+
+      <Panel
+        isOpen={!!expandedSection}
+        onDismiss={() => setExpandedSection(null)}
+        type={PanelType.large}
+        headerText={expandedSection ? expandedSection.title : undefined}
+        closeButtonAriaLabel="Close"
+      >
+        {expandedSection && expandedSection.rows.length > 0 ? (
+          <Stack tokens={{ childrenGap: 12 }}>
+            <Text styles={{ root: { color: '#605e5c' } }}>
+              Expanded view of the {expandedSection.title.toLowerCase()} table.
+            </Text>
+            {renderTable(
+              expandedSection.rows,
+              Array.from(
+                new Set(
+                  expandedSection.rows.reduce<string[]>((acc, record) => {
+                    acc.push(...Object.keys(record));
+                    return acc;
+                  }, [])
+                )
+              )
+            )}
+          </Stack>
+        ) : (
+          <Text styles={{ root: { color: '#6b6b6b' } }}>No records available.</Text>
+        )}
+      </Panel>
     </Stack>
   );
 };
