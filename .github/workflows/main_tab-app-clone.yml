@@ -35,16 +35,13 @@ jobs:
       - name: Package only essential files for deployment
         run: |
           mkdir artifact
-          # Copy built React app
           xcopy build artifact\build /E /I /H /Y 
-          # Copy essential server files 
           copy app.js artifact\ 
           copy package.json artifact\ 
           copy package-lock.json artifact\ 
           copy web.config artifact\ 
           copy node artifact\ 
           xcopy server artifact\server /E /I /H /Y
-          # DO NOT copy node_modules - Azure will install dependencies
         shell: cmd
       
       - name: Upload artifact for deployment job
