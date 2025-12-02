@@ -88,6 +88,21 @@ function registerWhatsAppRoutes(app) {
           template: {
             name: 'message_templates_hello_helix_marketing_163ba', // your approved template name
             language: { code: 'en' },
+             components: [
+              {
+                type: "button",
+                sub_type: "flow",
+                index: "0",
+                parameters: [
+                  {
+                    type: "flow",
+                    flow_call: {
+                      flow_token: ""
+                    }
+                  }
+                ]
+              }
+            ]
           },
         };
       } else {
