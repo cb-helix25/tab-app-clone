@@ -95,8 +95,8 @@ function registerWhatsAppRoutes(app) {
                 index: "0",
                 parameters: [
                   {
-                    type: "flow",
-                    flow_call: {
+                    type: "action",
+                    action: {
                       flow_token: ""
                     }
                   }
