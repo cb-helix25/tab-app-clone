@@ -87,7 +87,7 @@ function registerWhatsAppRoutes(app) {
           type: 'template',
           template: {
             name: 'message_templates_hello_helix_marketing_163ba', // your approved template name
-            language: { code: 'en_US' },
+            language: { code: 'en' },
           },
         };
       } else {

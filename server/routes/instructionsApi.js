@@ -24,8 +24,8 @@ function registerInstructionsApi(app, secretClient) {
       const deal = await getDealForInstruction(secretClient, instructionRef);
 
       let enquiry = null;
-      if (deal?.acid !== undefined && deal.acid !== null) {
-        enquiry = await getEnquiryByAcid(secretClient, deal.acid);
+      if (deal?.prospectId !== undefined && deal.prospectId !== null) {
+        enquiry = await getEnquiryByAcid(secretClient, deal.prospectId);
       }
 
       const [payments, documents, pitchContent] = await Promise.all([
