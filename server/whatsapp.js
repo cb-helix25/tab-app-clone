@@ -4,19 +4,26 @@ const DEFAULT_PHONE_NUMBER = '447700900123';
 const DEFAULT_USER_NAME = 'User';
 const WORKTYPE_OPTIONS = ['construction', 'commercial', 'property', 'employment'];
 const userWorktypes = new Map();
+const userNames = new Map();
+const userIcebreakers = new Map();
 
 const ICEBREAKER_ANSWERS = {
   property: {
     'Question 1': 'This is the PROPERTY answer to Question 1',
+    'Question 1.2': 'This is the PROPERTY answer to Question 1.2',
+
   },
   employment: {
     'Question 2': 'This is the EMPLOYMENT answer to Question 2',
+    'Question 2.1': 'This is the EMPLOYMENT answer to Question 2.1',
   },
   commercial: {
     'Question 3': 'This is the COMMERCIAL answer to Question 3',
+    'Question 3.1': 'This is the COMMERCIAL answer to Question 3.1',
   },
   construction: {
     'Question 4': 'This is the CONSTRUCTION answer to Question 4',
+    'Question 4.1': 'This is the CONSTRUCTION answer to Question 4.1',
   },
 };
 
@@ -68,6 +75,8 @@ function registerWhatsAppRoutes(app) {
       const chosenWorktype = WORKTYPE_OPTIONS.includes(worktype) ? worktype : 'legal';
 
       userWorktypes.set(userPhone, chosenWorktype);
+      userNames.set(userPhone, userName);
+      userIcebreakers.set(userPhone, icebreakers);
 
       const baseMessage = `Hi ${userName}.`;
       const icebreakerMessage = icebreakers.length
@@ -88,21 +97,6 @@ function registerWhatsAppRoutes(app) {
           template: {
             name: 'message_templates_hello_helix_marketing_163ba', // your approved template name
             language: { code: 'en' },
-             components: [
-              {
-                type: "button",
-                sub_type: "flow",
-                index: "0",
-                parameters: [
-                  {
-                    type: "action",
-                    action: {
-                      flow_token: ""
-                    }
-                  }
-                ]
-              }
-            ]
           },
         };
       } else {
@@ -227,16 +221,13 @@ function registerWhatsAppRoutes(app) {
         const userWorktype = userWorktypes.get(from);
 
         if (!userWorktype) {
+          console.log('[WEBHOOK] No worktype stored for this user');
           return res.sendStatus(200);
         }
 
         const answer =
           ICEBREAKER_ANSWERS[userWorktype] &&
           ICEBREAKER_ANSWERS[userWorktype][incomingText];
-
-        if (!answer) {
-          return res.sendStatus(200);
-        }
 
         try {
           const secretClient = req.app.locals.secretClient;
@@ -252,6 +243,26 @@ function registerWhatsAppRoutes(app) {
             return res.sendStatus(200);
           }
 
+          let responseMessage;
+          
+          if (answer) {
+            // They asked a specific icebreaker question - send the answer
+            responseMessage = answer;
+          } else {
+            // First message or non-matching message - send baseMessage + icebreakerMessage
+            const userName = userNames.get(from) || 'there';
+            const icebreakers = userIcebreakers.get(from) || [];
+            
+            const baseMessage = `Hi ${userName}.`;
+            const icebreakerMessage = icebreakers.length
+              ? `\n\nYou can reply with any of these quick questions:\n${icebreakers
+                  .map((question) => `- ${question}`)
+                  .join('\n')}`
+              : '';
+            
+            responseMessage = `${baseMessage}${icebreakerMessage}`;
+          }
+
           const response = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
             method: 'POST',
             headers: {
@@ -263,7 +274,7 @@ function registerWhatsAppRoutes(app) {
               to: from,
               type: 'text',
               text: {
-                body: answer,
+                body: responseMessage,
               },
             }),
           });
