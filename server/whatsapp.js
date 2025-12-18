@@ -112,7 +112,7 @@ function registerWhatsAppRoutes(app) {
 
       // Get phone number ID and access token from Key Vault (or env var fallback)
       const phoneNumberId = await getSecret(secretClient, 'whatsapp-phone-number-id', 'WHATSAPP_PHONE_NUMBER_ID');
-      const accessToken = await getSecret(secretClient, 'meta-verify-token', 'WHATSAPP_ACCESS_TOKEN');
+      const accessToken = await getSecret(secretClient, 'meta-access-token', 'WHATSAPP_ACCESS_TOKEN');
 
       if (!accessToken) {
         console.error('Missing WhatsApp access token');
@@ -190,7 +190,7 @@ function registerWhatsAppRoutes(app) {
 
     try {
       const secretClient = req.app.locals.secretClient;
-      const verifyToken = await getSecret(secretClient, 'meta-access-token', 'WHATSAPP_VERIFY_TOKEN');
+      const verifyToken = await getSecret(secretClient, 'meta-verify-token', 'WHATSAPP_VERIFY_TOKEN');
 
       if (mode && token === verifyToken) {
         console.log('[WEBHOOK] Verification successful');
@@ -242,7 +242,7 @@ function registerWhatsAppRoutes(app) {
             'whatsapp-phone-number-id',
             'WHATSAPP_PHONE_NUMBER_ID'
           );
-          const accessToken = await getSecret(secretClient, 'meta-verify-token', 'WHATSAPP_ACCESS_TOKEN');
+          const accessToken = await getSecret(secretClient, 'meta-access-token', 'WHATSAPP_ACCESS_TOKEN');
 
           if (!accessToken) {
             console.error('Missing WhatsApp access token');

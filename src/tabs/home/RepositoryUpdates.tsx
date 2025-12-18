@@ -13,7 +13,6 @@ import {
   SpinnerSize,
   Stack,
   Text,
-  TextField,
 } from '@fluentui/react';
 import { format } from 'date-fns';
 import { useTheme } from '../../app/functionality/ThemeContext';
@@ -59,8 +58,6 @@ const repositories: RepoDescriptor[] = [
 ];
 
 const STORAGE_KEY = 'repository-updates:states';
-const TOKEN_STORAGE_KEY = 'repository-updates:github-token';
-const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 const createDefaultState = (): Record<string, RepoTrackingState> =>
   repositories.reduce<Record<string, RepoTrackingState>>((acc, repo) => {
@@ -99,18 +96,11 @@ const RepositoryUpdates: React.FC = () => {
 
     return createDefaultState();
   });
-  const [tokenInput, setTokenInput] = useState(() => {
-    if (typeof window === 'undefined') {
-      return '';
-    }
-
-    return window.localStorage.getItem(TOKEN_STORAGE_KEY) ?? '';
-  });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
 
-  const activeToken = tokenInput || process.env.REACT_APP_GITHUB_TOKEN || '';
+  const activeToken = process.env.REACT_APP_GITHUB_TOKEN || '';
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -119,18 +109,6 @@ const RepositoryUpdates: React.FC = () => {
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(repoStates));
   }, [repoStates]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    if (tokenInput) {
-      window.localStorage.setItem(TOKEN_STORAGE_KEY, tokenInput);
-    } else {
-      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-    }
-  }, [tokenInput]);
 
   const handleMarkTracked = useCallback((fullName: string) => {
     setRepoStates((current) => ({
@@ -153,7 +131,7 @@ const RepositoryUpdates: React.FC = () => {
 
       if (!response.ok) {
         throw new Error(
-          `Unable to load ${repo.owner}/${repo.name} (status ${response.status}). Please verify your GitHub token.`,
+          `Unable to load ${repo.owner}/${repo.name} (status ${response.status}). The repository may be private or unavailable.`,
         );
       }
 
@@ -213,13 +191,6 @@ const RepositoryUpdates: React.FC = () => {
       setIsLoading(false);
     }
   }, [fetchRepositoryUpdate]);
-
-  useEffect(() => {
-    refreshStatuses();
-
-    const intervalId = window.setInterval(refreshStatuses, POLL_INTERVAL_MS);
-    return () => window.clearInterval(intervalId);
-  }, [refreshStatuses]);
 
   const trackedRows = useMemo<RepoRow[]>(() => {
     const rows: RepoRow[] = [];
@@ -308,8 +279,8 @@ const RepositoryUpdates: React.FC = () => {
           untracked when a new push is detected.
         </Text>
         <Text variant="small">
-          Provide a GitHub token with <code>repo</code> read access to avoid rate limits. Tokens are only stored locally
-          in your browser.
+          Checks run only when you select Refresh now. If configured, an environment token with <code>repo</code> read
+          access is used to reduce rate limits for private repositories.
         </Text>
       </Stack>
 
@@ -324,16 +295,6 @@ const RepositoryUpdates: React.FC = () => {
           },
         }}
       >
-        <TextField
-          label="GitHub token (optional)"
-          value={tokenInput}
-          onChange={(_e, value) => setTokenInput(value ?? '')}
-          styles={{
-            root: { maxWidth: 400 },
-          }}
-          placeholder="ghp_xxx"
-          type="password"
-        />
         <PrimaryButton text="Refresh now" onClick={refreshStatuses} disabled={isLoading} />
         {isLoading && <Spinner size={SpinnerSize.small} label="Checking repositories..." />}
         <Text styles={{ root: { color: isDarkMode ? colours.dark.subText : colours.light.subText } }}>
