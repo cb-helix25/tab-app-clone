@@ -110,15 +110,15 @@ function registerWhatsAppRoutes(app) {
         };
       }
 
-      // Get phone number ID from Key Vault (or env var fallback)
+      // Get phone number ID and access token from Key Vault (or env var fallback)
       const phoneNumberId = await getSecret(secretClient, 'whatsapp-phone-number-id', 'WHATSAPP_PHONE_NUMBER_ID');
-      const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+      const accessToken = await getSecret(secretClient, 'meta-verify-token', 'WHATSAPP_ACCESS_TOKEN');
 
       if (!accessToken) {
         console.error('Missing WhatsApp access token');
         return res.status(500).json({
           error: 'WhatsApp configuration missing',
-          details: 'WHATSAPP_ACCESS_TOKEN environment variable is required',
+          details: 'WhatsApp access token is required',
         });
       }
 
@@ -183,19 +183,25 @@ function registerWhatsAppRoutes(app) {
   });
 
   // WhatsApp webhook verification (GET)
-  app.get('/webhook', (req, res) => {
+  app.get('/webhook', async (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'Supersecrettoken2011';
+    try {
+      const secretClient = req.app.locals.secretClient;
+      const verifyToken = await getSecret(secretClient, 'meta-access-token', 'WHATSAPP_VERIFY_TOKEN');
 
-    if (mode && token === verifyToken) {
-      console.log('[WEBHOOK] Verification successful');
-      res.status(200).send(challenge);
-    } else {
-      console.warn('[WEBHOOK] Verification failed - invalid token');
-      res.sendStatus(403);
+      if (mode && token === verifyToken) {
+        console.log('[WEBHOOK] Verification successful');
+        res.status(200).send(challenge);
+      } else {
+        console.warn('[WEBHOOK] Verification failed - invalid token');
+        res.sendStatus(403);
+      }
+    } catch (error) {
+      console.error('[WEBHOOK] Error during verification:', error);
+      res.sendStatus(500);
     }
   });
 
@@ -236,7 +242,7 @@ function registerWhatsAppRoutes(app) {
             'whatsapp-phone-number-id',
             'WHATSAPP_PHONE_NUMBER_ID'
           );
-          const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+          const accessToken = await getSecret(secretClient, 'meta-verify-token', 'WHATSAPP_ACCESS_TOKEN');
 
           if (!accessToken) {
             console.error('Missing WhatsApp access token');

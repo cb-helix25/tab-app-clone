@@ -16,6 +16,7 @@ import Hub from '../tabs/home/Hub';
 import DocumentDraftingV1 from '../tabs/home/DocumentDraftingV1';
 import DocumentDraftingV2 from '../tabs/home/DocumentDraftingV2';
 import WhatsAppForm from '../tabs/home/WhatsAppForm';
+import RepositoryUpdates from '../tabs/home/RepositoryUpdates';
 
 const resolveInitialDarkMode = (): boolean => {
   if (typeof window === 'undefined') {
@@ -184,6 +185,10 @@ const AppShell: React.FC = () => {
                 element={renderPage('Document drafting v2', <DocumentDraftingV2 />)}
               />
               <Route path="/whatsapp" element={renderPage('WhatsApp', <WhatsAppForm />)} />
+              <Route
+                path="/repository-updates"
+                element={renderPage('Repository updates', <RepositoryUpdates />)}
+              />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>

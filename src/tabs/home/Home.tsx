@@ -21,6 +21,7 @@ const Home: React.FC = () => {
         <PrimaryButton text="Document drafting v1" onClick={() => navigate('/document-drafting-v1')} />
         <PrimaryButton text="Document drafting v2" onClick={() => navigate('/document-drafting-v2')} />
         <PrimaryButton text="WhatsApp" onClick={() => navigate('/whatsapp')} />
+        <PrimaryButton text="Repository updates" onClick={() => navigate('/repository-updates')} />
       </Stack>
     </Stack>
   );
