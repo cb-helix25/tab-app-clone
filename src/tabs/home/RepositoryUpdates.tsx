@@ -15,8 +15,10 @@ import {
   Text,
 } from '@fluentui/react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
+import repositories from '../../shared/repositories.json';
 
 type RepoDescriptor = {
   owner: string;
@@ -26,6 +28,8 @@ type RepoDescriptor = {
 type RepoTrackingState = {
   status: 'tracked' | 'untracked';
   lastPushedAt?: string;
+  branches?: Record<string, string | undefined>;
+  recentlyUpdatedBranches?: string[];
 };
 
 type RepoRow = {
@@ -34,34 +38,32 @@ type RepoRow = {
   lastUpdatedLabel: string;
   pushedAt?: string;
   status: 'tracked' | 'untracked';
+  updatedBranches: string[];
 };
 
 type RepoApiResult = {
   fullName: string;
   pushedAt?: string;
   htmlUrl?: string;
+  branches?: {
+    name: string;
+    commitSha?: string;
+    commitDate?: string;
+    htmlUrl?: string;
+  }[];
+  error?: string;
 };
-
-const repositories: RepoDescriptor[] = [
-  { owner: 'HelixAutomations', name: 'tab-app' },
-  { owner: 'HelixAutomations', name: 'tasking-v3' },
-  { owner: 'HelixAutomations', name: 'instruct-pitch' },
-  { owner: 'HelixAutomations', name: 'enquiry-processing-v2' },
-  { owner: 'HelixAutomations', name: 'recruitment' },
-  { owner: 'HelixAutomations', name: 'content-reviews' },
-  { owner: 'HelixAutomations', name: 'transaction-intake' },
-  { owner: 'HelixAutomations', name: 'matter-opening-v3' },
-  { owner: 'HelixAutomations', name: 'aged-debts-v2' },
-  { owner: 'HelixAutomations', name: 'bcc-v3' },
-  { owner: 'HelixAutomations', name: 'proof-of-id' },
-  { owner: 'HelixAutomations', name: 'compliance' },
-];
 
 const STORAGE_KEY = 'repository-updates:states';
 
 const createDefaultState = (): Record<string, RepoTrackingState> =>
-  repositories.reduce<Record<string, RepoTrackingState>>((acc, repo) => {
-    acc[`${repo.owner}/${repo.name}`] = { status: 'tracked', lastPushedAt: undefined };
+  (repositories as RepoDescriptor[]).reduce<Record<string, RepoTrackingState>>((acc, repo) => {
+    acc[`${repo.owner}/${repo.name}`] = {
+      status: 'tracked',
+      lastPushedAt: undefined,
+      branches: {},
+      recentlyUpdatedBranches: [],
+    };
     return acc;
   }, {});
 
@@ -80,6 +82,7 @@ const safeFormatDate = (timestamp?: string) => {
 
 const RepositoryUpdates: React.FC = () => {
   const { isDarkMode } = useTheme();
+  const navigate = useNavigate();
   const [repoStates, setRepoStates] = useState<Record<string, RepoTrackingState>>(() => {
     if (typeof window === 'undefined') {
       return createDefaultState();
@@ -100,8 +103,6 @@ const RepositoryUpdates: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
 
-  const activeToken = process.env.REACT_APP_GITHUB_TOKEN || '';
-
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -116,60 +117,75 @@ const RepositoryUpdates: React.FC = () => {
       [fullName]: {
         ...current[fullName],
         status: 'tracked',
+        recentlyUpdatedBranches: [],
       },
     }));
   }, []);
-
-  const fetchRepositoryUpdate = useCallback(
-    async (repo: RepoDescriptor): Promise<RepoApiResult> => {
-      const response = await fetch(`https://api.github.com/repos/${repo.owner}/${repo.name}`, {
-        headers: {
-          Accept: 'application/vnd.github+json',
-          ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Unable to load ${repo.owner}/${repo.name} (status ${response.status}). The repository may be private or unavailable.`,
-        );
-      }
-
-      const json = await response.json();
-      return {
-        fullName: json.full_name ?? `${repo.owner}/${repo.name}`,
-        pushedAt: json.pushed_at,
-        htmlUrl: json.html_url,
-      };
-    },
-    [activeToken],
-  );
 
   const refreshStatuses = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
-      const results = await Promise.allSettled(repositories.map((repo) => fetchRepositoryUpdate(repo)));
-      const successes = results.filter((result): result is PromiseFulfilledResult<RepoApiResult> => result.status === 'fulfilled');
-      const failures = results.filter(
-        (result): result is PromiseRejectedResult => result.status === 'rejected',
-      );
+      const response = await fetch('/api/github/repositories/updates');
+      if (!response.ok) {
+        throw new Error(`Unable to refresh repositories (status ${response.status}).`);
+      }
+      const json = await response.json();
+      const repoResults: RepoApiResult[] = json?.repositories ?? [];
+      setLastCheckedAt(json?.fetchedAt ?? new Date().toISOString());
+
+      const successes = repoResults.filter((result) => !result.error);
+      const failures = repoResults.filter((result) => !!result.error);
 
       if (successes.length > 0) {
         setRepoStates((current) => {
           const nextState = { ...current };
 
-          successes.forEach(({ value: result }) => {
-            const previous = current[result.fullName] ?? { status: 'tracked', lastPushedAt: undefined };
+          successes.forEach((result) => {
+            const previous = current[result.fullName]
+              ? {
+                  status: 'tracked',
+                  lastPushedAt: undefined,
+                  branches: {},
+                  recentlyUpdatedBranches: [],
+                  ...current[result.fullName],
+                }
+              : {
+                status: 'tracked',
+                lastPushedAt: undefined,
+                branches: {},
+                recentlyUpdatedBranches: [],
+              };
             const previousTimestamp = previous.lastPushedAt ? new Date(previous.lastPushedAt).getTime() : null;
             const currentTimestamp = result.pushedAt ? new Date(result.pushedAt).getTime() : null;
             const hasNewPush =
               previousTimestamp !== null && currentTimestamp !== null && currentTimestamp > previousTimestamp;
 
+            const branchMap: Record<string, string | undefined> = {};
+            const updatedBranches: string[] = [];
+            (result.branches ?? []).forEach((branch) => {
+              branchMap[branch.name] = branch.commitDate;
+              const previousBranchTimestamp = previous.branches?.[branch.name]
+                ? new Date(previous.branches[branch.name] as string).getTime()
+                : null;
+              const currentBranchTimestamp = branch.commitDate ? new Date(branch.commitDate).getTime() : null;
+              if (
+                previousBranchTimestamp !== null &&
+                currentBranchTimestamp !== null &&
+                currentBranchTimestamp > previousBranchTimestamp
+              ) {
+                updatedBranches.push(branch.name);
+              }
+            });
+
+            const hasBranchUpdates = updatedBranches.length > 0;
+
             nextState[result.fullName] = {
-              status: hasNewPush ? 'untracked' : previous.status,
+              status: hasNewPush || hasBranchUpdates ? 'untracked' : previous.status,
               lastPushedAt: result.pushedAt ?? previous.lastPushedAt,
+              branches: branchMap,
+              recentlyUpdatedBranches: updatedBranches,
             };
           });
 
@@ -179,25 +195,24 @@ const RepositoryUpdates: React.FC = () => {
 
       if (failures.length > 0) {
         const message = failures
-          .map((failure) => (failure.reason instanceof Error ? failure.reason.message : 'Unknown error'))
+          .map((failure) => failure.error || 'Unknown error')
           .join(' ');
         setErrorMessage(message || 'Unable to refresh one or more repositories.');
       }
 
-      setLastCheckedAt(new Date().toISOString());
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to refresh repository updates.');
     } finally {
       setIsLoading(false);
     }
-  }, [fetchRepositoryUpdate]);
+  }, []);
 
   const trackedRows = useMemo<RepoRow[]>(() => {
     const rows: RepoRow[] = [];
 
-    repositories.forEach((repo) => {
+    (repositories as RepoDescriptor[]).forEach((repo) => {
       const fullName = `${repo.owner}/${repo.name}`;
-      const state = repoStates[fullName] ?? { status: 'tracked', lastPushedAt: undefined };
+      const state = repoStates[fullName] ?? { status: 'tracked', lastPushedAt: undefined, branches: {}, recentlyUpdatedBranches: [] };
       if (state.status === 'tracked') {
         rows.push({
           key: fullName,
@@ -205,6 +220,7 @@ const RepositoryUpdates: React.FC = () => {
           lastUpdatedLabel: safeFormatDate(state.lastPushedAt),
           pushedAt: state.lastPushedAt,
           status: state.status,
+          updatedBranches: state.recentlyUpdatedBranches ?? [],
         });
       }
     });
@@ -215,9 +231,9 @@ const RepositoryUpdates: React.FC = () => {
   const untrackedRows = useMemo<RepoRow[]>(() => {
     const rows: RepoRow[] = [];
 
-    repositories.forEach((repo) => {
+    (repositories as RepoDescriptor[]).forEach((repo) => {
       const fullName = `${repo.owner}/${repo.name}`;
-      const state = repoStates[fullName] ?? { status: 'tracked', lastPushedAt: undefined };
+      const state = repoStates[fullName] ?? { status: 'tracked', lastPushedAt: undefined, branches: {}, recentlyUpdatedBranches: [] };
       if (state.status === 'untracked') {
         rows.push({
           key: fullName,
@@ -225,6 +241,7 @@ const RepositoryUpdates: React.FC = () => {
           lastUpdatedLabel: safeFormatDate(state.lastPushedAt),
           pushedAt: state.lastPushedAt,
           status: state.status,
+          updatedBranches: state.recentlyUpdatedBranches ?? [],
         });
       }
     });
@@ -250,8 +267,30 @@ const RepositoryUpdates: React.FC = () => {
         minWidth: 200,
         onRender: (item: RepoRow) => <span>{item.lastUpdatedLabel}</span>,
       },
+      {
+        key: 'branches',
+        name: 'Updated branches',
+        minWidth: 240,
+        onRender: (item: RepoRow) =>
+          item.updatedBranches.length > 0 ? (
+            <Stack tokens={{ childrenGap: 4 }}>
+              {item.updatedBranches.map((branch) => (
+                <Text key={branch} variant="small">
+                  {branch}
+                </Text>
+              ))}
+            </Stack>
+          ) : (
+            <Text
+              variant="small"
+              styles={{ root: { color: isDarkMode ? colours.dark.subText : colours.light.subText } }}
+            >
+              No changes since last check
+            </Text>
+          ),
+      },
     ],
-    [],
+    [isDarkMode],
   );
 
   const untrackedColumns: IColumn[] = useMemo(
@@ -279,8 +318,9 @@ const RepositoryUpdates: React.FC = () => {
           untracked when a new push is detected.
         </Text>
         <Text variant="small">
-          Checks run only when you select Refresh now. If configured, an environment token with <code>repo</code> read
-          access is used to reduce rate limits for private repositories.
+          Checks run only when you select Refresh now. A GitHub token is securely retrieved from Azure Key Vault
+          (<code>environment-token</code>) with an environment variable fallback to reduce rate limits for private
+          repositories.
         </Text>
       </Stack>
 
@@ -296,6 +336,7 @@ const RepositoryUpdates: React.FC = () => {
         }}
       >
         <PrimaryButton text="Refresh now" onClick={refreshStatuses} disabled={isLoading} />
+        <DefaultButton text="Back" onClick={() => navigate(-1)} />
         {isLoading && <Spinner size={SpinnerSize.small} label="Checking repositories..." />}
         <Text styles={{ root: { color: isDarkMode ? colours.dark.subText : colours.light.subText } }}>
           Last checked: {lastCheckedLabel}

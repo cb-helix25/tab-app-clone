@@ -11,11 +11,13 @@ const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 const { registerWhatsAppRoutes } = require('./whatsapp');
 const { registerInstructionsApi } = require('./routes/instructionsApi');
+const { registerGithubRoutes } = require('./routes/githubRoutes');
+const { registerDraftingRoutes } = require('./routes/draftingRoutes');
 
 const app = express();
 
 // Initialize Azure Key Vault client
-const keyVaultUrl = 'https://secret-keys-helix.vault.azure.net/';
+const keyVaultUrl = process.env.KEY_VAULT_URL || 'https://secret-keys-helix.vault.azure.net/';
 const credential = new DefaultAzureCredential();
 const secretClient = new SecretClient(keyVaultUrl, credential);
 app.locals.secretClient = secretClient;
@@ -31,6 +33,8 @@ app.use(morgan('combined')); // Basic request logging as per Codex requirements
 // Register WhatsApp message and webhook routes
 registerWhatsAppRoutes(app);
 registerInstructionsApi(app, secretClient);
+registerGithubRoutes(app, secretClient);
+registerDraftingRoutes(app, secretClient);
 
 // Helper function to execute git commands
 const execGitCommand = (command, options = {}) => {

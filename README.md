@@ -114,6 +114,28 @@ The proxy configuration routes `/api/*` calls from the React app (port 3000) to 
 - **Git History**: `GET /api/git/history?limit=10`
 - **Health Check**: `GET /api/health`
 
+#### Tel note drafting (Azure OpenAI / Foundry)
+
+The Tel Note drafting page calls a backend endpoint:
+
+- **Draft Tel Note Email**: `POST /api/ai/draft-tel-note`
+
+Required environment variables:
+
+- `AZURE_OPENAI_ENDPOINT` (example: `https://<resource>.openai.azure.com/`)
+- `AZURE_OPENAI_DEPLOYMENT_NAME` (your model deployment name)
+- `OPENAI_API_VERSION` (optional; defaults to `2024-10-21`)
+
+API key configuration (server-side only):
+
+- Preferred: store the API key as a Key Vault secret (default secret name `azure-openai-api-key`).
+- Fallback: set `AZURE_OPENAI_API_KEY` as an environment variable.
+
+Key Vault configuration:
+
+- `KEY_VAULT_URL` (optional) overrides the default Key Vault URL used by the server.
+- `AZURE_OPENAI_API_KEY_SECRET_NAME` (optional) overrides the default secret name.
+
 #### Components Added
 - **RecentWorkFeed**: Main component displaying commit history
 - **gitHistoryService**: Service layer for API communication

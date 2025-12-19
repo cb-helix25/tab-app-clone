@@ -12,7 +12,7 @@ const port = process.env.PORT || 8080;
 
 // Initialize Azure Key Vault client with error handling
 try {
-  const keyVaultUrl = 'https://secret-keys-helix.vault.azure.net/';
+  const keyVaultUrl = process.env.KEY_VAULT_URL || 'https://secret-keys-helix.vault.azure.net/';
   const credential = new DefaultAzureCredential();
   const secretClient = new SecretClient(keyVaultUrl, credential);
   app.locals.secretClient = secretClient;

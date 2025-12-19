@@ -1,0 +1,14 @@
+[
+  { "owner": "HelixAutomations", "name": "tab-app" },
+  { "owner": "HelixAutomations", "name": "tasking-v3" },
+  { "owner": "HelixAutomations", "name": "instruct-pitch" },
+  { "owner": "HelixAutomations", "name": "enquiry-processing-v2" },
+  { "owner": "HelixAutomations", "name": "recruitment" },
+  { "owner": "HelixAutomations", "name": "content-reviews" },
+  { "owner": "HelixAutomations", "name": "transaction-intake" },
+  { "owner": "HelixAutomations", "name": "matter-opening-v3" },
+  { "owner": "HelixAutomations", "name": "aged-debts-v2" },
+  { "owner": "HelixAutomations", "name": "bcc-v3" },
+  { "owner": "HelixAutomations", "name": "proof-of-id" },
+  { "owner": "HelixAutomations", "name": "compliance" }
+]

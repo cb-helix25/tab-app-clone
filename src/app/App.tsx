@@ -15,6 +15,7 @@ import Home from '../tabs/home/Home';
 import Hub from '../tabs/home/Hub';
 import DocumentDraftingV1 from '../tabs/home/DocumentDraftingV1';
 import DocumentDraftingV2 from '../tabs/home/DocumentDraftingV2';
+import DocumentDraftingTelNote from '../tabs/home/DocumentDraftingTelNote';
 import WhatsAppForm from '../tabs/home/WhatsAppForm';
 import RepositoryUpdates from '../tabs/home/RepositoryUpdates';
 
@@ -183,6 +184,10 @@ const AppShell: React.FC = () => {
               <Route
                 path="/document-drafting-v2"
                 element={renderPage('Document drafting v2', <DocumentDraftingV2 />)}
+              />
+              <Route
+                path="/document-drafting-tel-note"
+                element={renderPage('Document drafting - telephone note', <DocumentDraftingTelNote />)}
               />
               <Route path="/whatsapp" element={renderPage('WhatsApp', <WhatsAppForm />)} />
               <Route
