@@ -1,6 +1,6 @@
 const { AzureOpenAI } = require("openai");
 
-const OPENAI_API_KEY_SECRET_NAME = process.env.AZURE_OPENAI_API_KEY_SECRET_NAME || "azure-openai-api-key";
+const OPENAI_API_KEY_SECRET_NAME = process.env.AZURE_OPENAI_API_KEY_SECRET_NAME || "foundry-call-handling";
 
 function requireEnv(name) {
   const value = process.env[name];
