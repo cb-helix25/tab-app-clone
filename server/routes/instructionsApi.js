@@ -2,6 +2,7 @@ const {
   getInstructionByRef,
   getDealForInstruction,
   getEnquiryByAcid,
+  getCoreEnquiryById,
   getPaymentsForInstruction,
   getDocumentsForInstruction,
   getPitchContentForDeal,
@@ -9,7 +10,7 @@ const {
 
 function registerInstructionsApi(app, secretClient) {
   app.get("/api/instructions/:instructionRef", async (req, res) => {
-        const instructionRef = req.params.instructionRef?.trim();
+    const instructionRef = req.params.instructionRef?.trim();
 
     if (!instructionRef) {
       return res.status(400).json({ error: "Instruction reference is required" });
@@ -24,8 +25,12 @@ function registerInstructionsApi(app, secretClient) {
       const deal = await getDealForInstruction(secretClient, instructionRef);
 
       let enquiry = null;
+      let coreEnquiry = null;
       if (deal?.prospectId !== undefined && deal.prospectId !== null) {
-        enquiry = await getEnquiryByAcid(secretClient, deal.prospectId);
+        [enquiry, coreEnquiry] = await Promise.all([
+          getEnquiryByAcid(secretClient, deal.prospectId),
+          getCoreEnquiryById(secretClient, deal.prospectId),
+        ]);
       }
 
       const [payments, documents, pitchContent] = await Promise.all([
@@ -38,6 +43,8 @@ function registerInstructionsApi(app, secretClient) {
         instruction,
         deal,
         enquiry,
+        coreEnquiry,
+        enquirySource: "instructions",
         payments,
         documents,
         pitchContent,

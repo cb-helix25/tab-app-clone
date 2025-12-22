@@ -6,6 +6,7 @@ import {
   Panel,
   PanelType,
   PrimaryButton,
+  ChoiceGroup,
   Stack,
   Text,
   TextField,
@@ -84,24 +85,30 @@ const InstructionExplorer: React.FC = () => {
         return null;
       }
 
-      if (source[key] !== undefined) {
-        return source[key];
-      }
+      const normalizeSnakeToCamel = (value: string) =>
+        value
+          .replace(/[_\s]+(.)?/g, (_, chr) => (chr ? chr.toUpperCase() : ''))
+          .replace(/^(\w)/, (match) => match.toLowerCase());
 
-      const lowerKey = key.toLowerCase();
-      if (source[lowerKey] !== undefined) {
-        return source[lowerKey];
-      }
+      const candidates = [
+        key,
+        key.toLowerCase(),
+        key.charAt(0).toLowerCase() + key.slice(1),
+        normalizeSnakeToCamel(key),
+        normalizeSnakeToCamel(key.toLowerCase()),
+      ];
 
-      const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
-      if (source[camelKey] !== undefined) {
-        return source[camelKey];
+      for (const candidate of candidates) {
+        if (source[candidate] !== undefined) {
+          return source[candidate];
+        }
       }
 
       return null;
     };
 
     const enquiryData = data.enquiry || {};
+    const coreEnquiryData = data.coreEnquiry || {};
     const instructionData = data.instruction || {};
     const payments = data.payments || [];
     const pitchContent = data.pitchContent || [];
@@ -116,6 +123,16 @@ const InstructionExplorer: React.FC = () => {
         Email: getValue(enquiryData, 'Email'),
         Phone: getValue(enquiryData, 'Phone'),
         Notes: getValue(enquiryData, 'Notes'),
+      },
+      coreEnquiries: {
+        Poc: getValue(coreEnquiryData, 'Point_of_Contact'),
+        Aow: getValue(coreEnquiryData, 'Area_of_Work'),
+        Tags: getValue(coreEnquiryData, 'Tags'),
+        First: getValue(coreEnquiryData, 'First_Name'),
+        Last: getValue(coreEnquiryData, 'Last_Name'),
+        Email: getValue(coreEnquiryData, 'Email'),
+        Phone: getValue(coreEnquiryData, 'Phone_Number'),
+        Notes: getValue(coreEnquiryData, 'Initial_first_call_notes'),
       },
       instructions: {
         Stage: getValue(instructionData, 'Stage'),
@@ -293,8 +310,10 @@ const InstructionExplorer: React.FC = () => {
           >
             {[{ label: 'Instruction Ref', value: data.instruction?.instructionRef },
               { label: 'Deal ID', value: data.deal?.dealId },
-              { label: 'Enquiry ID', value: data.enquiry?.acid },
-              { label: 'Stage', value: data.instruction?.stage ?? data.deal?.stage }].map(
+              { label: 'Enquiry ID', value: data.enquiry?.acid ?? data.enquiry?.id },
+              { label: 'Stage', value: data.instruction?.stage ?? data.deal?.stage }]
+              .filter((item): item is { label: string; value: unknown } => Boolean(item))
+              .map(
               ({ label, value }) => (
                 <div
                   key={label}
@@ -317,6 +336,7 @@ const InstructionExplorer: React.FC = () => {
             {renderList('Instructions', toRows(data.instruction))}
             {renderList<Deal>('Deals', toRows(data.deal))}
             {renderList<Enquiry>('Enquiries', toRows(data.enquiry))}
+            {renderList<Enquiry>('Helix Core Enquiries', toRows(data.coreEnquiry))}
             {renderList<Payment>('Payments', data.payments)}
             {renderList<DocumentRecord>('Documents', data.documents)}
             {renderList<PitchContentRecord>('Pitch Content', data.pitchContent)}

@@ -13,9 +13,17 @@ export interface Deal {
 }
 
 export interface Enquiry {
-  id: string;
-  acid: string;
+  id?: string;
+  acid?: string;
   prospectId?: string;
+  pointOfContact?: string;
+  areaOfWork?: string;
+  tags?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phoneNumber?: string;
+  initialFirstCallNotes?: string;
   [key: string]: unknown;
 }
 
@@ -44,6 +52,8 @@ export interface InstructionResponse {
   instruction?: Instruction;
   deal?: Deal;
   enquiry?: Enquiry;
+  coreEnquiry?: Enquiry;
+  enquirySource?: "instructions" | "helix-core" | "both";
   payments?: Payment[];
   documents?: DocumentRecord[];
   pitchContent?: PitchContentRecord[];

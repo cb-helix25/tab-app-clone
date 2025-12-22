@@ -68,8 +68,9 @@ function registerDraftingRoutes(app, secretClient) {
         });
       }
 
-      const endpoint = requireEnv("AZURE_OPENAI_ENDPOINT");
-      const deployment = requireEnv("AZURE_OPENAI_DEPLOYMENT_NAME");
+      // Fetch endpoint and deployment name from Key Vault, fallback to env vars
+      const endpoint = await getSecretValue(secretClient, "azure-openai-endpoint", "AZURE_OPENAI_ENDPOINT");
+      const deployment = await getSecretValue(secretClient, "azure-openai-deployment-name", "AZURE_OPENAI_DEPLOYMENT_NAME");
       const apiVersion = process.env.OPENAI_API_VERSION || "2024-10-21";
       const apiKey = await getSecretValue(secretClient, OPENAI_API_KEY_SECRET_NAME, "AZURE_OPENAI_API_KEY");
 

@@ -22,7 +22,7 @@ async function getInstructionByRef(secretClient, instructionRef) {
     "SELECT * FROM dbo.Instructions WHERE InstructionRef = @instructionRef",
     { instructionRef }
   );
-  return results[0] ?normalizeRecord(results[0]) : null;
+  return results[0] ? normalizeRecord(results[0]) : null;
 }
 
 async function getDealForInstruction(secretClient, instructionRef) {
@@ -31,7 +31,7 @@ async function getDealForInstruction(secretClient, instructionRef) {
     "SELECT * FROM dbo.Deals WHERE InstructionRef = @instructionRef",
     { instructionRef }
   );
-  return results[0] ?normalizeRecord(results[0]) : null;
+  return results[0] ? normalizeRecord(results[0]) : null;
 }
 
 async function getEnquiryByAcid(secretClient, acid) {
@@ -40,7 +40,17 @@ async function getEnquiryByAcid(secretClient, acid) {
     "SELECT * FROM dbo.enquiries WHERE acid = @acid",
     { acid }
   );
-  return results[0] ?normalizeRecord(results[0]) : null;
+  return results[0] ? normalizeRecord(results[0]) : null;
+}
+
+async function getCoreEnquiryById(secretClient, id) {
+  const results = await queryReadOnly(
+    secretClient,
+    "SELECT * FROM dbo.enquiries WHERE ID = @id",
+    { id },
+    { useHelixCore: true }
+  );
+  return results[0] ? normalizeRecord(results[0]) : null;
 }
 
 async function getPaymentsForInstruction(secretClient, instructionRef) {
@@ -71,6 +81,7 @@ module.exports = {
   getInstructionByRef,
   getDealForInstruction,
   getEnquiryByAcid,
+  getCoreEnquiryById,
   getPaymentsForInstruction,
   getDocumentsForInstruction,
   getPitchContentForDeal,
