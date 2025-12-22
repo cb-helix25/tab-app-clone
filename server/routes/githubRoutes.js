@@ -1,5 +1,5 @@
 const fetch = require('node-fetch');
-const repositories = require('../../src/shared/repositories.json');
+const repositories = [];
 
 const TOKEN_SECRET_NAME = 'environment-token';
 const TOKEN_ENV_FALLBACK = 'GITHUB_TOKEN';
@@ -68,6 +68,10 @@ function registerGithubRoutes(app, secretClient) {
 
   app.get('/api/github/repositories/updates', async (_req, res) => {
     try {
+      if (!Array.isArray(repositories) || repositories.length === 0) {
+        return res.json({ repositories: [], fetchedAt: new Date().toISOString() });
+      }
+
       if (!cachedToken) {
         cachedToken = await getSecretValue(secretClient, TOKEN_SECRET_NAME, TOKEN_ENV_FALLBACK);
       }

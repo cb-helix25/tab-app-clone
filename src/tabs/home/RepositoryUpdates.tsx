@@ -18,12 +18,13 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
-import repositories from '../../shared/repositories.json';
 
 type RepoDescriptor = {
   owner: string;
   name: string;
 };
+
+const repositories: RepoDescriptor[] = [];
 
 type RepoTrackingState = {
   status: 'tracked' | 'untracked';
@@ -143,20 +144,22 @@ const RepositoryUpdates: React.FC = () => {
           const nextState = { ...current };
 
           successes.forEach((result) => {
-            const previous = current[result.fullName]
+            const existing = current[result.fullName];
+            const previous: RepoTrackingState = existing
               ? {
+                  status: existing.status ?? 'tracked',
+                  lastPushedAt: existing.lastPushedAt,
+                  branches: existing.branches ?? {},
+                  recentlyUpdatedBranches: existing.recentlyUpdatedBranches ?? [],
+                }
+              : {
                   status: 'tracked',
                   lastPushedAt: undefined,
                   branches: {},
                   recentlyUpdatedBranches: [],
-                  ...current[result.fullName],
-                }
-              : {
-                status: 'tracked',
-                lastPushedAt: undefined,
-                branches: {},
-                recentlyUpdatedBranches: [],
-              };
+                };
+
+            const previousBranches = (previous.branches ?? {}) as Record<string, string | undefined>;
             const previousTimestamp = previous.lastPushedAt ? new Date(previous.lastPushedAt).getTime() : null;
             const currentTimestamp = result.pushedAt ? new Date(result.pushedAt).getTime() : null;
             const hasNewPush =
@@ -166,8 +169,8 @@ const RepositoryUpdates: React.FC = () => {
             const updatedBranches: string[] = [];
             (result.branches ?? []).forEach((branch) => {
               branchMap[branch.name] = branch.commitDate;
-              const previousBranchTimestamp = previous.branches?.[branch.name]
-                ? new Date(previous.branches[branch.name] as string).getTime()
+              const previousBranchTimestamp = previousBranches[branch.name]
+                ? new Date(previousBranches[branch.name] as string).getTime()
                 : null;
               const currentBranchTimestamp = branch.commitDate ? new Date(branch.commitDate).getTime() : null;
               if (
